@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.6 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.7 2004-05-28 11:30:24 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -22,6 +22,8 @@ let mkand e el = myfold eand e el;;
 let mkor e el = myfold eor e el;;
 let mkimply e el = myfold eimply e el;;
 let mkequiv e el = myfold eequiv e el;;
+
+let hyp_counter = ref 0;;
 
 %}
 
@@ -106,10 +108,9 @@ theory:
 
 phrase:
   | DEF IDENT OPEN ident_list CLOSE expr { Def (DefReal ($2, $4, $6)) }
-  | INT expr                             { Hyp ("hyp", $2, $1) }
+  | int_opt hyp_name expr                { Hyp ($2, $3, $1) }
   | GOAL expr                            { Globals.goal_found := true;
-                                           Hyp ("goal", enot $2, 0) }
-  | expr                                 { Hyp ("hyp", $1, 1) }
+                                           Hyp ("_Zgoal", enot $2, 0) }
 ;
 
 expr:
@@ -145,6 +146,14 @@ ident_list:
   | IDENT ident_list  { $1 :: $2 }
 ;
 
+int_opt:
+  | /* empty */       { 1 }
+  | INT               { $1 }
+;
+
+hyp_name:
+  | /* empty */       { incr hyp_counter; Printf.sprintf "_hyp%d" !hyp_counter }
+  | STRING            { incr hyp_counter; $1 }
 
 /* TPTP syntax */
 

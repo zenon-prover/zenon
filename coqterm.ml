@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.2 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.3 2004-05-28 11:30:24 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -23,8 +23,26 @@ let lemma_env = (Hashtbl.create 97 : (string, coqterm) Hashtbl.t);;
 let getname e = Printf.sprintf "_h%X" (Index.get_number e);;
 let getv e = Cvar (getname e);;
 
+let is_meta s = String.length s >= 3 && String.sub s 0 3 = "_Z_";;
+
+(* For now, [synthesize] is very simple-minded. *)
+let synthesize s =
+  let len = String.length s in
+  assert (len > 3);
+  let i = int_of_string (String.sub s 3 (len - 3)) in
+  let ty = match Index.get_formula i with
+           | Eall (_, ty, _, _) | Enot (Eex (_, ty, _, _), _) -> ty
+           | _ -> assert false
+  in
+  match ty with
+  | "" | "_U" -> Cvar "_any"
+  | "nat" -> Cvar "(0)"
+  | _ -> Cvar s
+;;
+
 let rec trexpr e =
   match e with
+  | Evar (v, _) when is_meta v -> synthesize v
   | Evar (v, _) -> Cvar v
   | Emeta (e1, _) -> assert false
   | Eapp (f, args, _) -> Capp (Cvar f, List.map trexpr args)
@@ -44,7 +62,7 @@ let mklam v t = Clam (getname v, trexpr v, t);;
 let mklams args t = List.fold_right mklam args t;;
 
 let trwild = trexpr;;
-let trpred v ty p = Clam (v, Cvar ty, trexpr p);;
+let trpred v ty p = Clam (v, Cty ty, trexpr p);;
 
 let rec trtree node =
   let {conc = conc; rule = rule; hyps = hyps} = node in
@@ -317,8 +335,8 @@ module V7 = struct
     | Cequiv (t1, t2) -> fprintf oc "(%a <-> %a)" pr t1 pr t2;
     | Call (v, "", t1) -> fprintf oc "((%s : _U) %a)" v pr t1;
     | Call (v, ty, t1) -> fprintf oc "((%s : %s) %a)" v ty pr t1;
-    | Cex (v, "", t1) -> fprintf oc "(exists [%s : _U] %a)" v pr t1;
-    | Cex (v, ty, t1) -> fprintf oc "(exists [%s : %s] %a)" v ty pr t1;
+    | Cex (v, "", t1) -> fprintf oc "(Ex [%s : _U] %a)" v pr t1;
+    | Cex (v, ty, t1) -> fprintf oc "(Ex [%s : %s] %a)" v ty pr t1;
     | Clet (v, t1, t2) -> fprintf oc "([%s := %a]\n%a)" v pr t1 pr t2;
     | Cwild -> fprintf oc "?";
 
