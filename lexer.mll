@@ -1,13 +1,14 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.6 2004-06-01 11:56:29 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.7 2004-06-02 17:08:10 doligez Exp $";;
 
 open Parser
 
 }
 
 let newline = ('\010' | '\013' | "\013\010")
-let blank = [' ' '\009' '\012']
+let space = [' ' '\009' '\012']
+let blank = [' ' '\009' '\012' '\010' '\013']
 let identchar =  [^ '\000'-'\031' '\"' '\127'-'\255' '(' ')' ' ' '#' ';' '$']
 let stringchar = [^ '\000'-'\031' '\"' '\127'-'\255']
 let upper = [ 'A' - 'Z' ]
@@ -19,7 +20,7 @@ rule token = parse
   | '#' [^ '\010' '\013'] * { token lexbuf }
   | ';' [^ '\010' '\013'] * { token lexbuf }
   | newline     { token lexbuf }
-  | blank +     { token lexbuf }
+  | space +     { token lexbuf }
   | "("         { OPEN }
   | ")"         { CLOSE }
   | '$' ['0' - '9'] + {
@@ -53,7 +54,7 @@ rule token = parse
 and tptoken = parse
   | '%' [^ '\010' '\013'] * { tptoken lexbuf }
   | newline          { tptoken lexbuf }
-  | blank +          { tptoken lexbuf }
+  | space +          { tptoken lexbuf }
   | "("              { OPEN }
   | ")"              { CLOSE }
   | "["              { LBRACKET }
@@ -93,11 +94,17 @@ and coqtoken = parse
   | '#' [^ '\010' '\013'] * { coqtoken lexbuf }
   | ';' [^ '\010' '\013'] * { coqtoken lexbuf }
   | newline                 { coqtoken lexbuf }
-  | blank +                 { coqtoken lexbuf }
+  | space +                 { coqtoken lexbuf }
   | "Local"                 { LOCAL }
   | "Let"                   { LOCAL }
   | "(* to be proved *)"    { TOBE }
   | "(* Qed *)."            { QED }
+  | "%%begin-auto-proof" blank+
+    "%%location:" blank* '[' [^ ']']* ']' blank+
+    "%%name:" blank* (identchar+ as name) blank+
+    "%%statement" blank+
+                            { BEGINPROOF name }
+  | "%%end-auto-proof"      { ENDPROOF }
   | "(*"                    { coqcomment lexbuf }
   | "By"                    { BY }
   | "By def"                { BYDEF }

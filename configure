@@ -1,8 +1,8 @@
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.4 2004-05-28 08:10:51 doligez Exp $
+#  $Id: configure,v 1.5 2004-06-02 17:08:10 doligez Exp $
 
 bindir=/usr/local/bin
-libdir="`coqc -where`/zenon"
+libdir=/usr/local/lib/foc
 
 while : ; do
   case $# in 0) break;; esac

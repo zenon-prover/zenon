@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.6 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.7 2004-06-02 17:08:10 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -84,7 +84,7 @@ let rec expr_soft = function
 ;;
 
 let phrase = function
-  | Phrase.Hyp (n, e, p) -> printf "# %s:\n$%d" n p; expr e; printf "\n";
+  | Phrase.Hyp (n, e, p) -> printf "# %s:\n$%d " n p; expr e; printf "\n";
   | Phrase.Def (DefReal (s, args, e)) ->
       printf "$def %s (" s;
       List.iter (fun x -> printf " %s" x) args;

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.5 2004-05-25 11:45:36 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.6 2004-06-02 17:08:10 doligez Exp $";;
 
 open Printf;;
 
@@ -1018,12 +1018,12 @@ let ticker () =
             !Globals.stored_lemmas (heap_size / 1_000_000) tm;
   end;
   if tm > !Globals.time_limit then begin
-    eprintf "time limit exceeded\n";
+    eprintf " time limit exceeded\n";
     flush stderr;
     raise NoProof;
   end;
   if float heap_size > !Globals.size_limit then begin
-    eprintf "size limit exceeded\n";
+    eprintf " size limit exceeded\n";
     flush stderr;
     raise NoProof;
   end;

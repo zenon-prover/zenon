@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.5 2004-06-01 11:56:29 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.6 2004-06-02 17:08:10 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -266,32 +266,48 @@ let trproof phrases l =
 
 (* ******************************************* *)
 
+let line_len = 72;;
+
+let rem_len = ref line_len;;
 let buf = Buffer.create 100;;
-let cur_col = ref 0;;
+exception Cut_before of int;;
+exception Cut_at of int;;
+
+let test_cut j c =
+  match c with
+  | '('|')'|'~'|'>'|','|'['|']'|'?' -> raise (Cut_before (j+1))
+  | ':'|'<' -> raise (Cut_before j)
+  | ' ' -> raise (Cut_at j)
+  | _ -> ()
+;;
+let reset_buf () = rem_len := line_len;;
 let flush_buf oc =
   let len = Buffer.length buf in
   let i = ref 0 in
-  while !i < len do
-    if !cur_col < 64 then begin
-      let l = 64 - !cur_col in
-      let l = if !i + l > len then len - !i else l in
-      output_string oc (Buffer.sub buf !i l);
-      i := !i + l;
-      cur_col := !cur_col + l;
-    end;
-    if !i < len then begin
-      match Buffer.nth buf !i with
-      | ( '(' | ')' | '<' | ':' | '~' | '[' | ']' | '?') as c ->
-          output_char oc '\n';
-          cur_col := 0;
-      | ' ' -> output_char oc '\n';
-               cur_col := 0;
-               incr i;
-      | c -> output_char oc c;
-             incr cur_col;
-             incr i;
-    end;
+  while !i + !rem_len <= len do
+    try
+      for j = !rem_len - 1 downto 0 do
+        test_cut j (Buffer.nth buf (!i + j));
+      done;
+      if !rem_len < line_len then raise (Cut_before 0);
+      for j = !rem_len to len - !i - 1 do
+        test_cut j (Buffer.nth buf (!i + j));
+      done;
+      raise (Cut_before (len - !i))
+    with
+    | Cut_before j ->
+        output_string oc (Buffer.sub buf !i j);
+        i := !i + j;
+        output_char oc '\n';
+        rem_len := line_len;
+    | Cut_at j ->
+        output_string oc (Buffer.sub buf !i j);
+        i := !i + j + 1;
+        output_char oc '\n';
+        rem_len := line_len;
   done;
+  output_string oc (Buffer.sub buf !i (len - !i));
+  rem_len := !rem_len - (len - !i);
   Buffer.clear buf;
 ;;
 
@@ -341,6 +357,7 @@ module V8 = struct
       in
       List.iter f l;
     in
+    reset_buf ();
     pr buf t;
     flush_buf oc;
   ;;
@@ -351,7 +368,7 @@ module V8 = struct
       | Some f -> open_out f, close_out
     in
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    fprintf oc "Let %s :=\n" name;
+    fprintf oc "Definition %s :=\n" name;
     pr_oc oc t;
     fprintf oc ".\n";
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
@@ -404,6 +421,7 @@ module V7 = struct
       in
       List.iter f l;
     in
+    reset_buf ();
     pr buf t;
     flush_buf oc;
   ;;
@@ -414,7 +432,7 @@ module V7 = struct
       | Some f -> open_out f, close_out
     in
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    fprintf oc "Local %s :=\n" name;
+    fprintf oc "Definition %s :=\n" name;
     pr_oc oc t;
     fprintf oc ".\n";
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";

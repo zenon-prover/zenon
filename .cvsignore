@@ -13,3 +13,6 @@ header.ml
 header.mli
 gmon.out
 .DS_Store
+
+zenon.v
+zenon_coqbool.v
