@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.11 2004-10-15 11:55:03 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.12 2004-10-15 20:54:46 doligez Exp $";;
 
 open Printf;;
 
@@ -19,7 +19,7 @@ let progress_level = ref Progress_bar;;
 let progress_cur = ref (-1);;
 let progress_char = ref 0;;
 let progress_anim = "\\|/-";;
-let progress_bar = '=';;
+let progress_bar = '*';;
 
 let do_progress f =
   match !progress_level with

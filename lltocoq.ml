@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.10 2004-10-15 14:31:25 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.11 2004-10-15 20:54:46 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -225,11 +225,8 @@ let rec print_all_names ppvernac n =
 
 let proof_init ppvernac nfv conc is_lemma =
   let lnam = List.fold_left (fun s e -> [< s; gen_name e >]) [< >] conc in
-  let pre = if !Globals.quiet_flag then [< >]
-            else [< strnl "(* BEGIN-PROOF *)">]
-  in
   if !Globals.ctx_flag || is_lemma then
-    ppvernac [< pre; str "do "; ints nfv; str " intro; intros"; lnam; coqend >]
+    ppvernac [< str "do "; ints nfv; str " intro; intros"; lnam; coqend >]
   else
    let intros =
      match get_goals conc with
@@ -237,14 +234,11 @@ let proof_init ppvernac nfv conc is_lemma =
      | [] -> [< >]
      | _ -> assert false
    in
-   ppvernac [< pre; intros >]
+   ppvernac [< intros >]
 ;;
 
 let proof_end ppvernac =
-  let post = if !Globals.quiet_flag then [< >]
-             else [< strnl "(* END-PROOF *)">]
-  in
-  ppvernac [< coqp "Qed"; post >];
+  ppvernac [< coqp "Qed" >];
   if !debug then begin
     ppvernac [< strnl "(*" >];
     print_all_names ppvernac 0;
@@ -414,8 +408,7 @@ let proof_rule ppvernac = function
                 str "); ["; list_of make_intros hyps "| "; coqp "auto ]" >]
   | Rdefinition (c, h) ->
     if !debug then ppvernac [< strnl "(* definition *)" >];
-    ppvernac [< str "generalize "; gen_name c; str "; intro "; gen_name h;
-                coqend >]
+    ppvernac [< str "pose ("; gen_name h; str " := "; gen_name c; coqp ")" >]
   | _ -> ppvernac [< coqp "auto" >]
 
 let rec proof_build ppvernac pft =
@@ -455,9 +448,12 @@ let rec proof_lem ppvernac lems =
   end;
   proof_lem ppvernac rest
 
-let proof ppvernac =
+let proof ppvernac lems =
   reset_var ();
-  proof_lem ppvernac
+  if not !Globals.quiet_flag then ppvernac [< strnl "(* BEGIN-PROOF *)" >];
+  proof_lem ppvernac lems;
+  if not !Globals.quiet_flag then ppvernac [< strnl "(* END-PROOF *)" >];
+;;
 
 (**************************************)
 (* Prelude and exit of Coq's toplevel *)
