@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.9 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.10 2004-05-28 19:55:17 delahaye Exp $";;
 
 open Printf;;
 open Globals;;
@@ -24,8 +24,9 @@ type input_format =
 ;;
 let input_format = ref I_zenon;;
 
-(* Output file and validation *)
-let outf = ref None;;
+(* Output file, script checking and validation *)
+let outf = ref None
+let check = ref false
 let valid = ref false
 
 let set_out () =
@@ -79,6 +80,8 @@ let umsg = "Usage: zenon [options]";;
 let rec argspec = [
   "-", Arg.Unit (fun () -> add_file "-"),
     "         read input from stdin";
+  "-check", Arg.Set check,
+    "    check & pretty-print the Coq proof script (implies \"-ocoq\")";
   "-d", Arg.Unit (fun () -> Globals.debug_count := 1),
      "        debug mode";
   "-help", Arg.Unit print_usage,
@@ -105,7 +108,7 @@ let rec argspec = [
             " print the proof in Coq term format";
   "-ocoqterm7", Arg.Unit (fun () -> proof_level := Proof_coqterm;
                                     coq_version := V7),
-            " print the proof in Coq (V7) term format";
+            "print the proof in Coq (V7) term format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
       "<n>    print the proof in high-level format up to depth <n>";
   "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
@@ -141,7 +144,7 @@ and print_usage () =
 ;;
 
 Arg.parse argspec add_file umsg;;
-if !valid then proof_level := Proof_coq;;
+if !check || !valid then proof_level := Proof_coq;;
 
 let parse_file f =
   try
@@ -203,8 +206,8 @@ let main () =
       | Proof_h n -> Print.hlproof n proof;
       | Proof_m -> Print.mlproof proof;
       | Proof_l -> Print.llproof (Mltoll.translate proof);
-      | Proof_coq ->
-        retcode := Lltocoq.produce_proof !outf !valid (Mltoll.translate proof)
+      | Proof_coq -> retcode := Lltocoq.produce_proof !check !outf !valid
+                                                      (Mltoll.translate proof)
       | Proof_coqterm ->
           let p = Coqterm.trproof phrases (Mltoll.translate proof) in
           begin match !coq_version with
