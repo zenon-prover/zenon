@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.10 2004-10-07 15:26:57 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.11 2004-10-15 11:55:03 doligez Exp $";;
 
 open Printf;;
 
@@ -11,6 +11,7 @@ let quiet_flag = ref false;;
 let size_limit = ref 100_000_000.;;
 let time_limit = ref 300.;;
 let short_flag = ref false;;
+let ctx_flag = ref false;;
 
 type progress = Progress_none | Progress_bar | Progress_messages;;
 let progress_level = ref Progress_bar;;

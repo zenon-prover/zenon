@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: globals.mli,v 1.5 2004-05-28 20:55:21 doligez Exp $  *)
+(*  $Id: globals.mli,v 1.6 2004-10-15 11:55:03 doligez Exp $  *)
 
 val debug_count : int ref;;
 (* =< 0 means infinite; otherwise pause after that many steps *)
@@ -10,6 +10,7 @@ val quiet_flag : bool ref;;
 val size_limit : float ref;;
 val time_limit : float ref;;
 val short_flag : bool ref;;
+val ctx_flag : bool ref;;
 
 type progress = Progress_none | Progress_bar | Progress_messages;;
 val progress_level : progress ref;;

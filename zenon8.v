@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon8.v,v 1.1 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: zenon8.v,v 1.2 2004-10-15 11:55:03 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -112,3 +112,5 @@ Lemma zenon_equalnotequal : forall (T : Type) (t u v w : T),
     rewrite Hf.
       auto.
   Qed.
+
+Ltac cintro id := intro id || let nid := fresh in (intro nid; clear nid).

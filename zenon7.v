@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon7.v,v 1.1 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: zenon7.v,v 1.2 2004-10-15 11:55:03 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -124,3 +124,7 @@ Lemma zenon_equalnotequal : (T : Type) (t : T) (u : T) (v : T) (w : T)
     Rewrite Hf.
       Auto.
   Qed.
+
+(* ?? translate to v7 ?
+Ltac cintro id := intro id || let nid := fresh in (intro nid; clear nid).
+*)

@@ -1,10 +1,17 @@
+#!/bin/sh
+
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.6 2004-09-09 15:25:35 doligez Exp $
+#  $Id: configure,v 1.7 2004-10-15 11:55:03 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
 coqc7='coqc -v7'
 coqc8=coqc
+debug=false
+
+case `hostname` in
+  macaque*) debug=true;;
+esac
 
 while : ; do
   case $# in 0) break;; esac
@@ -24,17 +31,31 @@ while : ; do
        chmod a+x dummy_coqc8
        shift
     ;;
+    -debug | --debug)
+       debug=true
+       shift
+    ;;
     *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>] [-coq7]' >&2
        exit 2
     ;;
   esac
 done
 
+if $debug; then
+  bytdebugflags="-g -dtypes"
+  optdebugflags=-p
+else
+  bytdebugflags=
+  optdebugflags=
+fi
+
 {
   echo BINDIR="$bindir"
   echo LIBDIR="$libdir"
   echo COQC7="$coqc7"
   echo COQC8="$coqc8"
+  echo BYTDEBUGFLAGS="$bytdebugflags"
+  echo OPTDEBUGFLAGS="$optdebugflags"
 } >.config_var
 
 echo Configuration summary for zenon:

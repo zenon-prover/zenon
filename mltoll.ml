@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.10 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.11 2004-10-15 11:55:03 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -81,7 +81,7 @@ let tr_rule r =
   | Definition (DefReal _, folded, unfolded) ->
       LL.Rdefinition (tr_prop folded, tr_prop unfolded)
 
-  | Cut (p) -> LL.Rcut (p)
+  | Cut (p) -> LL.Rcut (tr_prop p)
 
   (* derived rules, handled by translate_derived: *)
   | ConjTree _

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.15 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.16 2004-10-15 11:55:03 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -83,7 +83,10 @@ let rec argspec = [
   "-", Arg.Unit (fun () -> add_file "-"),
     "         read input from stdin";
   "-check", Arg.Set check,
-    "    check & pretty-print the Coq proof script (implies \"-ocoq\")";
+         "    check & pretty-print the Coq proof script \
+              (implies -ocoq and -context)";
+  "-context", Arg.Set ctx_flag,
+           "  provide context for checking the proof independently";
   "-d", Arg.Unit (fun () -> Globals.debug_count := 1;
                             progress_level := Progress_none),
      "        debug mode";
@@ -137,14 +140,13 @@ let rec argspec = [
   "-v", Arg.Unit short_version,
      "        print version string and exit";
   "-valid", Arg.Set valid,
-         "    verify the Coq proof (implies \"-ocoq\")";
+         "    verify the Coq proof (implies -ocoq and -context)";
   "-versions", Arg.Unit cvs_version,
             " print CVS version strings and exit";
   "-w", Arg.Clear warnings_flag,
      "        suppress warnings";
   "-x", Arg.String Extension.activate,
      "<ext>   activate extension <ext>"
-(* FIXME TODO ajouter option "-standalone" *)
 ]
 
 and print_usage () =
@@ -153,7 +155,16 @@ and print_usage () =
 ;;
 
 Arg.parse argspec add_file umsg;;
-if !check || !valid then proof_level := Proof_coq;;
+if !check || !valid then begin
+  proof_level := Proof_coq;
+  ctx_flag := true;
+end
+;;
+
+if !proof_level = Proof_coqterm && !ctx_flag then begin
+  eprintf "support for -context with -ocoqterm[78] is not implemented\n";
+  exit 2;
+end;;
 
 let parse_file f =
   try
@@ -242,7 +253,7 @@ let main () =
       | Proof_l -> Print.llproof (Mltoll.translate th_name phrases proof);
       | Proof_coq ->
           let llp = Mltoll.translate th_name phrases proof in
-          retcode := Lltocoq.produce_proof !check !outf !valid llp;
+          retcode := Lltocoq.produce_proof phrases !check !outf !valid llp;
       | Proof_coqterm ->
           let llpr = Mltoll.translate th_name phrases proof in
           let p = Coqterm.trproof phrases llpr in

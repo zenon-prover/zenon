@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.5 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: eqrel.ml,v 1.6 2004-10-15 11:55:03 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -82,7 +82,9 @@ let rec do_conj path env e =
   | Eequiv (e1, e2, _) ->
       do_conj (L::path) env (eimply (e1, e2));
       do_conj (R::path) env (eimply (e2, e1));
-  (* FIXME TODO: traiter Enot (Eequiv) *)
+  | Enot (Eequiv (e1, e2, _), _) ->
+      do_conj (L::path) env (eor (e1, e2));
+      do_conj (R::path) env (eor (enot e1, enot e2));
   | _ -> subexprs := (get_leaves path env e) :: !subexprs;
 ;;
 
@@ -251,9 +253,9 @@ type origin = Expr.expr * direction list * int list;;
 type hyp_kind =
   | Refl of origin
   | Sym of origin
-  | Sym2 of origin * origin   (* refl, transsym *)
+  | Sym2 of string * origin * origin   (* symbol, refl, transsym *)
   | Trans of origin
-  | Trans2 of origin * origin (* refl, transsym *)
+  | Trans2 of string * origin * origin (* symbol, refl, transsym *)
 ;;
 
 module HE = Hashtbl.Make (Expr);;
@@ -290,7 +292,7 @@ let get_sym_hyp s =
       | _, Some (e, dirs, vars), _ ->
           HE.add hyps_tbl result (Sym ((e, dirs, vars)))
       | Some (e1, dir1, var1), _, Some (e2, dir2, var2) ->
-          HE.add hyps_tbl result (Sym2 ((e1, dir1, var1), (e2, dir2, var2)))
+          HE.add hyps_tbl result (Sym2 (s, (e1, dir1, var1), (e2, dir2, var2)))
       | _, _, _ -> assert false
       end;
       result
@@ -311,7 +313,8 @@ let get_trans_hyp s =
       | _, Some (e, dirs, vars), _ ->
           HE.add hyps_tbl result (Trans ((e, dirs, vars)))
       | Some (e1, dir1, var1), _, Some (e2, dir2, var2) ->
-          HE.add hyps_tbl result (Trans2 ((e1, dir1, var1), (e2, dir2, var2)))
+          HE.add hyps_tbl result
+                 (Trans2 (s, (e1, dir1, var1), (e2, dir2, var2)))
       | _, _, _ -> assert false
       end;
       result
@@ -420,7 +423,16 @@ let rec decompose_conj n e dirs vars forms taus =
       let n1 = decompose_disj e1 forms in
       let n2 = decompose_disj ne2 forms in
       make_node [e] (Equiv (e1, e2)) [[ne2]; [e1]] [n2; n1]
-  (* FIXME TODO: traiter Enot (Eequiv) *)
+  | Enot (Eequiv (e1, e2, _), _), L::rest, _ ->
+      let n1 = decompose_disj e1 forms in
+      let n2 = decompose_disj e2 forms in
+      make_node [e] (NotEquiv (e1, e2)) [[e2]; [e1]] [n2; n1]
+  | Enot (Eequiv (e1, e2, _), _), R::rest, _ ->
+      let ne1 = enot e1 in
+      let ne2 = enot e2 in
+      let n1 = decompose_disj ne1 forms in
+      let n2 = decompose_disj ne2 forms in
+      make_node [e] (NotEquiv (e1, e2)) [[ne1]; [e2]] [n1; n2]
   | _, _, _ ->
       assert (dirs = []);
       assert (vars = []);
@@ -449,7 +461,25 @@ let get_proof e =
           (n4, [f])
       | _ -> assert false
       end
-  | Sym2 ((f1, dir1, var1), (f2, dir2, var2)) -> assert false (* FIXME TODO *)
+  | Sym2 (s, (fsy, dirsy, varsy), (ftx, dirtx, vartx)) ->
+      let (f1, tau1) = inst_nall ne in
+      let (f2, tau2) = inst_nall f1 in
+      let rtt = eapp (s, [tau1; tau1]) in
+      let nrtt = enot rtt in
+      begin match f2 with
+      | Enot (Eimply (f3, f4, _), _) ->
+          let nf4 = enot f4 in
+          let n1 = decompose_conj 0 fsy dirsy varsy [nrtt] [tau1] in
+          let n2 = decompose_conj 0 ftx dirtx vartx [rtt; f3; nf4]
+                                  [tau1; tau1; tau2]
+          in
+          let n3 = make_node [] (Cut rtt) [[rtt]; [nrtt]] [n2; n1] in
+          let n4 = make_node [f2] (NotImpl (f3, f4)) [[f3; nf4]] [n3] in
+          let n5 = make_node [f1] (NotAll f1) [[f2]] [n4] in
+          let n6 = make_node [ne] (NotAll ne) [[f1]] [n5] in
+          (n6, [fsy; ftx])
+      | _ -> assert false
+      end
   | Trans ((f, dirs, vars)) ->
       let (f1, tau1) = inst_nall ne in
       let (f2, tau2) = inst_nall f1 in
@@ -467,7 +497,34 @@ let get_proof e =
           (n6, [f])
       | _ -> assert false
       end
-  | Trans2 ((f1, dir1, var1), (f2, dir2, var2)) -> assert false (* FIXME TODO *)
+  | Trans2 (s, (fsy, dirsy, varsy), (ftx, dirtx, vartx)) ->
+      let (f1, tau1) = inst_nall ne in
+      let (f2, tau2) = inst_nall f1 in
+      let (f3, tau3) = inst_nall f2 in
+      let rt1t1 = eapp (s, [tau1; tau1]) in
+      let nrt1t1 = enot rt1t1 in
+      let rt3t1 = eapp (s, [tau3; tau1]) in
+      let nrt3t1 = enot rt3t1 in
+      begin match f3 with
+      | Enot (Eimply (f4, (Eimply (f5, f6, _) as f56), _), _) ->
+          let nf6 = enot f6 in
+          let n1 = decompose_conj 0 ftx dirtx vartx [rt3t1; rt1t1; nf6]
+                                  [tau3; tau1; tau1]
+          in
+          let n2 = decompose_conj 0 ftx dirtx vartx [f4; f5; nrt3t1]
+                                  [tau1; tau2; tau3]
+          in
+          let n3 = make_node [] (Cut rt3t1) [[rt3t1]; [nrt3t1]] [n1; n2] in
+          let n4 = decompose_conj 0 fsy dirsy varsy [nrt1t1] [tau1] in
+          let n5 = make_node [] (Cut rt1t1) [[rt1t1]; [nrt1t1]] [n3; n4] in
+          let n6 = make_node [f56] (NotImpl (f5, f6)) [[f5; nf6]] [n5] in
+          let n7 = make_node [f3] (NotImpl (f4, f56)) [[f4; enot f56]] [n6] in
+          let n8 = make_node [f2] (NotAll f2) [[f3]] [n7] in
+          let n9 = make_node [f1] (NotAll f1) [[f2]] [n8] in
+          let n10 = make_node [ne] (NotAll ne) [[f1]] [n9] in
+          (n10, [fsy; ftx])
+      | _ -> assert false
+      end
 ;;
 
 let print_rels oc =
