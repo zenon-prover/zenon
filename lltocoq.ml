@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.16 2004-10-29 08:40:36 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.17 2004-11-09 10:22:17 prevosto Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -206,7 +206,9 @@ let declare_theorem ppvernac name params fvar concl =
 
 let rec gen_name e =
   let n = Index.get_number e in
-  try let name = Hashtbl.find mapping n in
+  try 
+    let name = Hashtbl.find mapping n in
+      Watch.use_hyp name;
       [< str " "; str name >]
   with Not_found -> [< str " ZH"; ints (Index.get_number e) >]
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.19 2004-10-29 08:40:36 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.20 2004-11-09 10:22:17 prevosto Exp $";;
 
 open Printf;;
 open Globals;;
@@ -221,6 +221,7 @@ Gc.set {(Gc.get ()) with
 ;;
 
 let main () =
+  Watch.clear_watch ();
   let file = match !files with
              | [f] -> f
              | _ -> Arg.usage argspec umsg; exit 2
@@ -256,15 +257,19 @@ let main () =
       | Proof_m -> Print.mlproof proof;
       | Proof_l -> Print.llproof (Mltoll.translate th_name phrases proof);
       | Proof_coq ->
+          Watch.force_definitions_use ();
           let llp = Mltoll.translate th_name phrases proof in
-          retcode := Lltocoq.produce_proof phrases !check !outf !valid llp;
+            retcode := Lltocoq.produce_proof phrases !check !outf !valid llp;
+            Watch.warn_unused th_name
       | Proof_coqterm ->
+          Watch.force_definitions_use ();
           let llpr = Mltoll.translate th_name phrases proof in
           let p = Coqterm.trproof phrases llpr in
-          begin match !coq_version with
-            | V7 -> Coqterm.V7.print !outf p;
-            | V8 -> Coqterm.V8.print !outf p;
-          end;
+            begin match !coq_version with
+              | V7 -> Coqterm.V7.print !outf p;
+              | V8 -> Coqterm.V8.print !outf p;
+            end;
+            Watch.warn_unused th_name
       end;
       cls_out ()
     end;

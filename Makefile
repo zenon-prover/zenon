@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.21 2004-10-29 08:40:36 doligez Exp $
+#  $Id: Makefile,v 1.22 2004-11-09 10:22:17 prevosto Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -13,7 +13,7 @@ CAMLCFLAGS = ${CAMLFLAGS} ${BYTDEBUGFLAGS}
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
-MODULES = version misc heap globals expr prio \
+MODULES = version misc heap globals watch expr prio \
           phrase llproof mlproof eqrel index \
           print step node extension mltoll prove parser lexer tptp \
           ext_coqbool ext_equiv lltocoq coqterm \
@@ -126,6 +126,8 @@ heap.cmo: version.cmi heap.cmi
 heap.cmx: version.cmx heap.cmi 
 globals.cmo: version.cmi globals.cmi 
 globals.cmx: version.cmx globals.cmi 
+watch.cmo: globals.cmi watch.cmi 
+watch.cmx: globals.cmx watch.cmi 
 expr.cmo: globals.cmi misc.cmi version.cmi expr.cmi 
 expr.cmx: globals.cmx misc.cmx version.cmx expr.cmi 
 prio.cmo: expr.cmi version.cmi prio.cmi 
@@ -162,8 +164,8 @@ prove.cmo: eqrel.cmi expr.cmi extension.cmi globals.cmi heap.cmi index.cmi \
 prove.cmx: eqrel.cmx expr.cmx extension.cmx globals.cmx heap.cmx index.cmx \
     misc.cmx mlproof.cmx node.cmx print.cmx prio.cmx step.cmx version.cmx \
     prove.cmi 
-parser.cmo: expr.cmi globals.cmi phrase.cmi version.cmi parser.cmi 
-parser.cmx: expr.cmx globals.cmx phrase.cmx version.cmx parser.cmi 
+parser.cmo: expr.cmi globals.cmi phrase.cmi version.cmi watch.cmi parser.cmi 
+parser.cmx: expr.cmx globals.cmx phrase.cmx version.cmx watch.cmx parser.cmi 
 lexer.cmo: parser.cmi version.cmi lexer.cmi 
 lexer.cmx: parser.cmx version.cmx lexer.cmi 
 tptp.cmo: expr.cmi lexer.cmi parser.cmi phrase.cmi version.cmi tptp.cmi 
@@ -177,19 +179,19 @@ ext_equiv.cmo: expr.cmi extension.cmi llproof.cmi misc.cmi mlproof.cmi \
 ext_equiv.cmx: expr.cmx extension.cmx llproof.cmx misc.cmx mlproof.cmx \
     node.cmx prio.cmx version.cmx ext_equiv.cmi 
 lltocoq.cmo: expr.cmi globals.cmi index.cmi llproof.cmi phrase.cmi \
-    version.cmi lltocoq.cmi 
+    version.cmi watch.cmi lltocoq.cmi 
 lltocoq.cmx: expr.cmx globals.cmx index.cmx llproof.cmx phrase.cmx \
-    version.cmx lltocoq.cmi 
+    version.cmx watch.cmx lltocoq.cmi 
 coqterm.cmo: expr.cmi globals.cmi index.cmi llproof.cmi phrase.cmi \
-    version.cmi coqterm.cmi 
+    version.cmi watch.cmi coqterm.cmi 
 coqterm.cmx: expr.cmx globals.cmx index.cmx llproof.cmx phrase.cmx \
-    version.cmx coqterm.cmi 
+    version.cmx watch.cmx coqterm.cmi 
 main.cmo: coqterm.cmi eqrel.cmi extension.cmi globals.cmi lexer.cmi \
     lltocoq.cmi mltoll.cmi parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi \
-    version.cmi main.cmi 
+    version.cmi watch.cmi main.cmi 
 main.cmx: coqterm.cmx eqrel.cmx extension.cmx globals.cmx lexer.cmx \
     lltocoq.cmx mltoll.cmx parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx \
-    version.cmx main.cmi 
+    version.cmx watch.cmx main.cmi 
 prio.cmi: expr.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 

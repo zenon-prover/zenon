@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.13 2004-10-15 14:31:25 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.14 2004-11-09 10:22:17 prevosto Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -195,13 +195,15 @@ let rec trtree node =
             [Cwild; tropt t; tropt u; tropt v; tropt w; lam1; lam2; teu; vdw])
   | Rdefinition (folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
-      Clet (getname unfolded, getv folded, sub)
+      let name = getname folded in
+        Clet (getname unfolded, getv folded, sub)
   | Rextension (name, args, c, hs) ->
       let metargs = List.map trexpr args in
       let hypargs = List.map2 mklams hs (List.map trtree hyps) in
       let conargs = List.map getv c in
-      Capp (Cvar name, metargs @ hypargs @ conargs)
-  | Rlemma (name, args) -> Hashtbl.find lemma_env name
+        Capp (Cvar name, metargs @ hypargs @ conargs)
+  | Rlemma (name, args) -> 
+      Hashtbl.find lemma_env name
 
 and tr_subtree_1 l =
   match l with
@@ -294,7 +296,8 @@ let trproof phrases l =
   match get_goal phrases with
   | Some goal ->
       let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", tropt goal, raw)])
-      in (lemmas, th_name, term)
+      in 
+        (lemmas, th_name, term)
   | None -> (lemmas, th_name, raw)
 ;;
 
@@ -370,7 +373,8 @@ module V8 = struct
     let rec pr b t =
       match t with
       | Cvar "" -> assert false
-      | Cvar s -> bprintf b "%s" s; flush_buf oc;
+      | Cvar s -> 
+          Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
       | Cty s -> bprintf b "%a" pr_ty s;
       | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
       | Clam (_, _, Clam _) ->
@@ -452,7 +456,7 @@ module V7 = struct
     let rec pr b t =
       match t with
       | Cvar "" -> assert false
-      | Cvar s -> bprintf b "%s" s; flush_buf oc;
+      | Cvar s -> Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
       | Cty s -> bprintf b "%a" pr_ty s;
       | Clam (s, Cwild, t2) -> bprintf b "([%s]%a)" s pr t2;
       | Clam (_, _, Clam _) ->

@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.13 2004-10-29 08:40:36 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.14 2004-11-09 10:22:17 prevosto Exp $";;
 
 open Parser;;
 open Lexing;;
@@ -168,6 +168,7 @@ and coqtoken = parse
   | "as"                    { AS }
   | "at"                    { AT }
   | "cofix"                 { COFIX }
+  | "Depends"               { DEPENDS }
   | "Definition"            { DEFINITION }
   | "else"                  { ELSE }
   | "end"                   { END }
@@ -183,6 +184,7 @@ and coqtoken = parse
   | "let"                   { LET }
   | "match"                 { MATCH }
   | "mod"                   { MOD }
+  | "on"                    { ON }
   | "Parameter"             { PARAMETER }
   | "Prop"                  { PROP }
   | "return"                { RETURN }

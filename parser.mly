@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.16 2004-10-29 08:40:36 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.17 2004-11-09 10:22:17 prevosto Exp $";;
 
 open Printf;;
 
@@ -102,6 +102,7 @@ let mk_apply (e, l) =
 %token AT
 %token COFIX
 %token DEFINITION
+%token DEPENDS
 %token ELSE
 %token END
 %token EXISTS
@@ -116,6 +117,7 @@ let mk_apply (e, l) =
 %token LET
 %token MATCH
 %token MOD
+%token ON
 %token PARAMETER
 %token PROP
 %token RETURN
@@ -374,11 +376,27 @@ coqparam_expr:
       { let (params, expr) = $8 in ((evar $3) :: params, expr) }
 ;
 
-coq_hyp_def:
+parameter:
   | PARAMETER id_or_coqexpr COLON_ coqexpr PERIOD_
-      { Hyp ($2, $4, 1) }
+      { $2, Hyp ($2, $4, 1) }
+
+definition:
   | DEFINITION id_or_coqexpr COLON_EQ_ coqparam_expr PERIOD_
-      { let (params, expr) = $4 in Def (DefReal ($2, params, expr)) }
+      { let (params, expr) = $4 in $2, Def (DefReal ($2, params, expr)) }
+
+coq_hyp_def:
+  | DEPENDS ON parameter 
+      { let (name, hyp) = $3 in 
+          Watch.watch_hyp name;
+          hyp
+      }
+  | DEPENDS ON definition
+      { let (name, hyp) = $3 in
+          Watch.watch_def name;
+          hyp
+      }
+  | parameter  { snd $1 }
+  | definition { snd $1 }
 ;
 
 coq_hyp_def_list:
