@@ -1,24 +1,26 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.5 2004-06-04 09:29:15 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.6 2004-06-21 19:21:38 doligez Exp $  *)
 
 (* the [int] argument to the constructors is the hash value *)
 
-type expr = private
-  | Evar of string * int
-  | Emeta of expr * int
-  | Eapp of string * expr list * int
+type private_info;;
 
-  | Enot of expr * int
-  | Eand of expr * expr * int
-  | Eor of expr * expr * int
-  | Eimply of expr * expr * int
-  | Eequiv of expr * expr * int
+type expr = private
+  | Evar of string * private_info
+  | Emeta of expr * private_info
+  | Eapp of string * expr list * private_info
+
+  | Enot of expr * private_info
+  | Eand of expr * expr * private_info
+  | Eor of expr * expr * private_info
+  | Eimply of expr * expr * private_info
+  | Eequiv of expr * expr * private_info
   | Etrue
   | Efalse
 
-  | Eall of string * string * expr * int
-  | Eex of string * string * expr * int
-  | Etau of string * string * expr * int
+  | Eall of string * string * expr * private_info
+  | Eex of string * string * expr * private_info
+  | Etau of string * string * expr * private_info
 ;;
 
 type definition =

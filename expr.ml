@@ -1,29 +1,45 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.8 2004-06-16 19:51:30 delahaye Exp $";;
+Version.add "$Id: expr.ml,v 1.9 2004-06-21 19:21:38 doligez Exp $";;
 
 open Misc;;
 
-type expr =
-  | Evar of string * int
-  | Emeta of expr * int
-  | Eapp of string * expr list * int
+type private_info = int;;
 
-  | Enot of expr * int
-  | Eand of expr * expr * int
-  | Eor of expr * expr * int
-  | Eimply of expr * expr * int
-  | Eequiv of expr * expr * int
+type expr =
+  | Evar of string * private_info
+  | Emeta of expr * private_info
+  | Eapp of string * expr list * private_info
+
+  | Enot of expr * private_info
+  | Eand of expr * expr * private_info
+  | Eor of expr * expr * private_info
+  | Eimply of expr * expr * private_info
+  | Eequiv of expr * expr * private_info
   | Etrue
   | Efalse
 
-  | Eall of string * string * expr * int
-  | Eex of string * string * expr * int
-  | Etau of string * string * expr * int
+  | Eall of string * string * expr * private_info
+  | Eex of string * string * expr * private_info
+  | Etau of string * string * expr * private_info
 ;;
 
 type definition =
   | DefReal of string * string list * expr
   | DefPseudo of (expr * int) * string * string list * expr
+;;
+
+let k_true = 123000
+and k_false = 456
+and k_meta = 27182818
+and k_app = 14142135
+and k_not = 997
+and k_and = 11003
+and k_or = 100007
+and k_imply = 43011
+and k_equiv = 121013
+and k_all = 31415926
+and k_ex = 223017
+and k_tau = 323019
 ;;
 
 let get_hash = function
@@ -36,8 +52,8 @@ let get_hash = function
   | Eor (_, _, h) -> h
   | Eimply (_, _, h) -> h
   | Eequiv (_, _, h) -> h
-  | Etrue -> 123000
-  | Efalse -> 456
+  | Etrue -> k_true
+  | Efalse -> k_false
 
   | Eall (_, _, _, h) -> h
   | Eex (_, _, _, h) -> h
@@ -64,30 +80,27 @@ let get_binding env v =
 let combine x y = (x lsl 1) + (x lsr 30) + y;;
 
 let hash_var s = (Hashtbl.hash s) land max_int;;
-let hash_meta e = (combine 27182818 (get_hash e)) land max_int;;
+let hash_meta e = (combine k_meta (get_hash e)) land max_int;;
 let hash_app s args =
   let hash_comb h e = combine h (get_hash e) in
-  let r = combine 14142135 (List.fold_left hash_comb (Hashtbl.hash s) args) in
+  let r = combine k_app (List.fold_left hash_comb (Hashtbl.hash s) args) in
   r land max_int
 ;;
-let hash_not e = (combine 997 (get_hash e)) land max_int;;
+let hash_not e = (combine k_not (get_hash e)) land max_int;;
 let hash_and e1 e2 =
-  (combine 11003 (combine (get_hash e1) (get_hash e2))) land max_int
+  (combine k_and (combine (get_hash e1) (get_hash e2))) land max_int
 ;;
 let hash_or e1 e2 =
-  (combine 100007 (combine (get_hash e1) (get_hash e2))) land max_int
+  (combine k_or (combine (get_hash e1) (get_hash e2))) land max_int
 ;;
 let hash_imply e1 e2 =
-  (combine 43011 (combine (get_hash e1) (get_hash e2))) land max_int
+  (combine k_imply (combine (get_hash e1) (get_hash e2))) land max_int
 ;;
 let hash_equiv e1 e2 =
-  (combine 121013 (combine (get_hash e1) (get_hash e2))) land max_int
+  (combine k_equiv (combine (get_hash e1) (get_hash e2))) land max_int
 ;;
-let hash_true = get_hash Etrue;;
-let hash_false = get_hash Efalse;;
-let hash_equal e1 e2 =
-  (combine 431023 (combine (get_hash e1) (get_hash e2))) land max_int
-;;
+let hash_true = k_true;;
+let hash_false = k_false;;
 
 let rec hash_aux env e =
   match e with
@@ -98,26 +111,26 @@ let rec hash_aux env e =
   | Emeta (e, h) -> h
   | Eapp (sym, args, _) ->
      let hash_comb h e = combine h (hash_aux env e) in
-     combine 14142135 (List.fold_left hash_comb (Hashtbl.hash sym) args)
-  | Enot (e, _) -> combine 997 (hash_aux env e)
+     combine k_app (List.fold_left hash_comb (Hashtbl.hash sym) args)
+  | Enot (e, _) -> combine k_not (hash_aux env e)
   | Eand (e1, e2, _) ->
-      combine 11003 (combine (hash_aux env e1) (hash_aux env e2))
+      combine k_and (combine (hash_aux env e1) (hash_aux env e2))
   | Eor (e1, e2, _) ->
-      combine 100007 (combine (hash_aux env e1) (hash_aux env e2))
+      combine k_or (combine (hash_aux env e1) (hash_aux env e2))
   | Eimply (e1, e2, _) ->
-      combine 43011 (combine (hash_aux env e1) (hash_aux env e2))
+      combine k_imply (combine (hash_aux env e1) (hash_aux env e2))
   | Eequiv (e1, e2, _) ->
-      combine 121013 (combine (hash_aux env e1) (hash_aux env e2))
-  | Etrue -> hash_true
-  | Efalse -> hash_false
-  | Eall (v, t, e, _) -> combine 31415926 (hash_aux (v::env) e)
-  | Eex (v, t, e, _) -> combine 223017 (hash_aux (v::env) e)
-  | Etau (v, t, e, _) -> combine 323019 (hash_aux (v::env) e)
+      combine k_equiv (combine (hash_aux env e1) (hash_aux env e2))
+  | Etrue -> k_true
+  | Efalse -> k_false
+  | Eall (v, t, e, _) -> combine k_all (hash_aux (v::env) e)
+  | Eex (v, t, e, _) -> combine k_ex (hash_aux (v::env) e)
+  | Etau (v, t, e, _) -> combine k_tau (hash_aux (v::env) e)
 ;;
 
-let hash_all v t e = (combine 31415926 (hash_aux [v] e)) land max_int;;
-let hash_ex v t e = (combine 223017 (hash_aux [v] e)) land max_int;;
-let hash_tau v t e = (combine 323019 (hash_aux [v] e)) land max_int;;
+let hash_all v t e = (combine k_all (hash_aux [v] e)) land max_int;;
+let hash_ex v t e = (combine k_ex (hash_aux [v] e)) land max_int;;
+let hash_tau v t e = (combine k_tau (hash_aux [v] e)) land max_int;;
 
 module HashedExpr = struct
   type t = expr;;
@@ -196,6 +209,7 @@ let he_merge k =
       k
   ;;
 *)
+
 let evar (s) = he_merge (Evar (s, hash_var s));;
 let emeta (e) = he_merge (Emeta (e, hash_meta e));;
 let eapp (s, args) = he_merge (Eapp (s, args, hash_app s args));;
