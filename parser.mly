@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.8 2004-06-01 11:56:29 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.9 2004-06-01 19:13:50 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -210,8 +210,8 @@ tpvar_list:
 
 coqfile:
   | LOCAL IDENT COLON coqexpr COLONEQUAL
-    TOBE opt_coqexpr BY coqhyp_list BYDEF coqdef_list QED EOF
-      { ($2, Hyp ("_Zgoal", enot $4, 0) :: $9 @ $11) }
+    TOBE opt_coqexpr coq_hyp_def_list QED EOF
+      { ($2, Hyp ("_Zgoal", enot $4, 0) :: $8) }
 ;
 coqexpr:
   | OPEN coqexpr CLOSE
@@ -271,7 +271,16 @@ coqdef_list:
   | /* empty */           { [] }
   | coqdef coqdef_list    { $1 :: $2 }
 ;
+coq_hyp_def_list:
+  | BY coqhyp_list coq_hyp_def_list
+      { $2 @ $3 }
+  | BYDEF coqdef_list coq_hyp_def_list
+      { $2 @ $3 }
+  | /* empty */
+      { [] }
+;
 opt_coqexpr:
   | coqexpr               { () }
   | /* empty */           { () }
+;
 %%
