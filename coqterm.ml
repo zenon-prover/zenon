@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.7 2004-06-04 09:29:15 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.8 2004-06-04 19:15:00 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -280,33 +280,34 @@ let test_cut j c =
   | ' ' -> raise (Cut_at j)
   | _ -> ()
 ;;
-let reset_buf () = rem_len := line_len;;
+let init_buf () = rem_len := line_len;;
 let flush_buf oc =
-  let len = Buffer.length buf in
+  let s = Buffer.contents buf in
+  let len = String.length s in
   let i = ref 0 in
   while !i + !rem_len <= len do
     try
       for j = !rem_len - 1 downto 0 do
-        test_cut j (Buffer.nth buf (!i + j));
+        test_cut j s.[!i + j];
       done;
       if !rem_len < line_len then raise (Cut_before 0);
       for j = !rem_len to len - !i - 1 do
-        test_cut j (Buffer.nth buf (!i + j));
+        test_cut j s.[!i + j];
       done;
       raise (Cut_before (len - !i))
     with
     | Cut_before j ->
-        output_string oc (Buffer.sub buf !i j);
+        output oc s !i j;
         i := !i + j;
         output_char oc '\n';
         rem_len := line_len;
     | Cut_at j ->
-        output_string oc (Buffer.sub buf !i j);
+        output oc s !i j;
         i := !i + j + 1;
         output_char oc '\n';
         rem_len := line_len;
   done;
-  output_string oc (Buffer.sub buf !i (len - !i));
+  output oc s !i (len - !i);
   rem_len := !rem_len - (len - !i);
   Buffer.clear buf;
 ;;
@@ -359,7 +360,7 @@ module V8 = struct
       in
       List.iter f l;
     in
-    reset_buf ();
+    init_buf ();
     pr buf t;
     flush_buf oc;
   ;;
@@ -423,7 +424,7 @@ module V7 = struct
       in
       List.iter f l;
     in
-    reset_buf ();
+    init_buf ();
     pr buf t;
     flush_buf oc;
   ;;
