@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.7v,v 1.2 2004-06-21 19:22:19 doligez Exp $  *)
+(*  $Id: zenon.7v,v 1.3 2004-06-28 15:53:52 prevosto Exp $  *)
 
 Require Export Classical.
 
@@ -20,7 +20,7 @@ Lemma zenon_nottrue :
 *)
 
 Lemma zenon_noteq : (T : Type) (t : T)
-  ((t <> t) -> False).
+  (~(t == t) -> False).
   Tauto. Qed.
 
 (*   (zenon_notnot P Q) == (Q P)
@@ -62,7 +62,7 @@ Lemma zenon_notequiv : (P : Prop) (Q : Prop)
   Tauto. Qed.
 
 Lemma zenon_ex : (T : Type) (P : T -> Prop)
-  ((z : T) ((P z) -> False)) -> ((Ex [x : T] (P x)) -> False).
+  ((z : T) ((P z) -> False)) -> ((EXT x : T | (P x)) -> False).
   Intros T P Ha Hb. Elim Hb. Auto. Qed.
 
 Lemma zenon_all : (T : Type) (P : T -> Prop) (t : T)
@@ -70,7 +70,7 @@ Lemma zenon_all : (T : Type) (P : T -> Prop) (t : T)
   Intros. Cut (P t). Auto. Auto. Qed.
 
 Lemma zenon_notex : (T : Type) (P : T -> Prop) (t : T)
-  (~(P t) -> False) -> (~(Ex [x : T] (P x)) -> False).
+  (~(P t) -> False) -> (~(EXT x : T | (P x)) -> False).
   Intros T P t Ha Hb. Elim Ha. Intro. Elim Hb. Exists t. Auto. Qed.
 
 (***** excluded middle is really needed for this one !?! *)
@@ -93,27 +93,27 @@ Lemma zenon_notall : (T : Type) (P : T -> Prop)
 
 Lemma zenon_equal_step :
   (S : Type) (T : Type) (fa : S -> T) (fb : S -> T) (a : S) (b : S)
-  (fa = fb) -> (a <> b -> False) -> ((fa a) = (fb b)).
+  (fa == fb) -> (~(a == b) -> False) -> ((fa a) == (fb b)).
   Intros S T fa fb a b Ha Hb.
   Rewrite Ha.
-  Rewrite (NNPP (a = b)).
+  Rewrite (NNPP (a == b)).
    Auto.
    Auto.
   Qed.
 
 Lemma zenon_pnotp : (P : Prop) (Q : Prop)
-  (P = Q) -> (P -> ~Q -> False).
+  (P == Q) -> (P -> ~Q -> False).
   Intros P Q Ha. Rewrite Ha. Auto. Qed.
 
 Lemma zenon_notequal : (T : Type) (a  : T) (b : T)
-  (a = b) -> (a <> b -> False).
+  (a == b) -> (~(a == b) -> False).
   Auto. Qed.
 
 Lemma zenon_equalnotequal : (T : Type) (t : T) (u : T) (v : T) (w : T)
-  (t <> v -> u <> v -> False) -> (u <> w -> t <> w -> False)
-  -> (t = u -> v <> w -> False).
+  (~(t == v) -> ~(u == v) -> False) -> (~(u == w) -> ~(t == w) -> False)
+  -> ((t == u) -> ~(v == w) -> False).
   Intros T t u v w Ha Hb Hc Hd.
-  Cut (t <> v).
+  Cut ~(t == v).
    Intro He.
      Elim (Ha He).
      Rewrite <- Hc.
