@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.6 2004-05-24 13:47:55 delahaye Exp $";;
+Version.add "$Id: globals.ml,v 1.7 2004-05-26 16:23:52 doligez Exp $";;
 
 let debug_count = ref 0;;
 
@@ -50,8 +50,7 @@ let end_progress msg =
   match !progress_level with
   | Progress_none -> ()
   | Progress_bar ->
-    Printf.eprintf "\008";
-(*     Printf.eprintf "\008. %s\n" msg;*)
+     Printf.eprintf "\r";
      flush stderr;
   | Progress_messages ->
      if msg <> "" then Printf.eprintf "%s\n" msg;

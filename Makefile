@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.9 2004-05-24 13:47:55 delahaye Exp $
+#  $Id: Makefile,v 1.10 2004-05-26 16:23:52 doligez Exp $
 
 CAMLP4 = -pp camlp4o
 CAMLFLAGS = -warn-error A ${CAMLP4}
@@ -13,9 +13,11 @@ CAMLCFLAGS = ${CAMLFLAGS} -g
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
+COQC = coqc
+
 MODULES = version misc heap globals prio expr phrase llproof mlproof index \
           print step node extension mltoll prove parser lexer tptp \
-          ext_coqbool lltocoq \
+          ext_coqbool lltocoq coqterm \
           main
 
 IMPL = ${MODULES:%=%.ml}
@@ -25,7 +27,7 @@ OBJOPT = ${MODULES:%=%.cmx}
 ADDBYT = unix.cma
 ADDOPT = unix.cmxa
 
-#include .config_var
+include .config_var
 
 .PHONY: default
 default: all
@@ -34,15 +36,17 @@ zenon.opt: ${OBJOPT}
 	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${ADDOPT} ${OBJOPT}
 
 zenon.byt: ${OBJBYT}
-	${CAMLC} ${CAMLCFLAGS} -o zenon.byte ${ADDBYT}  ${OBJBYT}
+	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${ADDBYT} ${OBJBYT}
 
 zenon: zenon.opt
 	cp zenon.opt zenon
 
 .PHONY: install
 install:
-	mkdir -p ${BINDIR}
-	cp zenon ${BINDIR}/
+	mkdir -p "${BINDIR}"
+	cp zenon "${BINDIR}"/
+	mkdir -p "${LIBDIR}"
+	cp zenon_lemmas.v zenon_lemmas.vo "${LIBDIR}"/
 
 .PHONY: logos
 logos: zenon-logo.png zenon-logo-small.png
@@ -57,7 +61,7 @@ zenon-logo-small.png: zenon-logo.png
 	convert zenon-logo.png -resize 10% zenon-logo-small.png
 
 .PHONY: all
-all: zenon zenon.opt zenon.byt
+all: zenon zenon.opt zenon.byt zenon_lemmas.vo
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
@@ -173,12 +177,14 @@ ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi mlproof.cmi \
     node.cmi prio.cmi version.cmi ext_coqbool.cmi 
 ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx mlproof.cmx \
     node.cmx prio.cmx version.cmx ext_coqbool.cmi 
-lltocoq.cmo: expr.cmi llproof.cmi misc.cmi lltocoq.cmi 
-lltocoq.cmx: expr.cmx llproof.cmx misc.cmx lltocoq.cmi 
-main.cmo: extension.cmi globals.cmi lexer.cmi lltocoq.cmi mlproof.cmi \
+lltocoq.cmo: expr.cmi llproof.cmi version.cmi lltocoq.cmi 
+lltocoq.cmx: expr.cmx llproof.cmx version.cmx lltocoq.cmi 
+coqterm.cmo: expr.cmi index.cmi llproof.cmi version.cmi coqterm.cmi 
+coqterm.cmx: expr.cmx index.cmx llproof.cmx version.cmx coqterm.cmi 
+main.cmo: coqterm.cmi extension.cmi globals.cmi lexer.cmi lltocoq.cmi \
     mltoll.cmi parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi version.cmi \
     main.cmi 
-main.cmx: extension.cmx globals.cmx lexer.cmx lltocoq.cmx mlproof.cmx \
+main.cmx: coqterm.cmx extension.cmx globals.cmx lexer.cmx lltocoq.cmx \
     mltoll.cmx parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx version.cmx \
     main.cmi 
 phrase.cmi: expr.cmi 
@@ -195,3 +201,4 @@ parser.cmi: phrase.cmi
 lexer.cmi: parser.cmi 
 tptp.cmi: phrase.cmi 
 lltocoq.cmi: llproof.cmi 
+coqterm.cmi: llproof.cmi 

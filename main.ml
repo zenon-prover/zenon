@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.7 2004-05-24 13:47:55 delahaye Exp $";;
+Version.add "$Id: main.ml,v 1.8 2004-05-26 16:23:52 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -10,6 +10,7 @@ type proof_level =
   | Proof_m
   | Proof_l
   | Proof_coq
+  | Proof_coqterm
 ;;
 let proof_level = ref Proof_none;;
 
@@ -21,7 +22,7 @@ type input_format =
 let input_format = ref I_zenon;;
 
 (* Output file and validation *)
-let outf = ref None
+let outf = ref None;;
 let valid = ref false
 
 let set_out () =
@@ -67,90 +68,94 @@ let cvs_version () =
   exit 0;
 ;;
 
-let argspec = [
-  "-d", Arg.Unit (fun () -> Globals.debug_count := 1),
-      "        debug mode";
-  "-iz", Arg.Unit (fun () -> input_format := I_zenon),
-      "        read input file in zenon format (default)";
-  "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
-          "    read input file in focal format";
-  "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
-         "     read input file in TPTP format";
-  "-max-size", Arg.String (int_arg size_limit),
-             "<s>[kMG]  limit heap size to <s> kilo/mega/giga words"
-             ^ " (default 100M)";
-  "-max-time", Arg.String (int_arg time_limit),
-             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
-             ^ " (default 5m)";
-  "-o", Arg.String (fun f -> outf := (Some f)),
-       "<file>  output proof file";
-  "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
-         "     print the proof in Coq format";
-  "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
-       "<n>    print the proof in high-level format up to depth <n>";
-  "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
-       "       print the proof in low-level format";
-  "-om", Arg.Unit (fun () -> proof_level := Proof_m),
-       "       print the proof in middle-level format";
-  "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
-          "    do not print the proof (default)";
-  "-p0", Arg.Unit (fun () -> progress_level := Progress_none),
-       "       turn off progress bar and progress messages";
-  "-p1", Arg.Unit (fun () -> progress_level := Progress_bar),
-       "       turn on progress bar (default)";
-  "-p2", Arg.Unit (fun () -> progress_level := Progress_messages),
-       "       turn on progress messages";
-  "-q", Arg.Set quiet_flag,
-      "        suppress proof-found/no-proof output";
-  "-s", Arg.Set stats_flag,
-      "        print statistics";
-  "-v", Arg.Unit short_version,
-      "        print version string and exit";
-  "-valid", Arg.Set valid,
-      "    verify the Coq proof (\"-ocoq\" must be set)";
-  "-versions", Arg.Unit cvs_version,
-             " print CVS version strings and exit";
-  "-w", Arg.Clear warnings_flag,
-      "        suppress warnings";
-  "-x", Arg.String Extension.activate,
-      " <ext>  activate extension <ext>"
-];;
-
 let files = ref [];;
 let add_file s = files := s :: !files;;
 
 let umsg = "Usage: zenon [options]";;
 
-let _ =
-  begin
-    Arg.parse argspec add_file umsg;
-    if !valid & not(!proof_level = Proof_coq) then
-      (Arg.usage argspec umsg; exit 0)
-  end
-
-let parse_string s =
-  let lexbuf = Lexing.from_string s in
-  Parser.theory Lexer.token lexbuf
+let rec argspec = [
+  "-", Arg.Unit (fun () -> add_file "-"),
+    "         read input from stdin";
+  "-d", Arg.Unit (fun () -> Globals.debug_count := 1),
+     "        debug mode";
+  "-help", Arg.Unit print_usage,
+        "     print this option list and exit";
+  "--help", Arg.Unit print_usage,
+         "    print this option list and exit";
+  "-iz", Arg.Unit (fun () -> input_format := I_zenon),
+      "       read input file in zenon format (default)";
+  "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
+          "   read input file in focal format";
+  "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
+         "    read input file in TPTP format";
+  "-max-size", Arg.String (int_arg size_limit),
+            "<s>[kMG]  limit heap size to <s> kilo/mega/giga words"
+            ^ " (default 100M)";
+  "-max-time", Arg.String (int_arg time_limit),
+            "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
+            ^ " (default 5m)";
+  "-o", Arg.String (fun f -> outf := (Some f)),
+     "<file>  output proof to <file>";
+  "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
+        "     print the proof in Coq script format";
+  "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
+            " print the proof in Coq term format";
+  "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
+      "<n>    print the proof in high-level format up to depth <n>";
+  "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
+      "       print the proof in low-level format";
+  "-om", Arg.Unit (fun () -> proof_level := Proof_m),
+      "       print the proof in middle-level format";
+  "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
+         "    do not print the proof (default)";
+  "-p0", Arg.Unit (fun () -> progress_level := Progress_none),
+      "       turn off progress bar and progress messages";
+  "-p1", Arg.Unit (fun () -> progress_level := Progress_bar),
+      "       turn on progress bar (default)";
+  "-p2", Arg.Unit (fun () -> progress_level := Progress_messages),
+      "       turn on progress messages";
+  "-q", Arg.Set quiet_flag,
+     "        suppress proof-found/no-proof output";
+  "-s", Arg.Set stats_flag,
+     "        print statistics";
+  "-v", Arg.Unit short_version,
+     "        print version string and exit";
+  "-valid", Arg.Set valid,
+         "    verify the Coq proof (implies \"-ocoq\")";
+  "-versions", Arg.Unit cvs_version,
+            " print CVS version strings and exit";
+  "-w", Arg.Clear warnings_flag,
+     "        suppress warnings";
+  "-x", Arg.String Extension.activate,
+     "<ext>   activate extension <ext>"
+]
+and print_usage () =
+  Arg.usage argspec umsg;
+  exit 0;
 ;;
-let parse_string_list l = List.flatten (List.map parse_string l);;
+
+Arg.parse argspec add_file umsg;;
+if !valid then proof_level := Proof_coq;;
 
 let parse_file f =
   try
-    let chan = open_in f in
+    let (chan, close) =
+      if f = "-" then (stdin, ignore) else (open_in f, close_in)
+    in
     let lexbuf = Lexing.from_channel chan in
     match !input_format with
     | I_tptp ->
         let tpphrases = Parser.tpfile Lexer.tptoken lexbuf in
-        close_in chan;
+        close chan;
         Tptp.translate (Filename.dirname f) tpphrases
     | I_focal ->
         let result = Parser.coqfile Lexer.coqtoken lexbuf in
-        close_in chan;
+        close chan;
         result
     | I_zenon ->
         Globals.goal_found := false;
         let result = Parser.theory Lexer.token lexbuf in
-        close_in chan;
+        close chan;
         if (not !Globals.goal_found) && !Globals.warnings_flag then begin
           eprintf "Warning: no goal given.\n";
           flush stderr;
@@ -194,6 +199,8 @@ let main () =
       | Proof_l -> Print.llproof (Mltoll.translate proof);
       | Proof_coq ->
         retcode := Lltocoq.produce_proof !outf !valid (Mltoll.translate proof)
+      | Proof_coqterm ->
+          Coqterm.print !outf (Coqterm.trproof (Mltoll.translate proof));
       end;
       cls_out ()
     end;

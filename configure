@@ -1,19 +1,27 @@
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.1 2004-05-19 13:24:44 doligez Exp $
+#  $Id: configure,v 1.2 2004-05-26 16:23:52 doligez Exp $
 
 bindir=/usr/local/bin
+libdir=/usr/local/lib/zenon
 
-case "$1" in
-  -bindir | --bindir)
-     bindir=$2
-     shift 2
-  ;;
-  -bindir=* | --bindir=*)
-     bindir=`echo "$1" | sed 's/.*=//'`
-     shift
-  ;;
-esac
+while : ; do
+  case $# in 0) break;; esac
+  case "$1" in
+    -bindir | --bindir)
+       bindir=$2
+       shift 2
+    ;;
+    -libdir | --libdir)
+       libdir=$2
+       shift 2
+    ;;
+    *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>]' >&2
+       exit 2
+    ;;
+  esac
+done
 
 {
   echo BINDIR=$bindir
+  echo LIBDIR=$libdir
 } >.config_var
