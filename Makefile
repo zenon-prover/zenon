@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.7 2004-05-19 13:24:44 doligez Exp $
+#  $Id: Makefile,v 1.8 2004-05-23 16:28:16 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -39,7 +39,7 @@ zenon: zenon.opt
 .PHONY: install
 install:
 	mkdir -p ${BINDIR}
-	cp zenon ${BINDIR}
+	cp zenon ${BINDIR}/
 
 .PHONY: logos
 logos: zenon-logo.png zenon-logo-small.png
