@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: step.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: step.ml,v 1.3 2004-05-19 13:24:44 doligez Exp $";;
 
 open Printf;;
 
@@ -10,11 +10,11 @@ let pause () =
 ;;
 
 let ifstep action =
-  if !Globals.step_count > 0 then begin
-    decr Globals.step_count;
-    if !Globals.step_count = 0 then begin
+  if !Globals.debug_count > 0 then begin
+    decr Globals.debug_count;
+    if !Globals.debug_count = 0 then begin
       action ();
-      Globals.step_count := pause ();
+      Globals.debug_count := pause ();
     end;
   end;
 ;;

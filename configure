@@ -1,0 +1,19 @@
+#  Copyright 2004 INRIA
+#  $Id: configure,v 1.1 2004-05-19 13:24:44 doligez Exp $
+
+bindir=/usr/local/bin
+
+case "$1" in
+  -bindir | --bindir)
+     bindir=$2
+     shift 2
+  ;;
+  -bindir=* | --bindir=*)
+     bindir=`echo "$1" | sed 's/.*=//'`
+     shift
+  ;;
+esac
+
+{
+  echo BINDIR=$bindir
+} >.config_var

@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.6 2004-04-29 13:04:52 doligez Exp $
+#  $Id: Makefile,v 1.7 2004-05-19 13:24:44 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -22,6 +22,9 @@ INTF = ${MODULES:%=%.mli}
 OBJBYT = ${MODULES:%=%.cmo}
 OBJOPT = ${MODULES:%=%.cmx}
 
+include .config_var
+
+.PHONY: default
 default: all
 
 zenon.opt: ${OBJOPT}
@@ -33,10 +36,24 @@ zenon.byt: ${OBJBYT}
 zenon: zenon.opt
 	cp zenon.opt zenon
 
+.PHONY: install
+install:
+	mkdir -p ${BINDIR}
+	cp zenon ${BINDIR}
+
+.PHONY: logos
+logos: zenon-logo.png zenon-logo-small.png
+
+# "gs" is ghostscript
 zenon-logo.png: zenon-logo.ps
 	gs -sDEVICE=png16m -sOutputFile=zenon-logo.png -r720 -g2400x800 \
 	   -dNOPAUSE -dBATCH zenon-logo.ps
 
+# "convert" is part of ImageMagick
+zenon-logo-small.png: zenon-logo.png
+	convert zenon-logo.png -resize 10% zenon-logo-small.png
+
+.PHONY: all
 all: zenon zenon.opt zenon.byt
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
@@ -59,22 +76,44 @@ parser.ml: parser.mly
 parser.mli: parser.ml
 	:
 
+.PHONY: clean
 clean:
 	rm -f *.cmo *.cmi *.cmx *.o
 	rm -f parser.ml parser.mli lexer.ml
 	rm -f Makefile.bak zenon zenon.opt zenon.byt
+	rm -f zenon-logo.png zenon-logo-small.png
 
+.PHONY: test
 test:
-	for i in test*.znn test*.coz test*.p; do \
-	  echo $$i; \
-	  if ./zenon -w -x coqbool $$i; then \
+	for i in test*.znn; do \
+	  echo -n $$i' '; \
+	  if ./zenon -w -q -iz -x coqbool $$i; then \
 	    : ; \
 	  else \
 	    echo '>>> TEST FAILED <<<' ; \
-	    break ; \
+	    exit 3 ; \
+	  fi ; \
+	done
+	for i in test*.coz; do \
+	  echo -n $$i' '; \
+	  if ./zenon -w -q -ifocal -x coqbool $$i; then \
+	    : ; \
+	  else \
+	    echo '>>> TEST FAILED <<<' ; \
+	    exit 3 ; \
+	  fi ; \
+	done
+	for i in test*.p; do \
+	  echo -n $$i' '; \
+	  if ./zenon -w -q -itptp -x coqbool $$i; then \
+	    : ; \
+	  else \
+	    echo '>>> TEST FAILED <<<' ; \
+	    exit 3 ; \
 	  fi ; \
 	done
 
+.PHONY: depend
 depend: ${IMPL} ${INTF}
 	mv Makefile Makefile.bak
 	(sed -e '/^#DEPENDENCIES/q' Makefile.bak; \

@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.3 2004-05-19 13:24:44 doligez Exp $";;
 
 open Parser
 
@@ -95,7 +95,7 @@ and coqtoken = parse
   | newline                 { coqtoken lexbuf }
   | blank +                 { coqtoken lexbuf }
   | "(* to be proved *)"    { TOBE }
-  | "(* Qed *)."            { QED }
+  | "(* Qed *)"             { QED }
   | "(*"                    { coqcomment lexbuf }
   | "By"                    { BY }
   | "By def"                { BYDEF }

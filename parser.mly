@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.3 2004-05-19 13:24:44 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -189,7 +189,7 @@ tpvar_list:
 /* Coq Syntax */
 
 coqfile:
-  | TOBE coqexpr BY coqhyp_list BYDEF coqdef_list QED EOF
+  | TOBE coqexpr BY coqhyp_list BYDEF coqdef_list QED opt_dot EOF
       { Hyp (enot $2, 0) :: $4 @ $6 }
 ;
 coqexpr:
@@ -245,5 +245,9 @@ coqparam_expr:
 coqdef_list:
   | /* empty */           { [] }
   | coqdef coqdef_list    { $1 :: $2 }
+;
+opt_dot:
+  | DOT                   { () }
+  | /* empty */           { () }
 ;
 %%

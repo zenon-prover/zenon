@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.4 2004-05-19 13:24:44 doligez Exp $";;
 
 open Printf;;
 
@@ -1030,21 +1030,25 @@ let ticker () =
 ;;
 
 let prove defs l =
-  List.iter Index.add_def defs;
-  let al = Gc.create_alarm ticker in
-  let rl = reduce_initial_list [] l in
-  let give_prio (fm, orig) = (fm, Prio.make orig) in
-  let pl = List.map give_prio l in
-  Globals.inferences := 0;
-  Globals.proof_nodes := 0;
-  cur_depth := 0;
-  top_depth := 0;
-  let result = refute [] (Heap.empty order_nodes) pl in
-  Gc.delete_alarm al;
-  ticker ();
-  Globals.do_progress (fun () -> eprintf "search finished\n");
-  match result with
-  | Closed p -> p
-  | Back _ -> assert false
-  | Open -> assert false
+  try
+    List.iter Index.add_def defs;
+    let al = Gc.create_alarm ticker in
+    let rl = reduce_initial_list [] l in
+    let give_prio (fm, orig) = (fm, Prio.make orig) in
+    let pl = List.map give_prio l in
+    Globals.inferences := 0;
+    Globals.proof_nodes := 0;
+    cur_depth := 0;
+    top_depth := 0;
+    let result = refute [] (Heap.empty order_nodes) pl in
+    Gc.delete_alarm al;
+    ticker ();
+    Globals.end_progress "";
+    match result with
+    | Closed p -> p
+    | Back _ -> assert false
+    | Open -> assert false
+  with NoProof ->
+    Globals.end_progress "search failed";
+    raise NoProof
 ;;

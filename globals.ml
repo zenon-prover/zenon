@@ -1,9 +1,11 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.4 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.5 2004-05-19 13:24:44 doligez Exp $";;
 
-let step_count = ref 0;;
+let debug_count = ref 0;;
+
 let warnings_flag = ref true;;
 let stats_flag = ref false;;
+let quiet_flag = ref false;;
 let size_limit = ref 100_000_000.;;
 let time_limit = ref 300.;;
 
@@ -42,6 +44,17 @@ let do_progress f =
       f ();
       flush stdout;
       flush stderr;
+;;
+
+let end_progress msg =
+  match !progress_level with
+  | Progress_none -> ()
+  | Progress_bar ->
+     Printf.eprintf "\008. %s\n" msg;
+     flush stderr;
+  | Progress_messages ->
+     if msg <> "" then Printf.eprintf "%s\n" msg;
+     flush stderr;
 ;;
 
 let inferences = ref 0;;
