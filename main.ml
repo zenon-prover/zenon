@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Misc.version "$Id: main.ml,v 1.2 2004-04-25 18:11:57 doligez Exp $";;
+Misc.version "$Id: main.ml,v 1.3 2004-04-28 12:15:19 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -33,7 +33,7 @@ let int_arg r arg =
 ;;
 
 let versions () =
-  printf "zenon version 0.1.0 (2004-02-22)\n";
+  printf "zenon version 0.1.1 (2004-04-28)\n";
   Misc.print_versions ();
   exit 0;
 ;;
