@@ -1,0 +1,44 @@
+(*  Copyright 2004 INRIA  *)
+(*  $Id: zenon_coqbool.v8,v 1.1 2004-05-27 17:21:24 doligez Exp $  *)
+
+Require Import Bool.
+
+Definition __g_not_b := negb.
+
+Lemma if_negb_T : forall (T : Type) (b : bool) (x y : T),
+  (if negb b then x else y) = (if b then y else x).
+Proof.
+  destruct b.
+   trivial.
+   trivial.
+Qed.
+
+Theorem zenon_coqbool_not : forall e : bool,
+  (~Is_true e -> False) -> (Is_true (__g_not_b e)) -> False.
+Proof.
+  intro.
+  intro.
+  intro.
+  cut (~ Is_true (negb e)).
+   unfold Is_true in |- *.
+     intro.
+     elim H1.
+     destruct e.
+    trivial.
+    trivial.
+   unfold Is_true in |- *.
+     intro.
+     elim H.
+     unfold Is_true in |- *.
+     intro.
+     auto.
+     rewrite (if_negb_T Prop e True False) in H1.
+     cut (e = true).
+    intro.
+      rewrite H3 in H1.
+      auto.
+    apply not_false_is_true.
+      intro.
+      rewrite H3 in H2.
+      auto.
+Qed.

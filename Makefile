@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.10 2004-05-26 16:23:52 doligez Exp $
+#  $Id: Makefile,v 1.11 2004-05-27 17:21:24 doligez Exp $
 
 CAMLP4 = -pp camlp4o
 CAMLFLAGS = -warn-error A ${CAMLP4}
@@ -27,6 +27,10 @@ OBJOPT = ${MODULES:%=%.cmx}
 ADDBYT = unix.cma
 ADDOPT = unix.cmxa
 
+COQMODULES = zenon zenon_coqbool
+COQSRC = ${COQMODULES:%=%.v}
+COQOBJ = ${COQMODULES:%=%.vo}
+
 include .config_var
 
 .PHONY: default
@@ -46,7 +50,7 @@ install:
 	mkdir -p "${BINDIR}"
 	cp zenon "${BINDIR}"/
 	mkdir -p "${LIBDIR}"
-	cp zenon_lemmas.v zenon_lemmas.vo "${LIBDIR}"/
+	cp ${COQSRC} ${COQOBJ} "${LIBDIR}"/
 
 .PHONY: logos
 logos: zenon-logo.png zenon-logo-small.png
@@ -61,9 +65,9 @@ zenon-logo-small.png: zenon-logo.png
 	convert zenon-logo.png -resize 10% zenon-logo-small.png
 
 .PHONY: all
-all: zenon zenon.opt zenon.byt zenon_lemmas.vo
+all: zenon zenon.opt zenon.byt ${COQOBJ}
 
-.SUFFIXES: .ml .mli .cmo .cmi .cmx
+.SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
 .ml.cmo:
 	${CAMLC} ${CAMLCFLAGS} -c $*.ml
@@ -83,9 +87,12 @@ parser.ml: parser.mly
 parser.mli: parser.ml
 	:
 
+.v.vo:
+	coqc -v7 $*.v
+
 .PHONY: clean
 clean:
-	rm -f *.cmo *.cmi *.cmx *.o
+	rm -f *.cmo *.cmi *.cmx *.o *.vo
 	rm -f parser.ml parser.mli lexer.ml
 	rm -f Makefile.bak zenon zenon.opt zenon.byt
 	rm -f zenon-logo.png zenon-logo-small.png
@@ -161,8 +168,10 @@ extension.cmo: expr.cmi llproof.cmi mlproof.cmi node.cmi prio.cmi version.cmi \
     extension.cmi 
 extension.cmx: expr.cmx llproof.cmx mlproof.cmx node.cmx prio.cmx version.cmx \
     extension.cmi 
-mltoll.cmo: expr.cmi index.cmi llproof.cmi mlproof.cmi version.cmi mltoll.cmi 
-mltoll.cmx: expr.cmx index.cmx llproof.cmx mlproof.cmx version.cmx mltoll.cmi 
+mltoll.cmo: expr.cmi extension.cmi index.cmi llproof.cmi mlproof.cmi \
+    version.cmi mltoll.cmi 
+mltoll.cmx: expr.cmx extension.cmx index.cmx llproof.cmx mlproof.cmx \
+    version.cmx mltoll.cmi 
 prove.cmo: expr.cmi extension.cmi globals.cmi heap.cmi index.cmi mlproof.cmi \
     node.cmi print.cmi prio.cmi step.cmi version.cmi prove.cmi 
 prove.cmx: expr.cmx extension.cmx globals.cmx heap.cmx index.cmx mlproof.cmx \
@@ -173,14 +182,16 @@ lexer.cmo: parser.cmi version.cmi lexer.cmi
 lexer.cmx: parser.cmx version.cmx lexer.cmi 
 tptp.cmo: expr.cmi lexer.cmi parser.cmi phrase.cmi version.cmi tptp.cmi 
 tptp.cmx: expr.cmx lexer.cmx parser.cmx phrase.cmx version.cmx tptp.cmi 
-ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi mlproof.cmi \
-    node.cmi prio.cmi version.cmi ext_coqbool.cmi 
-ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx mlproof.cmx \
-    node.cmx prio.cmx version.cmx ext_coqbool.cmi 
+ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi llproof.cmi \
+    mlproof.cmi node.cmi prio.cmi version.cmi ext_coqbool.cmi 
+ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx llproof.cmx \
+    mlproof.cmx node.cmx prio.cmx version.cmx ext_coqbool.cmi 
 lltocoq.cmo: expr.cmi llproof.cmi version.cmi lltocoq.cmi 
 lltocoq.cmx: expr.cmx llproof.cmx version.cmx lltocoq.cmi 
-coqterm.cmo: expr.cmi index.cmi llproof.cmi version.cmi coqterm.cmi 
-coqterm.cmx: expr.cmx index.cmx llproof.cmx version.cmx coqterm.cmi 
+coqterm.cmo: expr.cmi index.cmi llproof.cmi phrase.cmi version.cmi \
+    coqterm.cmi 
+coqterm.cmx: expr.cmx index.cmx llproof.cmx phrase.cmx version.cmx \
+    coqterm.cmi 
 main.cmo: coqterm.cmi extension.cmi globals.cmi lexer.cmi lltocoq.cmi \
     mltoll.cmi parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi version.cmi \
     main.cmi 
@@ -201,4 +212,4 @@ parser.cmi: phrase.cmi
 lexer.cmi: parser.cmi 
 tptp.cmi: phrase.cmi 
 lltocoq.cmi: llproof.cmi 
-coqterm.cmi: llproof.cmi 
+coqterm.cmi: llproof.cmi phrase.cmi 

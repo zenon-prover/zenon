@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.4 2004-05-25 11:44:05 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.5 2004-05-27 17:21:24 doligez Exp $";;
 
 open Expr;;
 
@@ -25,8 +25,9 @@ type rule =
   | Rpnotp of expr * expr
   | Rnotequal of expr * expr
   | Requalnotequal of expr * expr * expr * expr
-  | Rlemma of string * string list
   | Rdefinition of expr * expr
+  | Rextension of string * expr list * expr list * expr list list
+  | Rlemma of string * string list
 ;;
 
 type prooftree = {

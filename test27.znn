@@ -1,6 +1,0 @@
-$2 (A. ((x) (<=> (Is_true (not_b x)) (-. (Is_true x)))))
-
-$def abst_different (x y) (not_b (abst_equal x y))
-
-$goal (A. ((x "abst_T") (A. ((y "abst_T")
-         (=> (Is_true (abst_equal x y)) (-. (Is_true (abst_different x y))))))))

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.8 2004-05-26 16:23:52 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.9 2004-05-27 17:21:24 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -13,6 +13,9 @@ type proof_level =
   | Proof_coqterm
 ;;
 let proof_level = ref Proof_none;;
+
+type coq_version = V7 | V8;;
+let coq_version = ref V8;;
 
 type input_format =
   | I_zenon
@@ -100,6 +103,9 @@ let rec argspec = [
         "     print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
             " print the proof in Coq term format";
+  "-ocoqterm7", Arg.Unit (fun () -> proof_level := Proof_coqterm;
+                                    coq_version := V7),
+            " print the proof in Coq (V7) term format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
       "<n>    print the proof in high-level format up to depth <n>";
   "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
@@ -115,7 +121,7 @@ let rec argspec = [
   "-p2", Arg.Unit (fun () -> progress_level := Progress_messages),
       "       turn on progress messages";
   "-q", Arg.Set quiet_flag,
-     "        suppress proof-found/no-proof output";
+     "        suppress proof-found/no-proof/begin-proof/end-proof tags";
   "-s", Arg.Set stats_flag,
      "        print statistics";
   "-v", Arg.Unit short_version,
@@ -178,7 +184,7 @@ let main () =
     let (defs, hyps) = Phrase.separate phrases in
     if !debug_count > 0 then begin
       let ph_defs = List.map (fun x -> Phrase.Def x) defs in
-      let ph_hyps = List.map (fun (x, y) -> Phrase.Hyp (x, y)) hyps in
+      let ph_hyps = List.map (fun (x, y) -> Phrase.Hyp ("", x, y)) hyps in
       printf "initial formulas:\n";
       List.iter Print.phrase (ph_defs @ ph_hyps);
       printf "----\n";
@@ -200,7 +206,11 @@ let main () =
       | Proof_coq ->
         retcode := Lltocoq.produce_proof !outf !valid (Mltoll.translate proof)
       | Proof_coqterm ->
-          Coqterm.print !outf (Coqterm.trproof (Mltoll.translate proof));
+          let p = Coqterm.trproof phrases (Mltoll.translate proof) in
+          begin match !coq_version with
+            | V7 -> Coqterm.V7.print !outf p;
+            | V8 -> Coqterm.V8.print !outf p;
+          end;
       end;
       cls_out ()
     end;
@@ -219,4 +229,4 @@ let main () =
   exit !retcode;
 ;;
 
-try main () with x -> flush stdout; raise x;;
+try main () with x -> flush stdout; flush stderr; raise x;;

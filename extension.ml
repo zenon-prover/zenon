@@ -1,15 +1,19 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.3 2004-05-27 17:21:24 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
 
+type translator =
+    (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
+    -> Mlproof.proof -> Llproof.prooftree array -> Llproof.prooftree
+;;
 type t = {
   name : string;
   newnodes : Expr.expr -> Prio.t -> Node.node list * bool;
   add_formula : Expr.expr -> Prio.t -> unit;
   remove_formula : Expr.expr -> unit;
-  to_llproof : Mlproof.proof -> Llproof.prooftree array -> Llproof.prooftree;
+  to_llproof : translator;
 };;
 
 let theories = ref ([] : t list);;
@@ -51,10 +55,10 @@ let remove_formula e =
   List.iter (fun t -> t.remove_formula e) !active
 ;;
 
-let to_llproof node subs =
+let to_llproof tr_prop tr_term node subs =
   match node.mlrule with
   | Ext (th, rule, args) ->
       let t = find_extension th !active in
-      t.to_llproof node subs
+      t.to_llproof tr_prop tr_term node subs
   | _ -> assert false
 ;;

@@ -1,10 +1,10 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.4 2004-05-27 17:21:24 doligez Exp $";;
 
 open Expr;;
 
 type phrase =
-  | Hyp of expr * int
+  | Hyp of string * expr * int
   | Def of definition
 ;;
 
@@ -148,7 +148,7 @@ let rec xseparate deps multi defs hyps l =
   match l with
   | [] -> (List.rev defs, List.rev hyps)
   | Def d :: t -> xseparate deps multi (d :: defs) hyps t
-  | Hyp (e, p) :: t when is_def [] e ->
+  | Hyp (_, e, p) :: t when is_def [] e ->
       let d = make_def (e, p) [] e in
       let sym = get_symbol d in
       let newdep = extract_dep d in
@@ -160,13 +160,12 @@ let rec xseparate deps multi defs hyps l =
                   ((e, p) :: ep2 :: hyps) t
       else
         xseparate (newdep :: deps) multi (d :: defs) hyps t 
-  | Hyp (e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
+  | Hyp (_, e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
 ;;
 
 let separate l = xseparate [] [] [] [] l;;
 
 type tpphrase =
   | Include of string
-  | Clause of string * string * expr list
   | Formula of string * string * expr
 ;;

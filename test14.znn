@@ -1,9 +1,0 @@
-# File : SYN549+1
-# Status : theorem
-# Rating : 0.00
-# axiom: reflexivity_of_reachable
-$1  (A. ((X) (reachable X X)))
-# axiom: transitivity_of_reachable
-$1  (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (reachable X Y) (reachable Y Z)) (reachable X Z))))))))
-# [negated] conjecture : prove_this
-$goal (E. ((X) (/\ (reachable (initial_world) X) (A. ((Y) (=> (reachable X Y) (<=> (E. ((Z) (/\ (reachable Y Z) (\/ (p Z) (E. ((V) (/\ (reachable Z V) (q V)))))))) (\/ (E. ((W) (/\ (reachable Y W) (p W)))) (E. ((W) (/\ (reachable Y W) (q W))))))))))))

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.4 2004-05-25 11:44:48 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.5 2004-05-27 17:21:24 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -17,7 +17,7 @@ let rec tr_term t =
   match t with
   | Evar (v, _) -> t
   | Emeta (e, _) -> evar (make_any_name e)
-  | Eapp (s, es, _) -> t
+  | Eapp (s, es, _) -> eapp (s, List.map tr_term es)
   | Etau _ -> evar (make_tau_name t)
   | _ -> assert false
 ;;
@@ -398,8 +398,8 @@ and translate_derived partials p =
       }
   | Ext _ ->
       let sub = Array.map (to_llproof partials) p.mlhyps in
-      
-      assert false (* FIXME TODO *)
+      Extension.to_llproof tr_prop tr_term p sub
+
   | _ -> assert false
 ;;
 

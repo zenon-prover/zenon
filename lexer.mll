@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.4 2004-05-23 19:53:49 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.5 2004-05-27 17:21:24 doligez Exp $";;
 
 open Parser
 
@@ -104,6 +104,9 @@ and coqtoken = parse
   | "in"                    { IN }
   | "and"                   { AND }
   | "or"                    { OR }
+  | "if"                    { IF }
+  | "then"                  { THEN }
+  | "else"                  { ELSE }
   | "="                     { EQUAL }
   | '('                     { OPEN }
   | ')'                     { CLOSE }

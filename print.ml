@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.5 2004-05-25 11:45:13 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.6 2004-05-27 17:21:24 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -84,7 +84,7 @@ let rec expr_soft = function
 ;;
 
 let phrase = function
-  | Phrase.Hyp (e, p) -> printf "$%d " p; expr e; printf "\n";
+  | Phrase.Hyp (n, e, p) -> printf "# %s:\n$%d" n p; expr e; printf "\n";
   | Phrase.Def (DefReal (s, args, e)) ->
       printf "$def %s (" s;
       List.iter (fun x -> printf " %s" x) args;
@@ -369,12 +369,16 @@ let llproof_rule = function
       printf ", ";
       llproof_term t3;
       printf ")";
+  | Rdefinition (folded, unfolded) ->
+      printf "---definition";
+  | Rextension (name, args, c, hyps) ->
+      printf "---extension (%s" name;
+      List.iter (fun x -> printf " "; llproof_term x) args;
+      printf ")";
   | Rlemma (name, args) ->
       printf "---lemma %s [ " name;
       List.iter (fun x -> printf "%s " x) args;
       printf "]";
-  | Rdefinition (folded, unfolded) ->
-      printf "---definition";
 ;;
 
 let nodes = ref 0;;

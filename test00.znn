@@ -1,3 +1,0 @@
-(A. ((x "nat") (P x)))
-
-$goal (E. ((x "nat") (P x)))

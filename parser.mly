@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.5 2004-05-26 16:22:36 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.6 2004-05-27 17:21:24 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -73,10 +73,14 @@ let mkequiv e el = myfold eequiv e el;;
 %token LET
 %token IN
 %token TILDE
+%token IF
+%token THEN
+%token ELSE
 
 %nonassoc forall
 %nonassoc AND
 %right ARROW DOUBLEARROW
+%nonassoc ELSE
 %nonassoc TILDE
 
 %start theory
@@ -102,10 +106,10 @@ theory:
 
 phrase:
   | DEF IDENT OPEN ident_list CLOSE expr { Def (DefReal ($2, $4, $6)) }
-  | INT expr                             { Hyp ($2, $1) }
+  | INT expr                             { Hyp ("hyp", $2, $1) }
   | GOAL expr                            { Globals.goal_found := true;
-                                           Hyp (enot $2, 0) }
-  | expr                                 { Hyp ($1, 1) }
+                                           Hyp ("goal", enot $2, 0) }
+  | expr                                 { Hyp ("hyp", $1, 1) }
 ;
 
 expr:
@@ -150,18 +154,8 @@ tpfile:
 ;
 tpphrase:
   | INCLUDE OPEN STRING CLOSE DOT  { Phrase.Include $3 }
-  | INPUT_CLAUSE OPEN LIDENT COMMA LIDENT COMMA LBRACKET tpliterals RBRACKET
-    CLOSE DOT                      { Phrase.Clause ($3, $5, $8) }
   | INPUT_FORMULA OPEN LIDENT COMMA LIDENT COMMA tpformula CLOSE DOT
                                    { Phrase.Formula ($3, $5, $7) }
-;
-tpliterals:
-  | tpliteral COMMA tpliterals  { $1 :: $3 }
-  | tpliteral                   { [$1] }
-;
-tpliteral:
-  | POSITIVE tpexpr   { $2 }
-  | NEGATIVE tpexpr   { enot ($2) }
 ;
 tpexpr:
   | UIDENT                                 { evar ($1) }
@@ -206,7 +200,7 @@ tpvar_list:
 
 coqfile:
   | TOBE coqexpr BY coqhyp_list BYDEF coqdef_list QED opt_dot EOF
-      { Hyp (enot $2, 0) :: $4 @ $6 }
+      { Hyp ("_Zgoal", enot $2, 0) :: $4 @ $6 }
 ;
 coqexpr:
   | OPEN coqexpr CLOSE
@@ -221,6 +215,8 @@ coqexpr:
       { eand ($3, $4) }
   | OPEN OR coqexpr coqexpr CLOSE
       { eor ($3, $4) }
+  | IF coqexpr THEN coqexpr ELSE coqexpr
+      { eapp ("_if_then_else", [$2; $4; $6]) }
   | OPEN EQUAL coqexpr coqexpr CLOSE
       { eapp ("=", [$3; $4]) }
   | IDENT
@@ -244,7 +240,7 @@ coqexpr_list1:
   | coqexpr coqexpr_list1 { $1 :: $2 }
 ;
 coqhyp:
-  | IDENT COLON coqexpr  { Hyp ($3, 1) }
+  | IDENT COLON coqexpr  { Hyp ($1, $3, 1) }
 ;
 coqhyp_list:
   | /* empty */          { [] }

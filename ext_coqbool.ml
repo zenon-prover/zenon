@@ -1,8 +1,8 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.3 2004-05-23 19:53:49 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.4 2004-05-27 17:21:24 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
-(* Symbols: Is_true, and_b, or_b, not_b, xor_b, _if_then_else *)
+(* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b, _if_then_else *)
 
 (* We essentially treat Is_true as if it weren't there. *)
 
@@ -80,7 +80,7 @@ let newnodes e p =
   | Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "and_b", [e1; e2]);
+            nrule = Ext ("coqbool", "and", [e1; e2]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [eand (istrue e1, istrue e2)] |];
           } ],
@@ -88,7 +88,7 @@ let newnodes e p =
   | Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "or_b", [e1; e2]);
+            nrule = Ext ("coqbool", "or", [e1; e2]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [eor (istrue e1, istrue e2)] |];
           } ],
@@ -96,7 +96,7 @@ let newnodes e p =
   | Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "xor_b", [e1; e2]);
+            nrule = Ext ("coqbool", "xor", [e1; e2]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [enot (eequiv (istrue e1, istrue e2))] |];
           } ],
@@ -104,7 +104,7 @@ let newnodes e p =
   | Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "not_b", [e1]);
+            nrule = Ext ("coqbool", "not", [e1]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [enot (istrue e1)] |];
           } ],
@@ -113,7 +113,7 @@ let newnodes e p =
   | Enot (Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _), _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "notand_b", [e1; e2]);
+            nrule = Ext ("coqbool", "notand", [e1; e2]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [enot (eand (istrue e1, istrue e2))] |];
           } ],
@@ -121,7 +121,7 @@ let newnodes e p =
   | Enot (Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _), _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "notor_b", [e1; e2]);
+            nrule = Ext ("coqbool", "notor", [e1; e2]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [enot (eor (istrue e1, istrue e2))] |];
           } ],
@@ -129,7 +129,7 @@ let newnodes e p =
   | Enot (Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _), _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "notxor_b", [e1; e2]);
+            nrule = Ext ("coqbool", "notxor", [e1; e2]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [eequiv (istrue e1, istrue e2)] |];
           } ],
@@ -137,7 +137,7 @@ let newnodes e p =
   | Enot (Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _), _) ->
       ( [ {
             nconc = [e];
-            nrule = Ext ("coqbool", "notnot_b", [e1]);
+            nrule = Ext ("coqbool", "notnot", [e1]);
             nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
             branches = [| [istrue e1] |];
           } ],
@@ -170,7 +170,7 @@ let newnodes e p =
         let unfolded = eapp ("Is_true", [substitute subst body]) in
         ( [ {
               nconc = [e];
-              nrule = Ext ("coqbool", "definition", [e]);
+              nrule = Definition (d, e, unfolded);
               nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
               branches = [| [unfolded] |];
           } ],
@@ -187,7 +187,7 @@ let newnodes e p =
         let unfolded = enot (eapp ("Is_true", [substitute subst body])) in
         ( [ {
               nconc = [e];
-              nrule = Ext ("coqbool", "definition", [e]);
+              nrule = Definition (d, e, unfolded);
               nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
               branches = [| [unfolded] |];
           } ],
@@ -210,19 +210,42 @@ let newnodes e p =
   | _ -> ([], false)
 ;;
 
-let to_llproof mlp args =
+let get_1 = function
+  | [x] -> x
+  | _ -> assert false
+;;
+
+let to_llproof tr_prop tr_term mlp args =
   match mlp.mlrule with
-  | Ext (_, "and_b", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "or_b", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "xor_b", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "not_b", [e1]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notand_b", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notor_b", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notxor_b", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notnot_b", [e1]) -> assert false (* FIXME TODO *)
+  | Ext (_, "and", [e1; e2]) -> assert false (* FIXME TODO *)
+  | Ext (_, "or", [e1; e2]) -> assert false (* FIXME TODO *)
+  | Ext (_, "xor", [e1; e2]) -> assert false (* FIXME TODO *)
+  | Ext (_, "not", [e1]) ->
+      let te1 = tr_term e1 in
+      let h = tr_prop (enot (istrue e1)) in
+      let c = tr_prop (istrue (eapp ("__g_not_b", [e1]))) in
+      {
+        Llproof.conc = List.map tr_prop mlp.mlconc;
+        Llproof.rule = Llproof.Rextension
+                         ("zenon_coqbool_not", [te1], [c], [ [h] ]);
+        Llproof.hyps = Array.to_list args;
+      }
+  | Ext (_, "notand", [e1; e2]) -> assert false (* FIXME TODO *)
+  | Ext (_, "notor", [e1; e2]) -> assert false (* FIXME TODO *)
+  | Ext (_, "notxor", [e1; e2]) -> assert false (* FIXME TODO *)
+  | Ext (_, "notnot", [e1]) -> assert false (* FIXME TODO *)
   | Ext (_, "false", []) -> assert false (* FIXME TODO *)
   | Ext (_, "nottrue", []) -> assert false (* FIXME TODO *)
-  | Ext (_, "definition", [e1]) -> assert false (* FIXME TODO *)
+(*
+  | Ext (_, "definition", [e1; e2]) ->
+      let c = tr_prop e1 in
+      let h = tr_prop e2 in
+      {
+        Llproof.conc = [c];
+        Llproof.rule = Llproof.Rdefinition (c, h);
+        Llproof.hyps = Array.to_list args;
+      }
+*)
   | _ -> assert false
 ;;
 

@@ -1,5 +1,5 @@
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.2 2004-05-26 16:23:52 doligez Exp $
+#  $Id: configure,v 1.3 2004-05-27 17:21:24 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/zenon
@@ -22,6 +22,10 @@ while : ; do
 done
 
 {
-  echo BINDIR=$bindir
-  echo LIBDIR=$libdir
+  echo BINDIR="$bindir"
+  echo LIBDIR="$libdir"
 } >.config_var
+
+echo Configuration summary for zenon:
+echo BINDIR = "$bindir"
+echo LIBDIR = "$libdir"

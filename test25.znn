@@ -1,3 +1,0 @@
-$def and_b (x y) (_if_then_else x y False)
-
-$goal (A. ((x "abst_T") (=> (Is_true (abst_p x)) (Is_true (abst_p x)))))

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.4 2004-05-25 11:43:04 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.5 2004-05-27 17:21:24 doligez Exp $  *)
 
 open Expr;;
 
@@ -185,6 +185,31 @@ type rule =
 
      ********************)
 
+  | Rdefinition of expr * expr
+    (*
+        H
+       --- Rdefinition (C, H)
+        C
+
+       Si H et C sont delta-beta convertibles avec les definitions
+       donnees en argument au prouveur.
+
+     ********************)
+
+  | Rextension of string * expr list * expr list * expr list list
+    (*
+       H11...H1n   ...   Hp1...Hpq
+       --------------------------- RR
+                 C1...Cn
+
+       RR = Rextension (name, args, [C1...Cn], [[H11...H1n] ... [Hp1...Hpq]])
+
+       Ou name est le nom d'un lemme predefini tel que (name args) a le type:
+       (H11 -> ... -> H1n -> False) -> ... -> (Hp1 -> ... -> Hpq -> False)
+       -> (C1 -> ... -> Cn -> False)
+
+     ********************)
+
   | Rlemma of string * string list
     (*
        ----------- Rlemma (name, args)
@@ -195,17 +220,6 @@ type rule =
        parametres de "name".
 
      ********************)
-
-  | Rdefinition of expr * expr
-    (*
-          H
-         --- Rdefinition (C, H)
-          C
-
-       Si H et C sont delta-beta convertibles avec les definitions
-       donnees en argument au prouveur.
-
-    *********************)
 ;;
 
 type prooftree = {
