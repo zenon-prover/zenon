@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.15 2004-06-21 19:24:25 doligez Exp $
+#  $Id: Makefile,v 1.16 2004-06-21 19:24:56 doligez Exp $
 
 CAMLP4 = -pp camlp4o
 CAMLFLAGS = -warn-error A ${CAMLP4}
@@ -98,7 +98,7 @@ parser.mli: parser.ml
 
 .PHONY: clean
 clean:
-	rm -f *.cmo *.cmi *.cmx *.o *.vo
+	rm -f *.cmo *.cmi *.cmx *.o *.vo *.annot
 	rm -f parser.ml parser.mli lexer.ml
 	rm -f Makefile.bak zenon zenon.opt zenon.byt
 	rm -f zenon-logo.png zenon-logo-small.png

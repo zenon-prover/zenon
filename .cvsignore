@@ -1,5 +1,6 @@
 *.proof
 *.cm[iox]
+*.annot
 *.png
 *.vo
 parser.ml
