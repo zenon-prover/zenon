@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: index.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: index.ml,v 1.2 2004-04-27 18:13:21 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -25,10 +25,19 @@ let rewrites = (Hashtbl.create tblsize
                 : (string, (expr * expr) list ref) Hashtbl.t);;
 let noteqforms = (Hashtbl.create tblsize : (string, expr list ref) Hashtbl.t);;
 
+exception No_head;;
+
+let get_head e =
+  match e with
+  | Eapp (s, _, _) | Evar (s, _)
+    -> s
+  | Etau _ -> "t."
+  | _ -> raise No_head
+;;
+
 let act_head action tbl key v =
-  match key with
-  | Eapp (s, _, _) | Evar (s, _) -> action tbl s v
-  | _ -> ()
+  try action tbl (get_head key) v
+  with No_head -> ()
 ;;
 
 let act action action2 e =
@@ -105,30 +114,18 @@ let find_neg s =
 ;;
 
 let find_equal t =   (* t is one member of the equation *)
-  match t with
-  | Eapp (s, _, _) | Evar (s, _) ->
-      begin try !(Hashtbl.find equalforms s)
-      with Not_found -> []
-      end
-  | _ -> []
+  try !(Hashtbl.find equalforms (get_head t))
+  with No_head | Not_found -> []
 ;;
 
 let find_rewrite t =
-  match t with
-  | Eapp (s, _, _) | Evar (s, _) ->
-      begin try !(Hashtbl.find rewrites s)
-      with Not_found -> []
-      end
-  | _ -> []
+  try !(Hashtbl.find rewrites (get_head t))
+  with No_head | Not_found -> []
 ;;
 
 let find_noteq t =
-  match t with
-  | Eapp (s, _, _) | Evar (s, _) ->
-      begin try !(Hashtbl.find noteqforms s)
-      with Not_found -> []
-      end
-  | _ -> []
+  try !(Hashtbl.find noteqforms (get_head t))
+  with No_head | Not_found -> []
 ;;
 
 (* ==== *)
