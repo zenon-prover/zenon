@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.1 2004-10-18 16:53:28 doligez Exp $";;
+Version.add "$Id: ext_equiv.ml,v 1.2 2004-11-19 15:07:39 doligez Exp $";;
 
 (* Extension for trees of equivalences and negations. *)
 
@@ -203,14 +203,12 @@ let rec sort (ee, nodes) =
           let node = mknode ee "merge_right" [x; d; e; f; g] res in
           sort (simplify (res, node :: nodes))
       end
-  | Eequiv (Eequiv ((Eequiv (a, Etrue, _) as x),
-                    (Eequiv (d, e, _) as y), _),
+  | Eequiv (Eequiv ((Eequiv (a, Etrue, _) as x), Eequiv (d, e, _), _),
             Eequiv (f, g, _), _)
    -> let res = eequiv (eequiv (x, d), eequiv (f, eequiv (g, e))) in
       let node = mknode ee "merge_right" [x; d; e; f; g] res in
       sort (simplify (res, node :: nodes))
-  | Eequiv (Eequiv ((Eequiv (a, Eequiv (b, c, _), _) as x),
-                    (Etrue as y), _),
+  | Eequiv (Eequiv (Eequiv (a, Eequiv (b, c, _), _), (Etrue as y), _),
             Eequiv (f, g, _), _)
    -> let res = eequiv (eequiv (eequiv (a, b), y), eequiv (f, eequiv (g, c))) in
       let node = mknode ee "merge_left" [a; b; c; y; f; g] res in

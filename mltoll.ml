@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.13 2004-10-18 16:53:28 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.14 2004-11-19 15:07:39 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -81,7 +81,7 @@ let tr_rule r =
       LL.Rex (tr_prop pp, make_tau_name (etau (v, t, p)))
   | Ex _ -> assert false
   | All (p, t) -> LL.Rall (tr_prop p, tr_term t)
-  | NotEx (Enot (p, _) as e2, t) -> LL.Rnotex (tr_prop p, tr_term t)
+  | NotEx (Enot (p, _), t) -> LL.Rnotex (tr_prop p, tr_term t)
   | NotEx _ -> assert false
   | Or (p, q) -> LL.Rconnect (LL.Or, tr_prop p, tr_prop q)
   | Impl (p, q) -> LL.Rconnect (LL.Imply, tr_prop p, tr_prop q)
@@ -505,7 +505,7 @@ and translate_derived p =
       let n2 = decompose_forall e1 v1 q naxyz arity f [] in
       let n3 = make_node [] (Cut axyz) [[axyz]; [naxyz]] [n1; n2] in
       to_llproof n3
-  | NotExPartial ((Enot ((Eex (v1, t1, q, _) as e1), _) as ne1), f, arity) ->
+  | NotExPartial ((Enot (Eex (v1, t1, q, _), _) as ne1), f, arity) ->
       let n1 = match p.mlhyps with
         | [| n1 |] -> n1
         | _ -> assert false
@@ -637,10 +637,6 @@ and translate_trans_equal side sym p a b c d prnode =
 
 and translate_trans side sym p a b c d prnode =
   let trans_hyp = Eqrel.get_trans_hyp p in
-  let ty = match trans_hyp with
-           | Eall (_, ty, _, _) -> ty
-           | _ -> assert false
-  in
   let (u, v, w, x, y, z, t, cross1, cross2) =
     match side, sym with
     | L, false -> (d, c, a, a, d, a, d, false, false)

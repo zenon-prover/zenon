@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.17 2004-11-09 10:22:17 prevosto Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.18 2004-11-19 15:07:39 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -82,12 +82,14 @@ let rec constr_of_expr = function
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; str " : "; if t <> "" then [< str t >]
              else [< str "Any" >]; str ","; constr_of_expr e >]
-(*  | Eall (Evar (x, _), t, e, _) ->
+(*
+  | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
-             else [< >]; str ","; constr_of_expr e >]*)
+             else [< >]; str ","; constr_of_expr e >]
+*)
   | _ -> if !debug then [< str "..." >] else assert false
 
 let parth_constr_of_expr e =
@@ -100,9 +102,9 @@ let parth_constr_of_expr e =
 (* Require's & Tactics *)
 (***********************)
 
-let requires = [ "Classical" ]
+let requires = [ "zenon8" ]
 
-let make_require lib = [< str "Require Export "; coqp lib >]
+let make_require lib = [< str "Require Import "; coqp lib >]
 
 let require ppvernac =
   let req = List.fold_left (fun s e -> [< s; make_require e >])
@@ -466,7 +468,6 @@ let proof_rule ppvernac = function
 let proof_rule_short ppvernac = function
   | Rconnect (Imply, e1, e2) ->
     let hyp0 = gen_name (eimply (e1, e2))
-    and hyp1 = gen_name e1
     and hyp2 = gen_name e2
     and hyp3 = gen_name (enot e1) in
     ppvernac [< str "apply (zenon_imply_s _ _"; hyp0; str "); [ cintro"; hyp3;
@@ -546,13 +547,14 @@ let rec proof_lem ppvernac lems =
              (List.flatten (List.map free_var concl))
     else List.map (fun (x, _) -> (x, (false, 0))) params
   in
-  let fvar = List.filter (fun (e, _) -> not(List.mem_assoc e params)) fvccl in
+  let fvccl1 = List.filter (fun (e, _) -> e <> "=") fvccl in
+  let fvar = List.filter (fun (e, _) -> not (List.mem_assoc e params)) fvccl1 in
   if rest = [] then begin
     declare_theorem ppvernac name params fvar concl;
-    proof_script ppvernac (List.length fvccl) pft false;
+    proof_script ppvernac (List.length fvccl1) pft false;
   end else begin
     declare_lemma ppvernac name params fvar concl;
-    proof_script ppvernac (List.length fvccl) pft true;
+    proof_script ppvernac (List.length fvccl1) pft true;
   end;
   proof_lem ppvernac rest
 

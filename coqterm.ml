@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.14 2004-11-09 10:22:17 prevosto Exp $";;
+Version.add "$Id: coqterm.ml,v 1.15 2004-11-19 15:07:39 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -195,13 +195,12 @@ let rec trtree node =
             [Cwild; tropt t; tropt u; tropt v; tropt w; lam1; lam2; teu; vdw])
   | Rdefinition (folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
-      let name = getname folded in
-        Clet (getname unfolded, getv folded, sub)
+      Clet (getname unfolded, getv folded, sub)
   | Rextension (name, args, c, hs) ->
       let metargs = List.map trexpr args in
       let hypargs = List.map2 mklams hs (List.map trtree hyps) in
       let conargs = List.map getv c in
-        Capp (Cvar name, metargs @ hypargs @ conargs)
+      Capp (Cvar name, metargs @ hypargs @ conargs)
   | Rlemma (name, args) -> 
       Hashtbl.find lemma_env name
 
@@ -367,164 +366,79 @@ let make_lemma_type t =
 
 (* ******************************************* *)
     
-module V8 = struct
+let pr_oc oc prefix t =
+  let rec pr b t =
+    match t with
+    | Cvar "" -> assert false
+    | Cvar s -> 
+        Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
+    | Cty s -> bprintf b "%a" pr_ty s;
+    | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
+    | Clam (_, _, Clam _) ->
+        let (lams, body) = get_lams [] t in
+        bprintf b "(fun%a=>%a)" pr_lams lams pr body;
+    | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
+    | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
+    | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
+    | Capp (Cvar "and", [t1;t2]) -> bprintf b "(%a/\\%a)" pr t1 pr t2;
+    | Capp (Cvar "or", [t1;t2]) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
+    | Capp (t1, []) -> pr b t1;
+    | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
+    | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
+    | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
+    | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
+    | Call (v, ty, t1) -> bprintf b "(forall %s:%a,%a)" v pr_ty ty pr t1;
+    | Cex (v, ty, t1) -> bprintf b "(exists %s:%a,%a)" v pr_ty ty pr t1;
+    | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
+    | Cwild -> bprintf b "_";
 
-  let pr_oc oc prefix t =
-    let rec pr b t =
-      match t with
-      | Cvar "" -> assert false
-      | Cvar s -> 
-          Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
-      | Cty s -> bprintf b "%a" pr_ty s;
-      | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
-      | Clam (_, _, Clam _) ->
-          let (lams, body) = get_lams [] t in
-          bprintf b "(fun%a=>%a)" pr_lams lams pr body;
-      | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
-      | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
-      | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
-      | Capp (Cvar "and", [t1;t2]) -> bprintf b "(%a/\\%a)" pr t1 pr t2;
-      | Capp (Cvar "or", [t1;t2]) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
-      | Capp (t1, []) -> pr b t1;
-      | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
-      | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
-      | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
-      | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
-      | Call (v, ty, t1) -> bprintf b "(forall %s:%a,%a)" v pr_ty ty pr t1;
-      | Cex (v, ty, t1) -> bprintf b "(exists %s:%a,%a)" v pr_ty ty pr t1;
-      | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
-      | Cwild -> bprintf b "_";
+  and pr_list b l =
+    let f t = bprintf b " %a" pr t; in
+    List.iter f l;
 
-    and pr_list b l =
-      let f t = bprintf b " %a" pr t; in
-      List.iter f l;
-
-    and pr_lams b l =
-      let f (v, ty) =
-        match ty with
-        | Cwild -> bprintf b " %s" v;
-        | _ -> bprintf b "(%s:%a)" v pr ty;
-      in
-      List.iter f l;
-
-    and pr_ty b t =
-      match t with
-      | "" -> bprintf b "_U";
-      | "?" -> bprintf b "_";
-      | s -> bprintf b "%s" s;
+  and pr_lams b l =
+    let f (v, ty) =
+      match ty with
+      | Cwild -> bprintf b " %s" v;
+      | _ -> bprintf b "(%s:%a)" v pr ty;
     in
+    List.iter f l;
 
-    init_buf ();
-    bprintf buf "%s" prefix;
-    pr buf t;
-    flush_buf oc;
-  ;;
+  and pr_ty b t =
+    match t with
+    | "" -> bprintf b "_U";
+    | "?" -> bprintf b "_";
+    | s -> bprintf b "%s" s;
+  in
 
-  let print_lemma oc (name, t) =
-    let prefix = sprintf "Let %s:" name in
-    pr_oc oc prefix (make_lemma_type t);
-    fprintf oc ".\n";
-    pr_oc oc "Proof " t;
-    fprintf oc ".\n";
-  ;;
+  init_buf ();
+  bprintf buf "%s" prefix;
+  pr buf t;
+  flush_buf oc;
+;;
 
-  let print_theorem oc (name, t) =
-    let prefix = sprintf "Definition %s:=" name in
-    pr_oc oc prefix t;
-    fprintf oc ".\n";
-  ;;
+let print_lemma oc (name, t) =
+  let prefix = sprintf "Let %s:" name in
+  pr_oc oc prefix (make_lemma_type t);
+  fprintf oc ".\n";
+  pr_oc oc "Proof " t;
+  fprintf oc ".\n";
+;;
 
-  let print outf (lemmas, thname, thproof) =
-    let (oc, close_oc) = match outf with
-      | None -> stdout, fun _ -> ()
-      | Some f -> open_out f, close_out
-    in
-    if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    List.iter (print_lemma oc) lemmas;
-    print_theorem oc (thname, thproof);
-    if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
-    close_oc oc;
-  ;;
+let print_theorem oc (name, t) =
+  let prefix = sprintf "Definition %s:=" name in
+  pr_oc oc prefix t;
+  fprintf oc ".\n";
+;;
 
-end;;
-
-(* ******************************************* *)
-
-module V7 = struct
-
-  let pr_oc oc prefix t =
-    let rec pr b t =
-      match t with
-      | Cvar "" -> assert false
-      | Cvar s -> Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
-      | Cty s -> bprintf b "%a" pr_ty s;
-      | Clam (s, Cwild, t2) -> bprintf b "([%s]%a)" s pr t2;
-      | Clam (_, _, Clam _) ->
-          let (lams, body) = get_lams [] t in
-          bprintf b "(%a%a)" pr_lams lams pr body;
-      | Clam (s, t1, t2) -> bprintf b "([%s:%a]%a)" s pr t1 pr t2;
-      | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
-      | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
-      | Capp (Cvar "and", [t1;t2]) -> bprintf b "(%a/\\%a)" pr t1 pr t2;
-      | Capp (Cvar "or", [t1;t2]) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
-      | Capp (t1, []) -> pr b t1;
-      | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
-      | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
-      | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
-      | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
-      | Call (v, ty, t1) -> bprintf b "((%s:%a)%a)" v pr_ty ty pr t1;
-      | Cex (v, ty, t1) -> bprintf b "(Ex[%s:%a]%a)" v pr_ty ty pr t1;
-      | Clet (v, t1, t2) -> bprintf b "([%s:=%a]%a)" v pr t1 pr t2;
-      | Cwild -> bprintf b "?";
-
-    and pr_list b l =
-      let f t = bprintf b " %a" pr t; in
-      List.iter f l;
-
-    and pr_lams b l =
-       let f (v, ty) =
-        match ty with
-        | Cwild -> bprintf b "[%s]" v;
-        | _ -> bprintf b "[%s:%a]" v pr ty;
-      in
-      List.iter f l;
-
-    and pr_ty b t =
-      match t with
-      | "" -> bprintf b "_U";
-      | "?" -> bprintf b "?";
-      | s -> bprintf b "%s" s;
-    in
-    init_buf ();
-    bprintf buf "%s" prefix;
-    pr buf t;
-    flush_buf oc;
-  ;;
-
-  let print_lemma oc (name, t) =
-    let prefix = sprintf "Local %s:" name in
-    pr_oc oc prefix (make_lemma_type t);
-    fprintf oc ".\n";
-    pr_oc oc "Proof " t;
-    fprintf oc ".\n";
-  ;;
-
-  let print_theorem oc (name, t) =
-    let prefix = sprintf "Definition %s:=" name in
-    pr_oc oc prefix t;
-    fprintf oc ".\n";
-  ;;
-
-  let print outf (lemmas, thname, thproof) =
-    let (oc, close_oc) = match outf with
-      | None -> stdout, fun _ -> ()
-      | Some f -> open_out f, close_out
-    in
-    if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    List.iter (print_lemma oc) lemmas;
-    print_theorem oc (thname, thproof);
-    if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
-    close_oc oc;
-  ;;
-
-end;;
+let print outf (lemmas, thname, thproof) =
+  let (oc, close_oc) = match outf with
+    | None -> stdout, fun _ -> ()
+    | Some f -> open_out f, close_out
+  in
+  if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
+  List.iter (print_lemma oc) lemmas;
+  print_theorem oc (thname, thproof);
+  if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
+  close_oc oc;
+;;

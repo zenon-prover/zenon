@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.14 2004-11-09 10:22:17 prevosto Exp $";;
+Version.add "$Id: lexer.mll,v 1.15 2004-11-19 15:07:39 doligez Exp $";;
 
 open Parser;;
 open Lexing;;
@@ -219,7 +219,7 @@ and coqtoken = parse
 
 and coqcomment = parse
   | "*)"                    { coqtoken lexbuf }
-  | [^ '\010' '\013'] *     { coqcomment lexbuf }
+  | [^ '\010' '\013']       { coqcomment lexbuf }
   | newline     { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
                     pos_bol = lexbuf.lex_curr_p.pos_cnum;
                     pos_lnum = lexbuf.lex_curr_p.pos_lnum + 1;

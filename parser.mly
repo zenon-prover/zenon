@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.17 2004-11-09 10:22:17 prevosto Exp $";;
+Version.add "$Id: parser.mly,v 1.18 2004-11-19 15:07:39 doligez Exp $";;
 
 open Printf;;
 
@@ -37,11 +37,29 @@ let rec mk_type_string e =
   | _ -> assert false (* FIXME TODO *)
 ;;
 
-let mk_apply (e, l) =
+let coq_eapp (s, args) =
+  match (s, args) with
+  | "and", [e1; e2] -> eand (e1, e2)
+  | "or", [e1; e2] -> eor (e1, e2)
+  | "not", [e1] -> enot (e1)
+  | _ -> eapp (s, args)
+;;
+
+let mk_coq_apply (e, l) =
   match e with
-  | Eapp (s, args, _) -> eapp (s, args @ l)
-  | Evar (s, _) -> eapp (s, l)
+  | Eapp (s, args, _) -> coq_eapp (s, args @ l)
+  | Evar (s, _) -> coq_eapp (s, l)
   | _ -> raise Parse_error
+;;
+
+let mk_coq_all bindings body =
+  let f (var, ty) e = eall (evar var, ty, e) in
+  List.fold_right f bindings body
+;;
+
+let mk_coq_ex bindings body =
+  let f (var, ty) e = eex (evar var, ty, e) in
+  List.fold_right f bindings body
 ;;
 
 %}
@@ -313,10 +331,10 @@ coqfile:
       { ("theorem", Hyp ("_Zgoal", enot $1, 0) :: $2) }
 ;
 coqexpr:
-  | FORALL IDENT COLON_ coqtype COMMA_ coqexpr
-      { eall (evar $2, $4, $6) }
-  | EXISTS IDENT COLON_ coqtype COMMA_ coqexpr
-      { eex (evar $2, $4, $6) }
+  | FORALL coqbindings COMMA_ coqexpr
+      { mk_coq_all $2 $4 }
+  | EXISTS coqbindings COMMA_ coqexpr
+      { mk_coq_ex $2 $4 }
 
   | coqexpr DASH_GT_ coqexpr
       { eimply ($1, $3) }
@@ -339,7 +357,7 @@ coqexpr:
       { enot ($2) }
 
   | coqexpr1 coqexpr1_list  %prec apply
-      { mk_apply ($1, $2) }
+      { mk_coq_apply ($1, $2) }
 
   | coqexpr1
       { $1 }
@@ -355,6 +373,29 @@ coqexpr1:
 coqexpr1_list:
   | coqexpr1                  { [$1] }
   | coqexpr1 coqexpr1_list    { $1 :: $2 }
+;
+
+coqbindings:
+  | coqsimplebinding          { $1 }
+  | coqbinding_list           { $1 }
+;
+
+coqsimplebinding:
+  | coqidlist COLON_ coqtype  { List.map (fun v -> (v, $3)) $1 }
+;
+
+coqidlist:
+  | /* empty */               { [] }
+  | IDENT coqidlist           { $1 :: $2 }
+;
+
+coqbinding_list:
+  | /* empty */
+      { [] }
+  | IDENT coqbinding_list
+      { ($1, "_") :: $2 }
+  | LPAREN_ coqsimplebinding RPAREN_ coqbinding_list
+      { $2 @ $4 }
 ;
 
 coqtype:

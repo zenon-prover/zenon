@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.13 2004-10-28 13:51:38 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.14 2004-11-19 15:07:39 doligez Exp $";;
 
 open Misc;;
 
@@ -192,7 +192,7 @@ module HashedExpr = struct
   let get_binding env v =
     let rec index i v env =
       match env with
-      | x :: t when x == v -> Bound i
+      | x :: _ when x == v -> Bound i
       | _ :: t -> index (i+1) v t
       | [] -> Free v
     in

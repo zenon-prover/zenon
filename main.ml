@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.20 2004-11-09 10:22:17 prevosto Exp $";;
+Version.add "$Id: main.ml,v 1.21 2004-11-19 15:07:39 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -13,9 +13,6 @@ type proof_level =
   | Proof_coqterm
 ;;
 let proof_level = ref Proof_none;;
-
-type coq_version = V7 | V8;;
-let coq_version = ref V8;;
 
 type input_format =
   | I_zenon
@@ -191,7 +188,6 @@ let parse_file f =
           close chan;
           let d = Filename.dirname f in
           let pp = Filename.parent_dir_name in
-          let cat = Filename.concat in
           let upup = Filename.concat (Filename.concat d pp) pp in
           let incpath = List.rev (upup :: d :: !include_path) in
           ("theorem", Tptp.translate incpath tpphrases)
@@ -265,11 +261,7 @@ let main () =
           Watch.force_definitions_use ();
           let llpr = Mltoll.translate th_name phrases proof in
           let p = Coqterm.trproof phrases llpr in
-            begin match !coq_version with
-              | V7 -> Coqterm.V7.print !outf p;
-              | V8 -> Coqterm.V8.print !outf p;
-            end;
-            Watch.warn_unused th_name
+          Coqterm.print !outf p;
       end;
       cls_out ()
     end;

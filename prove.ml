@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.11 2004-10-28 13:51:38 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.12 2004-11-19 15:07:39 doligez Exp $";;
 
 open Printf;;
 
@@ -773,7 +773,7 @@ let newnodes_match_trans fm =
         ]
       end
 
-  | Eapp (s, [(Emeta _ as e1); e2], _) when Eqrel.trans s ->
+  | Eapp (s, [Emeta _; e2], _) when Eqrel.trans s ->
       Index.add_trans fm Index.Right;
       let h2 = Index.get_head e2 in
       let matches_rr = find_negtrans_right s h2 in
@@ -791,7 +791,7 @@ let newnodes_match_trans fm =
         [Stop];
       ]
 
-  | Eapp (s, [e1; (Emeta _ as e2)], _) when Eqrel.trans s ->
+  | Eapp (s, [e1; Emeta _], _) when Eqrel.trans s ->
       Index.add_trans fm Index.Left;
       let h1 = Index.get_head e1 in
       let matches_ll = find_negtrans_left s h1 in
