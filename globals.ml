@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Misc.version "$Id: globals.ml,v 1.2 2004-04-25 18:11:57 doligez Exp $";;
+Misc.version "$Id: globals.ml,v 1.3 2004-04-28 16:30:09 doligez Exp $";;
 
 let step_count = ref 0;;
 let warnings_flag = ref true;;
@@ -12,8 +12,8 @@ let progress_level = ref Progress_bar;;
 
 let progress_cur = ref 0;;
 let progress_char = ref (-1);;
-let progress_anim = "\\|//-";;
-let progress_bar = '#';;
+let progress_anim = "\\|/-";;
+let progress_bar = '=';;
 
 let do_progress f =
   match !progress_level with

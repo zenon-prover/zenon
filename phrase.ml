@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: phrase.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: phrase.ml,v 1.2 2004-04-28 16:30:09 doligez Exp $";;
 
 open Expr;;
 
@@ -28,21 +28,38 @@ let check_args env args =
   with Bad_arg -> false
 ;;
 
+let rec check_body env s e =
+  match e with
+  | Evar (v, _) -> v <> s || List.mem v env
+  | Emeta _ -> assert false
+  | Eapp (ss, args, _) -> ss <> s && List.for_all (check_body env s) args
+  | Enot (f, _) -> check_body env s f
+  | Eand (f1, f2, _) | Eor (f1, f2, _) | Eimply (f1, f2, _) | Eequiv (f1, f2, _)
+    -> check_body env s f1 && check_body env s f2
+  | Etrue | Efalse
+    -> true
+  | Eall (v, _, f, _) | Eex (v, _, f, _) | Etau (v, _, f, _)
+    -> check_body (v::env) s f
+;;
+
 let rec is_def env e =
   match e with
   | Eall (v, t, f, _) -> is_def (v::env) f
-  | Eequiv (Eapp (s, args, _), _, _)
-  | Eequiv (_, Eapp (s, args, _), _)
-    -> check_args env args
-  | Eequiv (Evar (s, _), _, _)
-  | Eequiv (_, Evar (s, _), _)
-    -> env = []
-  | Eapp ("=", [Eapp (s, args, _); _], _)
-  | Eapp ("=", [_; Eapp (s, args, _)], _)
-    -> check_args env args
-  | Eapp ("=", [Evar (s, _); _], _)
-  | Eapp ("=", [_; Evar (s, _)], _)
-    -> env = []
+  | Eequiv (Eapp ("=", _, _), _, _)
+  | Eequiv (_, Eapp ("=", _, _), _)
+    -> false
+  | Eequiv (Eapp (s, args, _), body, _)
+  | Eequiv (body, Eapp (s, args, _), _)
+    -> check_args env args && check_body [] s body
+  | Eequiv (Evar (s, _), body, _)
+  | Eequiv (body, Evar (s, _), _)
+    -> env = [] && check_body [] s body
+  | Eapp ("=", [Eapp (s, args, _); body], _)
+  | Eapp ("=", [body; Eapp (s, args, _)], _)
+    -> check_args env args && check_body [] s body
+  | Eapp ("=", [Evar (s, _); body], _)
+  | Eapp ("=", [body; Evar (s, _)], _)
+    -> env = [] && check_body [] s body
   | _ -> false
 ;;
 
@@ -106,6 +123,15 @@ let rec looping (s, l) deps =
   List.mem s l || looping (s, (follow_deps l deps)) deps
 ;;
 
+let rec is_redef d ds =
+  match d, ds with
+  | _, [] -> false
+  | _, (DefReal _ :: t) -> is_redef d t
+  | DefPseudo (_, s1, _, _), (DefPseudo(_, s2, _, _) :: t) ->
+      s1 = s2 || is_redef d t
+  | DefReal _, _ -> assert false
+;;
+
 let rec xseparate deps defs hyps l =
   match l with
   | [] -> (List.rev defs, List.rev hyps)
@@ -113,7 +139,7 @@ let rec xseparate deps defs hyps l =
   | Hyp (e, p) :: t when is_def [] e ->
       let d = make_def e [] e in
       let newdep = extract_dep d in
-      if looping newdep deps then
+      if looping newdep deps || is_redef d defs then
         xseparate deps defs ((e, p) :: hyps) t
       else
         xseparate (newdep :: deps) (d :: defs) hyps t 

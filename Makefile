@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.4 2004-04-27 18:12:55 doligez Exp $
+#  $Id: Makefile,v 1.5 2004-04-28 16:30:09 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -65,9 +65,9 @@ clean:
 	rm -f Makefile.bak zenon zenon.opt zenon.byt
 
 test:
-	for i in test*.znn test*.coz; do \
+	for i in test*.znn test*.coz test*.p; do \
 	  echo $$i; \
-	  if ./zenon -x coqbool $$i; then \
+	  if ./zenon -w -x coqbool $$i; then \
 	    : ; \
 	  else \
 	    echo '>>> TEST FAILED <<<' ; \
