@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.3 2004-05-24 13:47:55 delahaye Exp $";;
+Version.add "$Id: expr.ml,v 1.4 2004-05-25 11:41:56 doligez Exp $";;
 
 open Misc;;
 
@@ -160,9 +160,12 @@ module HashedExpr = struct
     | Eor (f1, g1, _), Eor (f2, g2, _) -> f1 == f2 && g1 == g2
     | Eimply (f1, g1, _), Eimply (f2, g2, _) -> f1 == f2 && g1 == g2
     | Eequiv (f1, g1, _), Eequiv (f2, g2, _) -> f1 == f2 && g1 == g2
-    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _) -> equal_in_env [v1] [v2] f1 f2
-    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _) -> equal_in_env [v1] [v2] f1 f2
-    | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _) -> equal_in_env [v1] [v2] f1 f2
+    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _) ->
+        t1 = t2 && equal_in_env [v1] [v2] f1 f2
+    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _) ->
+        t1 = t2 && equal_in_env [v1] [v2] f1 f2
+    | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _) ->
+        t1 = t2 && equal_in_env [v1] [v2] f1 f2
     | _, _ -> false
   ;;
 end;;
