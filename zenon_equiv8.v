@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_equiv8.v,v 1.1 2004-10-18 16:53:28 doligez Exp $  *)
+(*  $Id: zenon_equiv8.v,v 1.2 2004-10-28 13:51:38 doligez Exp $  *)
 
 Lemma zenon_equiv_init_0 : forall A : Prop,
   ((True <-> (A <-> True)) -> False) -> A -> False.
@@ -96,3 +96,68 @@ Lemma zenon_equiv_finish_1 : forall Q : Prop,
 Lemma zenon_equiv_finish_2 : forall Q : Prop,
   (~Q -> False) -> (False <-> ((True <-> Q) <-> True)) -> False.
   tauto. Qed.
+
+
+Definition zenon_equiv_init_0_s :=
+  fun A c h => zenon_equiv_init_0 A h c
+.
+Definition zenon_equiv_init_1_s :=
+  fun A B C c h => zenon_equiv_init_1 A B C h c
+.
+Definition zenon_equiv_init_2_s :=
+  fun A B C D c h => zenon_equiv_init_2 A B C D h c
+.
+Definition zenon_equiv_init_3_s :=
+  fun A B C c h => zenon_equiv_init_3 A B C h c
+.
+Definition zenon_equiv_init_4_s :=
+  fun A B c h => zenon_equiv_init_4 A B h c
+.
+Definition zenon_equiv_init_5_s :=
+  fun A B C c h => zenon_equiv_init_5 A B C h c
+.
+Definition zenon_equiv_init_6_s :=
+  fun A c h => zenon_equiv_init_6 A h c
+.
+Definition zenon_equiv_init_7_s :=
+  fun A c h => zenon_equiv_init_7 A h c
+.
+Definition zenon_equiv_init_8_s :=
+  fun A B c h => zenon_equiv_init_8 A B h c
+.
+Definition zenon_equiv_init_9_s :=
+  fun A B c h => zenon_equiv_init_9 A B h c
+.
+Definition zenon_equiv_merge_right_s :=
+  fun A B C D E c h => zenon_equiv_merge_right A B C D E h c
+.
+Definition zenon_equiv_merge_left_s :=
+  fun A B C D E F c h => zenon_equiv_merge_left A B C D E F h c
+.
+Definition zenon_equiv_merge_1_s :=
+  fun A B C c h => zenon_equiv_merge_1 A B C h c
+.
+Definition zenon_equiv_simplify_s :=
+  fun A B C D c h => zenon_equiv_simplify A B C D h c
+.
+Definition zenon_equiv_merge_simplify_s :=
+  fun A B C D E c h => zenon_equiv_merge_simplify A B C D E h c
+.
+Definition zenon_equiv_inner_loop_s :=
+  fun A B C c h => zenon_equiv_inner_loop A B C h c
+.
+Definition zenon_equiv_reverse_s :=
+  fun A B C D E c h => zenon_equiv_reverse A B C D E h c
+.
+Definition zenon_equiv_outer_loop_s :=
+  fun A B c h => zenon_equiv_outer_loop A B h c
+.
+Definition zenon_equiv_finish_0_s :=
+  fun A c h => zenon_equiv_finish_0 A h c
+.
+Definition zenon_equiv_finish_1_s :=
+  fun A c h => zenon_equiv_finish_1 A h c
+.
+Definition zenon_equiv_finish_2_s :=
+  fun A c h => zenon_equiv_finish_2 A h c
+.

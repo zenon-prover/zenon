@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.17 2004-10-15 14:31:25 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.18 2004-10-28 13:51:38 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -227,6 +227,7 @@ let main () =
   begin try
     let (defs, hyps) = Phrase.separate phrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
+    let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
     if !debug_count > 0 then begin
       let ph_defs = List.map (fun x -> Phrase.Def x) defs in
       let ph_hyps = List.map (fun (x, y) -> Phrase.Hyp ("", x, y)) hyps in

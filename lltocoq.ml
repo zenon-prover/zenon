@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.12 2004-10-18 16:53:28 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.13 2004-10-28 13:51:38 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -274,6 +274,8 @@ let rec list_of f l term =
   | h::t -> [< f h; str term; list_of f t term >]
 ;;
 
+let wildcard _ = [< str "_" >];;
+
 let make_intros l =
   match l with
   | [] -> [< str "do 0 intro" >]
@@ -425,8 +427,7 @@ let proof_rule ppvernac = function
     ppvernac [< str "exact ("; gen_name (enot e); str " "; gen_name e;
                 coqp ")" >]
   | Rextension (name, args, conc, hyps) ->
-    if !debug then ppvernac [< str "(* extension "; str name; strnl " *)" >];
-    ppvernac [< str "elim ("; str name; str " ";
+    ppvernac [< str "apply ("; str name; str " ";
                 list_of parth_constr_of_expr args " ";
                 str "); ["; list_of make_intros hyps " | ";
                 str " | "; list_of make_exact conc " | "; coqp "]" >]
@@ -440,20 +441,20 @@ let proof_rule ppvernac = function
     let hyp3 = gen_name (enot (eapp ("=", [u; v]))) in
     let hyp4 = gen_name (enot (eapp ("=", [u; w]))) in
     let hyp5 = gen_name (enot (eapp ("=", [t; w]))) in
-    ppvernac [< str "apply (zenons_equalnotequal _ _ _ _ _"; hyp0; hyp1;
-                str "; [ cintro"; hyp2; str " cintro"; hyp3;
-                str " | cintro"; hyp4; str " cintro"; hyp5; coqp " ]" >]
+    ppvernac [< str "apply (zenon_equalnotequal_s _ _ _ _ _"; hyp0; hyp1;
+                str "); [ cintro"; hyp2; str "; cintro"; hyp3;
+                str " | cintro"; hyp4; str "; cintro"; hyp5; coqp " ]" >]
   | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
     assert (f = g);
     let hyp0 = gen_name (enot (eapp ("=", [e0; e1]))) in
-    ppvernac [< str "apply (zenons_notequal _ _ _"; hyp0; str "); ";
+    ppvernac [< str "apply (zenon_notequal_s _ _ _"; hyp0; str "); ";
                 apply_equal_steps f (List.rev l0) (List.rev l1); coqend >]
   | Rnotequal _ -> assert false
   | Rpnotp ((Eapp (f, l0, _) as h0), (Enot (Eapp (g, l1, _), _) as h1)) ->
     assert (f = g);
     let hyp0 = gen_name h0 in
     let hyp1 = gen_name h1 in
-    ppvernac [< str "apply (zenons_pnotp _ _"; hyp0; hyp1; str "); ";
+    ppvernac [< str "apply (zenon_pnotp_s _ _"; hyp0; hyp1; str "); ";
                 apply_equal_steps f (List.rev l0) (List.rev l1); coqend >]
   | Rpnotp _ -> assert false
 
@@ -466,7 +467,7 @@ let proof_rule_short ppvernac = function
     and hyp1 = gen_name e1
     and hyp2 = gen_name e2
     and hyp3 = gen_name (enot e1) in
-    ppvernac [< str "apply (zenons_imply _ _"; hyp0; str "); [ cintro"; hyp3;
+    ppvernac [< str "apply (zenon_imply_s _ _"; hyp0; str "); [ cintro"; hyp3;
                 str " | cintro"; hyp2; coqp " ]" >]
   | Rconnect (Equiv, e1, e2) ->
     let hyp0 = gen_name (eequiv (e1, e2))
@@ -474,26 +475,26 @@ let proof_rule_short ppvernac = function
     and hyp4 = gen_name e2
     and hyp5 = gen_name (enot e1)
     and hyp6 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenons_equiv _ _"; hyp0; str "); [ cintro"; hyp5;
+    ppvernac [< str "apply (zenon_equiv_s _ _"; hyp0; str "); [ cintro"; hyp5;
                 str "; cintro"; hyp6; str " | cintro"; hyp3; str "; cintro";
                 hyp4; coqp " ]" >]
   | Rnotconnect (And, e1, e2) ->
     let hyp0 = gen_name (enot (eand (e1, e2)))
     and hyp1 = gen_name (enot e1)
     and hyp2 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenons_notand _ _"; hyp0; str "); [ cintro"; hyp1;
+    ppvernac [< str "apply (zenon_notand_s _ _"; hyp0; str "); [ cintro"; hyp1;
                  str " | cintro "; hyp2; coqp " ]" >]
   | Rnotconnect (Or, e1, e2) ->
     let hyp0 = gen_name (enot (eor (e1, e2)))
     and hyp1 = gen_name (enot e1)
     and hyp2 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenons_notor _ _"; hyp0; str "); cintro"; hyp1;
+    ppvernac [< str "apply (zenon_notor_s _ _"; hyp0; str "); cintro"; hyp1;
                 str "; cintro"; hyp2; coqend >]
   | Rnotconnect (Imply, e1, e2) ->
     let hyp0 = gen_name (enot (eimply (e1, e2)))
     and hyp1 = gen_name e1
     and hyp2 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenons_notimply _ _"; hyp0; str "); cintro"; hyp1;
+    ppvernac [< str "apply (zenon_notimply_s _ _"; hyp0; str "); cintro"; hyp1;
                 str "; cintro"; hyp2; coqend >]
   | Rnotconnect (Equiv, e1, e2) ->
     let hyp0 = gen_name (enot (eequiv (e1, e2)))
@@ -501,9 +502,14 @@ let proof_rule_short ppvernac = function
     and hyp2 = gen_name e2
     and hyp3 = gen_name (enot e1)
     and hyp4 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenons_notequiv _ _"; hyp0; str "); [ cintro"; hyp3;
+    ppvernac [< str "apply (zenon_notequiv_s _ _"; hyp0;
+                str "); [ cintro"; hyp3;
                 str "; cintro"; hyp2; str " | cintro"; hyp1;
                 str "; cintro"; hyp4; coqp " ]" >]
+  | Rextension (name, args, conc, hyps) ->
+    ppvernac [< str "apply ("; str name; str "_s ";
+                list_of wildcard args " "; list_of gen_name conc " ";
+                str "); ["; list_of make_intros hyps " | "; coqp "]" >]
   | x -> proof_rule ppvernac x
 ;;
 
@@ -622,8 +628,11 @@ let verify valid fnm =
 
 let clean fnm = function
   | None ->
-    (try (Sys.remove fnm; Sys.remove ((Filename.chop_suffix fnm "v") ^ "vo"))
-     with Sys_error _ -> ())
+      begin try 
+        Sys.remove fnm;
+        Sys.remove (Filename.chop_suffix fnm "v" ^ "vo");
+      with Sys_error _ -> ()
+      end
   | _ -> ()
 
 let produce_proof_coq ofn valid llp =
@@ -651,7 +660,8 @@ let produce_proof_coq ofn valid llp =
     ignore (Unix.waitpid [] pid);
     print_proof fnm ofn;
     let retcode = verify valid fnm in
-    clean fnm ofn; retcode
+    clean fnm ofn;
+    retcode
   end
 
 (**********************)
@@ -681,7 +691,8 @@ let produce_proof_dir ofn valid llp =
     close_dir valid outc ofn;
     print_proof fnm ofn;
     let retcode = verify valid fnm in
-    if valid then clean fnm ofn; retcode
+    clean fnm ofn;
+    retcode
   end
 
 (***************)

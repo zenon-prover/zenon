@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_coqbool8.v,v 1.2 2004-10-18 16:53:28 doligez Exp $  *)
+(*  $Id: zenon_coqbool8.v,v 1.3 2004-10-28 13:51:38 doligez Exp $  *)
 
 Require Import Bool.
 
@@ -103,3 +103,30 @@ Proof.
   unfold ifb.
   destruct a; destruct b; tauto.
 Qed.
+
+Definition zenon_coqbool_false_s := zenon_coqbool_false.
+Definition zenon_coqbool_nottrue_s := zenon_coqbool_nottrue.
+Definition zenon_coqbool_not_s :=
+  fun A c h => zenon_coqbool_not A h c
+.
+Definition zenon_coqbool_notnot_s :=
+  fun A c h => zenon_coqbool_notnot A h c
+.
+Definition zenon_coqbool_and_s :=
+  fun A B c h => zenon_coqbool_and A B h c
+.
+Definition zenon_coqbool_notand_s :=
+  fun A B c h => zenon_coqbool_notand A B h c
+.
+Definition zenon_coqbool_or_s :=
+  fun A B c h => zenon_coqbool_or A B h c
+.
+Definition zenon_coqbool_notor_s :=
+  fun A B c h => zenon_coqbool_notor A B h c
+.
+Definition zenon_coqbool_xor_s :=
+  fun A B c h => zenon_coqbool_xor A B h c
+.
+Definition zenon_coqbool_notxor_s :=
+  fun A B c h => zenon_coqbool_notxor A B h c
+.

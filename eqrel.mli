@@ -1,7 +1,8 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: eqrel.mli,v 1.2 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: eqrel.mli,v 1.3 2004-10-28 13:51:38 doligez Exp $  *)
 
 val analyse : Expr.expr -> unit;;
+val subsumed : Expr.expr -> bool;;
 
 val refl : string -> bool;;
 val sym : string -> bool;;

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.12 2004-10-18 16:53:28 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.13 2004-10-28 13:51:38 doligez Exp $";;
 
 open Misc;;
 
@@ -247,7 +247,7 @@ module HashedExpr = struct
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
       -> string_equal t1 t2
          && (v1 == v2 && f1 == f2
-            || equal_in_env [v1] [v2] f1 f2)
+             || equal_in_env [v1] [v2] f1 f2)
     | _, _ -> false
   ;;
 end;;
@@ -312,8 +312,8 @@ let rec xpreunify accu e1 e2 =
   | _, _ when e1 == e2 -> accu
   | Eapp (s1, a1, _), Eapp (s2, a2, _) when string_equal s1 s2 ->
       List.fold_left2 xpreunify accu a1 a2
-  | Emeta _, _ -> (e1, e2) :: accu
-  | _, Emeta _ -> (e2, e1) :: accu
+  | Emeta (m1, _), _ -> (m1, e2) :: accu
+  | _, Emeta (m2, _) -> (m2, e1) :: accu
   | _, _ -> raise Mismatch
 ;;
 

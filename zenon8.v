@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon8.v,v 1.3 2004-10-18 16:53:28 doligez Exp $  *)
+(*  $Id: zenon8.v,v 1.4 2004-10-28 13:51:38 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -109,14 +109,14 @@ Lemma zenon_equalnotequal : forall (T : Type) (t u v w : T),
 
 Ltac cintro id := intro id || let nid := fresh in (intro nid; clear nid).
 
-Definition zenons_imply := fun P Q a b c => zenon_imply P Q b c a.
-Definition zenons_equiv := fun P Q a b c => zenon_equiv P Q b c a.
-Definition zenons_notand := fun P Q a b c => zenon_notand P Q b c a.
-Definition zenons_notor := fun P Q a b => zenon_notor P Q b a.
-Definition zenons_notimply := fun P Q a b => zenon_notimply P Q b a.
-Definition zenons_notequiv := fun P Q a b c => zenon_notequiv P Q b c a.
-Definition zenons_equalnotequal :=
+Definition zenon_imply_s := fun P Q a b c => zenon_imply P Q b c a.
+Definition zenon_equiv_s := fun P Q a b c => zenon_equiv P Q b c a.
+Definition zenon_notand_s := fun P Q a b c => zenon_notand P Q b c a.
+Definition zenon_notor_s := fun P Q a b => zenon_notor P Q b a.
+Definition zenon_notimply_s := fun P Q a b => zenon_notimply P Q b a.
+Definition zenon_notequiv_s := fun P Q a b c => zenon_notequiv P Q b c a.
+Definition zenon_equalnotequal_s :=
   fun T t u v w a b c d => zenon_equalnotequal T t u v w c d a b
 .
-Definition zenons_pnotp := fun P Q a b c => zenon_pnotp P Q c a b.
-Definition zenons_notequal := fun T a b x y => zenon_notequal T a b y x.
+Definition zenon_pnotp_s := fun P Q a b c => zenon_pnotp P Q c a b.
+Definition zenon_notequal_s := fun T a b x y => zenon_notequal T a b y x.

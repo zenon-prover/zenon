@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.14 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.15 2004-10-28 13:51:38 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -22,6 +22,7 @@ let mkand e el = myfold eand e el;;
 let mkor e el = myfold eor e el;;
 let mkimply e el = myfold eimply e el;;
 let mkequiv e el = myfold eequiv e el;;
+let mkrimply e el = myfold (fun (a, b) -> eimply (b, a)) e el;;
 
 let hyp_counter = ref 0;;
 
@@ -73,6 +74,7 @@ let hyp_counter = ref 0;;
 %token FUNARROW
 %token DOUBLEARROW
 %token FORALL
+%token EXISTS
 %token LET
 %token IN
 %token FUN
@@ -131,6 +133,7 @@ expr:
   | OPEN AND expr expr_list CLOSE        { mkand $3 $4 }
   | OPEN OR expr expr_list CLOSE         { mkor $3 $4 }
   | OPEN IMPLY expr expr_list CLOSE      { mkimply $3 $4 }
+  | OPEN RIMPLY expr expr_list CLOSE     { mkrimply $3 $4 }
   | OPEN EQUIV expr expr_list CLOSE      { mkequiv $3 $4 }
   | OPEN TRUE CLOSE                      { etrue }
   | TRUE                                 { etrue }
@@ -232,6 +235,8 @@ coqexpr:
       { eall (evar $2, $4, $6) }
   | FORALL IDENT COLON IDENT COMMA coqexpr %prec forall
       { eall (evar $2, $4, $6) }
+  | EXISTS IDENT COLON IDENT COMMA coqexpr %prec forall
+      { eex (evar $2, $4, $6) }
   | coqapplication
       { eapp $1 }
   | TILDE coqexpr

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.10 2004-10-18 16:53:28 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.11 2004-10-28 13:51:38 doligez Exp $";;
 
 open Printf;;
 
@@ -841,7 +841,7 @@ let newnodes_match_trans fm =
       ]
 
   | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
-      Index.add_negtrans fm;
+      Index.add_negtrans fm;  (* FIXME effet de bord dans un lazy ?!? *)
       let h1 = Index.get_head e1 in
       let h2 = Index.get_head e2 in
       let matches_ll = find_trans_left s h1 e1 in

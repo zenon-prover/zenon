@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.6 2004-10-15 11:55:03 doligez Exp $";;
+Version.add "$Id: eqrel.ml,v 1.7 2004-10-28 13:51:38 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -202,6 +202,22 @@ let analyse_subexpr e (path, env, sb, typ) =
 ;;
 
 let analyse e = List.iter (analyse_subexpr e) (get_subexprs e);;
+
+let subsumed_subexpr e (path, env, sb, typ) =
+  if is_refl sb e path env <> None then
+    (get_record (get_symbol sb)).refl <> None
+  else if is_sym sb e path env <> None then
+    (get_record (get_symbol sb)).sym <> None
+  else if is_trans sb e path env <> None then
+    false &&  (* FIXME *)
+    (get_record (get_symbol sb)).trans <> None
+  else if is_transsym sb e path env <> None then
+    let r = get_record (get_symbol sb) in
+    r.sym <> None && r.trans <> None
+  else false
+;;
+
+let subsumed e = List.for_all (subsumed_subexpr e) (get_subexprs e);;
 
 let eq_origin = Some (etrue, [], []);;
 Hashtbl.add tbl "=" {

@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.11 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.12 2004-10-28 13:51:38 doligez Exp $";;
 
 open Parser;;
 open Lexing;;
@@ -39,6 +39,7 @@ rule token = parse
   | "/\\"       { AND }
   | "\\/"       { OR }
   | "=>"        { IMPLY }
+  | "<="        { RIMPLY }
   | "<=>"       { EQUIV }
   | "True"      { TRUE }
   | "False"     { FALSE }
@@ -126,6 +127,7 @@ and coqtoken = parse
   | "By"                    { BY }
   | "By def"                { BYDEF }
   | "forall"                { FORALL }
+  | "exists"                { EXISTS }
   | "let"                   { LET }
   | "in"                    { IN }
   | "and"                   { AND }
