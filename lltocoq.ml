@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.13 2004-10-28 13:51:38 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.14 2004-10-28 14:34:41 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -278,7 +278,7 @@ let wildcard _ = [< str "_" >];;
 
 let make_intros l =
   match l with
-  | [] -> [< str "do 0 intro" >]
+  | [] -> [< str "idtac" >]
   | _ -> [< str "intros"; list_of (fun e -> gen_name e) l "" >]
 ;;
 
@@ -296,7 +296,7 @@ let rec apply_equal_steps f l0 l1 =
   | h0 :: t0 , h1 :: t1 ->
       [< str "apply (zenon_equal_step _ _ ("; make_app f t0; str ") (";
          make_app f t1; str ")); [ "; apply_equal_steps f t0 t1;
-         str " | intro"; gen_name (enot (eapp ("=", [h0; h1]))); str " ]" >]
+         str " | cintro"; gen_name (enot (eapp ("=", [h0; h1]))); str " ]" >]
   | _, _ -> assert false
 ;;
 
@@ -385,7 +385,7 @@ let proof_rule ppvernac = function
     and hyp1 = gen_name (enot (substitute [(x, evar z)] e)) in
     if !debug then ppvernac [< strnl "(* not(all) *)" >];
     ppvernac [< str "apply"; hyp0; thenc; str "intro "; str z; thenc;
-                str "apply NNPP; red; intro"; hyp1; coqend >]
+                str "apply NNPP; red; cintro"; hyp1; coqend >]
   | Rnotall _ -> assert false
   | Rnotex (p, t) ->
     let hyp = gen_name (enot p) in
@@ -419,8 +419,8 @@ let proof_rule ppvernac = function
   | Rcut (e) ->
     if !debug then ppvernac [< strnl "(* cut *)" >];
     ppvernac [< str "cut "; parth (constr_of_expr e);
-                str "; [ intro "; gen_name e;
-                str " | apply NNPP; intro "; gen_name (enot e);
+                str "; [ cintro "; gen_name e;
+                str " | apply NNPP; cintro "; gen_name (enot e);
                 coqp " ]" >]
   | Raxiom (e) ->
     if !debug then ppvernac [< strnl "(* axiom *)" >];
