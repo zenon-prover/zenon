@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.10 2004-06-02 17:08:10 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.11 2004-06-04 09:25:40 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -232,15 +232,19 @@ coqexpr:
       { eor ($3, $4) }
   | IF coqexpr THEN coqexpr ELSE coqexpr
       { eapp ("_if_then_else", [$2; $4; $6]) }
-  | OPEN EQUAL coqexpr coqexpr CLOSE
-      { eapp ("=", [$3; $4]) }
+  | OPEN coqexpr EQUAL coqexpr CLOSE
+      { eapp ("=", [$2; $4]) }
   | IDENT
       { evar ($1) }
   | coqexpr ARROW coqexpr
       { eimply ($1, $3) }
   | coqexpr DOUBLEARROW coqexpr
       { eequiv ($1, $3) }
+
   /* FIXME TODO voir comment coder les let-in */
+
+  | LBRACKET IDENT COLONEQUAL coqexpr RBRACKET coqexpr %prec forall
+      { Expr.substitute [($2, $4)] $6 }
   | LET IDENT COLONEQUAL coqexpr IN coqexpr %prec forall
       { Expr.substitute [($2, $4)] $6 }
 ;
