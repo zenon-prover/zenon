@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.9 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.10 2004-10-18 16:53:28 doligez Exp $";;
 
 open Printf;;
 
@@ -1192,7 +1192,7 @@ let rec reduce_initial_list accu l =
       else reduce_initial_list (fp :: accu) t
 ;;
 
-let ticker () =
+let ticker finished () =
   let tm = Sys.time () in
   let heap_size = (Gc.stat ()).Gc.heap_words in  (* FIXME use Gc.quick_stat *)
   Globals.do_progress begin fun () ->
@@ -1201,15 +1201,17 @@ let ticker () =
             !cur_depth !top_depth !Globals.inferences !Globals.proof_nodes 
             !Globals.stored_lemmas (heap_size / 1_000_000) tm;
   end;
-  if tm > !Globals.time_limit then begin
-    eprintf " time limit exceeded\n";
-    flush stderr;
-    raise NoProof;
-  end;
-  if float heap_size > !Globals.size_limit then begin
-    eprintf " size limit exceeded\n";
-    flush stderr;
-    raise NoProof;
+  if not finished then begin
+    if tm > !Globals.time_limit then begin
+      eprintf " time limit exceeded\n";
+      flush stderr;
+      raise NoProof;
+    end;
+    if float heap_size > !Globals.size_limit then begin
+      eprintf " size limit exceeded\n";
+      flush stderr;
+      raise NoProof;
+    end;
   end;
 ;;
 
@@ -1226,7 +1228,7 @@ let make_goalness l =
 let prove defs l =
   try
     List.iter Index.add_def defs;
-    let al = Gc.create_alarm ticker in
+    let al = Gc.create_alarm (ticker false) in
     let rl = reduce_initial_list [] l in
     let wl = make_goalness rl in
     Globals.inferences := 0;
@@ -1235,7 +1237,7 @@ let prove defs l =
     top_depth := 0;
     let result = refute true [] (Heap.empty order_nodes) wl in
     Gc.delete_alarm al;
-    ticker ();
+    ticker true ();
     Globals.end_progress "";
     match result with
     | Closed p -> p

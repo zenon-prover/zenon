@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.11 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.12 2004-10-18 16:53:28 doligez Exp $";;
 
 open Misc;;
 
@@ -296,6 +296,12 @@ let etau (v, t, e) = he_merge (Etau (v, t, e, priv_tau v t e));;
 type t = expr;;
 let hash = get_hash;;
 let equal = (==);;
+let cmp x y =
+  match compare (hash x) (hash y) with
+  | 0 -> if equal x y then 0 else compare x y
+  | x when x < 0 -> -1
+  | _ -> 1
+;;
 
 (************************)
 

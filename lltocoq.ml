@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.11 2004-10-15 20:54:46 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.12 2004-10-18 16:53:28 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -60,6 +60,8 @@ let ppvernac_dir outc s = flush_strm s outc
 
 let rec constr_of_expr = function
   | Evar (v, _) -> [< 'v >]
+  | Eapp ("=", [e1; e2], _) ->
+    parth [< constr_of_expr e1; str " = "; constr_of_expr e2 >]
   | Eapp (f, l, _) ->
     parth [< 'f; List.fold_left
                  (fun s e -> [< s; str " "; (constr_of_expr e) >]) [< >] l >]
@@ -86,10 +88,13 @@ let rec constr_of_expr = function
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]*)
-(*
-  | _ -> failwith "Error: unexpected expr to translate!"
-*)
-  | _ -> [< str "***" >]
+  | _ -> if !debug then [< str "***" >] else assert false
+
+let parth_constr_of_expr e =
+  match e with
+  | Enot _ -> parth (constr_of_expr e)
+  | _ -> constr_of_expr e
+;;
 
 (***********************)
 (* Require's & Tactics *)
@@ -113,10 +118,6 @@ let tactic ppvernac = ppvernac contract_intro
 (*********************)
 (* Type declarations *)
 (*********************)
-
-let get_concl = function
-  | [ l ] -> l.proof.conc
-  | _ -> failwith "Error: unexpected LL proof!"
 
 let rec list_types = function
   | [ ] -> [< >]
@@ -266,16 +267,35 @@ let inst_name t = function
   | Eall (x, _, e, _) -> let ti = substitute [ x, t ] e in gen_name ti
   | _ -> assert false
 
-let rec list_of f l sep =
+let rec list_of f l term =
   match l with
   | [] -> [< >]
-  | h::t -> [< f h; str sep; list_of f t sep >]
+  | [h] -> [< f h >]
+  | h::t -> [< f h; str term; list_of f t term >]
 ;;
 
 let make_intros l =
   match l with
   | [] -> [< str "do 0 intro" >]
-  | _ -> [< str "intros "; list_of (fun e -> gen_name e) l " " >]
+  | _ -> [< str "intros"; list_of (fun e -> gen_name e) l "" >]
+;;
+
+let make_exact e = [< str "exact"; gen_name e >];;
+
+let rec make_app f l =
+  match l with
+  | [] -> [< str f >]
+  | h::t -> [< make_app f t; str " "; constr_of_expr h >]
+;;
+
+let rec apply_equal_steps f l0 l1 =
+  match l0, l1 with
+  | [], [] -> [< str "auto" >]
+  | h0 :: t0 , h1 :: t1 ->
+      [< str "apply (zenon_equal_step _ _ ("; make_app f t0; str ") (";
+         make_app f t1; str ")); [ "; apply_equal_steps f t0 t1;
+         str " | intro"; gen_name (enot (eapp ("=", [h0; h1]))); str " ]" >]
+  | _, _ -> assert false
 ;;
 
 let proof_rule ppvernac = function
@@ -292,7 +312,7 @@ let proof_rule ppvernac = function
     and hyp2 = gen_name e2 in
     if !debug then ppvernac [< strnl "(* connect(Or) *)" >];
     ppvernac [< str "elim"; hyp0; str ";[ cintro"; hyp1; str " | cintro"; hyp2;
-                coqp "]" >]
+                coqp " ]" >]
   | Rconnect (Imply, e1, e2) ->
     let hyp0 = gen_name (eimply (e1, e2))
     and hyp1 = gen_name e1
@@ -364,6 +384,7 @@ let proof_rule ppvernac = function
     if !debug then ppvernac [< strnl "(* not(all) *)" >];
     ppvernac [< str "apply"; hyp0; thenc; str "intro "; str z; thenc;
                 str "apply NNPP; red; intro"; hyp1; coqend >]
+  | Rnotall _ -> assert false
   | Rnotex (p, t) ->
     let hyp = gen_name (enot p) in
     begin
@@ -387,6 +408,7 @@ let proof_rule ppvernac = function
     if !debug then ppvernac [< strnl "(* ex *)" >];
     ppvernac [< str "elim"; hyp0; thenc; str "clear"; hyp0; thenc;
                 str "cintro "; str z; thenc; str "cintro"; hyp1; coqend >]
+  | Rex _ -> assert false
   | Rlemma (n, args) ->
     if !debug then ppvernac [< strnl "(* lemma *)" >];
     ppvernac [< str "intros; eapply "; if args = [] then str n else
@@ -404,16 +426,94 @@ let proof_rule ppvernac = function
                 coqp ")" >]
   | Rextension (name, args, conc, hyps) ->
     if !debug then ppvernac [< str "(* extension "; str name; strnl " *)" >];
-    ppvernac [< str "elim ("; str name; list_of constr_of_expr args " ";
-                str "); ["; list_of make_intros hyps "| "; coqp "auto ]" >]
+    ppvernac [< str "elim ("; str name; str " ";
+                list_of parth_constr_of_expr args " ";
+                str "); ["; list_of make_intros hyps " | ";
+                str " | "; list_of make_exact conc " | "; coqp "]" >]
   | Rdefinition (c, h) ->
     if !debug then ppvernac [< strnl "(* definition *)" >];
     ppvernac [< str "pose ("; gen_name h; str " := "; gen_name c; coqp ")" >]
-  | _ -> ppvernac [< coqp "auto" >]
+  | Requalnotequal (t, u, v, w) ->
+    let hyp0 = gen_name (eapp ("=", [t; u])) in
+    let hyp1 = gen_name (enot (eapp ("=", [v; w]))) in
+    let hyp2 = gen_name (enot (eapp ("=", [t; v]))) in
+    let hyp3 = gen_name (enot (eapp ("=", [u; v]))) in
+    let hyp4 = gen_name (enot (eapp ("=", [u; w]))) in
+    let hyp5 = gen_name (enot (eapp ("=", [t; w]))) in
+    ppvernac [< str "apply (zenons_equalnotequal _ _ _ _ _"; hyp0; hyp1;
+                str "; [ cintro"; hyp2; str " cintro"; hyp3;
+                str " | cintro"; hyp4; str " cintro"; hyp5; coqp " ]" >]
+  | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
+    assert (f = g);
+    let hyp0 = gen_name (enot (eapp ("=", [e0; e1]))) in
+    ppvernac [< str "apply (zenons_notequal _ _ _"; hyp0; str "); ";
+                apply_equal_steps f (List.rev l0) (List.rev l1); coqend >]
+  | Rnotequal _ -> assert false
+  | Rpnotp ((Eapp (f, l0, _) as h0), (Enot (Eapp (g, l1, _), _) as h1)) ->
+    assert (f = g);
+    let hyp0 = gen_name h0 in
+    let hyp1 = gen_name h1 in
+    ppvernac [< str "apply (zenons_pnotp _ _"; hyp0; hyp1; str "); ";
+                apply_equal_steps f (List.rev l0) (List.rev l1); coqend >]
+  | Rpnotp _ -> assert false
+
+  | Rnoteq _ | Rnottrue | Rfalse -> ppvernac [< coqp "auto" >]
+
+(* experimental version *)
+let proof_rule_short ppvernac = function
+  | Rconnect (Imply, e1, e2) ->
+    let hyp0 = gen_name (eimply (e1, e2))
+    and hyp1 = gen_name e1
+    and hyp2 = gen_name e2
+    and hyp3 = gen_name (enot e1) in
+    ppvernac [< str "apply (zenons_imply _ _"; hyp0; str "); [ cintro"; hyp3;
+                str " | cintro"; hyp2; coqp " ]" >]
+  | Rconnect (Equiv, e1, e2) ->
+    let hyp0 = gen_name (eequiv (e1, e2))
+    and hyp3 = gen_name e1
+    and hyp4 = gen_name e2
+    and hyp5 = gen_name (enot e1)
+    and hyp6 = gen_name (enot e2) in
+    ppvernac [< str "apply (zenons_equiv _ _"; hyp0; str "); [ cintro"; hyp5;
+                str "; cintro"; hyp6; str " | cintro"; hyp3; str "; cintro";
+                hyp4; coqp " ]" >]
+  | Rnotconnect (And, e1, e2) ->
+    let hyp0 = gen_name (enot (eand (e1, e2)))
+    and hyp1 = gen_name (enot e1)
+    and hyp2 = gen_name (enot e2) in
+    ppvernac [< str "apply (zenons_notand _ _"; hyp0; str "); [ cintro"; hyp1;
+                 str " | cintro "; hyp2; coqp " ]" >]
+  | Rnotconnect (Or, e1, e2) ->
+    let hyp0 = gen_name (enot (eor (e1, e2)))
+    and hyp1 = gen_name (enot e1)
+    and hyp2 = gen_name (enot e2) in
+    ppvernac [< str "apply (zenons_notor _ _"; hyp0; str "); cintro"; hyp1;
+                str "; cintro"; hyp2; coqend >]
+  | Rnotconnect (Imply, e1, e2) ->
+    let hyp0 = gen_name (enot (eimply (e1, e2)))
+    and hyp1 = gen_name e1
+    and hyp2 = gen_name (enot e2) in
+    ppvernac [< str "apply (zenons_notimply _ _"; hyp0; str "); cintro"; hyp1;
+                str "; cintro"; hyp2; coqend >]
+  | Rnotconnect (Equiv, e1, e2) ->
+    let hyp0 = gen_name (enot (eequiv (e1, e2)))
+    and hyp1 = gen_name e1
+    and hyp2 = gen_name e2
+    and hyp3 = gen_name (enot e1)
+    and hyp4 = gen_name (enot e2) in
+    ppvernac [< str "apply (zenons_notequiv _ _"; hyp0; str "); [ cintro"; hyp3;
+                str "; cintro"; hyp2; str " | cintro"; hyp1;
+                str "; cintro"; hyp4; coqp " ]" >]
+  | x -> proof_rule ppvernac x
+;;
 
 let rec proof_build ppvernac pft =
   begin
-    proof_rule ppvernac pft.rule;
+    begin if !Globals.short_flag then
+      proof_rule_short ppvernac pft.rule
+    else
+      proof_rule ppvernac pft.rule
+    end;
     List.iter (proof_build ppvernac) pft.hyps;
   end
 

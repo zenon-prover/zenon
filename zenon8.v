@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon8.v,v 1.2 2004-10-15 11:55:03 doligez Exp $  *)
+(*  $Id: zenon8.v,v 1.3 2004-10-18 16:53:28 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -22,9 +22,6 @@ Lemma zenon_or : forall P Q : Prop,
 Lemma zenon_imply : forall P Q : Prop,
   (~P -> False) -> (Q -> False) -> ((P -> Q) -> False).
   tauto. Qed.
-(* zenon_imply can be eliminated:
-   (zenon_imply P Q npf qf pq) === fun (pq : P->Q) => npf (fun p => qf (pq p))
-*)
 
 Lemma zenon_equiv : forall P Q : Prop,
   (~P -> ~Q -> False) -> (P -> Q -> False) -> ((P <-> Q) -> False).
@@ -53,9 +50,6 @@ Lemma zenon_ex : forall (T : Type) (P : T -> Prop),
 Lemma zenon_all : forall (T : Type) (P : T -> Prop) (t : T),
   ((P t) -> False) -> ((forall x : T, (P x)) -> False).
   intros. cut (P t). auto. auto. Qed.
-(* zenon_all can be eliminated:
-   (zenon_all T P t ptf) === fun (faxpx : forall x:T, P x) => ptf (faxpx t)
-*)
 
 Lemma zenon_notex : forall (T : Type) (P : T -> Prop) (t : T),
   (~(P t) -> False) -> (~(exists x : T, (P x)) -> False).
@@ -114,3 +108,15 @@ Lemma zenon_equalnotequal : forall (T : Type) (t u v w : T),
   Qed.
 
 Ltac cintro id := intro id || let nid := fresh in (intro nid; clear nid).
+
+Definition zenons_imply := fun P Q a b c => zenon_imply P Q b c a.
+Definition zenons_equiv := fun P Q a b c => zenon_equiv P Q b c a.
+Definition zenons_notand := fun P Q a b c => zenon_notand P Q b c a.
+Definition zenons_notor := fun P Q a b => zenon_notor P Q b a.
+Definition zenons_notimply := fun P Q a b => zenon_notimply P Q b a.
+Definition zenons_notequiv := fun P Q a b c => zenon_notequiv P Q b c a.
+Definition zenons_equalnotequal :=
+  fun T t u v w a b c d => zenon_equalnotequal T t u v w c d a b
+.
+Definition zenons_pnotp := fun P Q a b c => zenon_pnotp P Q c a b.
+Definition zenons_notequal := fun T a b x y => zenon_notequal T a b y x.

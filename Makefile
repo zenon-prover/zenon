@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.19 2004-10-15 11:55:03 doligez Exp $
+#  $Id: Makefile,v 1.20 2004-10-18 16:53:28 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = ${CAMLP4} -warn-error A
@@ -16,7 +16,7 @@ CAMLYACC = ocamlyacc
 MODULES = version misc heap globals expr prio \
           phrase llproof mlproof eqrel index \
           print step node extension mltoll prove parser lexer tptp \
-          ext_coqbool lltocoq coqterm \
+          ext_coqbool ext_equiv lltocoq coqterm \
           main
 
 IMPL = ${MODULES:%=%.ml}
@@ -26,7 +26,7 @@ OBJOPT = ${MODULES:%=%.cmx}
 ADDBYT = unix.cma
 ADDOPT = unix.cmxa
 
-COQMODULES = zenon7 zenon_coqbool7 zenon8 zenon_coqbool8
+COQMODULES = zenon7 zenon_coqbool7 zenon8 zenon_coqbool8 zenon_equiv8
 COQSRC = ${COQMODULES:%=%.v}
 COQOBJ = ${COQMODULES:%=%.vo}
 
@@ -98,6 +98,10 @@ zenon8.vo: zenon8.v
 zenon_coqbool8.vo: zenon_coqbool8.v
 	${COQC8} zenon_coqbool8.v
 
+zenon_equiv8.vo: zenon_equiv8.v
+	: ### be patient, this will take a few minutes ###
+	${COQC8} zenon_equiv8.v
+
 .PHONY: clean
 clean:
 	rm -f *.cmo *.cmi *.cmx *.o *.vo *.annot
@@ -109,7 +113,7 @@ clean:
 depend: ${IMPL} ${INTF}
 	mv Makefile Makefile.bak
 	(sed -e '/^#DEPENDENCIES/q' Makefile.bak; \
-         ocamldep ${CAMLP4} ${IMPL} ${INTF}) \
+         ocamldep ${CAMLP4} ${IMPL} ${INTF} ) \
 	>Makefile
 
 # Do NOT change anything below this line.
@@ -168,8 +172,14 @@ ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi llproof.cmi \
     misc.cmi mlproof.cmi node.cmi prio.cmi version.cmi ext_coqbool.cmi 
 ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx llproof.cmx \
     misc.cmx mlproof.cmx node.cmx prio.cmx version.cmx ext_coqbool.cmi 
-lltocoq.cmo: expr.cmi index.cmi llproof.cmi version.cmi lltocoq.cmi 
-lltocoq.cmx: expr.cmx index.cmx llproof.cmx version.cmx lltocoq.cmi 
+ext_equiv.cmo: expr.cmi extension.cmi llproof.cmi misc.cmi mlproof.cmi \
+    node.cmi prio.cmi version.cmi ext_equiv.cmi 
+ext_equiv.cmx: expr.cmx extension.cmx llproof.cmx misc.cmx mlproof.cmx \
+    node.cmx prio.cmx version.cmx ext_equiv.cmi 
+lltocoq.cmo: expr.cmi globals.cmi index.cmi llproof.cmi phrase.cmi \
+    version.cmi lltocoq.cmi 
+lltocoq.cmx: expr.cmx globals.cmx index.cmx llproof.cmx phrase.cmx \
+    version.cmx lltocoq.cmi 
 coqterm.cmo: expr.cmi globals.cmi index.cmi llproof.cmi phrase.cmi \
     version.cmi coqterm.cmi 
 coqterm.cmx: expr.cmx globals.cmx index.cmx llproof.cmx phrase.cmx \
@@ -195,5 +205,5 @@ prove.cmi: expr.cmi mlproof.cmi
 parser.cmi: phrase.cmi 
 lexer.cmi: parser.cmi 
 tptp.cmi: phrase.cmi 
-lltocoq.cmi: llproof.cmi 
+lltocoq.cmi: llproof.cmi phrase.cmi 
 coqterm.cmi: llproof.cmi phrase.cmi 

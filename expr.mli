@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.8 2004-09-28 13:12:58 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.9 2004-10-18 16:53:28 doligez Exp $  *)
 
 type private_info;;
 
@@ -29,6 +29,7 @@ type definition =
 type t = expr;;
 
 val equal : t -> t -> bool;;
+val cmp : t -> t -> int;;
 val hash : t -> int;;
 
 val evar : string -> expr;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.12 2004-10-15 14:31:25 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.13 2004-10-18 16:53:28 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -17,18 +17,33 @@ let lemma_name n = sprintf "%s_lem%d" !lemma_prefix n;;
 let make_tau_name p = sprintf "_T_%d" (Index.get_number p);;
 let make_any_name p = sprintf "_Z_%d" (Index.get_number p);;
 
-(* FIXME TODO: memoifier tr_term et tr_prop (?) *)
 
-let rec tr_term t =
+module HE = Hashtbl.Make (Expr);;
+
+let memo tbl f x =
+  try HE.find tbl x
+  with Not_found ->
+    let result = f x in
+    HE.add tbl x result;
+    result
+;;
+
+let term_tbl = HE.create 9997;;
+
+let rec xtr_term t =
   match t with
   | Evar (v, _) -> t
   | Emeta (e, _) -> evar (make_any_name e)
   | Eapp (s, es, _) -> eapp (s, List.map tr_term es)
   | Etau _ -> evar (make_tau_name t)
   | _ -> assert false
+
+and tr_term t = memo term_tbl xtr_term t
 ;;
 
-let rec tr_prop a =
+let prop_tbl = HE.create 9997;;
+
+let rec xtr_prop a =
   match a with
   | Evar (v, _) -> a
   | Emeta _ -> assert false
@@ -45,6 +60,8 @@ let rec tr_prop a =
   | Eex (v, t, e, _) -> eex (v, t, tr_prop e)
 
   | Etau _ -> assert false
+
+and tr_prop a = memo prop_tbl xtr_prop a
 ;;
 
 let tr_rule r =

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.9 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.10 2004-10-18 16:53:28 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b *)
@@ -217,11 +217,6 @@ let newnodes depth e =
       let do_match x = Node (make_notequal depth x e) in
       map_all istrue_forms do_match
   | _ -> []
-;;
-
-let get_1 = function
-  | [x] -> x
-  | _ -> assert false
 ;;
 
 let to_llargs tr_prop tr_term r =

@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.7 2004-10-15 11:55:03 doligez Exp $
+#  $Id: configure,v 1.8 2004-10-18 16:53:28 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
@@ -42,8 +42,8 @@ while : ; do
 done
 
 if $debug; then
-  bytdebugflags="-g -dtypes"
-  optdebugflags=-p
+  bytdebugflags="-g"
+  optdebugflags="-p -dtypes"
 else
   bytdebugflags=
   optdebugflags=

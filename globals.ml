@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.12 2004-10-15 20:54:46 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.13 2004-10-18 16:53:28 doligez Exp $";;
 
 open Printf;;
 
@@ -18,7 +18,7 @@ let progress_level = ref Progress_bar;;
 
 let progress_cur = ref (-1);;
 let progress_char = ref 0;;
-let progress_anim = "\\|/-";;
+let progress_anim = "/-\\|";;
 let progress_bar = '*';;
 
 let do_progress f =
@@ -26,21 +26,24 @@ let do_progress f =
   | Progress_none -> ()
   | Progress_bar ->
       let tm = Sys.time () in
-      let cur = int_of_float (50. *. tm /. !time_limit) in
+      let cur = int_of_float (60. *. tm /. !time_limit) in
       if !progress_cur = -1 then begin
-        eprintf " ";
+        eprintf "%s" (String.make 61 ' ');
+        eprintf "%s" (String.make 60 '\008');
         progress_cur := 0;
-      end else if cur <> !progress_cur then begin
+      end;
+      if cur <> !progress_cur then begin
         eprintf "\008";
         for i = !progress_cur to cur - 1 do
           eprintf "%c" progress_bar;
         done;
-        eprintf " ";
+        eprintf "%c" (progress_anim.[!progress_char]);
         progress_cur := cur;
+      end else begin
+        let c = (!progress_char + 1) mod (String.length progress_anim) in
+        eprintf "\008%c" (progress_anim.[c]);
+        progress_char := c;
       end;
-      let c = (!progress_char + 1) mod (String.length progress_anim) in
-      eprintf "\008%c" (progress_anim.[c]);
-      progress_char := c;
       flush stderr;
   | Progress_messages ->
       flush stdout;

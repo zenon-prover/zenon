@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.10 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.11 2004-10-18 16:53:28 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -387,7 +387,7 @@ let llproof_rule = function
       printf "---definition";
   | Rextension (name, args, c, hyps) ->
       printf "---extension (%s" name;
-      List.iter (fun x -> printf " "; llproof_term x) args;
+      List.iter (fun x -> printf " "; llproof_prop x) args;
       printf ")";
   | Rlemma (name, args) ->
       printf "---lemma %s [ " name;
