@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.7 2004-05-26 16:23:52 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.8 2004-05-28 20:55:21 doligez Exp $";;
 
 let debug_count = ref 0;;
 
@@ -8,6 +8,7 @@ let stats_flag = ref false;;
 let quiet_flag = ref false;;
 let size_limit = ref 100_000_000.;;
 let time_limit = ref 300.;;
+let short_flag = ref false;;
 
 type progress = Progress_none | Progress_bar | Progress_messages;;
 let progress_level = ref Progress_bar;;
