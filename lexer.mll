@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.7 2004-06-02 17:08:10 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.8 2004-06-30 14:12:54 doligez Exp $";;
 
 open Parser
 
@@ -14,7 +14,7 @@ let stringchar = [^ '\000'-'\031' '\"' '\127'-'\255']
 let upper = [ 'A' - 'Z' ]
 let lower = [ 'a' - 'z' ]
 let tpidchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' ]
-let coqidchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' ]
+let coqidchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' '`' ]
 
 rule token = parse
   | '#' [^ '\010' '\013'] * { token lexbuf }
