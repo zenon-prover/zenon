@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.8 2004-06-30 14:12:54 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.9 2004-07-12 16:09:26 prevosto Exp $";;
 
 open Parser
 
@@ -129,6 +129,10 @@ and coqtoken = parse
   | "."                     { DOT }
   | coqidchar +             { IDENT (Lexing.lexeme lexbuf) }
   | eof                     { EOF }
+  | "\"" stringchar + "\"" {
+      let s = Lexing.lexeme lexbuf in
+      STRING (String.sub s 1 (String.length s - 2))
+    }
   | _           { raise (Failure ("unknown char " ^ Lexing.lexeme lexbuf)) }
 
 and coqcomment = parse

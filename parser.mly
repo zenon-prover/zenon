@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.11 2004-06-04 09:25:40 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.12 2004-07-12 16:09:26 prevosto Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -258,15 +258,21 @@ coqexpr_list1:
   | coqexpr              { [$1] }
   | coqexpr coqexpr_list1 { $1 :: $2 }
 ;
+
+/* normal identifier or unparsed coq expression */
+id_or_coqexpr:
+  | IDENT  { $1 }
+  | STRING { $1 }
+
 coqhyp:
-  | IDENT COLON coqexpr  { Hyp ($1, $3, 1) }
+  | id_or_coqexpr COLON coqexpr  { Hyp ($1, $3, 1) }
 ;
 coqhyp_list:
   | /* empty */          { [] }
   | coqhyp coqhyp_list   { $1 :: $2 }
 ;
 coqdef:
-  | IDENT COLONEQUAL coqparam_expr
+  | id_or_coqexpr COLONEQUAL coqparam_expr
       { let (params, expr) = $3 in Def (DefReal ($1, params, expr)) }
 ;
 coqparam_expr:
