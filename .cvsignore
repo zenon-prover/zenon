@@ -1,6 +1,7 @@
 *.proof
 *.cm[iox]
 *.png
+*.vo
 parser.ml
 parser.mli
 lexer.ml
