@@ -1,8 +1,8 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.20 2004-10-18 16:53:28 doligez Exp $
+#  $Id: Makefile,v 1.21 2004-10-29 08:40:36 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
-CAMLFLAGS = ${CAMLP4} -warn-error A
+CAMLFLAGS = -warn-error A
 
 CAMLOPT = ocamlopt
 CAMLOPTFLAGS = ${CAMLFLAGS} ${OPTDEBUGFLAGS}
@@ -26,7 +26,7 @@ OBJOPT = ${MODULES:%=%.cmx}
 ADDBYT = unix.cma
 ADDOPT = unix.cmxa
 
-COQMODULES = zenon7 zenon_coqbool7 zenon8 zenon_coqbool8 zenon_equiv8
+COQMODULES = zenon8 zenon_coqbool8 zenon_equiv8
 COQSRC = ${COQMODULES:%=%.v}
 COQOBJ = ${COQMODULES:%=%.vo}
 
@@ -71,8 +71,14 @@ all: zenon zenon.opt zenon.byt ${COQSRC} ${COQOBJ}
 .ml.cmo:
 	${CAMLC} ${CAMLCFLAGS} -c $*.ml
 
+lltocoq.cmo: lltocoq.ml
+	${CAMLC} ${CAMLP4} ${CAMLCFLAGS} -c lltocoq.ml
+
 .ml.cmx:
 	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.ml
+
+lltocoq.cmx: lltocoq.ml
+	${CAMLOPT} ${CAMLP4} ${CAMLOPTFLAGS} -c lltocoq.ml
 
 .mli.cmi:
 	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.mli
@@ -86,21 +92,15 @@ parser.ml: parser.mly
 parser.mli: parser.ml
 	:
 
-zenon7.vo: zenon7.v
-	${COQC7} zenon7.v
-
-zenon_coqbool7.vo: zenon_coqbool7.v
-	${COQC7} zenon_coqbool7.v
-
 zenon8.vo: zenon8.v
-	${COQC8} zenon8.v
+	${COQC} zenon8.v
 
 zenon_coqbool8.vo: zenon_coqbool8.v
-	${COQC8} zenon_coqbool8.v
+	${COQC} zenon_coqbool8.v
 
 zenon_equiv8.vo: zenon_equiv8.v
 	: ### be patient, this will take a few minutes ###
-	${COQC8} zenon_equiv8.v
+	${COQC} zenon_equiv8.v
 
 .PHONY: clean
 clean:

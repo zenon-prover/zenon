@@ -1,7 +1,9 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.15 2004-10-28 13:51:38 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.16 2004-10-29 08:40:36 doligez Exp $";;
+
+open Printf;;
 
 open Expr;;
 open Phrase;;
@@ -26,7 +28,108 @@ let mkrimply e el = myfold (fun (a, b) -> eimply (b, a)) e el;;
 
 let hyp_counter = ref 0;;
 
+let rec mk_type_string e =
+  match e with
+  | Evar (s, _) -> s
+  | Emeta _ -> assert false
+  | Eapp (s, args, _) ->
+      List.fold_left (fun s a -> sprintf "%s %s" s (mk_type_string e)) s args
+  | _ -> assert false (* FIXME TODO *)
+;;
+
+let mk_apply (e, l) =
+  match e with
+  | Eapp (s, args, _) -> eapp (s, args @ l)
+  | Evar (s, _) -> eapp (s, l)
+  | _ -> raise Parse_error
+;;
+
 %}
+
+/* tokens for parsing coq syntax */
+
+%token BANG_
+%token PERCENT_
+%token AMPER_
+%token AMPER_AMPER_
+%token LPAREN_
+%token LPAREN_RPAREN_
+%token RPAREN_
+%token STAR_
+%token PLUS_
+%token PLUS_PLUS_
+%token COMMA_
+%token DASH_
+%token DASH_GT_
+%token PERIOD_
+%token PERIOD_LPAREN_
+%token PERIOD_PERIOD_
+%token SLASH_
+%token SLASH_BACKSL_
+%token COLON_
+%token COLON_COLON_
+%token COLON_LT_
+%token COLON_EQ_
+%token COLON_GT_
+%token SEMI_
+%token LT_
+%token LT_DASH_
+%token LT_DASH_GT_
+%token LT_COLON_
+%token LT_EQ_
+%token LT_GT_
+%token EQ_
+%token EQ_GT_
+%token EQ_UNDER_D_
+%token GT_
+%token GT_DASH_GT_
+%token GT_EQ_
+%token QUEST_
+%token QUEST_EQ_
+%token AROBAS_
+%token LBRACK_
+%token BACKSL_SLASH_
+%token RBRACK_
+%token HAT_
+%token LBRACE_
+%token BAR_
+%token BAR_DASH_
+%token BAR_BAR_
+%token RBRACE_
+%token TILDE_
+
+%token AS
+%token AT
+%token COFIX
+%token DEFINITION
+%token ELSE
+%token END
+%token EXISTS
+%token EXISTS2
+%token FIX
+%token FOR
+%token FORALL
+%token FUN
+%token IF
+%token UC_IF
+%token IN
+%token LET
+%token MATCH
+%token MOD
+%token PARAMETER
+%token PROP
+%token RETURN
+%token SET
+%token THEN
+%token TYPE
+%token USING
+%token WHERE
+%token WITH
+
+%token <string> BEGINPROOF
+%token ENDPROOF
+
+/* tokens for zenon syntax */
 
 %token OPEN
 %token CLOSE
@@ -39,6 +142,7 @@ let hyp_counter = ref 0;;
 %token AND
 %token OR
 %token IMPLY
+%token RIMPLY
 %token EQUIV
 %token TRUE
 %token FALSE
@@ -47,6 +151,8 @@ let hyp_counter = ref 0;;
 %token TAU
 %token EQUAL
 %token EOF
+
+/* tokens for TPTP syntax */
 
 %token INCLUDE
 %token DOT
@@ -60,43 +166,20 @@ let hyp_counter = ref 0;;
 %token NEGATIVE
 %token COMMA
 %token COLON
-%token RIMPLY
 %token XOR
 %token NOR
 %token NAND
 
-%token TOBE
-%token QED
-%token BY
-%token BYDEF
-%token COLONEQUAL
-%token ARROW
-%token FUNARROW
-%token DOUBLEARROW
-%token FORALL
-%token EXISTS
-%token LET
-%token IN
-%token FUN
-%token TILDE
-%token SLASHBACKSLASH
-%token BACKSLASHSLASH
-%token IF
-%token THEN
-%token ELSE
-%token LOCAL
-%token <string> BEGINPROOF
-%token ENDPROOF
+/* precedences for coq syntax */
 
-/* these precedences are mostly for coq syntax */
-%nonassoc ELSE
-%nonassoc forall
-%right ARROW
-%nonassoc DOUBLEARROW
-%right BACKSLASHSLASH
-%right SLASHBACKSLASH
-%nonassoc TILDE
-%nonassoc EQUAL
+%nonassoc LPAREN_ IDENT
+%nonassoc FORALL EXISTS COMMA_ IF THEN ELSE
+%right DASH_GT_ LT_DASH_GT_
+%right BACKSL_SLASH_
+%right SLASH_BACKSL_
+%nonassoc EQ_ LT_GT_
+%nonassoc TILDE_
+%left apply
 
 %start theory
 %type <Phrase.phrase list> theory
@@ -222,96 +305,85 @@ tpvar_list:
 /* Focal Syntax */
 
 coqfile:
-  | LOCAL IDENT COLON coqexpr COLONEQUAL
-    TOBE coqexpr coq_hyp_def_list QED EOF
-      { ($2, Hyp ("_Zgoal", enot $4, 0) :: $8) }
   | BEGINPROOF coqexpr coq_hyp_def_list ENDPROOF EOF
       { ($1, Hyp ("_Zgoal", enot $2, 0) :: $3) }
+  | coqexpr coq_hyp_def_list EOF
+      { ("theorem", Hyp ("_Zgoal", enot $1, 0) :: $2) }
 ;
 coqexpr:
-  | OPEN coqexpr CLOSE
-      { $2 }
-  | OPEN IDENT COLON IDENT CLOSE coqexpr %prec forall
+  | FORALL IDENT COLON_ coqtype COMMA_ coqexpr
       { eall (evar $2, $4, $6) }
-  | FORALL IDENT COLON IDENT COMMA coqexpr %prec forall
-      { eall (evar $2, $4, $6) }
-  | EXISTS IDENT COLON IDENT COMMA coqexpr %prec forall
+  | EXISTS IDENT COLON_ coqtype COMMA_ coqexpr
       { eex (evar $2, $4, $6) }
-  | coqapplication
-      { eapp $1 }
-  | TILDE coqexpr
-      { enot ($2) }
-  | OPEN AND coqexpr coqexpr CLOSE
-      { eand ($3, $4) }
-  | OPEN OR coqexpr coqexpr CLOSE
-      { eor ($3, $4) }
-  | IF coqexpr THEN coqexpr ELSE coqexpr
-      { eapp ("_if_then_else", [$2; $4; $6]) }
-  | OPEN coqexpr EQUAL coqexpr CLOSE
-      { eapp ("=", [$2; $4]) }
-  | IDENT
-      { evar ($1) }
-  | coqexpr ARROW coqexpr
+
+  | coqexpr DASH_GT_ coqexpr
       { eimply ($1, $3) }
-  | coqexpr DOUBLEARROW coqexpr
+
+  | coqexpr LT_DASH_GT_ coqexpr
       { eequiv ($1, $3) }
-  | coqexpr SLASHBACKSLASH coqexpr
-      { eand ($1, $3) }
-  | coqexpr BACKSLASHSLASH coqexpr
+
+  | coqexpr BACKSL_SLASH_ coqexpr
       { eor ($1, $3) }
 
-  /* FIXME TODO voir comment coder les let-in */
+  | coqexpr SLASH_BACKSL_ coqexpr
+      { eand ($1, $3) }
 
-  | LBRACKET IDENT COLONEQUAL coqexpr RBRACKET coqexpr %prec forall
-      { Expr.substitute [(evar $2, $4)] $6 }
-  | LET IDENT COLONEQUAL coqexpr IN coqexpr %prec forall
-      { Expr.substitute [(evar $2, $4)] $6 }
+  | coqexpr EQ_ coqexpr
+      { eapp ("=", [$1; $3]) }
+  | coqexpr LT_GT_ coqexpr
+      { enot (eapp ("=", [$1; $3])) }
+
+  | TILDE_ coqexpr
+      { enot ($2) }
+
+  | coqexpr1 coqexpr1_list  %prec apply
+      { mk_apply ($1, $2) }
+
+  | coqexpr1
+      { $1 }
 ;
-coqapplication:
-  | OPEN IDENT coqexpr_list1 CLOSE
-      { ($2, $3) }
-  | OPEN coqapplication coqexpr_list1 CLOSE
-      { let (sym, args1) = $2 in (sym, args1 @ $3) }
+
+coqexpr1:
+  | IDENT
+      { evar ($1) }
+  | LPAREN_ coqexpr RPAREN_
+      { $2 }
 ;
-coqexpr_list1:
-  | coqexpr              { [$1] }
-  | coqexpr coqexpr_list1 { $1 :: $2 }
+
+coqexpr1_list:
+  | coqexpr1                  { [$1] }
+  | coqexpr1 coqexpr1_list    { $1 :: $2 }
+;
+
+coqtype:
+  | coqexpr               { mk_type_string $1 }
 ;
 
 /* normal identifier or unparsed coq expression */
 id_or_coqexpr:
   | IDENT  { $1 }
   | STRING { $1 }
+;
 
-coqhyp:
-  | id_or_coqexpr COLON coqexpr  { Hyp ($1, $3, 1) }
-;
-coqhyp_list:
-  | /* empty */          { [] }
-  | coqhyp coqhyp_list   { $1 :: $2 }
-;
-coqdef:
-  | id_or_coqexpr COLONEQUAL coqparam_expr
-      { let (params, expr) = $3 in Def (DefReal ($1, params, expr)) }
-;
 coqparam_expr:
   | coqexpr
       { ([], $1) }
-  | LBRACKET IDENT COLON IDENT RBRACKET coqparam_expr
+  | LBRACK_ IDENT COLON_ IDENT RBRACK_ coqparam_expr
       { let (params, expr) = $6 in ((evar $2) :: params, expr) }
-  | FUN OPEN IDENT COLON IDENT CLOSE FUNARROW coqparam_expr
+  | FUN LPAREN_ IDENT COLON_ IDENT RPAREN_ EQ_GT_ coqparam_expr
       { let (params, expr) = $8 in ((evar $3) :: params, expr) }
 ;
-coqdef_list:
-  | /* empty */           { [] }
-  | coqdef coqdef_list    { $1 :: $2 }
+
+coq_hyp_def:
+  | PARAMETER id_or_coqexpr COLON_ coqexpr PERIOD_
+      { Hyp ($2, $4, 1) }
+  | DEFINITION id_or_coqexpr COLON_EQ_ coqparam_expr PERIOD_
+      { let (params, expr) = $4 in Def (DefReal ($2, params, expr)) }
 ;
+
 coq_hyp_def_list:
-  | BY coqhyp_list coq_hyp_def_list
-      { $2 @ $3 }
-  | BYDEF coqdef_list coq_hyp_def_list
-      { $2 @ $3 }
-  | /* empty */
-      { [] }
+  | coq_hyp_def coq_hyp_def_list   { $1 :: $2 }
+  | /* empty */                    { [] }
 ;
+
 %%

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.18 2004-10-28 13:51:38 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.19 2004-10-29 08:40:36 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -112,11 +112,8 @@ let rec argspec = [
      "<file>  output proof to <file>";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "     print the proof in Coq script format";
-  "-ocoqterm8", Arg.Unit (fun () -> proof_level := Proof_coqterm),
-            "print the proof in Coq term format (Coq v8)";
-  "-ocoqterm7", Arg.Unit (fun () -> proof_level := Proof_coqterm;
-                                    coq_version := V7),
-            "print the proof in Coq term format (Coq v7)";
+  "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
+            " print the proof in Coq term format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
       "<n>    print the proof in high-level format up to depth <n>";
   "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
@@ -166,6 +163,15 @@ if !proof_level = Proof_coqterm && !ctx_flag then begin
   exit 2;
 end;;
 
+let report_error lexbuf msg =
+  let p = Lexing.lexeme_start_p lexbuf in
+  Printf.eprintf "File \"%s\", line %d, character %d: %s\n"
+                 p.Lexing.pos_fname p.Lexing.pos_lnum
+                 (p.Lexing.pos_cnum - p.Lexing.pos_bol)
+                 msg;
+  exit 2;
+;;
+
 let parse_file f =
   try
     let (name, chan, close) =
@@ -202,12 +208,9 @@ let parse_file f =
             flush stderr;
           end;
           ("theorem", result)
-    with Parsing.Parse_error ->
-      let p = Lexing.lexeme_start_p lexbuf in
-      Printf.eprintf "File \"%s\", line %d, character %d: syntax error.\n"
-                     p.Lexing.pos_fname p.Lexing.pos_lnum
-                     (p.Lexing.pos_cnum - p.Lexing.pos_bol);
-      exit 2
+    with
+    | Parsing.Parse_error -> report_error lexbuf "syntax error."
+    | Lexer.Lex_error msg -> report_error lexbuf msg
   with Sys_error (msg) -> eprintf "%s\n" msg; exit 2
 ;;
 

@@ -1,12 +1,11 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.8 2004-10-18 16:53:28 doligez Exp $
+#  $Id: configure,v 1.9 2004-10-29 08:40:36 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
-coqc7='coqc -v7'
-coqc8=coqc
+coqc=coqc
 debug=false
 
 case `hostname` in
@@ -24,18 +23,11 @@ while : ; do
        libdir=$2
        shift 2
     ;;
-    -coq7 | --coq7)
-       coqc7=coqc
-       coqc8=dummy_coqc8
-       (echo '#!/bin/sh'; echo 'touch "$1"o') >dummy_coqc8
-       chmod a+x dummy_coqc8
-       shift
-    ;;
     -debug | --debug)
        debug=true
        shift
     ;;
-    *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>] [-coq7]' >&2
+    *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>]' >&2
        exit 2
     ;;
   esac
@@ -52,8 +44,7 @@ fi
 {
   echo BINDIR="$bindir"
   echo LIBDIR="$libdir"
-  echo COQC7="$coqc7"
-  echo COQC8="$coqc8"
+  echo COQC="$coqc"
   echo BYTDEBUGFLAGS="$bytdebugflags"
   echo OPTDEBUGFLAGS="$optdebugflags"
 } >.config_var

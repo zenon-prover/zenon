@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.15 2004-10-28 16:09:03 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.16 2004-10-29 08:40:36 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -14,7 +14,7 @@ Version.add "$Id: lltocoq.ml,v 1.15 2004-10-28 16:09:03 doligez Exp $";;
 open Expr
 open Llproof
 
-let debug = ref true
+let debug = ref false
 
 (********************)
 (* Stream utilities *)
@@ -408,7 +408,7 @@ let proof_rule ppvernac = function
     let hyp0 = gen_name t
     and hyp1 = gen_name (substitute [(x, evar z)] e) in
     if !debug then ppvernac [< strnl "(* ex *)" >];
-    ppvernac [< str "elim"; hyp0; thenc; str "clear"; hyp0; thenc;
+    ppvernac [< str "elim"; hyp0; thenc;
                 str "cintro "; str z; thenc; str "cintro"; hyp1; coqend >]
   | Rex _ -> assert false
   | Rlemma (n, args) ->

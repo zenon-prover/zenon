@@ -1,5 +1,7 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: lexer.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: lexer.mli,v 1.3 2004-10-29 08:40:36 doligez Exp $  *)
+
+exception Lex_error of string;;
 
 val token : Lexing.lexbuf -> Parser.token;;
 val tptoken : Lexing.lexbuf -> Parser.token;;
