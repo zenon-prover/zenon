@@ -1,5 +1,5 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.2 2004-06-04 09:24:11 doligez Exp $
+#  $Id: Makefile,v 1.3 2004-06-14 20:30:07 delahaye Exp $
 
 .PHONY: test
 test:
@@ -14,3 +14,15 @@ test:
 	  fi ; \
 	done; \
 	echo
+
+coq:
+	@nbok=0; nbtests=0; \
+	for i in `ls *.znn`; do \
+	  echo -n $$i' '; nbtests=`expr $$nbtests + 1`;\
+	  ret=`../zenon -ocoq -valid $$i 1> /dev/null; echo $$?`; \
+	  if test $$ret -eq 0 -o $$ret -eq 10; then \
+	    echo "$$i -- Success!"; nbok=`expr $$nbok + 1`;\
+	  else echo "$$i >> Fail!" ; fi ; \
+	done; \
+	per=`expr 100 \* $$nbok / $$nbtests`; \
+	echo "$$nbok tests passed over $$nbtests, i.e. $$per%"

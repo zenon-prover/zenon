@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.5 2004-06-11 19:43:49 delahaye Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.6 2004-06-14 20:30:07 delahaye Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -162,7 +162,7 @@ let declare_lemma ppvernac name params fvar concl =
   ppvernac [< str "Lemma "; str name; str " : "; make_params params;
               make_fvar fvar; make_prod concl; coqend >]
 
-let rec gen_name e = [< str " ZH"; ints (hash e) >]
+let rec gen_name e = [< str " ZH"; ints (Index.get_number e) >]
 
 let proof_init ppvernac nfv conc =
   let lnam = List.fold_left (fun s e -> [< s; gen_name e >]) [< >] conc in
@@ -191,17 +191,21 @@ let inst_name t = function
   | Eall (x, _, e, _) -> let ti = substitute [ x, t ] e in gen_name ti
   | _ -> assert false
 
+let debug = ref false
+
 let proof_rule ppvernac = function
   | Rconnect (And, e1, e2) ->
     let hyp0 = gen_name (eand (e1, e2))
     and hyp1 = gen_name e1
     and hyp2 = gen_name e2 in
+    if !debug then ppvernac [< strnl "(* connect(And) *)" >];
     ppvernac [< str "elim"; hyp0; thenc; str "cintro"; hyp1; thenc;
                 str "cintro"; hyp2; coqend >]
   | Rconnect (Or, e1, e2) ->
     let hyp0 = gen_name (eor (e1, e2))
     and hyp1 = gen_name e1
     and hyp2 = gen_name e2 in
+    if !debug then ppvernac [< strnl "(* connect(Or) *)" >];
     ppvernac [< str "elim"; hyp0; str ";[ cintro"; hyp1; str " | cintro"; hyp2;
                 coqp "]" >]
   | Rconnect (Imply, e1, e2) ->
@@ -209,10 +213,10 @@ let proof_rule ppvernac = function
     and hyp1 = gen_name e1
     and hyp2 = gen_name e2
     and hyp3 = gen_name (enot e1) in
+    if !debug then ppvernac [< strnl "(* connect(Imply) *)" >];
     ppvernac [< str "cut "; parth (constr_of_expr (enot e1)); str "; [ cintro";
                 hyp3; str " | red; cintro"; hyp1; thenc; str "generalize (";
-                hyp0; hyp1; str "); cintro"; hyp2; thenc; str "clear"; hyp1;
-                coqp " ]" >]
+                hyp0; hyp1; str "); cintro"; hyp2; coqp " ]" >]
   | Rconnect (Equiv, e1, e2) ->
     let hyp0 = gen_name (eequiv (e1, e2))
     and hyp1 = gen_name (eimply (e1, e2))
@@ -221,6 +225,7 @@ let proof_rule ppvernac = function
     and hyp4 = gen_name e2
     and hyp5 = gen_name (enot e1)
     and hyp6 = gen_name (enot e2) in
+    if !debug then ppvernac [< strnl "(* connect(Equiv) *)" >];
     ppvernac [< str "unfold iff at 1 in"; hyp0; thenc; str "elim"; hyp0; thenc;
                 str "cintro"; hyp1; thenc; str "cintro"; hyp2; thenc;
                 str "clear"; hyp0; thenc; str "cut ";
@@ -234,12 +239,22 @@ let proof_rule ppvernac = function
     let hyp0 = gen_name (enot (eand (e1, e2)))
     and hyp1 = gen_name (enot e1)
     and hyp2 = gen_name (enot e2) in
+    if !debug then ppvernac [< strnl "(* notconnect(And) *)" >];
     ppvernac [< str "apply"; hyp0; thenc; str "split; apply NNPP; [ cintro";
                 hyp1; str " | cintro"; hyp2; coqp " ]" >]
+  | Rnotconnect (Or, e1, e2) ->
+    let hyp0 = gen_name (enot (eor (e1, e2)))
+    and hyp1 = gen_name (enot e1)
+    and hyp2 = gen_name (enot e2) in
+    if !debug then ppvernac [< strnl "(* notconnect(Or) *)" >];
+    ppvernac [< str "apply"; hyp0; thenc; str "left; apply NNPP; red; cintro";
+                hyp1; thenc; str "apply"; hyp0; thenc;
+                str "right; apply NNPP; red; cintro"; hyp2; coqend >]
   | Rnotconnect (Imply, e1, e2) ->
     let hyp0 = gen_name (enot (eimply (e1, e2)))
     and hyp1 = gen_name e1
     and hyp2 = gen_name (enot e2) in
+    if !debug then ppvernac [< strnl "(* notconnect(Imply) *)" >];
     ppvernac [< str "apply"; hyp0; thenc; str "cintro"; hyp1; thenc;
                 str "apply NNPP; red; cintro"; hyp2; coqend >]
   | Rnotconnect (Equiv, e1, e2) ->
@@ -248,10 +263,11 @@ let proof_rule ppvernac = function
     and hyp2 = gen_name e2
     and hyp3 = gen_name (enot e1)
     and hyp4 = gen_name (enot e2) in
-    ppvernac [< str "apply"; hyp0; thenc; str "clear"; hyp0; thenc;
-                str "apply iff_sym; split; [ cintro"; hyp2; thenc;
-                str "apply NNPP; red; cintro"; hyp3; str " | cintro"; hyp1;
-                thenc; str "apply NNPP; red; cintro"; hyp4; coqp " ] " >]
+    if !debug then ppvernac [< strnl "(* notconnect(Equiv) *)" >];
+    ppvernac [< str "apply"; hyp0; thenc; str "apply iff_sym; split; [ cintro";
+                hyp2; thenc; str "apply NNPP; red; cintro"; hyp3;
+                str " | cintro"; hyp1; thenc; str "apply NNPP; red; cintro";
+                hyp4; coqp " ] " >]
   | Rnotnot (p as e) ->
     let hyp0 = gen_name (enot (enot e))
     and hyp1 = gen_name p in

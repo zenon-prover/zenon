@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.6 2004-06-07 19:56:58 delahaye Exp $";;
+Version.add "$Id: expr.ml,v 1.7 2004-06-14 20:30:07 delahaye Exp $";;
 
 open Misc;;
 
@@ -383,19 +383,6 @@ let rec has_meta = function
   | Etau (_, _, f, _) -> has_meta f
 ;;
 
-(*let rec fv_rec bvl fvl = function
-  | Evar (x, _) -> if List.mem x fvl || List.mem x bvl then fvl else x :: fvl
-  | Eapp (f, args, _) ->
-    let nfvl = if List.mem f fvl || List.mem f bvl then fvl else f :: fvl in
-    List.fold_left (fv_rec bvl) nfvl args
-  | Enot (e, _) -> fv_rec bvl fvl e
-  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
-  | Eequiv (e1, e2, _) -> let fvl1 = fv_rec bvl fvl e1 in fv_rec bvl fvl1 e2
-  | Eall (x, _, e, _) | Eex(x, _, e, _) -> fv_rec (x :: bvl) fvl e
-  | _ -> fvl
-
-let free_var = fv_rec [] []*)
-
 let rec fv_rec sort bvl fvl = function
   | Evar (x, _) ->
     if List.mem_assoc x fvl || List.mem x bvl then fvl
@@ -414,9 +401,12 @@ let rec fv_rec sort bvl fvl = function
 let free_var = fv_rec true [] []
 
 let rec type_list_rec l = function
-  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) when t <> "" -> 
-    if List.mem t l then type_list_rec l e
+  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
+    if t = "" || (List.mem t l) then type_list_rec l e
     else type_list_rec (t::l) e
+  | Enot (e, _) -> type_list_rec l e
+  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _) -> let l1 = type_list_rec l e1 in type_list_rec l1 e2
   | _ -> l
 
 let type_list = type_list_rec []
