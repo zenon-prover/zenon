@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.16 2004-10-15 11:55:03 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.17 2004-10-15 14:31:25 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -83,8 +83,8 @@ let rec argspec = [
   "-", Arg.Unit (fun () -> add_file "-"),
     "         read input from stdin";
   "-check", Arg.Set check,
-         "    check & pretty-print the Coq proof script \
-              (implies -ocoq and -context)";
+         "    check & pretty-print the Coq proof script\
+\n               (implies -ocoq and -context)";
   "-context", Arg.Set ctx_flag,
            "  provide context for checking the proof independently";
   "-d", Arg.Unit (fun () -> Globals.debug_count := 1;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.9 2004-10-15 11:55:03 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.10 2004-10-15 14:31:25 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -13,6 +13,8 @@ Version.add "$Id: lltocoq.ml,v 1.9 2004-10-15 11:55:03 doligez Exp $";;
 
 open Expr
 open Llproof
+
+let debug = ref false
 
 (********************)
 (* Stream utilities *)
@@ -84,7 +86,10 @@ let rec constr_of_expr = function
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]*)
+(*
   | _ -> failwith "Error: unexpected expr to translate!"
+*)
+  | _ -> [< str "***" >]
 
 (***********************)
 (* Require's & Tactics *)
@@ -183,7 +188,7 @@ let get_goals concl =
 
 let declare_lemma ppvernac name params fvar concl =
   ppvernac [< str "Lemma "; str name; str " : "; make_params params;
-              make_fvar fvar; make_prod concl; coqend >]
+              make_fvar fvar; make_prod (get_goals concl); coqend >]
 
 let declare_theorem ppvernac name params fvar concl =
   let prod_concl =
@@ -203,6 +208,19 @@ let rec gen_name e =
   try let name = Hashtbl.find mapping n in
       [< str " "; str name >]
   with Not_found -> [< str " ZH"; ints (Index.get_number e) >]
+;;
+
+let rec print_all_names ppvernac n =
+  try
+    let form = constr_of_expr (Index.get_formula n) in
+    begin try
+      let name = Hashtbl.find mapping n in
+      ppvernac [< str name; str " "; form; nwl >]
+    with Not_found ->
+      ppvernac [< str "ZH"; ints n; str " "; form; nwl >]
+    end;
+    print_all_names ppvernac (n+1);
+  with Not_found -> ()
 ;;
 
 let proof_init ppvernac nfv conc is_lemma =
@@ -226,7 +244,12 @@ let proof_end ppvernac =
   let post = if !Globals.quiet_flag then [< >]
              else [< strnl "(* END-PROOF *)">]
   in
-  ppvernac [< coqp "Qed"; post >]
+  ppvernac [< coqp "Qed"; post >];
+  if !debug then begin
+    ppvernac [< strnl "(*" >];
+    print_all_names ppvernac 0;
+    ppvernac [< strnl "*)" >];
+  end
 
 let inst_var = ref []
 let reset_var () = inst_var := []
@@ -260,8 +283,6 @@ let make_intros l =
   | [] -> [< str "do 0 intro" >]
   | _ -> [< str "intros "; list_of (fun e -> gen_name e) l " " >]
 ;;
-
-let debug = ref true
 
 let proof_rule ppvernac = function
   | Rconnect (And, e1, e2) ->
@@ -385,13 +406,16 @@ let proof_rule ppvernac = function
                 coqp " ]" >]
   | Raxiom (e) ->
     if !debug then ppvernac [< strnl "(* axiom *)" >];
-    ppvernac [< coqp "auto" >]
+    ppvernac [< str "exact ("; gen_name (enot e); str " "; gen_name e;
+                coqp ")" >]
   | Rextension (name, args, conc, hyps) ->
     if !debug then ppvernac [< str "(* extension "; str name; strnl " *)" >];
     ppvernac [< str "elim ("; str name; list_of constr_of_expr args " ";
                 str "); ["; list_of make_intros hyps "| "; coqp "auto ]" >]
-  | Rdefinition _ ->
-    if !debug then ppvernac [< strnl "(* definition *)" >]
+  | Rdefinition (c, h) ->
+    if !debug then ppvernac [< strnl "(* definition *)" >];
+    ppvernac [< str "generalize "; gen_name c; str "; intro "; gen_name h;
+                coqend >]
   | _ -> ppvernac [< coqp "auto" >]
 
 let rec proof_build ppvernac pft =
@@ -402,7 +426,7 @@ let rec proof_build ppvernac pft =
 
 let proof_script ppvernac n pft is_lemma =
   begin
-    proof_init ppvernac n pft.conc is_lemma;
+    proof_init ppvernac n (get_goals pft.conc) is_lemma;
     proof_build ppvernac pft;
     proof_end ppvernac
   end

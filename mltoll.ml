@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.11 2004-10-15 11:55:03 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.12 2004-10-15 14:31:25 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -9,9 +9,10 @@ open Printf;;
 module LL = Llproof;;
 
 let lemma_num = ref 0;;
+let lemma_prefix = ref "";;
 let lemma_list = ref [];;
 
-let lemma_name n = sprintf "lemma_%d" n;;
+let lemma_name n = sprintf "%s_lem%d" !lemma_prefix n;;
 
 let make_tau_name p = sprintf "_T_%d" (Index.get_number p);;
 let make_any_name p = sprintf "_Z_%d" (Index.get_number p);;
@@ -145,7 +146,7 @@ let get_lemma p =
 
 let make_lemma llprf extras mlprf =
   incr lemma_num;
-  let name = (lemma_name !lemma_num) in
+  let name = lemma_name !lemma_num in
   mlprf.mlrefc <- - !lemma_num;
   let l = {
     LL.name = name;
@@ -778,6 +779,7 @@ let discharge_extra ll e =
 
 let translate th_name phrases p =
   lemma_num := 0;
+  lemma_prefix := th_name;
   lemma_list := [];
   let (ll, extras) = to_llproof p in
   let ext = List.filter (charged_extra phrases) extras in
