@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.6 2004-06-14 20:30:07 delahaye Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.7 2004-06-16 19:51:30 delahaye Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -73,11 +73,17 @@ let rec constr_of_expr = function
   | Etrue -> [< str "True" >]
   | Efalse -> [< str "False" >]
   | Eall (x, t, e, _) ->
+    parth [< str "forall "; str x; str " : "; if t <> "" then [< str t >]
+             else [< str "Any" >]; str ","; constr_of_expr e >]
+  | Eex (x, t, e, _) ->
+    parth [< str "exists "; str x; str " : "; if t <> "" then [< str t >]
+             else [< str "Any" >]; str ","; constr_of_expr e >]
+(*  | Eall (x, t, e, _) ->
     parth [< str "forall "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
   | Eex (x, t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
-             else [< >]; str ","; constr_of_expr e >]
+             else [< >]; str ","; constr_of_expr e >]*)
   | _ -> failwith "Error: unexpected expr to translate!"
 
 (***********************)
@@ -108,9 +114,8 @@ let get_concl = function
   | _ -> failwith "Error: unexpected LL proof!"
 
 let rec list_types = function
-  | [ t ] -> [< str t >]
-  | e :: l -> [< str e; str ", "; list_types l >]
-  | _ -> assert false
+  | [ ] -> [< >]
+  | e :: l -> [< str e; str " "; list_types l >]
 
 let rec make_parameters = function
   | [] -> [< >]
@@ -123,39 +128,40 @@ let rec make_prod = function
 
 let declare_types ppvernac types =
   let lst = list_types types in
-  ppvernac [< str "Parameters "; lst; coqp " : Set" >]
+  ppvernac [< if (List.length types) = 1 then [< str "Parameter " >]
+              else [< str "Parameters " >]; lst; coqp ": Set" >]
 
 let normal f = List.fold_left (fun a e -> if f e a then a else a @ [e]) []
 
 let declare_lem chns lem =
   let concl = lem.proof.conc in
-  let types = normal (fun e l -> List.mem e l)
-                     (List.flatten (List.map type_list concl)) in
-  if types <> [] then declare_types chns types
+  let typ = List.flatten (List.map type_list concl)
+  and fvr = List.flatten (List.map free_var concl) in
+  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "Any" :: typ
+  else typ
 
-let declare chns = List.iter (declare_lem chns)
+let declare chns llp =
+  let types = normal (fun e l -> List.mem e l)
+              (List.fold_left (fun a e -> a @ (declare_lem chns e)) [] llp) in
+  if types <> [] then declare_types chns types
 
 (************************)
 (* Coq proof generation *)
 (************************)
 
-(****************************************************************************)
-(* Warning: we use Coq's type inference for free variables. This means that *)
-(*          the translation fails if we are too polymorphic.                *)
-(****************************************************************************)
-
 let rec make_params = function
   | [] -> [< >]
   | (x, typ) :: l -> [< str "forall "; str x; str " : "; if typ = "" then
-                        str "_" else str typ; str ", "; make_params l >]
+                        str "Any" else str typ; str ", "; make_params l >]
 
-let rec make_type sort arity =
-  if arity = 0 then if sort then [< str "Prop" >] else [< str "_" >]
-  else [< str "_ -> "; make_type sort (arity - 1) >]
+let rec make_type atom sort arity =
+  if arity = 0 then if sort then [< str "Prop" >]
+                    else if atom then [< str "Any" >] else [< str "_" >]
+  else [< str "_ -> "; make_type false sort (arity - 1) >]
 
 let rec make_fvar = function
   | [] -> [< >]
-  | (n, (s, a)) :: l -> [< str "forall "; str n; str " : "; make_type s a;
+  | (n, (s, a)) :: l -> [< str "forall "; str n; str " : "; make_type true s a;
                            str ", "; make_fvar l >]
 
 let declare_lemma ppvernac name params fvar concl =
@@ -174,7 +180,7 @@ let inst_var = ref []
 let reset_var () = inst_var := []
 
 let get_type = function
-  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> typ
+  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> if typ = "" then "Any" else typ
   | _ -> assert false
 
 let declare_inst ppvernac typ = function
@@ -228,9 +234,8 @@ let proof_rule ppvernac = function
     if !debug then ppvernac [< strnl "(* connect(Equiv) *)" >];
     ppvernac [< str "unfold iff at 1 in"; hyp0; thenc; str "elim"; hyp0; thenc;
                 str "cintro"; hyp1; thenc; str "cintro"; hyp2; thenc;
-                str "clear"; hyp0; thenc; str "cut ";
-                parth (constr_of_expr (enot e1)); str "; [ cintro"; hyp5;
-                thenc; str "cut "; constr_of_expr e2;
+                str "cut "; parth (constr_of_expr (enot e1)); str "; [ cintro";
+                hyp5; thenc; str "cut "; parth (constr_of_expr e2);
                 str "; [ auto | apply NNPP; red; cintro"; hyp6; thenc;
                 str "clear"; hyp1; hyp2; str " ] | red; cintro"; hyp3; thenc;
                 str "generalize ("; hyp1; hyp3; str "); cintro"; hyp4; thenc;
@@ -271,16 +276,19 @@ let proof_rule ppvernac = function
   | Rnotnot (p as e) ->
     let hyp0 = gen_name (enot (enot e))
     and hyp1 = gen_name p in
+    if !debug then ppvernac [< strnl "(* not(not) *)" >];
     ppvernac [< str "apply"; hyp0; thenc; str "clear"; hyp0; thenc;
                 str "intro"; hyp1; coqend >]
   | Rnotall (Eall (x, _, e, _) as t, z) ->
     let hyp0 = gen_name (enot t)
     and hyp1 = gen_name (enot (substitute [(x, evar z)] e)) in
+    if !debug then ppvernac [< strnl "(* not(all) *)" >];
     ppvernac [< str "apply"; hyp0; thenc; str "intro "; str z; thenc;
                 str "apply NNPP; red; intro"; hyp1; coqend >]
   | Rnotex (p, t) ->
     let hyp = gen_name (enot p) in
     begin
+      if !debug then ppvernac [< strnl "(* not(ex) *)" >];
       ppvernac [< str "apply"; hyp; coqend >];
       declare_inst ppvernac (get_type p) t;
       ppvernac [< str "exists "; constr_of_expr t; thenc;
@@ -289,6 +297,7 @@ let proof_rule ppvernac = function
   | Rall (p, t) ->
     let hyp = gen_name p in
     begin
+      if !debug then ppvernac [< strnl "(* all *)" >];
       declare_inst ppvernac (get_type p) t;
       ppvernac [< str "generalize ("; hyp; str " "; constr_of_expr t;
                   str "); cintro"; inst_name t p; coqend >]
@@ -296,9 +305,11 @@ let proof_rule ppvernac = function
   | Rex (Eex (x, _, e, _) as t, z) ->
     let hyp0 = gen_name t
     and hyp1 = gen_name (substitute [(x, evar z)] e) in
+    if !debug then ppvernac [< strnl "(* ex *)" >];
     ppvernac [< str "elim"; hyp0; thenc; str "clear"; hyp0; thenc;
                 str "cintro "; str z; thenc; str "cintro"; hyp1; coqend >]
   | Rlemma (n, args) ->
+    if !debug then ppvernac [< strnl "(* lemma *)" >];
     ppvernac [< str "intros; eapply "; if args = [] then str n else
                 [< List.fold_left (fun s e -> [< s; str " "; str e >])
                 [< str "("; str n >] args; str ")" >]; thenc; coqp "eauto" >]
@@ -313,7 +324,6 @@ let rec proof_build ppvernac pft =
 let proof_script ppvernac n pft =
   begin
     proof_init ppvernac n pft.conc;
-    reset_var ();
     proof_build ppvernac pft;
     proof_end ppvernac
   end
@@ -331,7 +341,11 @@ let proof_lem ppvernac lem =
     proof_script ppvernac (List.length fvccl) pft
   end
 
-let proof ppvernac = List.iter (proof_lem ppvernac)
+let proof ppvernac =
+  begin
+    reset_var ();
+    List.iter (proof_lem ppvernac)
+  end
 
 (**************************************)
 (* Prelude and exit of Coq's toplevel *)

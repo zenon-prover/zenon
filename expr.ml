@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.7 2004-06-14 20:30:07 delahaye Exp $";;
+Version.add "$Id: expr.ml,v 1.8 2004-06-16 19:51:30 delahaye Exp $";;
 
 open Misc;;
 
@@ -402,6 +402,18 @@ let free_var = fv_rec true [] []
 
 let rec type_list_rec l = function
   | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
+    let t = if t = "" then "Any" else t in
+    if (List.mem t l) then type_list_rec l e
+    else type_list_rec (t :: l) e
+  | Enot (e, _) -> type_list_rec l e
+  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _) -> let l1 = type_list_rec l e1 in type_list_rec l1 e2
+  | _ -> l
+
+let type_list = type_list_rec []
+
+(*let rec type_list_rec l = function
+  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
     if t = "" || (List.mem t l) then type_list_rec l e
     else type_list_rec (t::l) e
   | Enot (e, _) -> type_list_rec l e
@@ -409,4 +421,4 @@ let rec type_list_rec l = function
   | Eequiv (e1, e2, _) -> let l1 = type_list_rec l e1 in type_list_rec l1 e2
   | _ -> l
 
-let type_list = type_list_rec []
+let type_list = type_list_rec []*)
