@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v8,v 1.1 2004-05-27 17:21:24 doligez Exp $  *)
+(*  $Id: zenon.8v,v 1.1 2004-05-28 08:10:51 doligez Exp $  *)
 
 Require Import Classical.
 

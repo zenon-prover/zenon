@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.4 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.5 2004-05-28 08:10:51 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b, _if_then_else *)
@@ -215,38 +215,56 @@ let get_1 = function
   | _ -> assert false
 ;;
 
-let to_llproof tr_prop tr_term mlp args =
-  match mlp.mlrule with
-  | Ext (_, "and", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "or", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "xor", [e1; e2]) -> assert false (* FIXME TODO *)
+let to_llargs tr_prop tr_term r =
+  match r with
+  | Ext (_, "and", [e1; e2]) ->
+      let h = tr_prop (eand (istrue e1, istrue e2)) in
+      let c = tr_prop (istrue (eapp ("__g_and_b", [e1; e2]))) in
+      ("zenon_coqbool_and", [tr_term e1; tr_term e2], [c], [ [h] ])
+  | Ext (_, "or", [e1; e2]) ->
+      let h = tr_prop (eor (istrue e1, istrue e2)) in
+      let c = tr_prop (istrue (eapp ("__g_or_b", [e1; e2]))) in
+      ("zenon_coqbool_or", [tr_term e1; tr_term e2], [c], [ [h] ])
+  | Ext (_, "xor", [e1; e2]) ->
+      let h = tr_prop (enot (eequiv (istrue e1, istrue e2))) in
+      let c = tr_prop (istrue (eapp ("__g_xor_b", [e1; e2]))) in
+      ("zenon_coqbool_xor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "not", [e1]) ->
-      let te1 = tr_term e1 in
       let h = tr_prop (enot (istrue e1)) in
       let c = tr_prop (istrue (eapp ("__g_not_b", [e1]))) in
-      {
-        Llproof.conc = List.map tr_prop mlp.mlconc;
-        Llproof.rule = Llproof.Rextension
-                         ("zenon_coqbool_not", [te1], [c], [ [h] ]);
-        Llproof.hyps = Array.to_list args;
-      }
-  | Ext (_, "notand", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notor", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notxor", [e1; e2]) -> assert false (* FIXME TODO *)
-  | Ext (_, "notnot", [e1]) -> assert false (* FIXME TODO *)
-  | Ext (_, "false", []) -> assert false (* FIXME TODO *)
-  | Ext (_, "nottrue", []) -> assert false (* FIXME TODO *)
-(*
-  | Ext (_, "definition", [e1; e2]) ->
-      let c = tr_prop e1 in
-      let h = tr_prop e2 in
-      {
-        Llproof.conc = [c];
-        Llproof.rule = Llproof.Rdefinition (c, h);
-        Llproof.hyps = Array.to_list args;
-      }
-*)
+      ("zenon_coqbool_not", [tr_term e1], [c], [ [h] ])
+  | Ext (_, "notand", [e1; e2]) ->
+      let h = tr_prop (enot (eand (istrue e1, istrue e2))) in
+      let c = tr_prop (enot (istrue (eapp ("__g_and_b", [e1; e2])))) in
+      ("zenon_coqbool_notand", [tr_term e1; tr_term e2], [c], [ [h] ])
+  | Ext (_, "notor", [e1; e2]) ->
+      let h = tr_prop (enot (eor (istrue e1, istrue e2))) in
+      let c = tr_prop (enot (istrue (eapp ("__g_or_b", [e1; e2])))) in
+      ("zenon_coqbool_notor", [tr_term e1; tr_term e2], [c], [ [h] ])
+  | Ext (_, "notxor", [e1; e2]) ->
+      let h = tr_prop (eequiv (istrue e1, istrue e2)) in
+      let c = tr_prop (enot (istrue (eapp ("__g_xor_b", [e1; e2])))) in
+      ("zenon_coqbool_notxor", [tr_term e1; tr_term e2], [c], [ [h] ])
+  | Ext (_, "notnot", [e1]) ->
+      let h = tr_prop (istrue e1) in
+      let c = tr_prop (enot (istrue (eapp ("__g_not_b", [e1])))) in
+      ("zenon_coqbool_notnot", [tr_term e1], [c], [ [h] ])
+  | Ext (_, "false", []) ->
+      let c = tr_prop (istrue (evar "false")) in
+      ("zenon_coqbool_false", [], [c], []);
+  | Ext (_, "nottrue", []) ->
+      let c = tr_prop (enot (istrue (evar "true"))) in
+      ("zenon_coqbool_nottrue", [], [c], []);
   | _ -> assert false
+;;
+
+let to_llproof tr_prop tr_term mlp args =
+  let (name, meta, con, hyp) = to_llargs tr_prop tr_term mlp.mlrule in
+  {
+    Llproof.conc = List.map tr_prop mlp.mlconc;
+    Llproof.rule = Llproof.Rextension (name, meta, con, hyp);
+    Llproof.hyps = Array.to_list args;
+  }
 ;;
 
 Extension.register {

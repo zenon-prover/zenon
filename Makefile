@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.11 2004-05-27 17:21:24 doligez Exp $
+#  $Id: Makefile,v 1.12 2004-05-28 08:10:51 doligez Exp $
 
 CAMLP4 = -pp camlp4o
 CAMLFLAGS = -warn-error A ${CAMLP4}
@@ -67,7 +67,7 @@ zenon-logo-small.png: zenon-logo.png
 .PHONY: all
 all: zenon zenon.opt zenon.byt ${COQOBJ}
 
-.SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
+.SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo .7v .8v
 
 .ml.cmo:
 	${CAMLC} ${CAMLCFLAGS} -c $*.ml
@@ -87,8 +87,13 @@ parser.ml: parser.mly
 parser.mli: parser.ml
 	:
 
+## Changer les deux regles suivantes pour passer a Coq V8
+
 .v.vo:
 	coqc -v7 $*.v
+
+.7v.v:
+	cp $*.7v $*.v
 
 .PHONY: clean
 clean:
@@ -96,36 +101,6 @@ clean:
 	rm -f parser.ml parser.mli lexer.ml
 	rm -f Makefile.bak zenon zenon.opt zenon.byt
 	rm -f zenon-logo.png zenon-logo-small.png
-
-.PHONY: test
-test:
-	for i in test*.znn; do \
-	  echo -n $$i' '; \
-	  if ./zenon -w -q -iz -x coqbool $$i; then \
-	    : ; \
-	  else \
-	    echo '>>> TEST FAILED <<<' ; \
-	    exit 3 ; \
-	  fi ; \
-	done
-	for i in test*.coz; do \
-	  echo -n $$i' '; \
-	  if ./zenon -w -q -ifocal -x coqbool $$i; then \
-	    : ; \
-	  else \
-	    echo '>>> TEST FAILED <<<' ; \
-	    exit 3 ; \
-	  fi ; \
-	done
-	for i in test*.p; do \
-	  echo -n $$i' '; \
-	  if ./zenon -w -q -itptp -x coqbool $$i; then \
-	    : ; \
-	  else \
-	    echo '>>> TEST FAILED <<<' ; \
-	    exit 3 ; \
-	  fi ; \
-	done
 
 .PHONY: depend
 depend: ${IMPL} ${INTF}
