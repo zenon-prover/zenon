@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.14 2004-06-04 09:29:15 doligez Exp $
+#  $Id: Makefile,v 1.15 2004-06-21 19:24:25 doligez Exp $
 
 CAMLP4 = -pp camlp4o
 CAMLFLAGS = -warn-error A ${CAMLP4}
@@ -8,7 +8,7 @@ CAMLOPT = ocamlopt
 CAMLOPTFLAGS = ${CAMLFLAGS}
 
 CAMLC = ocamlc
-CAMLCFLAGS = ${CAMLFLAGS} -g
+CAMLCFLAGS = ${CAMLFLAGS} -g -dtypes
 
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
