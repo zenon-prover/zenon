@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.4 2004-05-25 11:44:48 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -89,7 +89,8 @@ let tr_rule partials r =
   | P_NotP (p, q) -> Llproof.Rpnotp (tr_prop p, tr_prop q)
   | NotEqual (e1, e2) -> Llproof.Rnotequal (tr_term e1, tr_term e2)
 
-  | Definition _ -> Llproof.Rdefinition
+  | Definition (_, folded, unfolded) ->
+      Llproof.Rdefinition (tr_prop folded, tr_prop unfolded)
 
   | ConjTree _
   | DisjTree _

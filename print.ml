@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.4 2004-05-24 13:47:55 delahaye Exp $";;
+Version.add "$Id: print.ml,v 1.5 2004-05-25 11:45:13 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -126,8 +126,8 @@ let get_rule_name = function
   | NotEquiv (e1, e2) -> "NotEquiv", [e1; e2]
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
   | Equal_NotEqual (e1, e2, e3, e4) -> "Eq-NotEq", [e1; e2; e3; e4]
-  | Definition (DefReal (s, _, _), e) -> "Definition("^s^")", [e]
-  | Definition (DefPseudo (_, s, _, _), e) -> "Definition-Pseudo("^s^")", [e]
+  | Definition (DefReal (s, _, _), e, _) -> "Definition("^s^")", [e]
+  | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
   | ConjTree e -> "ConjTree", [e]
   | DisjTree e -> "DisjTree", [e]
   | AllPartial (e1, e2) -> "All-Partial", [e1; e2]
@@ -197,7 +197,7 @@ let hlrule_name = function
       "Eq-NotEq", [eapp ("=", [e1; e2]); enot (eapp ("=", [e3; e4]))]
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
   | NotEqual (e1, e2) -> "NotEqual", [enot (eapp ("=", [e1; e2]))]
-  | Definition ((DefReal (s, _, _) | DefPseudo (_, s, _, _)), e) ->
+  | Definition ((DefReal (s, _, _) | DefPseudo (_, s, _, _)), e, _) ->
       "Definition("^s^")", [e]
   | ConjTree (e) -> "ConjTree", [e]
   | DisjTree (e) -> "DisjTree", [e]
@@ -354,7 +354,7 @@ let llproof_rule = function
       llproof_prop q;
       printf ")";
   | Rnotequal (t, u) ->
-      printf "---pnotp (";
+      printf "---notequal (";
       llproof_term t;
       printf ", ";
       llproof_term u;
@@ -373,7 +373,7 @@ let llproof_rule = function
       printf "---lemma %s [ " name;
       List.iter (fun x -> printf "%s " x) args;
       printf "]";
-  | Rdefinition ->
+  | Rdefinition (folded, unfolded) ->
       printf "---definition";
 ;;
 
@@ -401,5 +401,4 @@ let llproof_lemma {name=name; params=params; proof=tree} =
 
 let llproof p =
   List.iter llproof_lemma p;
-  printf "nodes in the proof: %d\n" !nodes;
 ;;
