@@ -1,0 +1,6 @@
+# TPTP syn051+1
+
+(E. ((X "nat") (=> p (F X))))
+(E. ((X "nat") (=> (F X) p)))
+
+$goal (E. ((X "nat") (<=> p (F X))))

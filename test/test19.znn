@@ -1,0 +1,3 @@
+# trivial (Pierre Weis)
+$goal (=> (/\ (/\ (=> A B) (=> B C)) (=> C A))
+          (/\ (/\ (<=> A B) (<=> B C)) (<=> A C)))

@@ -1,0 +1,22 @@
+# pas utilise
+
+# file: species_general_additive_law.foc
+# species: partially_ordered_additive_monoid
+# property: inf_idempotent / __lemma_1_1
+
+;       (* to be proved *)
+; (Is_true ((abst_equal x (abst_inf x (abst_plus x abst_zero ) ) ))
+; )
+; By
+;   abst_add_keeps_inf: (x: abst_T) (y: abst_T) (Is_true
+;   ((abst_order_inf  x (abst_plus  x y))) )
+; By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
+; (* Qed *).
+
+$goal (Is_true (abst_equal x (abst_inf x (abst_plus x abst_zero))))
+
+# abst_add_keeps_inf
+$1 (A. ((x) (A. ((y)
+     (Is_true (abst_order_inf x (abst_plus x y)))))))
+
+$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
