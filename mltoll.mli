@@ -1,4 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: mltoll.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: mltoll.mli,v 1.3 2004-06-01 11:56:29 doligez Exp $  *)
 
-val translate : Mlproof.proof -> Llproof.proof;;
+val translate : string -> Mlproof.proof -> Llproof.proof;;

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.11 2004-05-28 20:53:19 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.12 2004-06-01 11:56:29 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -77,7 +77,7 @@ let cvs_version () =
 let files = ref [];;
 let add_file s = files := s :: !files;;
 
-let umsg = "Usage: zenon [options]";;
+let umsg = "Usage: zenon [options] <file>";;
 
 let rec argspec = [
   "-", Arg.Unit (fun () -> add_file "-"),
@@ -166,11 +166,12 @@ let parse_file f =
         let pp = Filename.parent_dir_name in
         let cat = Filename.concat in
         let upup = Filename.concat (Filename.concat d pp) pp in
-        Tptp.translate (List.rev (upup :: d :: !include_path)) tpphrases
+        let incpath = List.rev (upup :: d :: !include_path) in
+        ("theorem", Tptp.translate incpath tpphrases)
     | I_focal ->
-        let result = Parser.coqfile Lexer.coqtoken lexbuf in
+        let (name, result) = Parser.coqfile Lexer.coqtoken lexbuf in
         close chan;
-        result
+        (name, result)
     | I_zenon ->
         Globals.goal_found := false;
         let result = Parser.theory Lexer.token lexbuf in
@@ -179,7 +180,7 @@ let parse_file f =
           eprintf "Warning: no goal given.\n";
           flush stderr;
         end;
-        result
+        ("theorem", result)
   with
   | Sys_error (msg) -> eprintf "%s\n" msg; exit 2
 ;;
@@ -191,7 +192,11 @@ Gc.set {(Gc.get ()) with
 ;;
 
 let main () =
-  let phrases = List.flatten (List.map parse_file !files) in
+  let file = match !files with
+             | [f] -> f
+             | _ -> Arg.usage argspec umsg; exit 2
+  in
+  let (th_name, phrases) = parse_file file in
   let retcode = ref 0 in
   begin try
     let (defs, hyps) = Phrase.separate phrases in
@@ -215,11 +220,12 @@ let main () =
       | Proof_none -> assert false;
       | Proof_h n -> Print.hlproof n proof;
       | Proof_m -> Print.mlproof proof;
-      | Proof_l -> Print.llproof (Mltoll.translate proof);
-      | Proof_coq -> retcode := Lltocoq.produce_proof !check !outf !valid
-                                                      (Mltoll.translate proof)
+      | Proof_l -> Print.llproof (Mltoll.translate th_name proof);
+      | Proof_coq ->
+          let llp = Mltoll.translate th_name proof in
+          retcode := Lltocoq.produce_proof !check !outf !valid llp;
       | Proof_coqterm ->
-          let p = Coqterm.trproof phrases (Mltoll.translate proof) in
+          let p = Coqterm.trproof phrases (Mltoll.translate th_name proof) in
           begin match !coq_version with
             | V7 -> Coqterm.V7.print !outf p;
             | V8 -> Coqterm.V8.print !outf p;

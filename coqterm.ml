@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.4 2004-05-28 20:56:26 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.5 2004-06-01 11:56:29 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -252,37 +252,23 @@ let rec find_name phrases s =
 
 let trproof phrases l =
   Hashtbl.clear lemma_env;
-  let (raw, _, formals) = trp l in
+  let (raw, th_name, formals) = trp l in
   let f = function
     | Cvar s -> find_name phrases s
     | _ -> assert false
   in
   let actuals = List.map f formals in
-  Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", Cwild, Capp (raw, actuals))])
+  let term = Capp (Cvar "NNPP", [Cwild;
+                                 Clam ("_Zgoal", Cwild, Capp (raw, actuals))])
+  in
+  (th_name, term)
 ;;
 
 (* ******************************************* *)
 
-let rec get_lams accu t =
-  match t with
-  | Clam (s, ty, t1) -> get_lams ((s, ty) :: accu) t1
-  | _ -> (List.rev accu, t)
-;;
-
-let print_gen pr outf t =
-  let (oc, close_oc) = match outf with
-    | None -> stdout, fun _ -> ()
-    | Some f -> open_out f, close_out
-  in
-  if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-  pr oc t;
-  if not !Globals.quiet_flag then fprintf oc "\n(* END-PROOF *)\n";
-  close_oc oc;
-;;
-
 let buf = Buffer.create 100;;
 let cur_col = ref 0;;
-let rec cut_buf oc =
+let flush_buf oc =
   let len = Buffer.length buf in
   let i = ref 0 in
   while !i < len do
@@ -309,13 +295,19 @@ let rec cut_buf oc =
   Buffer.clear buf;
 ;;
 
+let rec get_lams accu t =
+  match t with
+  | Clam (s, ty, t1) -> get_lams ((s, ty) :: accu) t1
+  | _ -> (List.rev accu, t)
+;;
+    
 module V8 = struct
 
   let pr_oc oc t =
     let rec pr b t =
       match t with
       | Cvar "" -> assert false
-      | Cvar s -> bprintf b "%s" s; cut_buf oc;
+      | Cvar s -> bprintf b "%s" s; flush_buf oc;
       | Cty "" -> bprintf b "_U";
       | Cty s -> bprintf b "%s" s;
       | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
@@ -325,6 +317,8 @@ module V8 = struct
       | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
       | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
       | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
+      | Capp (Cvar "and", [t1;t2]) -> bprintf b "(%a/\\%a)" pr t1 pr t2;
+      | Capp (Cvar "or", [t1;t2]) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
       | Capp (t1, []) -> pr b t1;
       | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
       | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
@@ -348,10 +342,21 @@ module V8 = struct
       List.iter f l;
     in
     pr buf t;
-    cut_buf oc;
+    flush_buf oc;
   ;;
 
-  let print outf t = print_gen pr_oc outf t;;
+  let print outf (name, t) =
+    let (oc, close_oc) = match outf with
+      | None -> stdout, fun _ -> ()
+      | Some f -> open_out f, close_out
+    in
+    if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
+    fprintf oc "Let %s :=\n" name;
+    pr_oc oc t;
+    fprintf oc ".\n";
+    if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
+    close_oc oc;
+  ;;
 
 end;;
 
@@ -363,7 +368,7 @@ module V7 = struct
     let rec pr b t =
       match t with
       | Cvar "" -> assert false
-      | Cvar s -> bprintf b "%s" s; cut_buf oc;
+      | Cvar s -> bprintf b "%s" s; flush_buf oc;
       | Cty "" -> bprintf b "_U";
       | Cty s -> bprintf b "%s" s;
       | Clam (s, Cwild, t2) -> bprintf b "([%s]%a)" s pr t2;
@@ -373,6 +378,8 @@ module V7 = struct
       | Clam (s, t1, t2) -> bprintf b "([%s:%a]%a)" s pr t1 pr t2;
       | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
       | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
+      | Capp (Cvar "and", [t1;t2]) -> bprintf b "(%a/\\%a)" pr t1 pr t2;
+      | Capp (Cvar "or", [t1;t2]) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
       | Capp (t1, []) -> pr b t1;
       | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
       | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
@@ -398,9 +405,20 @@ module V7 = struct
       List.iter f l;
     in
     pr buf t;
-    cut_buf oc;
+    flush_buf oc;
   ;;
 
-  let print outf t = print_gen pr_oc outf t;;
+  let print outf (name, t) =
+    let (oc, close_oc) = match outf with
+      | None -> stdout, fun _ -> ()
+      | Some f -> open_out f, close_out
+    in
+    if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
+    fprintf oc "Local %s :=\n" name;
+    pr_oc oc t;
+    fprintf oc ".\n";
+    if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
+    close_oc oc;
+  ;;
 
 end;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.6 2004-05-28 20:54:54 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.7 2004-06-01 11:56:29 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -404,12 +404,12 @@ and translate_derived partials p =
   | _ -> assert false
 ;;
 
-let translate p =
+let translate th_name p =
   lemma_num := 0;
   lemma_list := [];
   let ll = to_llproof [] p in
   let theo = {
-    Llproof.name = "theorem";
+    Llproof.name = th_name;
     Llproof.params = [];
     Llproof.proof = ll;
   } in
