@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.3 2004-06-07 19:56:58 delahaye Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.4 2004-06-08 20:00:10 delahaye Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -209,15 +209,15 @@ let proof_rule ppvernac = function
     and hyp4 = gen_name e2
     and hyp5 = gen_name (enot e1)
     and hyp6 = gen_name (enot e2) in
-    ppvernac [< str "unfold iff in"; hyp0; thenc; str "elim"; hyp0; thenc;
+    ppvernac [< str "unfold iff at 1 in"; hyp0; thenc; str "elim"; hyp0; thenc;
                 str "cintro"; hyp1; thenc; str "cintro"; hyp2; thenc;
-                str "clear"; hyp0; thenc; str "assert ("; hyp3; str " : ";
-                constr_of_expr e1; str "); [ apply NNPP; red; cintro"; hyp5;
-                thenc; str "assert ("; hyp6; str " : ~"; constr_of_expr e2;
-                str "); [ red; cintro"; hyp4; thenc; str "generalize ("; hyp2;
-                hyp4; str ")"; thenc; str "auto | clear"; hyp1; hyp2;
-                str " ] | generalize ("; hyp1; hyp3; str "); cintro"; hyp4;
-                thenc; str "clear"; hyp1; hyp2; coqp " ]" >]
+                str "clear"; hyp0; thenc; str "cut ";
+                parth (constr_of_expr (enot e1)); str "; [ cintro"; hyp5;
+                thenc; str "cut "; constr_of_expr e2;
+                str "; [ auto | apply NNPP; red; cintro"; hyp6; thenc;
+                str "clear"; hyp1; hyp2; str " ] | red; cintro"; hyp3; thenc;
+                str "generalize ("; hyp1; hyp3; str "); cintro"; hyp4; thenc;
+                str "clear"; hyp1; hyp2; coqp " ]" >]
   | Rnotconnect(Equiv, e1, e2) ->
     let hyp0 = gen_name (enot (eequiv (e1, e2)))
     and hyp1 = gen_name e1
@@ -225,10 +225,9 @@ let proof_rule ppvernac = function
     and hyp3 = gen_name (enot e1)
     and hyp4 = gen_name (enot e2) in
     ppvernac [< str "apply"; hyp0; thenc; str "clear"; hyp0; thenc;
-                str "split;[ try intro"; hyp1; thenc;
-                str "apply NNPP; red; try intro"; hyp4;
-                str " | try intro"; hyp2; thenc;
-                str "apply NNPP; red; try intro"; hyp3; coqp "]" >]
+                str "split;[ cintro"; hyp1; thenc;
+                str "apply NNPP; red; cintro"; hyp4; str " | cintro"; hyp2;
+                thenc; str "apply NNPP; red; cintro"; hyp3; coqp "]" >]
   | Rnotnot (p as e) ->
     let hyp0 = gen_name (enot (enot e))
     and hyp1 = gen_name p in
