@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.1 2004-04-01 11:37:44 doligez Exp $  *)
+(*  $Id: index.mli,v 1.2 2004-05-28 11:29:35 doligez Exp $  *)
 
 open Expr;;
 
@@ -46,3 +46,4 @@ val get_branches : expr list -> int;;
 (* ==== numbering for formulas ==== *)
 
 val get_number : expr -> int;;
+val get_formula : int -> expr (* raises Not_found *);;

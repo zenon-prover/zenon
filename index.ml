@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.4 2004-05-28 11:29:35 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -239,14 +239,34 @@ let get_branches l =
 
 (* ==== *)
 
-let numforms = (HE.create tblsize : int HE.t);;
-
 let cur_num = ref (-1);;
+let numforms = (HE.create tblsize : int HE.t);;
+let formnums = ref ([| |] : expr array);;
+let dummy = evar " *** Index.dummy *** ";;
+
+let ext_set tbl i x =
+  while i >= Array.length !tbl do
+    let len = Array.length !tbl in
+    let new_len = 2 * len + 1 in
+    let new_tbl = Array.make new_len dummy in
+    Array.blit !tbl 0 new_tbl 0 len;
+    tbl := new_tbl;
+  done;
+  !tbl.(i) <- x;
+;;
+
 let get_number e =
   begin try HE.find numforms e
   with Not_found ->
     incr cur_num;
     HE.add numforms e !cur_num;
+    ext_set formnums !cur_num e;
     !cur_num
   end
+;;
+
+let get_formula i =
+  if i < 0 || i >= Array.length !formnums then raise Not_found;
+  if !formnums.(i) == dummy then raise Not_found;
+  !formnums.(i)
 ;;
