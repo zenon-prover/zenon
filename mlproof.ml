@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.5 2004-09-28 13:12:58 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.6 2004-10-28 16:09:03 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -61,7 +61,7 @@ let rec size p =
 let make_node conc rule hyps subs =
   let remove_hyp hyp sub = diff sub.mlconc hyp in
   let extras = List.map2 remove_hyp hyps subs in
-  let extra = List.flatten extras in
+  let extra = List.fold_left union [] extras in
   {
     mlconc = union conc extra;
     mlrule = rule;

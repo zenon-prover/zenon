@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.14 2004-10-28 14:34:41 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.15 2004-10-28 16:09:03 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -14,7 +14,7 @@ Version.add "$Id: lltocoq.ml,v 1.14 2004-10-28 14:34:41 doligez Exp $";;
 open Expr
 open Llproof
 
-let debug = ref false
+let debug = ref true
 
 (********************)
 (* Stream utilities *)
@@ -88,7 +88,7 @@ let rec constr_of_expr = function
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]*)
-  | _ -> if !debug then [< str "***" >] else assert false
+  | _ -> if !debug then [< str "..." >] else assert false
 
 let parth_constr_of_expr e =
   match e with
