@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.3 2004-05-25 11:43:34 doligez Exp $  *)
 
 open Expr;;
 
@@ -28,8 +28,8 @@ type rule =
   | NotEqual of expr * expr     (* F(a0, ..., an)!=F(b0, ..., bn)
                                       / a0!=b0 | ... | an!=bn     *)
 
-  | Definition of definition * expr
-                                (* expr / unfolded                *)
+  | Definition of definition * expr * expr
+                                (* folded / unfolded              *)
 
   | ConjTree of expr            (* p1/\p2/\...  /  p1, p2, ...    *)
   | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ...  *)

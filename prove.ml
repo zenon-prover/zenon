@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.4 2004-05-19 13:24:44 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.5 2004-05-25 11:45:36 doligez Exp $";;
 
 open Printf;;
 
@@ -499,7 +499,7 @@ let add_nodes q (fm, prio) =
           let unfolded = substitute subst body in
           [ {
               nconc = [fm];
-              nrule = Definition (d, fm);
+              nrule = Definition (d, fm, unfolded);
               nprio = Prio.update prio sh_def weight_def 0;
               branches = [| [unfolded] |];
           } ]
@@ -514,7 +514,7 @@ let add_nodes q (fm, prio) =
           let unfolded = enot (substitute subst body) in
           [ {
               nconc = [fm];
-              nrule = Definition (d, fm);
+              nrule = Definition (d, fm, unfolded);
               nprio = Prio.update prio sh_def weight_def 0;
               branches = [| [unfolded] |];
           } ]
@@ -529,7 +529,7 @@ let add_nodes q (fm, prio) =
           let unfolded = eapp ("=", [substitute subst body; e]) in
           [ {
               nconc = [fm];
-              nrule = Definition (d, fm);
+              nrule = Definition (d, fm, unfolded);
               nprio = Prio.update prio sh_def weight_def 0;
               branches = [| [unfolded] |];
           } ]
@@ -544,7 +544,7 @@ let add_nodes q (fm, prio) =
           let unfolded = eapp ("=", [e; substitute subst body]) in
           [ {
               nconc = [fm];
-              nrule = Definition (d, fm);
+              nrule = Definition (d, fm, unfolded);
               nprio = Prio.update prio sh_def weight_def 0;
               branches = [| [unfolded] |];
           } ]
@@ -559,7 +559,7 @@ let add_nodes q (fm, prio) =
           let unfolded = enot (eapp ("=", [substitute subst body; e])) in
           [ {
               nconc = [fm];
-              nrule = Definition (d, fm);
+              nrule = Definition (d, fm, unfolded);
               nprio = Prio.update prio sh_def weight_def 0;
               branches = [| [unfolded] |];
           } ]
@@ -574,7 +574,7 @@ let add_nodes q (fm, prio) =
           let unfolded = enot (eapp ("=", [e; substitute subst body])) in
           [ {
               nconc = [fm];
-              nrule = Definition (d, fm);
+              nrule = Definition (d, fm, unfolded);
               nprio = Prio.update prio sh_def weight_def 0;
               branches = [| [unfolded] |];
           } ]
@@ -589,7 +589,7 @@ let add_nodes q (fm, prio) =
         if params <> [] then wrong_arity v
         else [ {
           nconc = [fm];
-          nrule = Definition (d, fm);
+          nrule = Definition (d, fm, unfolded);
           nprio = Prio.update prio sh_def weight_def 0;
           branches = [| [unfolded] |];
         } ]
@@ -599,7 +599,7 @@ let add_nodes q (fm, prio) =
         if params <> [] then wrong_arity v
         else [ {
           nconc = [fm];
-          nrule = Definition (d, fm);
+          nrule = Definition (d, fm, unfolded);
           nprio = Prio.update prio sh_def weight_def 0;
           branches = [| [unfolded] |];
         } ]
@@ -609,7 +609,7 @@ let add_nodes q (fm, prio) =
         if params <> [] then wrong_arity v
         else [ {
           nconc = [fm];
-          nrule = Definition (d, fm);
+          nrule = Definition (d, fm, unfolded);
           nprio = Prio.update prio sh_def weight_def 0;
           branches = [| [unfolded] |];
         } ]
@@ -619,7 +619,7 @@ let add_nodes q (fm, prio) =
         if params <> [] then wrong_arity v
         else [ {
           nconc = [fm];
-          nrule = Definition (d, fm);
+          nrule = Definition (d, fm, unfolded);
           nprio = Prio.update prio sh_def weight_def 0;
           branches = [| [unfolded] |];
         } ]
@@ -629,7 +629,7 @@ let add_nodes q (fm, prio) =
         if params <> [] then wrong_arity v
         else [ {
           nconc = [fm];
-          nrule = Definition (d, fm);
+          nrule = Definition (d, fm, unfolded);
           nprio = Prio.update prio sh_def weight_def 0;
           branches = [| [unfolded] |];
         } ]
@@ -639,7 +639,7 @@ let add_nodes q (fm, prio) =
         if params <> [] then wrong_arity v
         else [ {
           nconc = [fm];
-          nrule = Definition (d, fm);
+          nrule = Definition (d, fm, unfolded);
           nprio = Prio.update prio sh_def weight_def 0;
           branches = [| [unfolded] |];
         } ]
