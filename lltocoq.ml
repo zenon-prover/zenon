@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.18 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.19 2005-01-27 10:24:25 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -78,10 +78,10 @@ let rec constr_of_expr = function
   | Efalse -> [< str "False" >]
   | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; str " : "; if t <> "" then [< str t >]
-             else [< str "Any" >]; str ","; constr_of_expr e >]
+             else [< str "U" >]; str ","; constr_of_expr e >]
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; str " : "; if t <> "" then [< str t >]
-             else [< str "Any" >]; str ","; constr_of_expr e >]
+             else [< str "U" >]; str ","; constr_of_expr e >]
 (*
   | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; if t <> "" then [< str ":"; str t >]
@@ -145,7 +145,7 @@ let declare_lem chns lem =
   let concl = lem.proof.conc in
   let typ = List.flatten (List.map type_list concl)
   and fvr = List.flatten (List.map free_var concl) in
-  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "Any" :: typ
+  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "U" :: typ
   else typ
 
 let declare chns llp =
@@ -172,11 +172,11 @@ let rec make_mapping phrases =
 let rec make_params = function
   | [] -> [< >]
   | (x, typ) :: l -> [< str "forall "; str x; str " : "; if typ = "" then
-                        str "Any" else str typ; str ", "; make_params l >]
+                        str "U" else str typ; str ", "; make_params l >]
 
 let rec make_type atom sort arity =
   if arity = 0 then if sort then [< str "Prop" >]
-                    else if atom then [< str "Any" >] else [< str "_" >]
+                    else if atom then [< str "U" >] else [< str "_" >]
   else [< str "_ -> "; make_type false sort (arity - 1) >]
 
 let rec make_fvar = function
@@ -254,7 +254,7 @@ let inst_var = ref []
 let reset_var () = inst_var := []
 
 let get_type = function
-  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> if typ = "" then "Any" else typ
+  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> if typ = "" then "U" else typ
   | _ -> assert false
 
 let declare_inst ppvernac typ = function
@@ -299,7 +299,8 @@ let rec apply_equal_steps f l0 l1 =
   | [], [] -> [< str "auto" >]
   | h0 :: t0 , h1 :: t1 ->
       [< str "apply (zenon_equal_step _ _ ("; make_app f t0; str ") (";
-         make_app f t1; str ")); [ "; apply_equal_steps f t0 t1;
+         make_app f t1; str ") "; constr_of_expr h0; str " ";
+         constr_of_expr h1; str "); [ "; apply_equal_steps f t0 t1;
          str " | cintro"; gen_name (enot (eapp ("=", [h0; h1]))); str " ]" >]
   | _, _ -> assert false
 ;;
