@@ -1,9 +1,15 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.4 2004-05-24 13:47:55 delahaye Exp $";;
 
 open Expr;;
 open Mlproof;;
 open Printf;;
+
+(* Stdout or a file *)
+let outc = ref stdout
+let set_outc c = outc := c
+let get_outc () = !outc
+let printf s = fprintf !outc s
 
 let is_letter c = c >= 'A' && c <= 'Z'  ||  c >= 'a' && c <= 'z';;
 
@@ -316,13 +322,13 @@ let llproof_rule = function
   | Rnoteq (t) -> printf "---noteq "; llproof_term t;
   | Rnotnot (p) -> printf "---notnot "; llproof_prop p;
   | Rconnect (op, p, q) ->
-      printf "--- (%s, " (binop_name op);
+      printf "---connect (%s, " (binop_name op);
       llproof_prop p;
       printf ", ";
       llproof_prop q;
       printf ")";
   | Rnotconnect (op, p, q) ->
-      printf "--- ~(%s, " (binop_name op);
+      printf "---notconnect ~(%s, " (binop_name op);
       llproof_prop p;
       printf ", ";
       llproof_prop q;

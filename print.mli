@@ -1,5 +1,8 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: print.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: print.mli,v 1.3 2004-05-24 13:47:55 delahaye Exp $  *)
+
+val set_outc : out_channel -> unit
+val get_outc : unit -> out_channel
 
 val expr : Expr.expr -> unit;;
 val expr_soft : Expr.expr -> unit;;

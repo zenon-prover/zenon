@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.3 2004-05-24 13:47:55 delahaye Exp $";;
 
 open Misc;;
 
@@ -379,3 +379,24 @@ let rec has_meta = function
   | Eex (_, _, f, _) -> has_meta f
   | Etau (_, _, f, _) -> has_meta f
 ;;
+
+let rec fv_rec bvl fvl = function
+  | Evar (x, _) -> if List.mem x fvl || List.mem x bvl then fvl else x :: fvl
+  | Eapp (f, args, _) ->
+    let nfvl = if List.mem f fvl || List.mem f bvl then fvl else f :: fvl in
+    List.fold_left (fv_rec bvl) nfvl args
+  | Enot (e, _) -> fv_rec bvl fvl e
+  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _) -> let fvl1 = fv_rec bvl fvl e1 in fv_rec bvl fvl1 e2
+  | Eall (x, _, e, _) | Eex(x, _, e, _) -> fv_rec (x :: bvl) fvl e
+  | _ -> fvl
+
+let free_var = fv_rec [] []
+
+let rec type_list_rec l = function
+  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
+    if List.mem t l then type_list_rec l e
+    else type_list_rec (t::l) e
+  | _ -> l
+
+let type_list = type_list_rec []

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.3 2004-05-24 13:47:55 delahaye Exp $  *)
 
 (* the [int] argument to the constructors is the hash value *)
 
@@ -68,3 +68,6 @@ val size : expr -> int;;
 val substitute : (string * expr) list -> expr -> expr;;
 
 val has_meta : expr -> bool;;
+
+val free_var : expr -> string list
+val type_list : expr -> string list

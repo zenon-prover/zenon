@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.6 2004-05-19 13:24:44 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.7 2004-05-24 13:47:55 delahaye Exp $";;
 
 open Printf;;
 open Globals;;
@@ -19,6 +19,20 @@ type input_format =
   | I_tptp
 ;;
 let input_format = ref I_zenon;;
+
+(* Output file and validation *)
+let outf = ref None
+let valid = ref false
+
+let set_out () =
+  match !outf with
+  | Some f -> Print.set_outc (open_out f)
+  | _ -> ()
+
+let cls_out () =
+  match !outf with
+  | Some _ -> close_out (Print.get_outc ())
+  | _ -> ()
 
 let int_arg r arg =
   let l = String.length arg in
@@ -68,6 +82,8 @@ let argspec = [
   "-max-time", Arg.String (int_arg time_limit),
              "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
              ^ " (default 5m)";
+  "-o", Arg.String (fun f -> outf := (Some f)),
+       "<file>  output proof file";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
          "     print the proof in Coq format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
@@ -90,6 +106,8 @@ let argspec = [
       "        print statistics";
   "-v", Arg.Unit short_version,
       "        print version string and exit";
+  "-valid", Arg.Set valid,
+      "    verify the Coq proof (\"-ocoq\" must be set)";
   "-versions", Arg.Unit cvs_version,
              " print CVS version strings and exit";
   "-w", Arg.Clear warnings_flag,
@@ -103,8 +121,12 @@ let add_file s = files := s :: !files;;
 
 let umsg = "Usage: zenon [options]";;
 
-Arg.parse argspec add_file umsg;;
-
+let _ =
+  begin
+    Arg.parse argspec add_file umsg;
+    if !valid & not(!proof_level = Proof_coq) then
+      (Arg.usage argspec umsg; exit 0)
+  end
 
 let parse_string s =
   let lexbuf = Lexing.from_string s in
@@ -164,15 +186,16 @@ let main () =
       flush stdout;
     end;
     if !proof_level <> Proof_none then begin
-      printf "(* BEGIN-PROOF *)\n";
+      set_out ();
       begin match !proof_level with
       | Proof_none -> assert false;
       | Proof_h n -> Print.hlproof n proof;
       | Proof_m -> Print.mlproof proof;
       | Proof_l -> Print.llproof (Mltoll.translate proof);
-      | Proof_coq -> assert false; (* FIXME TODO *)
+      | Proof_coq ->
+        retcode := Lltocoq.produce_proof !outf !valid (Mltoll.translate proof)
       end;
-      printf "(* END-PROOF *)\n";
+      cls_out ()
     end;
   with Prove.NoProof ->
     retcode := 10;
