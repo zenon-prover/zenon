@@ -1,22 +1,17 @@
 (*  Copyright 2003 INRIA  *)
-(* $Id: llproof.mli,v 1.1 2004-04-01 11:37:44 doligez Exp $ *)
+(* $Id: llproof.mli,v 1.2 2004-04-08 22:51:45 doligez Exp $ *)
 
-type term =
-  | Var of string
-  | Fapply of string * term list
-;;
+open Expr;;
 
-type prop =
-  | False
-  | True
-  | Neg of prop
-  | Connect of binop * prop * prop
-  | Forall of string * string * prop (* var, type, body *)
-  | Exists of string * string * prop (* var, type, body *)
-  | Equal of term * term
-  | Papply of string * term list
+(* On utilise le type Expr.expr avec les restrictions suivantes:
 
-and binop =
+  1. Emeta et Etau ne sont pas utilises.
+  2. La distinction entre terme et proposition est respectee.
+  3. Le predicat "=" a toujours deux arguments.
+*)
+
+
+type binop =
   | And
   | Or
   | Imply
@@ -56,26 +51,26 @@ type rule =
        --------- Rnottrue
        Neg(True)
      *)
-  | Raxiom of prop
+  | Raxiom of expr
     (*
        --------- Raxiom p
        p, Neg(p)
      *)
 
-  | Rnoteq of term
+  | Rnoteq of expr
     (*
        --------------- Rnoteq t
        Neg(Equal(t,t))
      *)
 
-  | Rnotnot of prop
+  | Rnotnot of expr
     (*
             p
        ----------- Rnotnot p
        Neg(Neg(p))
      *)
 
-  | Rconnect of binop * prop * prop
+  | Rconnect of binop * expr * expr
     (*
               p,q
        ---------------- Rconnect (And, p, q)
@@ -94,7 +89,7 @@ type rule =
          Connect(Equiv,p,q)
      *)
 
-  | Rnotconnect of binop * prop * prop
+  | Rnotconnect of binop * expr * expr
     (*
        Neg(p)         Neg(q)
        --------------------- Rnotconnect (And, p, q)
@@ -113,7 +108,7 @@ type rule =
        Neg(Connect(Equiv,p,q))
      *)
 
-  | Rex of prop * string
+  | Rex of expr * string
     (*
              P{z}
        -------------------- Rex (Exists (x, ty, P{x}), z)
@@ -122,21 +117,21 @@ type rule =
        (z n'a pas d'autre occurrence dans l'hypothese)
      *)
 
-  | Rall of prop * term
+  | Rall of expr * expr    (* prop, term *)
     (*
            P{t}
        ----------------- Rall (All (x, ty, P{x}), t)
        All (x, ty, P{x})
      *)
 
-  | Rnotex of prop * term
+  | Rnotex of expr * expr  (* prop, term *)
     (*
               Neg(P{t})
        -------------------------- Rnotex (Exists (x, ty, P{x}), t)
        Neg (Exists (x, ty, P{x}))
      *)
 
-  | Rnotall of prop * string
+  | Rnotall of expr * string
     (*
              Neg(P{z})
        ----------------------- Rnotall (All (x, ty, P{x}), z)
@@ -145,7 +140,7 @@ type rule =
        (z n'a pas d'autre occurrence dans l'hypothese)
      *)
 
-  | Rpnotp of prop * prop
+  | Rpnotp of expr * expr
     (* 
        Neg(Equal(t1,u1))   ...     Neg(Equal(tn,un))
        --------------------------------------------- RR
@@ -154,7 +149,7 @@ type rule =
        RR = Rpnotp (Papply (P, [t1...tn]), Papply (P, [u1...un]))
      *)
 
-  | Rnotequal of term * term
+  | Rnotequal of expr * expr
     (*
              Neg(Equal(t1,u1))  ...  Neg(Equal(tn,un))
        ---------------------------------------------------- RR
@@ -163,7 +158,7 @@ type rule =
        RR = Rnotequal (Fapply(F,[t1...tn]), Fapply(F,[u1...un]))
      *)
 
-  | Requalnotequal of term * term * term * term
+  | Requalnotequal of expr * expr * expr * expr
     (*
        Neg(Equal(t1,t3)),Neg(Equal(t2,t3))
                                       Neg(Equal(t2,t4)),Neg(Equal(t1,t4))
@@ -192,7 +187,7 @@ type rule =
 ;;
 
 type prooftree = {
-  conc : prop list;
+  conc : expr list;
   rule : rule;
   hyps : prooftree list;
 };;

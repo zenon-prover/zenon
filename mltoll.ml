@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: mltoll.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: mltoll.ml,v 1.2 2004-04-08 22:51:45 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -13,36 +13,29 @@ let lemma_name n = sprintf "lemma_%d" n;;
 let make_tau_name p = sprintf "_T_%d" (Index.get_number p);;
 let make_any_name p = sprintf "_Z_%d" (Index.get_number p);;
 
-(* FIXME TODO
-   il faut utiliser les memes expr que dans mlproof sinon on departage
-   en traduisant
-*)
-
 let rec tr_term t =
   match t with
-  | Evar (v, _) -> Llproof.Var v
-  | Emeta (e, _) -> Llproof.Var (make_any_name e)
-  | Eapp (s, es, _) -> Llproof.Fapply (s, List.map tr_term es)
-  | Etau _ -> Llproof.Var (make_tau_name t)
+  | Evar (v, _) -> t
+  | Emeta (e, _) -> evar (make_any_name e)
+  | Eapp (s, es, _) -> t
+  | Etau _ -> evar (make_tau_name t)
   | _ -> assert false
 ;;
 
 let rec tr_prop = function
-  | Evar (v, _) -> Llproof.Papply (v, [])
+  | Evar (v, _) -> eapp (v, [])
   | Emeta _ -> assert false
-  | Eapp ("=", [e1; e2], _) -> Llproof.Equal (tr_term e1, tr_term e2)
-  | Eapp ("=", _, _) -> assert false
-  | Eapp (s, args, _) -> Llproof.Papply (s, List.map tr_term args)
+  | Eapp (s, args, _) -> eapp (s, List.map tr_term args)
 
-  | Enot (p, _) -> Llproof.Neg (tr_prop p)
-  | Eand (p, q, _) -> Llproof.Connect (Llproof.And, tr_prop p, tr_prop q)
-  | Eor (p, q, _) -> Llproof.Connect (Llproof.Or, tr_prop p, tr_prop q)
-  | Eimply (p, q, _) -> Llproof.Connect (Llproof.Imply, tr_prop p, tr_prop q)
-  | Eequiv (p, q, _) -> Llproof.Connect (Llproof.Equiv, tr_prop p, tr_prop q)
-  | Etrue -> Llproof.True
-  | Efalse -> Llproof.False
-  | Eall (v, t, e, _) -> Llproof.Forall (v, t, tr_prop e)
-  | Eex (v, t, e, _) -> Llproof.Exists (v, t, tr_prop e)
+  | Enot (p, _) -> enot (tr_prop p)
+  | Eand (p, q, _) -> eand (tr_prop p, tr_prop q)
+  | Eor (p, q, _) -> eor (tr_prop p, tr_prop q)
+  | Eimply (p, q, _) -> eimply (tr_prop p, tr_prop q)
+  | Eequiv (p, q, _) -> eequiv (tr_prop p, tr_prop q)
+  | Etrue -> etrue
+  | Efalse -> efalse
+  | Eall (v, t, e, _) -> eall (v, t, tr_prop e)
+  | Eex (v, t, e, _) -> eex (v, t, tr_prop e)
 
   | Etau _ -> assert false
 ;;
@@ -211,8 +204,8 @@ and recomp_conj_n sub f =
       let n1 = recomp_conj_n sub a in
       let n2 = recomp_conj_n n1 b in
       {
-        LL.conc = LL.Neg (tr_prop f) :: remove (LL.Neg la)
-                                               (remove (LL.Neg lb) n2.LL.conc);
+        LL.conc = enot (tr_prop f) :: remove (enot la)
+                                             (remove (enot lb) n2.LL.conc);
         LL.rule = LL.Rnotconnect (LL.Or, la, lb);
         LL.hyps = [n2];
       }
@@ -221,7 +214,7 @@ and recomp_conj_n sub f =
       let n1 = recomp_conj sub a in
       let n2 = recomp_conj_n n1 b in
       {
-        LL.conc = LL.Neg (tr_prop f) :: remove la (remove (LL.Neg lb)
+        LL.conc = enot (tr_prop f) :: remove la (remove (enot lb)
                                                           n2.LL.conc);
         LL.rule = LL.Rnotconnect (LL.Imply, la, lb);
         LL.hyps = [n2];
@@ -230,7 +223,7 @@ and recomp_conj_n sub f =
       let la = tr_prop a in
       let n1 = recomp_conj sub a in
       {
-        LL.conc = LL.Neg (tr_prop f) :: remove la n1.LL.conc;
+        LL.conc = enot (tr_prop f) :: remove la n1.LL.conc;
         LL.rule = LL.Rnotnot (la);
         LL.hyps = [n1];
       }
@@ -254,7 +247,7 @@ let rec recomp_disj sub f =
   | Eimply (a, b, _) ->
       let la = tr_prop a and lb = tr_prop b in
       let (n1, sub1) = recomp_disj_n sub a in
-      let c1 = remove (LL.Neg la) n1.LL.conc in
+      let c1 = remove (enot la) n1.LL.conc in
       let (n2, sub2) = recomp_disj sub1 b in
       let c2 = remove lb n2.LL.conc in
       let nn = {
@@ -275,11 +268,11 @@ and recomp_disj_n sub f =
   | Eand (a, b, _) ->
       let la = tr_prop a and lb = tr_prop b in
       let (n1, sub1) = recomp_disj_n sub a in
-      let c1 = remove (LL.Neg la) n1.LL.conc in
+      let c1 = remove (enot la) n1.LL.conc in
       let (n2, sub2) = recomp_disj_n sub b in
-      let c2 = remove (LL.Neg lb) n2.LL.conc in
+      let c2 = remove (enot lb) n2.LL.conc in
       let nn = {
-          LL.conc = LL.Neg (tr_prop f) :: (union c1 c2);
+          LL.conc = enot (tr_prop f) :: (union c1 c2);
           LL.rule = LL.Rnotconnect (LL.And, la, lb);
           LL.hyps = [n1; n2];
         }
@@ -289,7 +282,7 @@ and recomp_disj_n sub f =
       let (n1, sub1) = recomp_disj sub a in
       let c1 = remove la n1.LL.conc in
       let nn = {
-          LL.conc = LL.Neg (tr_prop f) :: c1;
+          LL.conc = enot (tr_prop f) :: c1;
           LL.rule = LL.Rnotnot (la);
           LL.hyps = [n1];
         }
@@ -386,19 +379,19 @@ and translate_derived partials p =
   | CloseEq (e1, e2) ->
       let f1 = tr_term e1 and f2 = tr_term e2 in
       let n1 = {
-          LL.conc = [LL.Neg (LL.Equal (f2, f2))];
+          LL.conc = [enot (eapp ("=", [f2; f2]))];
           LL.rule = LL.Rnoteq (f2);
           LL.hyps = [];
         }
       in
       let n2 = {
-          LL.conc = [LL.Neg (LL.Equal (f1, f1))];
+          LL.conc = [enot (eapp ("=", [f1; f1]))];
           LL.rule = LL.Rnoteq (f1);
           LL.hyps = [];
         }
       in
       {
-        LL.conc = [LL.Equal (f1, f2); LL.Neg (LL.Equal (f2, f1))];
+        LL.conc = [eapp ("=", [f1; f2]); enot (eapp ("=", [f2; f1]))];
         LL.rule = LL.Requalnotequal (f1, f2, f2, f1);
         LL.hyps = [n1; n2];
       }

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: print.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: print.ml,v 1.2 2004-04-08 22:51:45 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -262,18 +262,12 @@ open Llproof;;
 
 let indent i = for j = 0 to i do printf "  "; done;;
 
-let llproof_binop = function
-  | And -> printf " /\\ ";
-  | Or -> printf " \\/ ";
-  | Imply -> printf " => ";
-  | Equiv -> printf " <=> ";
-;;
-
 let rec llproof_term = function
-  | Var v -> printf "%s" v;
-  | Fapply (s, [e1; e2]) when s <> "" && not (is_letter s.[0]) ->
+  | Evar (v, _) -> printf "%s" v;
+  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) ->
       printf "("; llproof_term e1; printf " %s " s; llproof_term e2; printf ")";
-  | Fapply (s, args) -> printf "%s(" s; llproof_term_list args; printf ")";
+  | Eapp (s, args, _) -> printf "%s(" s; llproof_term_list args; printf ")";
+  | _ -> assert false
 
 and llproof_term_list = function
   | [] -> ()
@@ -282,19 +276,30 @@ and llproof_term_list = function
 ;;
 
 let rec llproof_prop = function
-  | False -> printf "false";
-  | True -> printf "true";
-  | Neg p -> printf "~"; llproof_prop p;
-  | Connect (c, p1, p2) ->
-      printf "("; llproof_prop p1; llproof_binop c; llproof_prop p2; printf ")";
-  | Forall (v, "", p) -> printf "All %s, " v; llproof_prop p;
-  | Exists (v, "", p) -> printf "Ex %s, " v; llproof_prop p;
-  | Forall (v, t, p) -> printf "All %s:%s, " v t; llproof_prop p;
-  | Exists (v, t, p) -> printf "Ex %s:%s, " v t; llproof_prop p;
-  | Equal (t1, t2) ->
+  | Efalse -> printf "false";
+  | Etrue -> printf "true";
+  | Enot (p, _) -> printf "~"; llproof_prop p;
+  | Eand (p1, p2, _) ->
+      printf "("; llproof_prop p1; printf " /\\ "; llproof_prop p2; printf ")";
+  | Eor (p1, p2, _) ->
+      printf "("; llproof_prop p1; printf " \\/ "; llproof_prop p2; printf ")";
+  | Eimply (p1, p2, _) ->
+      printf "("; llproof_prop p1; printf " => "; llproof_prop p2; printf ")";
+  | Eequiv (p1, p2, _) ->
+      printf "("; llproof_prop p1; printf " <=> "; llproof_prop p2; printf ")";
+  | Eall (v, "", p, _) -> printf "All %s, " v; llproof_prop p;
+  | Eex (v, "", p, _) -> printf "Ex %s, " v; llproof_prop p;
+  | Eall (v, t, p, _) -> printf "All %s:%s, " v t; llproof_prop p;
+  | Eex (v, t, p, _) -> printf "Ex %s:%s, " v t; llproof_prop p;
+  | Eapp ("=", [t1; t2], _) ->
       printf "("; llproof_term t1; printf " = "; llproof_term t2; printf ")";
-  | Papply (s, []) -> printf "%s" s;
-  | Papply (s, args) -> printf "%s(" s; llproof_term_list args; printf ")";
+  | Eapp (s, [], _) -> printf "%s" s;
+  | Eapp (s, args, _) -> printf "%s(" s; llproof_term_list args; printf ")";
+
+  | Evar _
+  | Emeta _
+  | Etau _
+    -> assert false;
 ;;
 
 let binop_name = function
