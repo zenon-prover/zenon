@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.18 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.19 2005-01-26 14:49:00 doligez Exp $";;
 
 open Printf;;
 
@@ -60,6 +60,10 @@ let mk_coq_all bindings body =
 let mk_coq_ex bindings body =
   let f (var, ty) e = eex (evar var, ty, e) in
   List.fold_right f bindings body
+;;
+
+let mk_coq_let id expr body =
+  substitute [(evar id, expr)] body
 ;;
 
 %}
@@ -336,6 +340,9 @@ coqexpr:
   | EXISTS coqbindings COMMA_ coqexpr
       { mk_coq_ex $2 $4 }
 
+  | LET IDENT COLON_EQ_ coqexpr IN coqexpr
+      { mk_coq_let $2 $4 $6 }
+
   | coqexpr DASH_GT_ coqexpr
       { eimply ($1, $3) }
 
@@ -411,9 +418,7 @@ id_or_coqexpr:
 coqparam_expr:
   | coqexpr
       { ([], $1) }
-  | LBRACK_ IDENT COLON_ IDENT RBRACK_ coqparam_expr
-      { let (params, expr) = $6 in ((evar $2) :: params, expr) }
-  | FUN LPAREN_ IDENT COLON_ IDENT RPAREN_ EQ_GT_ coqparam_expr
+  | FUN LPAREN_ IDENT COLON_ coqtype RPAREN_ EQ_GT_ coqparam_expr
       { let (params, expr) = $8 in ((evar $3) :: params, expr) }
 ;
 
