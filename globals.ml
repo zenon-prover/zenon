@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Misc.version "$Id: globals.ml,v 1.3 2004-04-28 16:30:09 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.4 2004-04-29 13:04:52 doligez Exp $";;
 
 let step_count = ref 0;;
 let warnings_flag = ref true;;

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(* $Id: expr.mli,v 1.1 2004-04-01 11:37:44 doligez Exp $ *)
+(*  $Id: expr.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
 
 (* the [int] argument to the constructors is the hash value *)
 
@@ -23,7 +23,7 @@ type expr = private
 
 type definition =
   | DefReal of string * string list * expr
-  | DefPseudo of expr * string * string list * expr
+  | DefPseudo of (expr * int) * string * string list * expr
 ;;
 
 type t = expr;;

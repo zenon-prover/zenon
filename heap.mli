@@ -1,5 +1,5 @@
 (*  Copyright 2001 INRIA  *)
-(* $Id: heap.mli,v 1.1 2004-04-01 11:37:44 doligez Exp $ *)
+(*  $Id: heap.mli,v 1.2 2004-04-29 13:04:52 doligez Exp $  *)
 
 type 'a t;;
 

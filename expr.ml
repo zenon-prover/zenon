@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Misc.version "$Id: expr.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
 
 open Misc;;
 
@@ -23,7 +23,7 @@ type expr =
 
 type definition =
   | DefReal of string * string list * expr
-  | DefPseudo of expr * string * string list * expr
+  | DefPseudo of (expr * int) * string * string list * expr
 ;;
 
 let get_hash = function

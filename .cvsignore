@@ -9,3 +9,5 @@ gmon.out
 .DS_Store
 *.cm[iox]
 *.png
+header.ml
+header.mli

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Misc.version "$Id: main.ml,v 1.4 2004-04-28 16:30:09 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.5 2004-04-29 13:04:52 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -32,9 +32,14 @@ let int_arg r arg =
     with Failure "float_of_string" -> raise (Arg.Bad "bad numeric argument")
 ;;
 
-let versions () =
-  printf "zenon version 0.1.2 (2004-04-28)\n";
-  Misc.print_versions ();
+let short_version () =
+  printf "zenon version %s\n" Version.full;
+  exit 0;
+;;
+
+let cvs_version () =
+  printf "zenon version %s\n" Version.full;
+  Version.print_cvs stdout;
   exit 0;
 ;;
 
@@ -61,8 +66,10 @@ let argspec = [
       "        turn off progress bar";
   "-s", Arg.Set stats_flag,
       "        print statistics";
-  "-versions", Arg.Unit versions,
-             " print version numbers and exit";
+  "-v", Arg.Unit short_version,
+      "        print version string and exit";
+  "-versions", Arg.Unit cvs_version,
+             " print CVS version strings and exit";
   "-w", Arg.Clear warnings_flag,
       "        suppress warnings";
   "-x", Arg.String Extension.activate,

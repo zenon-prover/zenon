@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: ext_coqbool.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, and_b, or_b, not_b, xor_b, _if_then_else *)

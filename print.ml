@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: print.ml,v 1.2 2004-04-08 22:51:45 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -85,7 +85,7 @@ let phrase = function
       printf ") ";
       expr e;
       printf "\n";
-  | Phrase.Def (DefPseudo (hyp, s, args, e)) ->
+  | Phrase.Def (DefPseudo ((hyp, prio), s, args, e)) ->
       printf "#pseudo-def: ";
       expr hyp;
       printf "\n$def %s (" s;

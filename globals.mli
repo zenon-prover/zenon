@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(* $Id: globals.mli,v 1.2 2004-04-25 18:11:57 doligez Exp $ *)
+(*  $Id: globals.mli,v 1.3 2004-04-29 13:04:52 doligez Exp $  *)
 
 val step_count : int ref;;
 (* =< 0 means infinite; otherwise pause after that many steps *)

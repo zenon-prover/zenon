@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: index.ml,v 1.2 2004-04-27 18:13:21 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;

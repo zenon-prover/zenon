@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Misc.version "$Id: phrase.ml,v 1.2 2004-04-28 16:30:09 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
 
 open Expr;;
 
@@ -132,21 +132,38 @@ let rec is_redef d ds =
   | DefReal _, _ -> assert false
 ;;
 
-let rec xseparate deps defs hyps l =
-  match l with
-  | [] -> (List.rev defs, List.rev hyps)
-  | Def d :: t -> xseparate deps (d :: defs) hyps t
-  | Hyp (e, p) :: t when is_def [] e ->
-      let d = make_def e [] e in
-      let newdep = extract_dep d in
-      if looping newdep deps || is_redef d defs then
-        xseparate deps defs ((e, p) :: hyps) t
-      else
-        xseparate (newdep :: deps) (d :: defs) hyps t 
-  | Hyp (e, p) :: t -> xseparate deps defs ((e, p) :: hyps) t
+let rec remove_def accu sym defs =
+  match defs with
+  | [] -> assert false
+  | DefPseudo (orig, s, _, _) :: t when s = sym -> (accu @ t, orig)
+  | h::t -> remove_def (h::accu) sym t
 ;;
 
-let separate l = xseparate [] [] [] l;;
+let get_symbol = function
+  | DefPseudo (_, s, _, _) -> s
+  | _ -> assert false
+;;
+
+let rec xseparate deps multi defs hyps l =
+  match l with
+  | [] -> (List.rev defs, List.rev hyps)
+  | Def d :: t -> xseparate deps multi (d :: defs) hyps t
+  | Hyp (e, p) :: t when is_def [] e ->
+      let d = make_def (e, p) [] e in
+      let sym = get_symbol d in
+      let newdep = extract_dep d in
+      if List.mem sym multi || looping newdep deps then
+        xseparate deps multi defs ((e, p) :: hyps) t
+      else if is_redef d defs then
+        let (ndefs, ep2) = remove_def [] sym defs in
+        xseparate (List.remove_assoc sym deps) (sym::multi) ndefs
+                  ((e, p) :: ep2 :: hyps) t
+      else
+        xseparate (newdep :: deps) multi (d :: defs) hyps t 
+  | Hyp (e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
+;;
+
+let separate l = xseparate [] [] [] [] l;;
 
 type tpphrase =
   | Include of string

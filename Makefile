@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.5 2004-04-28 16:30:09 doligez Exp $
+#  $Id: Makefile,v 1.6 2004-04-29 13:04:52 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -12,7 +12,7 @@ CAMLCFLAGS = ${CAMLFLAGS} -g
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
-MODULES = misc heap globals prio expr phrase llproof mlproof index \
+MODULES = version misc heap globals prio expr phrase llproof mlproof index \
           print step node extension mltoll prove parser lexer tptp \
           ext_coqbool \
           main
@@ -83,56 +83,58 @@ depend: ${IMPL} ${INTF}
 
 # Do NOT change anything below this line.
 #DEPENDENCIES
-misc.cmo: misc.cmi 
-misc.cmx: misc.cmi 
-heap.cmo: misc.cmi heap.cmi 
-heap.cmx: misc.cmx heap.cmi 
-globals.cmo: misc.cmi globals.cmi 
-globals.cmx: misc.cmx globals.cmi 
-prio.cmo: misc.cmi prio.cmi 
-prio.cmx: misc.cmx prio.cmi 
-expr.cmo: globals.cmi misc.cmi expr.cmi 
-expr.cmx: globals.cmx misc.cmx expr.cmi 
-phrase.cmo: expr.cmi misc.cmi phrase.cmi 
-phrase.cmx: expr.cmx misc.cmx phrase.cmi 
-llproof.cmo: expr.cmi misc.cmi llproof.cmi 
-llproof.cmx: expr.cmx misc.cmx llproof.cmi 
-mlproof.cmo: expr.cmi misc.cmi mlproof.cmi 
-mlproof.cmx: expr.cmx misc.cmx mlproof.cmi 
-index.cmo: expr.cmi globals.cmi misc.cmi mlproof.cmi prio.cmi index.cmi 
-index.cmx: expr.cmx globals.cmx misc.cmx mlproof.cmx prio.cmx index.cmi 
-print.cmo: expr.cmi index.cmi llproof.cmi misc.cmi mlproof.cmi phrase.cmi \
+version.cmo: version.cmi 
+version.cmx: version.cmi 
+misc.cmo: version.cmi misc.cmi 
+misc.cmx: version.cmx misc.cmi 
+heap.cmo: version.cmi heap.cmi 
+heap.cmx: version.cmx heap.cmi 
+globals.cmo: version.cmi globals.cmi 
+globals.cmx: version.cmx globals.cmi 
+prio.cmo: version.cmi prio.cmi 
+prio.cmx: version.cmx prio.cmi 
+expr.cmo: globals.cmi misc.cmi version.cmi expr.cmi 
+expr.cmx: globals.cmx misc.cmx version.cmx expr.cmi 
+phrase.cmo: expr.cmi version.cmi phrase.cmi 
+phrase.cmx: expr.cmx version.cmx phrase.cmi 
+llproof.cmo: expr.cmi version.cmi llproof.cmi 
+llproof.cmx: expr.cmx version.cmx llproof.cmi 
+mlproof.cmo: expr.cmi version.cmi mlproof.cmi 
+mlproof.cmx: expr.cmx version.cmx mlproof.cmi 
+index.cmo: expr.cmi globals.cmi mlproof.cmi prio.cmi version.cmi index.cmi 
+index.cmx: expr.cmx globals.cmx mlproof.cmx prio.cmx version.cmx index.cmi 
+print.cmo: expr.cmi index.cmi llproof.cmi mlproof.cmi phrase.cmi version.cmi \
     print.cmi 
-print.cmx: expr.cmx index.cmx llproof.cmx misc.cmx mlproof.cmx phrase.cmx \
+print.cmx: expr.cmx index.cmx llproof.cmx mlproof.cmx phrase.cmx version.cmx \
     print.cmi 
-step.cmo: globals.cmi misc.cmi print.cmi step.cmi 
-step.cmx: globals.cmx misc.cmx print.cmx step.cmi 
-node.cmo: expr.cmi misc.cmi mlproof.cmi prio.cmi node.cmi 
-node.cmx: expr.cmx misc.cmx mlproof.cmx prio.cmx node.cmi 
-extension.cmo: expr.cmi llproof.cmi misc.cmi mlproof.cmi node.cmi prio.cmi \
+step.cmo: globals.cmi print.cmi version.cmi step.cmi 
+step.cmx: globals.cmx print.cmx version.cmx step.cmi 
+node.cmo: expr.cmi mlproof.cmi prio.cmi version.cmi node.cmi 
+node.cmx: expr.cmx mlproof.cmx prio.cmx version.cmx node.cmi 
+extension.cmo: expr.cmi llproof.cmi mlproof.cmi node.cmi prio.cmi version.cmi \
     extension.cmi 
-extension.cmx: expr.cmx llproof.cmx misc.cmx mlproof.cmx node.cmx prio.cmx \
+extension.cmx: expr.cmx llproof.cmx mlproof.cmx node.cmx prio.cmx version.cmx \
     extension.cmi 
-mltoll.cmo: expr.cmi index.cmi llproof.cmi misc.cmi mlproof.cmi mltoll.cmi 
-mltoll.cmx: expr.cmx index.cmx llproof.cmx misc.cmx mlproof.cmx mltoll.cmi 
-prove.cmo: expr.cmi extension.cmi globals.cmi heap.cmi index.cmi misc.cmi \
-    mlproof.cmi node.cmi print.cmi prio.cmi step.cmi prove.cmi 
-prove.cmx: expr.cmx extension.cmx globals.cmx heap.cmx index.cmx misc.cmx \
-    mlproof.cmx node.cmx print.cmx prio.cmx step.cmx prove.cmi 
-parser.cmo: expr.cmi globals.cmi misc.cmi phrase.cmi parser.cmi 
-parser.cmx: expr.cmx globals.cmx misc.cmx phrase.cmx parser.cmi 
-lexer.cmo: misc.cmi parser.cmi lexer.cmi 
-lexer.cmx: misc.cmx parser.cmx lexer.cmi 
-tptp.cmo: expr.cmi lexer.cmi misc.cmi parser.cmi phrase.cmi tptp.cmi 
-tptp.cmx: expr.cmx lexer.cmx misc.cmx parser.cmx phrase.cmx tptp.cmi 
-ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi misc.cmi \
-    mlproof.cmi node.cmi prio.cmi ext_coqbool.cmi 
-ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx misc.cmx \
-    mlproof.cmx node.cmx prio.cmx ext_coqbool.cmi 
-main.cmo: extension.cmi globals.cmi lexer.cmi misc.cmi mlproof.cmi mltoll.cmi \
-    parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi main.cmi 
-main.cmx: extension.cmx globals.cmx lexer.cmx misc.cmx mlproof.cmx mltoll.cmx \
-    parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx main.cmi 
+mltoll.cmo: expr.cmi index.cmi llproof.cmi mlproof.cmi version.cmi mltoll.cmi 
+mltoll.cmx: expr.cmx index.cmx llproof.cmx mlproof.cmx version.cmx mltoll.cmi 
+prove.cmo: expr.cmi extension.cmi globals.cmi heap.cmi index.cmi mlproof.cmi \
+    node.cmi print.cmi prio.cmi step.cmi version.cmi prove.cmi 
+prove.cmx: expr.cmx extension.cmx globals.cmx heap.cmx index.cmx mlproof.cmx \
+    node.cmx print.cmx prio.cmx step.cmx version.cmx prove.cmi 
+parser.cmo: expr.cmi globals.cmi phrase.cmi version.cmi parser.cmi 
+parser.cmx: expr.cmx globals.cmx phrase.cmx version.cmx parser.cmi 
+lexer.cmo: parser.cmi version.cmi lexer.cmi 
+lexer.cmx: parser.cmx version.cmx lexer.cmi 
+tptp.cmo: expr.cmi lexer.cmi parser.cmi phrase.cmi version.cmi tptp.cmi 
+tptp.cmx: expr.cmx lexer.cmx parser.cmx phrase.cmx version.cmx tptp.cmi 
+ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi mlproof.cmi \
+    node.cmi prio.cmi version.cmi ext_coqbool.cmi 
+ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx mlproof.cmx \
+    node.cmx prio.cmx version.cmx ext_coqbool.cmi 
+main.cmo: extension.cmi globals.cmi lexer.cmi mlproof.cmi mltoll.cmi \
+    parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi version.cmi main.cmi 
+main.cmx: extension.cmx globals.cmx lexer.cmx mlproof.cmx mltoll.cmx \
+    parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx version.cmx main.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 

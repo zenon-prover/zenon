@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Misc.version "$Id: prove.ml,v 1.2 2004-04-25 18:11:57 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.3 2004-04-29 13:04:52 doligez Exp $";;
 
 open Printf;;
 
