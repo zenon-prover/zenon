@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.4 2004-06-08 20:00:10 delahaye Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.5 2004-06-11 19:43:49 delahaye Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -144,26 +144,23 @@ let declare chns = List.iter (declare_lem chns)
 (*          the translation fails if we are too polymorphic.                *)
 (****************************************************************************)
 
-let get_name = function
-  | [ l ] -> l.name
-  | _ -> failwith "Error: unexpected LL proof!"
-
-let get_prooftree = function
-  | [ l ] -> l.proof
-  | _ -> failwith "Error: unexpected LL proof!"
+let rec make_params = function
+  | [] -> [< >]
+  | (x, typ) :: l -> [< str "forall "; str x; str " : "; if typ = "" then
+                        str "_" else str typ; str ", "; make_params l >]
 
 let rec make_type sort arity =
   if arity = 0 then if sort then [< str "Prop" >] else [< str "_" >]
   else [< str "_ -> "; make_type sort (arity - 1) >]
 
-let rec make_param = function
+let rec make_fvar = function
   | [] -> [< >]
   | (n, (s, a)) :: l -> [< str "forall "; str n; str " : "; make_type s a;
-                           str ", "; make_param l >]
+                           str ", "; make_fvar l >]
 
-let declare_lemma ppvernac name fvar concl =
-  ppvernac [< str "Lemma "; str name; str " : "; make_param fvar;
-              make_prod concl; coqend >]
+let declare_lemma ppvernac name params fvar concl =
+  ppvernac [< str "Lemma "; str name; str " : "; make_params params;
+              make_fvar fvar; make_prod concl; coqend >]
 
 let rec gen_name e = [< str " ZH"; ints (hash e) >]
 
@@ -195,12 +192,27 @@ let inst_name t = function
   | _ -> assert false
 
 let proof_rule ppvernac = function
+  | Rconnect (And, e1, e2) ->
+    let hyp0 = gen_name (eand (e1, e2))
+    and hyp1 = gen_name e1
+    and hyp2 = gen_name e2 in
+    ppvernac [< str "elim"; hyp0; thenc; str "cintro"; hyp1; thenc;
+                str "cintro"; hyp2; coqend >]
   | Rconnect (Or, e1, e2) ->
     let hyp0 = gen_name (eor (e1, e2))
     and hyp1 = gen_name e1
     and hyp2 = gen_name e2 in
-    ppvernac [< str "elim"; hyp0; thenc; str "clear"; hyp0; str ";[ intro";
-                hyp1; str " | intro"; hyp2; coqp "]" >]
+    ppvernac [< str "elim"; hyp0; str ";[ cintro"; hyp1; str " | cintro"; hyp2;
+                coqp "]" >]
+  | Rconnect (Imply, e1, e2) ->
+    let hyp0 = gen_name (eimply (e1, e2))
+    and hyp1 = gen_name e1
+    and hyp2 = gen_name e2
+    and hyp3 = gen_name (enot e1) in
+    ppvernac [< str "cut "; parth (constr_of_expr (enot e1)); str "; [ cintro";
+                hyp3; str " | red; cintro"; hyp1; thenc; str "generalize (";
+                hyp0; hyp1; str "); cintro"; hyp2; thenc; str "clear"; hyp1;
+                coqp " ]" >]
   | Rconnect (Equiv, e1, e2) ->
     let hyp0 = gen_name (eequiv (e1, e2))
     and hyp1 = gen_name (eimply (e1, e2))
@@ -218,26 +230,42 @@ let proof_rule ppvernac = function
                 str "clear"; hyp1; hyp2; str " ] | red; cintro"; hyp3; thenc;
                 str "generalize ("; hyp1; hyp3; str "); cintro"; hyp4; thenc;
                 str "clear"; hyp1; hyp2; coqp " ]" >]
-  | Rnotconnect(Equiv, e1, e2) ->
+  | Rnotconnect (And, e1, e2) ->
+    let hyp0 = gen_name (enot (eand (e1, e2)))
+    and hyp1 = gen_name (enot e1)
+    and hyp2 = gen_name (enot e2) in
+    ppvernac [< str "apply"; hyp0; thenc; str "split; apply NNPP; [ cintro";
+                hyp1; str " | cintro"; hyp2; coqp " ]" >]
+  | Rnotconnect (Imply, e1, e2) ->
+    let hyp0 = gen_name (enot (eimply (e1, e2)))
+    and hyp1 = gen_name e1
+    and hyp2 = gen_name (enot e2) in
+    ppvernac [< str "apply"; hyp0; thenc; str "cintro"; hyp1; thenc;
+                str "apply NNPP; red; cintro"; hyp2; coqend >]
+  | Rnotconnect (Equiv, e1, e2) ->
     let hyp0 = gen_name (enot (eequiv (e1, e2)))
     and hyp1 = gen_name e1
     and hyp2 = gen_name e2
     and hyp3 = gen_name (enot e1)
     and hyp4 = gen_name (enot e2) in
     ppvernac [< str "apply"; hyp0; thenc; str "clear"; hyp0; thenc;
-                str "split;[ cintro"; hyp1; thenc;
-                str "apply NNPP; red; cintro"; hyp4; str " | cintro"; hyp2;
-                thenc; str "apply NNPP; red; cintro"; hyp3; coqp "]" >]
+                str "apply iff_sym; split; [ cintro"; hyp2; thenc;
+                str "apply NNPP; red; cintro"; hyp3; str " | cintro"; hyp1;
+                thenc; str "apply NNPP; red; cintro"; hyp4; coqp " ] " >]
   | Rnotnot (p as e) ->
     let hyp0 = gen_name (enot (enot e))
     and hyp1 = gen_name p in
     ppvernac [< str "apply"; hyp0; thenc; str "clear"; hyp0; thenc;
                 str "intro"; hyp1; coqend >]
+  | Rnotall (Eall (x, _, e, _) as t, z) ->
+    let hyp0 = gen_name (enot t)
+    and hyp1 = gen_name (enot (substitute [(x, evar z)] e)) in
+    ppvernac [< str "apply"; hyp0; thenc; str "intro "; str z; thenc;
+                str "apply NNPP; red; intro"; hyp1; coqend >]
   | Rnotex (p, t) ->
     let hyp = gen_name (enot p) in
     begin
-      ppvernac [< str "red in "; hyp; thenc; str "apply "; hyp; thenc;
-                  str "clear "; hyp; coqend >];
+      ppvernac [< str "apply"; hyp; coqend >];
       declare_inst ppvernac (get_type p) t;
       ppvernac [< str "exists "; constr_of_expr t; thenc;
                   str "apply NNPP; red; intro"; inst_name t p; coqend >]
@@ -247,8 +275,13 @@ let proof_rule ppvernac = function
     begin
       declare_inst ppvernac (get_type p) t;
       ppvernac [< str "generalize ("; hyp; str " "; constr_of_expr t;
-                  str "); intro"; inst_name t p; coqend >]
+                  str "); cintro"; inst_name t p; coqend >]
     end
+  | Rex (Eex (x, _, e, _) as t, z) ->
+    let hyp0 = gen_name t
+    and hyp1 = gen_name (substitute [(x, evar z)] e) in
+    ppvernac [< str "elim"; hyp0; thenc; str "clear"; hyp0; thenc;
+                str "cintro "; str z; thenc; str "cintro"; hyp1; coqend >]
   | Rlemma (n, args) ->
     ppvernac [< str "intros; eapply "; if args = [] then str n else
                 [< List.fold_left (fun s e -> [< s; str " "; str e >])
@@ -272,12 +305,14 @@ let proof_script ppvernac n pft =
 let proof_lem ppvernac lem =
   let name = lem.name
   and concl = lem.proof.conc
+  and params = lem.params
   and pft = lem.proof in
-  let fvar = normal (fun (e, _) l -> List.mem_assoc e l)
-                    (List.flatten (List.map free_var concl)) in
+  let fvccl = normal (fun (e, _) l -> List.mem_assoc e l)
+                     (List.flatten (List.map free_var concl)) in
+  let fvar = List.filter (fun (e, _) -> not(List.mem_assoc e params)) fvccl in
   begin
-    declare_lemma ppvernac name fvar concl;
-    proof_script ppvernac (List.length fvar) pft
+    declare_lemma ppvernac name params fvar concl;
+    proof_script ppvernac (List.length fvccl) pft
   end
 
 let proof ppvernac = List.iter (proof_lem ppvernac)
