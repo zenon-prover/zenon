@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.2 2004-05-28 19:55:17 delahaye Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.3 2004-06-07 19:56:58 delahaye Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -80,9 +80,9 @@ let rec constr_of_expr = function
              else [< >]; str ","; constr_of_expr e >]
   | _ -> failwith "Error: unexpected expr to translate!"
 
-(*************)
-(* Require's *)
-(*************)
+(***********************)
+(* Require's & Tactics *)
+(***********************)
 
 let requires = [ "Classical" ]
 
@@ -92,6 +92,12 @@ let require ppvernac =
   let req = List.fold_left (fun s e -> [< s; make_require e >])
                            [< >] requires in
   ppvernac req
+
+let contract_intro =
+  [< str "Ltac cintro id := intro id || let nid := fresh in (intro nid; ";
+     coqp "clear nid)" >]
+
+let tactic ppvernac = ppvernac contract_intro
 
 (*********************)
 (* Type declarations *)
@@ -195,6 +201,23 @@ let proof_rule ppvernac = function
     and hyp2 = gen_name e2 in
     ppvernac [< str "elim"; hyp0; thenc; str "clear"; hyp0; str ";[ intro";
                 hyp1; str " | intro"; hyp2; coqp "]" >]
+  | Rconnect (Equiv, e1, e2) ->
+    let hyp0 = gen_name (eequiv (e1, e2))
+    and hyp1 = gen_name (eimply (e1, e2))
+    and hyp2 = gen_name (eimply (e2, e1))
+    and hyp3 = gen_name e1
+    and hyp4 = gen_name e2
+    and hyp5 = gen_name (enot e1)
+    and hyp6 = gen_name (enot e2) in
+    ppvernac [< str "unfold iff in"; hyp0; thenc; str "elim"; hyp0; thenc;
+                str "cintro"; hyp1; thenc; str "cintro"; hyp2; thenc;
+                str "clear"; hyp0; thenc; str "assert ("; hyp3; str " : ";
+                constr_of_expr e1; str "); [ apply NNPP; red; cintro"; hyp5;
+                thenc; str "assert ("; hyp6; str " : ~"; constr_of_expr e2;
+                str "); [ red; cintro"; hyp4; thenc; str "generalize ("; hyp2;
+                hyp4; str ")"; thenc; str "auto | clear"; hyp1; hyp2;
+                str " ] | generalize ("; hyp1; hyp3; str "); cintro"; hyp4;
+                thenc; str "clear"; hyp1; hyp2; coqp " ]" >]
   | Rnotconnect(Equiv, e1, e2) ->
     let hyp0 = gen_name (enot (eequiv (e1, e2)))
     and hyp1 = gen_name e1
@@ -227,6 +250,10 @@ let proof_rule ppvernac = function
       ppvernac [< str "generalize ("; hyp; str " "; constr_of_expr t;
                   str "); intro"; inst_name t p; coqend >]
     end
+  | Rlemma (n, args) ->
+    ppvernac [< str "intros; eapply "; if args = [] then str n else
+                [< List.fold_left (fun s e -> [< s; str " "; str e >])
+                [< str "("; str n >] args; str ")" >]; thenc; coqp "eauto" >]
   | _ -> ppvernac [< coqp "auto" >]
 
 let rec proof_build ppvernac pft =
@@ -343,6 +370,7 @@ let produce_proof_coq ofn valid llp =
     set_binary_mode_out coq_outc false;
     prelude chns fnm;
     require ppvernac;
+    tactic ppvernac;
     declare ppvernac llp;
     proof ppvernac llp;
     exit chns;
@@ -371,6 +399,7 @@ let produce_proof_dir ofn valid llp =
   let ppvernac = ppvernac_dir outc in
   begin
     require ppvernac;
+    tactic ppvernac;
     declare ppvernac llp;
     proof ppvernac llp;
     close_dir valid outc ofn;

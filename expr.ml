@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.5 2004-05-28 19:55:17 delahaye Exp $";;
+Version.add "$Id: expr.ml,v 1.6 2004-06-07 19:56:58 delahaye Exp $";;
 
 open Misc;;
 
@@ -414,7 +414,7 @@ let rec fv_rec sort bvl fvl = function
 let free_var = fv_rec true [] []
 
 let rec type_list_rec l = function
-  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
+  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) when t <> "" -> 
     if List.mem t l then type_list_rec l e
     else type_list_rec (t::l) e
   | _ -> l

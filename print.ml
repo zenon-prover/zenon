@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.7 2004-06-02 17:08:10 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.8 2004-06-07 19:56:58 delahaye Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -302,10 +302,8 @@ let rec llproof_prop = function
   | Eapp (s, [], _) -> printf "%s" s;
   | Eapp (s, args, _) -> printf "%s(" s; llproof_term_list args; printf ")";
 
-  | Evar _
-  | Emeta _
-  | Etau _
-    -> assert false;
+  | Evar (s, _) -> printf "%s" s;
+  | Emeta _ | Etau _ -> assert false;
 ;;
 
 let binop_name = function
