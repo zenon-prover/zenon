@@ -1,10 +1,14 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.6 2004-05-28 11:30:24 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.7 2004-06-04 09:29:15 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b *)
 
 (* We essentially treat Is_true as if it weren't there. *)
+
+(* FIXME TODO:
+   warning s'il y a une definition de Is_true, __g_and_b, etc.
+*)
 
 open Expr;;
 open Mlproof;;

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.4 2004-05-28 19:55:17 delahaye Exp $  *)
+(*  $Id: expr.mli,v 1.5 2004-06-04 09:29:15 doligez Exp $  *)
 
 (* the [int] argument to the constructors is the hash value *)
 
@@ -47,14 +47,14 @@ val eex : string * string * expr -> expr;;
 val etau : string * string * expr -> expr;;
 
 val preunifiable : expr -> expr -> bool;;
-(* [filters e1 e2]
+(* [preunifiable e1 e2]
    Returns true if e1 and e2 are pre-unifiable.
    Assumes that e1 and e2 are terms (i.e. don't have logical connectives
    except inside a tau).
 *)
 
 val preunify : expr -> expr -> (expr * expr) list;;
-(* [get_filters e1 e2]
+(* [preunify e1 e2]
    If e1 and e2 are non-trivially pre-unifiable, return the set
    of pre-unifiers.
    Return an empty list if they are not pre-unifiable.

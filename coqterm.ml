@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.6 2004-06-02 17:08:10 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.7 2004-06-04 09:29:15 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -316,6 +316,8 @@ let rec get_lams accu t =
   | Clam (s, ty, t1) -> get_lams ((s, ty) :: accu) t1
   | _ -> (List.rev accu, t)
 ;;
+
+(* ******************************************* *)
     
 module V8 = struct
 

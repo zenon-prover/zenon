@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.12 2004-06-01 11:56:29 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.13 2004-06-04 09:29:15 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -200,11 +200,15 @@ let main () =
   let retcode = ref 0 in
   begin try
     let (defs, hyps) = Phrase.separate phrases in
+    List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     if !debug_count > 0 then begin
       let ph_defs = List.map (fun x -> Phrase.Def x) defs in
       let ph_hyps = List.map (fun (x, y) -> Phrase.Hyp ("", x, y)) hyps in
       printf "initial formulas:\n";
       List.iter Print.phrase (ph_defs @ ph_hyps);
+      printf "relations: ";
+      Eqrel.print_rels stdout;
+      printf "\n";
       printf "----\n";
       flush stdout;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.6 2004-06-02 17:08:10 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.7 2004-06-04 09:29:15 doligez Exp $";;
 
 open Printf;;
 
@@ -1049,6 +1049,6 @@ let prove defs l =
     | Back _ -> assert false
     | Open -> assert false
   with NoProof ->
-    Globals.end_progress "search failed";
+    Globals.end_progress " search failed";
     raise NoProof
 ;;
