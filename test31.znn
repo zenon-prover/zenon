@@ -1,0 +1,57 @@
+# file: species_general_set.foc
+# species: ordered_set
+# property: lt_is_not_leq
+
+#    (* to be proved *)
+#(x: abst_T) (y: abst_T)
+#(and
+#  ((Is_true ((abst_lt  x y)) ))-> 
+#    (and (Is_true ((abst_leq  x y)) ) (Is_true ((abst_different  x y)) ))
+#  ((Is_true ((abst_leq  x y)) ))-> 
+#    (or (Is_true ((abst_lt  x y)) ) (Is_true ((abst_equal  x y)) )))
+#By
+#  abst_equal_symmetric: (x: abst_T) (y: abst_T)
+#  ((Is_true ((abst_equal  x y)) ))-> 
+#    (Is_true ((abst_equal  y x)) )
+#  abst_leq_reflexive: (x: abst_T) (y: abst_T)
+#  ((Is_true ((abst_equal  x y)) ))-> 
+#    (Is_true ((abst_leq  x y)) ) 
+#  abst_total_order: (x: abst_T) (y: abst_T)
+#  (or (Is_true ((abst_leq  x y)) ) (Is_true ((abst_leq  y x)) ))
+#  abst_leq_antisymmetric: (x: abst_T) (y: abst_T)
+#  ((Is_true ((abst_leq  x y)) ))-> 
+#    ((Is_true ((abst_leq  y x)) ))-> 
+#      (Is_true ((abst_equal  x y)) )
+#By def
+#      abst_different:= [x: abst_T][y: abst_T](not_b  (abst_equal  x y))
+#      abst_lt:= [x: abst_T][y: abst_T](not_b  (abst_leq  y x))
+#(* Qed *).
+
+$goal
+  (A. ((x "abst_T") (A. ((y "abst_T")
+    (/\ (=> (Is_true (abst_lt x y))
+            (/\ (Is_true (abst_leq x y)) (Is_true (abst_different x y))))
+        (=> (Is_true (abst_leq x y))
+            (\/ (Is_true (abst_lt x y)) (Is_true (abst_equal x y)))))))))
+
+$1 (A. ((x "abst_T") (A. ((y "abst_T")
+     (=> (Is_true (abst_equal x y)) (Is_true (abst_equal y x)))))))
+
+$1 (A. ((x "abst_T") (A. ((y "abst_T")
+     (=> (Is_true (abst_equal x y)) (Is_true (abst_leq x y)))))))
+
+$1 (A. ((x "abst_T") (A. ((y "abst_T")
+     (\/ (Is_true (abst_leq x y)) (Is_true (abst_leq y x)))))))
+
+$1 (A. ((x "abst_T") (A. ((y "abst_T")
+     (=> (Is_true (abst_leq x y))
+         (=> (Is_true (abst_leq y x))
+             (Is_true (abst_equal x y))))))))
+
+$def abst_different (x y) (not_b (abst_equal x y))
+$def abst_lt (x y) (not_b (abst_leq y x))
+
+
+# from Bool.v
+
+$2 (A. ((x) (<=> (Is_true (not_b x)) (-. (Is_true x)))))

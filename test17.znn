@@ -1,0 +1,5 @@
+# File : SYN723+1
+# Status : theorem
+# Rating : 0.67
+# [negated] conjecture : thm138
+$goal (<=> (E. ((X) (A. ((Y) (<=> (p X) (p Y)))))) (<=> (<=> (E. ((X) (q X))) (A. ((Y) (r Y)))) (<=> (<=> (E. ((X) (A. ((Y) (<=> (q X) (q Y)))))) (<=> (E. ((X) (r X))) (A. ((Y) (s Y))))) (<=> (E. ((X) (A. ((Y) (<=> (r X) (r Y)))))) (<=> (<=> (E. ((X) (s X))) (A. ((Y) (p Y)))) (<=> (E. ((X) (A. ((Y) (<=> (s X) (s Y)))))) (<=> (E. ((X) (p X))) (A. ((Y) (q Y))))))))))

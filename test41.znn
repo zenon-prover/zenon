@@ -1,0 +1,43 @@
+; file: species_general_set.foc
+; species: lattice
+; property: order_inf_is_transitive / __lemma_1_1
+
+;     (* to be proved *)
+; (Is_true ((abst_equal x (abst_inf x (abst_inf y z ) ) ))
+; )
+; By
+;   abst_equal_transitive: (x: abst_T) (y: abst_T) (z: abst_T)
+;   ((Is_true ((abst_equal  x y)) ))-> 
+;     ((Is_true ((abst_equal  y z)) ))-> 
+;       (Is_true ((abst_equal  x z)) )
+;   abst_inf_congruence: (x: abst_T) (y: abst_T) (z: abst_T)
+;   ((Is_true ((abst_equal  x y)) ))-> 
+;     (and (Is_true ((abst_equal  (abst_inf  x z) (abst_inf  y z))) ) (Is_true
+;     ((abst_equal  (abst_inf  z x) (abst_inf  z y))) ))
+;   H2_1_1: (Is_true ((abst_order_inf y z )) ) H1_1_1: (Is_true
+;   ((abst_order_inf x y )) )
+; By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
+; (* Qed *).
+
+$goal
+(Is_true (abst_equal x (abst_inf x (abst_inf y z))))
+
+; abst_equal_transitive
+$1 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
+     (=> (Is_true (abst_equal x y))
+         (=> (Is_true (abst_equal y z))
+             (Is_true (abst_equal x z))))))))))
+
+; abst_inf_congruence
+(A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
+  (=> (Is_true (abst_equal x y))
+      (/\ (Is_true (abst_equal (abst_inf x z) (abst_inf y z)))
+          (Is_true (abst_equal (abst_inf z x) (abst_inf z y)))))))))))
+
+; H2_1_1
+(Is_true (abst_order_inf y z))
+
+; H1_1_1
+(Is_true (abst_order_inf x y))
+
+$def abst_order_inf (x y) (abst_equal x (abst_inf x y))

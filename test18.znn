@@ -1,0 +1,3 @@
+# buveurs
+
+$goal (E. ((x) (=> (P x) (A. ((y) (P y))))))

@@ -1,0 +1,9 @@
+zenon
+zenon.opt
+zenon.byt
+*.proof
+parser.ml
+parser.mli
+lexer.ml
+gmon.out
+.DS_Store

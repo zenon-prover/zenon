@@ -1,0 +1,24 @@
+# file: species_general_set.foc
+# species: lattice
+# property: order_inf_is_reflexive
+
+#    (* to be proved *)
+#(x: abst_T) (Is_true ((abst_order_inf  x x))
+#)
+#By
+#  abst_equal_reflexive: (x: abst_T) (Is_true ((abst_equal  x x)) )
+#  abst_inf_idempotent: (x: abst_T) (y: abst_T)
+#  ((Is_true ((abst_equal  x y)) ))-> 
+#    (Is_true ((abst_equal  x (abst_inf  x y))) )
+#By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
+#(* Qed *).
+
+$goal (A. ((x "abst_T") (Is_true (abst_order_inf x x))))
+
+$1 (A. ((x "abst_T") (Is_true (abst_equal x x))))
+
+$1 (A. ((x "abst_T") (A. ((y "abst_T")
+     (=> (Is_true (abst_equal x y))
+         (Is_true (abst_equal x (abst_inf x y))))))))
+
+$def abst_order_inf (x y) (abst_equal x (abst_inf x y))

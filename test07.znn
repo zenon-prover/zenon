@@ -1,0 +1,5 @@
+# TPTP syn064+1
+
+$goal
+(E. ((X "nat") (E. ((Y "nat")
+  (=> (P X Y) (A. ((Z "nat") (A. ((W "nat") (P Z W))))))))))

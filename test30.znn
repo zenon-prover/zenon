@@ -1,0 +1,30 @@
+# file: species_general_set.foc
+# species: ordered_set
+# property: equal_reflexive
+
+#  (* to be proved *)
+#(x: abst_T) (Is_true ((abst_equal  x x))
+#)
+#By
+#  abst_total_order: (x: abst_T) (y: abst_T)
+#  (or (Is_true ((abst_leq  x y)) ) (Is_true ((abst_leq  y x)) ))
+#By def
+#      abst_equal:= [x: abst_T][y: abst_T](and_b  (abst_leq  x y) (abst_leq  y
+#      x))
+#(* Qed *).
+
+$goal
+  (A. ((x "abst_T") (Is_true (abst_equal x x))))
+
+$1
+  (A. ((x "abst_T") (A. ((y "abst_T")
+    (\/ (Is_true (abst_leq x y)) (Is_true (abst_leq y x)))))))
+
+$def abst_equal (x y) (and_b (abst_leq x y) (abst_leq y x))
+
+
+# from Bool.v
+
+$2 (A. ((x) (A. ((y)
+     (<=> (Is_true (and_b x y))
+          (/\ (Is_true x) (Is_true y)))))))
