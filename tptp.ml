@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.3 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.4 2004-05-28 20:53:19 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -46,30 +46,32 @@ let is_eq_formula f =
   || equ_form [] f
 ;;
 
-let rec translate dir ps =
+let rec translate dirs ps =
   match ps with
   | [] -> []
-  | Include f :: t -> (try_incl dir f) @ (translate dir t)
+  | Include f :: t -> (try_incl dirs f) @ (translate dirs t)
   | Formula (name, "axiom", body) :: t ->
       if is_eq_formula body
-      then translate dir t
-      else Hyp (name, body, 2) :: (translate dir t)
+      then translate dirs t
+      else Hyp (name, body, 2) :: (translate dirs t)
   | Formula (name, "hypothesis", body) :: t ->
       if is_eq_formula body
-      then translate dir t
-      else Hyp (name, body, 1) :: (translate dir t)
+      then translate dirs t
+      else Hyp (name, body, 1) :: (translate dirs t)
   | Formula (name, "conjecture", body) :: t ->
-      Hyp (name, enot (body), 0) :: (translate dir t)
+      Hyp ("_Zgoal", enot (body), 0) :: (translate dirs t)
   | Formula (name, k, body) :: t ->
-      raise (Failure ("unknown formula kind: "^k))
+      failwith ("unknown formula kind: " ^ k)
 
-and try_incl dir f =
-  try
-    incl dir (Filename.concat dir f)
-  with Sys_error _ ->
-    let pp = Filename.parent_dir_name in
-    let name = List.fold_left Filename.concat dir [pp; pp; f] in
-    incl dir name
+and try_incl dirs f =
+  let rec loop = function
+    | [] -> failwith (Printf.sprintf "file %s not found in include path" f)
+    | h::t -> begin
+        try incl dirs (Filename.concat h f)
+        with Sys_error _ -> loop t
+      end
+  in
+  loop dirs
 
 and incl dir name =
   let chan = open_in name in

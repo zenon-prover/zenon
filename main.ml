@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.10 2004-05-28 19:55:17 delahaye Exp $";;
+Version.add "$Id: main.ml,v 1.11 2004-05-28 20:53:19 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -23,6 +23,8 @@ type input_format =
   | I_tptp
 ;;
 let input_format = ref I_zenon;;
+
+let include_path = ref [];;
 
 (* Output file, script checking and validation *)
 let outf = ref None
@@ -88,6 +90,8 @@ let rec argspec = [
         "     print this option list and exit";
   "--help", Arg.Unit print_usage,
          "    print this option list and exit";
+  "-I", Arg.String (fun x -> include_path := x :: !include_path),
+     " <dir>  add <dir> to the include path (for TPTP input format)";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "       read input file in zenon format (default)";
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
@@ -125,8 +129,10 @@ let rec argspec = [
       "       turn on progress messages";
   "-q", Arg.Set quiet_flag,
      "        suppress proof-found/no-proof/begin-proof/end-proof tags";
-  "-s", Arg.Set stats_flag,
-     "        print statistics";
+  "-stats", Arg.Set stats_flag,
+         "    print statistics";
+  "-short", Arg.Set short_flag,
+         "    output a less detailed proof";
   "-v", Arg.Unit short_version,
      "        print version string and exit";
   "-valid", Arg.Set valid,
@@ -156,7 +162,11 @@ let parse_file f =
     | I_tptp ->
         let tpphrases = Parser.tpfile Lexer.tptoken lexbuf in
         close chan;
-        Tptp.translate (Filename.dirname f) tpphrases
+        let d = Filename.dirname f in
+        let pp = Filename.parent_dir_name in
+        let cat = Filename.concat in
+        let upup = Filename.concat (Filename.concat d pp) pp in
+        Tptp.translate (List.rev (upup :: d :: !include_path)) tpphrases
     | I_focal ->
         let result = Parser.coqfile Lexer.coqtoken lexbuf in
         close chan;
