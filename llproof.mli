@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.3 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.4 2004-05-25 11:43:04 doligez Exp $  *)
 
 open Expr;;
 
@@ -38,135 +38,153 @@ type binop =
   ou encore la proposition  P1 -> ... -> Pn -> False
 
   Un arbre valide represente la preuve de la conclusion de sa racine.
+
+  Notation: << t1=t2 >> denote << Eapp("=",[t1;t2]) >>
 *)
 
 type rule =
   | Rfalse
     (*
        ----- Rfalse
-       False
-     *)
+       Efalse
+
+     ********************)
+
   | Rnottrue
     (*
-       --------- Rnottrue
-       Neg(True)
-     *)
+       ----------- Rnottrue
+       Enot(Etrue)
+
+     ********************)
+
   | Raxiom of expr
     (*
-       --------- Raxiom p
-       p, Neg(p)
-     *)
+       ---------- Raxiom (p)
+       p, Enot(p)
+
+     ********************)
 
   | Rnoteq of expr
     (*
-       --------------- Rnoteq t
-       Neg(Equal(t,t))
-     *)
+       ------------ Rnoteq t
+       Enot (t = t)
+
+     ********************)
 
   | Rnotnot of expr
     (*
             p
-       ----------- Rnotnot p
-       Neg(Neg(p))
-     *)
+       -------------- Rnotnot p
+       Enot (Enot(p))
+
+     ********************)
 
   | Rconnect of binop * expr * expr
     (*
-              p,q
-       ---------------- Rconnect (And, p, q)
-       Connect(And,p,q)
+          p,q
+       --------- Rconnect (And, p, q)
+       Eand(p,q)
 
        p             q
        --------------- Rconnect (Or, p, q)
-       Connect(Or,p,q)
+           Eor(p,q)
 
-       Neg(p)           q
+       Enot(p)          q
        ------------------ Rconnect (Imply, p, q)
-       Connect(Imply,p,q)
+          Eimply(p,q)
 
-       p,q      Neg(p),Neg(q)
+       Enot(p),Enot(q)    p,q
        ---------------------- Rconnect (Equiv, p, q)
-         Connect(Equiv,p,q)
-     *)
+            Eequiv(p,q)
+
+     ********************)
 
   | Rnotconnect of binop * expr * expr
     (*
-       Neg(p)         Neg(q)
+       Enot(p)       Enot(q)
        --------------------- Rnotconnect (And, p, q)
-       Neg(Connect(And,p,q))
+         Enot (Eand (p,q))
 
-          Neg(p),Neg(q)
-       -------------------- Rnotconnect (Or, p, q)
-       Neg(Connect(Or,p,q))
+       Enot(p),Enot(q)
+       ---------------- Rnotconnect (Or, p, q)
+       Enot (Eor (p,q))
 
-               p,Neg(q)
-       ----------------------- Rnotconnect (Imply, p, q)
-       Neg(Connect(Imply,p,q))
+            p,Enot(q)
+       ------------------- Rnotconnect (Imply, p, q)
+       Enot (Eimply (p,q))
 
-       p,Neg(q)       Neg(p),q
+       Enot(p),q     p,Enot(q)
        ----------------------- Rnotconnect (Equiv, p, q)
-       Neg(Connect(Equiv,p,q))
-     *)
+          Enot (Eequiv,p,q))
+
+     ********************)
 
   | Rex of expr * string
     (*
              P{z}
-       -------------------- Rex (Exists (x, ty, P{x}), z)
-       Exists (x, ty, P{x})
+       ----------------- Rex (Eex (x, ty, P{x}, _), z)
+       Eex (x, ty, P{x})
 
        (z n'a pas d'autre occurrence dans l'hypothese)
-     *)
+
+     ********************)
 
   | Rall of expr * expr    (* prop, term *)
     (*
            P{t}
-       ----------------- Rall (All (x, ty, P{x}), t)
-       All (x, ty, P{x})
-     *)
+       ------------------ Rall (Eall (x, ty, P{x}, _), t)
+       Eall (x, ty, P{x})
+
+     ********************)
 
   | Rnotex of expr * expr  (* prop, term *)
     (*
-              Neg(P{t})
-       -------------------------- Rnotex (Exists (x, ty, P{x}), t)
-       Neg (Exists (x, ty, P{x}))
-     *)
+              Enot(P{t})
+       ------------------------ Rnotex (Eex (x, ty, P{x}, _), t)
+       Enot (Eex (x, ty, P{x}))
+
+     *********************)
 
   | Rnotall of expr * string
     (*
-             Neg(P{z})
-       ----------------------- Rnotall (All (x, ty, P{x}), z)
-       Neg (All (x, ty, P{x}))
+              Enot(P{z})
+       ------------------------- Rnotall (Eall (x, ty, P{x}, _), z)
+       Enot (Eall (x, ty, P{x}))
 
        (z n'a pas d'autre occurrence dans l'hypothese)
-     *)
+
+     *********************)
 
   | Rpnotp of expr * expr
     (* 
-       Neg(Equal(t1,u1))   ...     Neg(Equal(tn,un))
-       --------------------------------------------- RR
-       Papply(P,[t1...tn]), Neg(Papply(P,[u1...un]))   
+       Enot (t1 = u1)        ...        Enot (tn = un)
+       ----------------------------------------------- RR
+       Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un]))   
 
-       RR = Rpnotp (Papply (P, [t1...tn]), Papply (P, [u1...un]))
-     *)
+       RR = Rpnotp (Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un])))
+
+     ********************)
 
   | Rnotequal of expr * expr
     (*
-             Neg(Equal(t1,u1))  ...  Neg(Equal(tn,un))
+       Enot (t1 = u1)           ...          Enot (tn = un)
        ---------------------------------------------------- RR
-        Neg(Equal(Fapply(F,[t1...tn]),Fapply(F,[u1...un])))
+       Enot ((Eapp (f, [t1...tn])) = (Eapp (f, [u1...un])))
 
-       RR = Rnotequal (Fapply(F,[t1...tn]), Fapply(F,[u1...un]))
-     *)
+       RR = Rnotequal (Eapp (f, [t1...tn]), Eapp (f, [u1...un]))
+
+     ********************)
 
   | Requalnotequal of expr * expr * expr * expr
     (*
-       Neg(Equal(t1,t3)),Neg(Equal(t2,t3))
-                                      Neg(Equal(t2,t4)),Neg(Equal(t1,t4))
-       ------------------------------------------------------------------ RR
-                        Equal(t1,t2), Neg(Equal(t3,t4))
+       Enot(t1=t3),Enot(t2=t3)       Enot(t2=t4),Enot(t1=t4)
+       ----------------------------------------------------- RR
+                        t1=t2, Enot(t3=t4)
 
        RR = Requalnotequal (t1, t2, t3, t4)
-     *)
+
+     ********************)
+
   | Rlemma of string * string list
     (*
        ----------- Rlemma (name, args)
@@ -175,15 +193,19 @@ type rule =
        Si C est la conclusion de la preuve associee a "name" dans la
        liste de preuves.  Les arguments "args" correspondent aux
        parametres de "name".
-     *)
-  | Rdefinition
+
+     ********************)
+
+  | Rdefinition of expr * expr
     (*
           H
-         --- Rdefinition
+         --- Rdefinition (C, H)
           C
+
        Si H et C sont delta-beta convertibles avec les definitions
        donnees en argument au prouveur.
-    *)
+
+    *********************)
 ;;
 
 type prooftree = {
