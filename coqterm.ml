@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.9 2004-06-21 19:37:42 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.10 2004-06-29 09:50:34 prevosto Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -159,8 +159,8 @@ let rec trtree prefix node =
   | Rnotex _ -> assert false
   | Rpnotp ((Eapp (p, args1, _) as pp),
             (Enot (Eapp (q, args2, _) as qq, _) as nqq)) ->
-      assert (p = q);
-      let peq = Capp (Cvar "refl_equal", [Cvar p]) in
+      assert (p = q);      (*NdV: ajout Cwild *)
+      let peq = Capp (Cvar "refl_equal", [Cwild; Cvar p]) in
       let ppeqq = make_equals prefix peq (Cvar p) args1 (Cvar p) args2 hyps in
       let vp = getv pp in
       let vnq = getv nqq in
@@ -168,7 +168,8 @@ let rec trtree prefix node =
   | Rpnotp _ -> assert false
   | Rnotequal ((Eapp (f, args1, _) as ff), (Eapp (g, args2, _) as gg)) ->
       assert (f = g);
-      let feg = Capp (Cvar "refl_equal", [Cvar f]) in
+      (*NdV: ajout Cwild *)
+      let feg = Capp (Cvar "refl_equal", [Cwild; Cvar f]) in
       let ffegg = make_equals prefix feg (Cvar f) args1 (Cvar f) args2 hyps in
       let fdg = getv (enot (eapp ("=", [ff; gg]))) in
       let optf = tropt ff in
