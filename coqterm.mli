@@ -1,14 +1,16 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: coqterm.mli,v 1.3 2004-06-01 11:56:29 doligez Exp $  *)
+(*  $Id: coqterm.mli,v 1.4 2004-06-21 19:37:42 doligez Exp $  *)
 
 type coqterm;;
 
-val trproof : Phrase.phrase list -> Llproof.proof -> string * coqterm;;
+type coqproof = (string * coqterm) list * string * coqterm;;
+
+val trproof : Phrase.phrase list -> Llproof.proof -> coqproof;;
 
 module V8 : sig
-  val print : string option -> string * coqterm -> unit;;
+  val print : string option -> coqproof -> unit;;
 end;;
 
 module V7 : sig
-  val print : string option -> string * coqterm -> unit;;
+  val print : string option -> coqproof -> unit;;
 end;;
