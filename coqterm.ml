@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.3 2004-05-28 11:30:24 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.4 2004-05-28 20:56:26 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -20,7 +20,9 @@ type coqterm =
 
 let lemma_env = (Hashtbl.create 97 : (string, coqterm) Hashtbl.t);;
 
-let getname e = Printf.sprintf "_h%X" (Index.get_number e);;
+let getname e =
+  let result = sprintf "_h%X" (Index.get_number e)
+  in result;;
 let getv e = Cvar (getname e);;
 
 let is_meta s = String.length s >= 3 && String.sub s 0 3 = "_Z_";;
@@ -58,11 +60,11 @@ let rec trexpr e =
   | Etau (v, t, e1, _) -> assert false
 ;;
 
-let mklam v t = Clam (getname v, trexpr v, t);;
-let mklams args t = List.fold_right mklam args t;;
-
-let trwild = trexpr;;
+let tropt e = if !Globals.short_flag then Cwild else trexpr e;;
 let trpred v ty p = Clam (v, Cty ty, trexpr p);;
+
+let mklam v t = Clam (getname v, tropt v, t);;
+let mklams args t = List.fold_right mklam args t;;
 
 let rec trtree node =
   let {conc = conc; rule = rule; hyps = hyps} = node in
@@ -78,57 +80,57 @@ let rec trtree node =
       Capp (getv (enot (enot p)), [sub])
   | Rconnect (And, p, q) ->
       let sub = mklam p (mklam q (tr_subtree_1 hyps)) in
-      Capp (Cvar "zenon_and", [trwild p; trwild q; sub; getv (eand (p, q))])
+      Capp (Cvar "zenon_and", [tropt p; tropt q; sub; getv (eand (p, q))])
   | Rconnect (Or, p, q) ->
       let (subp, subq) = tr_subtree_2 hyps in
       let lamp = mklam p subp in
       let lamq = mklam q subq in
       let concl = getv (eor (p, q)) in
-      Capp (Cvar "zenon_or", [trwild p; trwild q; lamp; lamq; concl])
+      Capp (Cvar "zenon_or", [tropt p; tropt q; lamp; lamq; concl])
   | Rconnect (Imply, p , q) ->
       let (subp, subq) = tr_subtree_2 hyps in
       let lamp = mklam (enot p) subp in
       let lamq = mklam q subq in
       let concl = getv (eimply (p, q)) in
-      Capp (Cvar "zenon_imply", [trwild p; trwild q; lamp; lamq; concl])
+      Capp (Cvar "zenon_imply", [tropt p; tropt q; lamp; lamq; concl])
   | Rconnect (Equiv, p, q) ->
       let (sub1, sub2) = tr_subtree_2 hyps in
       let lam1 = mklam (enot p) (mklam (enot q) sub1) in
       let lam2 = mklam p (mklam q sub2) in
       let concl = getv (eequiv (p, q)) in
-      Capp (Cvar "zenon_equiv", [trwild p; trwild q; lam1; lam2; concl])
+      Capp (Cvar "zenon_equiv", [tropt p; tropt q; lam1; lam2; concl])
   | Rnotconnect (And, p, q) ->
       let (subp, subq) = tr_subtree_2 hyps in
       let lamp = mklam (enot p) subp in
       let lamq = mklam (enot q) subq in
       let concl = getv (enot (eand (p, q))) in
-      Capp (Cvar "zenon_notand", [trwild p; trwild q; lamp; lamq; concl])
+      Capp (Cvar "zenon_notand", [tropt p; tropt q; lamp; lamq; concl])
   | Rnotconnect (Or, p, q) ->
       let sub = tr_subtree_1 hyps in
       let lam = mklam (enot p) (mklam (enot q) sub) in
       let concl = getv (enot (eor (p, q))) in
-      Capp (Cvar "zenon_notor", [trwild p; trwild q; lam; concl])
+      Capp (Cvar "zenon_notor", [tropt p; tropt q; lam; concl])
   | Rnotconnect (Imply, p, q) ->
       let sub = tr_subtree_1 hyps in
       let lam = mklam p (mklam (enot q) sub) in
       let concl = getv (enot (eimply (p, q))) in
-      Capp (Cvar "zenon_notimply", [trwild p; trwild q; lam; concl])
+      Capp (Cvar "zenon_notimply", [tropt p; tropt q; lam; concl])
   | Rnotconnect (Equiv, p, q) ->
       let (sub1, sub2) = tr_subtree_2 hyps in
       let lam1 = mklam (enot p) (mklam q sub1) in
       let lam2 = mklam p (mklam (enot q) sub2) in
       let concl = getv (enot (eequiv (p, q))) in
-      Capp (Cvar "zenon_notequiv", [trwild p; trwild q; lam1; lam2; concl])
+      Capp (Cvar "zenon_notequiv", [tropt p; tropt q; lam1; lam2; concl])
   | Rex (Eex (x, ty, px, _) as exp, z) ->
       let sub = tr_subtree_1 hyps in
       let pz = substitute [(x, evar z)] px in
-      let lam = Clam (z, Cvar ty, mklam pz sub) in
+      let lam = Clam (z, Cty ty, mklam pz sub) in
       Capp (Cvar "zenon_ex", [Cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
   | Rnotall (Eall (x, ty, px, _) as allp, z) ->
       let sub = tr_subtree_1 hyps in
       let npz = enot (substitute [(x, evar z)] px) in
-      let lam = Clam (z, Cvar ty, mklam npz sub) in
+      let lam = Clam (z, Cty ty, mklam npz sub) in
       let concl = getv (enot allp) in
       Capp (Cvar "zenon_notall", [Cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false
@@ -155,16 +157,16 @@ let rec trtree node =
       let ppeqq = make_equals peq (Cvar p) args1 (Cvar p) args2 hyps in
       let vp = getv pp in
       let vnq = getv nqq in
-      Capp (Cvar "zenon_pnotp", [trwild pp; trwild qq; ppeqq; vp; vnq])
+      Capp (Cvar "zenon_pnotp", [tropt pp; tropt qq; ppeqq; vp; vnq])
   | Rpnotp _ -> assert false
   | Rnotequal ((Eapp (f, args1, _) as ff), (Eapp (g, args2, _) as gg)) ->
       assert (f = g);
       let feg = Capp (Cvar "refl_equal", [Cvar f]) in
       let ffegg = make_equals feg (Cvar f) args1 (Cvar f) args2 hyps in
       let fdg = getv (enot (eapp ("=", [ff; gg]))) in
-      let wf = trwild ff in
-      let wg = trwild gg in
-      Capp (Cvar "zenon_notequal", [Cwild; wf; wg; ffegg; fdg])
+      let optf = tropt ff in
+      let optg = tropt gg in
+      Capp (Cvar "zenon_notequal", [Cwild; optf; optg; ffegg; fdg])
   | Rnotequal _ -> assert false
   | Requalnotequal (t, u, v, w) ->
       let (sub1, sub2) = tr_subtree_2 hyps in
@@ -177,8 +179,7 @@ let rec trtree node =
       let teu = getv (eapp ("=", [t; u])) in
       let vdw = getv (enot (eapp ("=", [v; w]))) in
       Capp (Cvar "zenon_equalnotequal",
-            [Cwild; trwild t; trwild u; trwild v; trwild w;
-             lam1; lam2; teu; vdw])
+            [Cwild; tropt t; tropt u; tropt v; tropt w; lam1; lam2; teu; vdw])
   | Rdefinition (folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
@@ -227,40 +228,46 @@ let make_lemma { name = name; params = params; proof = proof } =
   let pars = List.map (fun (x, y) -> (x, Cty y)) params in
   let formals = pars @ hyps1 in
   let actuals = List.map (fun (x, _) -> Cvar x) formals in
-  (make_lambdas formals (trtree proof), Capp (Cvar name, actuals))
+  (make_lambdas formals (trtree proof), name, actuals)
 ;;
 
 let rec trp = function
-  | [th] -> fst (make_lemma th)
+  | [th] -> make_lemma th
   | h::t ->
-      let (lem, use) = make_lemma h in
-      Hashtbl.add lemma_env h.name use;
-      Clet (h.name, lem, trp t)
+      let (lem, name, args) = make_lemma h in
+      Hashtbl.add lemma_env h.name (Capp (Cvar name, args));
+      let (thproof, thname, thargs) = trp t in
+      (Clet (h.name, lem, thproof), thname, thargs)
   | [] -> assert false
 ;;
 
 let rec find_name phrases s =
   match phrases with
   | [] -> assert false
-  | Phrase.Hyp (n, e, _) :: t when getname e = s -> Cvar n
+  | Phrase.Hyp (n, e, _) :: t ->
+      let name = getname e in
+      if name = s then Cvar n else find_name t s
   | _ :: t -> find_name t s
 ;;
+
+let trproof phrases l =
+  Hashtbl.clear lemma_env;
+  let (raw, _, formals) = trp l in
+  let f = function
+    | Cvar s -> find_name phrases s
+    | _ -> assert false
+  in
+  let actuals = List.map f formals in
+  Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", Cwild, Capp (raw, actuals))])
+;;
+
+(* ******************************************* *)
 
 let rec get_lams accu t =
   match t with
   | Clam (s, ty, t1) -> get_lams ((s, ty) :: accu) t1
   | _ -> (List.rev accu, t)
 ;;
-
-let trproof phrases l =
-  Hashtbl.clear lemma_env;
-  let raw = trp l in
-  let (formals, _) = get_lams [] raw in
-  let actuals = List.map (fun (s, ty) -> find_name phrases s) formals in
-  Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", Cwild, Capp (raw, actuals))])
-;;
-
-(* ******************************************* *)
 
 let print_gen pr outf t =
   let (oc, close_oc) = match outf with
@@ -273,82 +280,127 @@ let print_gen pr outf t =
   close_oc oc;
 ;;
 
+let buf = Buffer.create 100;;
+let cur_col = ref 0;;
+let rec cut_buf oc =
+  let len = Buffer.length buf in
+  let i = ref 0 in
+  while !i < len do
+    if !cur_col < 64 then begin
+      let l = 64 - !cur_col in
+      let l = if !i + l > len then len - !i else l in
+      output_string oc (Buffer.sub buf !i l);
+      i := !i + l;
+      cur_col := !cur_col + l;
+    end;
+    if !i < len then begin
+      match Buffer.nth buf !i with
+      | ( '(' | ')' | '<' | ':' | '~' | '[' | ']' | '?') as c ->
+          output_char oc '\n';
+          cur_col := 0;
+      | ' ' -> output_char oc '\n';
+               cur_col := 0;
+               incr i;
+      | c -> output_char oc c;
+             incr cur_col;
+             incr i;
+    end;
+  done;
+  Buffer.clear buf;
+;;
+
 module V8 = struct
-  let rec pr oc t =
-    match t with
-    | Cvar "" -> assert false
-    | Cvar s -> fprintf oc "%s" s;
-    | Cty "" -> fprintf oc "_U";
-    | Cty s -> fprintf oc "%s" s;
-    | Clam (s, Cwild, t2) -> fprintf oc "(fun %s =>\n%a)" s pr t2;
-    | Clam (_, _, Clam _) ->
-        let (lams, body) = get_lams [] t in
-        fprintf oc "(fun%a =>\n%a)" pr_lams lams pr body;
-    | Clam (s, t1, t2) -> fprintf oc "(fun %s : %a =>\n%a)" s pr t1 pr t2;
-    | Capp (Cvar "=", [t1; t2]) -> fprintf oc "(%a = %a)" pr t1 pr t2;
-    | Capp (Cvar "not", [t1]) -> fprintf oc "(~%a)" pr t1;
-    | Capp (t1, []) -> pr oc t1
-    | Capp (Capp (t1, args1), args2) -> pr oc (Capp (t1, args1 @ args2))
-    | Capp (t1, args) -> fprintf oc "(%a%a)" pr t1 pr_list args;
-    | Cimply (t1, t2) -> fprintf oc "(%a -> %a)" pr t1 pr t2;
-    | Cequiv (t1, t2) -> fprintf oc "(%a <-> %a)" pr t1 pr t2;
-    | Call (v, "", t1) -> fprintf oc "(forall %s : _U, %a)" v pr t1;
-    | Call (v, ty, t1) -> fprintf oc "(forall %s : %s, %a)" v ty pr t1;
-    | Cex (v, "", t1) -> fprintf oc "(exists %s : _U, %a)" v pr t1;
-    | Cex (v, ty, t1) -> fprintf oc "(exists %s : %s, %a)" v ty pr t1;
-    | Clet (v, t1, t2) -> fprintf oc "(let %s := %a\nin %a)" v pr t1 pr t2;
-    | Cwild -> fprintf oc "_";
 
-  and pr_list oc l =
-    let f t = fprintf oc " %a" pr t; in
-    List.iter f l;
-
-  and pr_lams oc l =
-    let f (v, ty) = fprintf oc " (%s : %a)" v pr ty; in
-    List.iter f l;
+  let pr_oc oc t =
+    let rec pr b t =
+      match t with
+      | Cvar "" -> assert false
+      | Cvar s -> bprintf b "%s" s; cut_buf oc;
+      | Cty "" -> bprintf b "_U";
+      | Cty s -> bprintf b "%s" s;
+      | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
+      | Clam (_, _, Clam _) ->
+          let (lams, body) = get_lams [] t in
+          bprintf b "(fun%a=>%a)" pr_lams lams pr body;
+      | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
+      | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
+      | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
+      | Capp (t1, []) -> pr b t1;
+      | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
+      | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
+      | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
+      | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
+      | Call (v, "", t1) -> bprintf b "(forall %s:_U,%a)" v pr t1;
+      | Call (v, ty, t1) -> bprintf b "(forall %s:%s,%a)" v ty pr t1;
+      | Cex (v, "", t1) -> bprintf b "(exists %s:_U,%a)" v pr t1;
+      | Cex (v, ty, t1) -> bprintf b "(exists %s:%s,%a)" v ty pr t1;
+      | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
+      | Cwild -> bprintf b "_";
+    and pr_list b l =
+      let f t = bprintf b " %a" pr t; in
+      List.iter f l;
+    and pr_lams b l =
+      let f (v, ty) =
+        match ty with
+        | Cwild -> bprintf b " %s" v;
+        | _ -> bprintf b "(%s:%a)" v pr ty;
+      in
+      List.iter f l;
+    in
+    pr buf t;
+    cut_buf oc;
   ;;
 
-  let print outf t = print_gen pr outf t;;
+  let print outf t = print_gen pr_oc outf t;;
 
 end;;
 
 (* ******************************************* *)
 
 module V7 = struct
-  let rec pr oc t =
-    match t with
-    | Cvar "" -> assert false
-    | Cvar s -> fprintf oc "%s" s;
-    | Cty "" -> fprintf oc "_U";
-    | Cty s -> fprintf oc "%s" s;
-    | Clam (s, Cwild, t2) -> fprintf oc "([%s]\n%a)" s pr t2;
-    | Clam (_, _, Clam _) ->
-        let (lams, body) = get_lams [] t in
-        fprintf oc "(%a%a)" pr_lams lams pr body;
-    | Clam (s, t1, t2) -> fprintf oc "([%s : %a]\n%a)" s pr t1 pr t2;
-    | Capp (Cvar "=", [t1; t2]) -> fprintf oc "(%a = %a)" pr t1 pr t2;
-    | Capp (Cvar "not", [t1]) -> fprintf oc "(~%a)" pr t1;
-    | Capp (t1, []) -> pr oc t1
-    | Capp (Capp (t1, args1), args2) -> pr oc (Capp (t1, args1 @ args2))
-    | Capp (t1, args) -> fprintf oc "(%a%a)" pr t1 pr_list args;
-    | Cimply (t1, t2) -> fprintf oc "(%a -> %a)" pr t1 pr t2;
-    | Cequiv (t1, t2) -> fprintf oc "(%a <-> %a)" pr t1 pr t2;
-    | Call (v, "", t1) -> fprintf oc "((%s : _U) %a)" v pr t1;
-    | Call (v, ty, t1) -> fprintf oc "((%s : %s) %a)" v ty pr t1;
-    | Cex (v, "", t1) -> fprintf oc "(Ex [%s : _U] %a)" v pr t1;
-    | Cex (v, ty, t1) -> fprintf oc "(Ex [%s : %s] %a)" v ty pr t1;
-    | Clet (v, t1, t2) -> fprintf oc "([%s := %a]\n%a)" v pr t1 pr t2;
-    | Cwild -> fprintf oc "?";
 
-  and pr_list oc l =
-    let f t = fprintf oc " %a" pr t; in
-    List.iter f l;
+  let pr_oc oc t =
+    let rec pr b t =
+      match t with
+      | Cvar "" -> assert false
+      | Cvar s -> bprintf b "%s" s; cut_buf oc;
+      | Cty "" -> bprintf b "_U";
+      | Cty s -> bprintf b "%s" s;
+      | Clam (s, Cwild, t2) -> bprintf b "([%s]%a)" s pr t2;
+      | Clam (_, _, Clam _) ->
+          let (lams, body) = get_lams [] t in
+          bprintf b "(%a%a)" pr_lams lams pr body;
+      | Clam (s, t1, t2) -> bprintf b "([%s:%a]%a)" s pr t1 pr t2;
+      | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
+      | Capp (Cvar "not", [t1]) -> bprintf b "(~%a)" pr t1;
+      | Capp (t1, []) -> pr b t1;
+      | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
+      | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
+      | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
+      | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
+      | Call (v, "", t1) -> bprintf b "((%s:_U)%a)" v pr t1;
+      | Call (v, ty, t1) -> bprintf b "((%s:%s)%a)" v ty pr t1;
+      | Cex (v, "", t1) -> bprintf b "(Ex[%s:_U]%a)" v pr t1;
+      | Cex (v, ty, t1) -> bprintf b "(Ex[%s:%s]%a)" v ty pr t1;
+      | Clet (v, t1, t2) -> bprintf b "([%s:=%a]%a)" v pr t1 pr t2;
+      | Cwild -> bprintf b "?";
 
-  and pr_lams oc l =
-    let f (v, ty) = fprintf oc " [%s : %a]" v pr ty; in
-    List.iter f l;
+    and pr_list b l =
+      let f t = bprintf b " %a" pr t; in
+      List.iter f l;
+
+    and pr_lams b l =
+       let f (v, ty) =
+        match ty with
+        | Cwild -> bprintf b "[%s]" v;
+        | _ -> bprintf b "[%s:%a]" v pr ty;
+      in
+      List.iter f l;
+    in
+    pr buf t;
+    cut_buf oc;
   ;;
 
-  let print outf t = print_gen pr outf t;;
+  let print outf t = print_gen pr_oc outf t;;
 
 end;;
