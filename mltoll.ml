@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.5 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.6 2004-05-28 20:54:54 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -22,8 +22,9 @@ let rec tr_term t =
   | _ -> assert false
 ;;
 
-let rec tr_prop = function
-  | Evar (v, _) -> eapp (v, [])
+let rec tr_prop a =
+  match a with
+  | Evar (v, _) -> a
   | Emeta _ -> assert false
   | Eapp (s, args, _) -> eapp (s, List.map tr_term args)
 
