@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.4 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.5 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 
@@ -11,7 +11,7 @@ type phrase =
 exception Bad_arg;;
 
 let extract_args l =
-  List.map (function Evar (v, _) -> v | _ -> raise Bad_arg) l
+  List.map (function Evar _ as v -> v | _ -> raise Bad_arg) l
 ;;
 
 let rec no_duplicates = function
@@ -30,7 +30,7 @@ let check_args env args =
 
 let rec check_body env s e =
   match e with
-  | Evar (v, _) -> v <> s || List.mem v env
+  | Evar (v, _) -> v <> s || List.mem e env
   | Emeta _ -> assert false
   | Eapp (ss, args, _) -> ss <> s && List.for_all (check_body env s) args
   | Enot (f, _) -> check_body env s f
@@ -87,7 +87,7 @@ let rec make_def orig env e =
 
 let rec free_syms env accu e =
   match e with
-  | Evar (v, _) -> if List.mem v env then accu else v :: accu
+  | Evar (v, _) -> if List.mem e env then accu else v :: accu
   | Emeta _ -> assert false
   | Eapp (s, args, _) -> List.fold_left (free_syms env) (s::accu) args
   | Enot (f, _) -> free_syms env accu f

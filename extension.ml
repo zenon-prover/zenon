@@ -1,17 +1,18 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.3 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
 
 type translator =
     (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
-    -> Mlproof.proof -> Llproof.prooftree array -> Llproof.prooftree
+    -> Mlproof.proof -> (Llproof.prooftree * Expr.expr list) array
+    -> Llproof.prooftree * Expr.expr list
 ;;
 type t = {
   name : string;
-  newnodes : Expr.expr -> Prio.t -> Node.node list * bool;
-  add_formula : Expr.expr -> Prio.t -> unit;
+  newnodes : int -> Expr.expr -> Node.node_item list Lazy.t;
+  add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   to_llproof : translator;
 };;
@@ -27,6 +28,7 @@ let activate name =
     active := t :: !active;
   with Not_found ->
     eprintf "Error: extension %s does not exist\n" name;
+    (* FIXME TODO afficher la liste des extensions disponibles *)
     raise Not_found
 ;;
 
@@ -37,18 +39,12 @@ let rec find_extension name l =
   | _::t -> find_extension name t
 ;;
 
-let newnodes e p =
-  let f (nodes, complete) t =
-    if complete then (nodes, complete)
-    else
-      let (nodes1, complete1) = t.newnodes e p in
-      (List.rev_append nodes1 nodes, complete1)
-  in
-  List.fold_left f ([], false) (List.rev !active)
+let newnodes depth e =
+  List.map (fun ext -> ext.newnodes depth e) (List.rev !active)
 ;;
 
-let add_formula e p =
-  List.iter (fun t -> t.add_formula e p) !active
+let add_formula e =
+  List.iter (fun t -> t.add_formula e) !active
 ;;
 
 let remove_formula e =

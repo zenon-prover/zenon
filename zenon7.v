@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.7v,v 1.3 2004-06-28 15:53:52 prevosto Exp $  *)
+(*  $Id: zenon7.v,v 1.1 2004-09-09 15:25:35 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -86,10 +86,8 @@ Lemma zenon_notall : (T : Type) (P : T -> Prop)
      Apply (Ha x).
   Qed.
 
-(*
-  Lemma zenon_equal_base : (T : Type) (f : T) f = f.
-    Auto. Qed.
-*)
+Lemma zenon_equal_base : (T : Type) (f : T) f == f.
+  Auto. Qed.
 
 Lemma zenon_equal_step :
   (S : Type) (T : Type) (fa : S -> T) (fb : S -> T) (a : S) (b : S)

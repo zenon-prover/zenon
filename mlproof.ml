@@ -1,12 +1,15 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.3 2004-05-25 11:43:43 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 open Printf;;
 
+type side = L | R;;
+
 type rule =
-  | Close1 of expr              (* e!=e   /             *)
-  | Close2 of expr              (* p, -p  /             *)
+  | Close of expr
+  | Close_refl of string * expr
+  | Close_sym of string * expr * expr
   | False                       (* false  /             *)
   | NotTrue                     (* -true  /             *)
   | NotNot of expr              (* --p    /  p          *)
@@ -22,21 +25,19 @@ type rule =
   | NotAnd of expr * expr       (* -(p/\q)  /  -p | -q  *)
   | Equiv of expr * expr        (* p<=>q  /  -p, -q | p, q *)
   | NotEquiv of expr * expr     (* -(p<=>q)  /  -p, q | p, -q *)
-  | Equal_NotEqual of expr * expr * expr * expr
-                                (* a=b, c!=d  /  c!=a, c!=b | a!=d, b!=d *)
-  | P_NotP of expr * expr       (* P(a0, ..., an), -P(b0, ..., bn)
-                                      / a0!=b0 | ... | an!=bn *)
-  | NotEqual of expr * expr     (* F(a0, ..., an)!=F(b0, ..., bn)
-                                      / a0!=b0 | ... | an!=bn *)
+  | P_NotP of expr * expr
+  | P_NotP_sym of string * expr * expr
+  | NotEqual of expr * expr
   | Definition of definition * expr * expr
-                                (* folded / unfolded *)
 
   | ConjTree of expr            (* p1/\p2/\...  /  p1, p2, ... *)
   | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ... *)
   | AllPartial of expr * expr   (* A.p  /  A.(\x.p(f(x))) *)
   | NotExPartial of expr * expr (* -E.p  /  -E.(\x.p(f(x))) *)
+  | Refl of string * expr * expr
+  | Trans of side * bool * expr * expr
 
-  | CloseEq of expr * expr      (* e1 = e2, e2 != e1  /  (.)      *)
+  | Cut of expr                 (*   / p | -p  *)
 
   | Ext of string * string * expr list
 ;;
@@ -53,4 +54,16 @@ let rec size p =
     p.mlrefc <- - p.mlrefc;
     1 + Array.fold_left (fun accu pr -> accu + size pr) 0 p.mlhyps
   end
+;;
+
+let make_node conc rule hyps subs =
+  let remove_hyp hyp sub = diff sub.mlconc [hyp] in
+  let extras = List.map2 remove_hyp hyps subs in
+  let extra = List.flatten extras in
+  {
+    mlconc = union conc extra;
+    mlrule = rule;
+    mlhyps = Array.of_list subs;
+    mlrefc = 1;
+  }
 ;;

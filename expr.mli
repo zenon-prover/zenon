@@ -1,7 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.6 2004-06-21 19:21:38 doligez Exp $  *)
-
-(* the [int] argument to the constructors is the hash value *)
+(*  $Id: expr.mli,v 1.7 2004-09-09 15:25:35 doligez Exp $  *)
 
 type private_info;;
 
@@ -18,14 +16,14 @@ type expr = private
   | Etrue
   | Efalse
 
-  | Eall of string * string * expr * private_info
-  | Eex of string * string * expr * private_info
-  | Etau of string * string * expr * private_info
+  | Eall of expr * string * expr * private_info
+  | Eex of expr * string * expr * private_info
+  | Etau of expr * string * expr * private_info
 ;;
 
 type definition =
-  | DefReal of string * string list * expr
-  | DefPseudo of (expr * int) * string * string list * expr
+  | DefReal of string * expr list * expr
+  | DefPseudo of (expr * int) * string * expr list * expr
 ;;
 
 type t = expr;;
@@ -44,9 +42,22 @@ val eimply : expr * expr -> expr;;
 val eequiv : expr * expr -> expr;;
 val etrue : expr;;
 val efalse : expr;;
-val eall : string * string * expr -> expr;;
-val eex : string * string * expr -> expr;;
-val etau : string * string * expr -> expr;;
+val eall : expr * string * expr -> expr;;
+val eex : expr * string * expr -> expr;;
+val etau : expr * string * expr -> expr;;
+
+val diff : expr list -> expr list -> expr list;;
+(* [diff l1 l2]
+   return [l1] without the formulas present in [l2]
+*)
+val union : expr list -> expr list -> expr list;;
+(* [union l1 l2]
+   return [l1 @@ l2], removing duplicate formulas
+*)
+val disjoint : expr list -> expr list -> bool;;
+(* [disjoint l1 l2]
+   return true if [l1] and [l2] have no element in common
+*)
 
 val preunifiable : expr -> expr -> bool;;
 (* [preunifiable e1 e2]
@@ -57,8 +68,7 @@ val preunifiable : expr -> expr -> bool;;
 
 val preunify : expr -> expr -> (expr * expr) list;;
 (* [preunify e1 e2]
-   If e1 and e2 are non-trivially pre-unifiable, return the set
-   of pre-unifiers.
+   If e1 and e2 are pre-unifiable, return the set of pre-unifiers.
    Return an empty list if they are not pre-unifiable.
 *)
 
@@ -66,8 +76,9 @@ val occurs : expr -> expr -> bool;;
 (* [occurs e1 e2] returns true if e1 occurs in e2 *)
 
 val size : expr -> int;;
+val substitute : (expr * expr) list -> expr -> expr;;
 
-val substitute : (string * expr) list -> expr -> expr;;
+val newvar : unit -> expr;;
 
 val has_meta : expr -> bool;;
 

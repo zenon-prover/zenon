@@ -1,15 +1,16 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.3 2004-05-27 17:21:24 doligez Exp $  *)
+(*  $Id: extension.mli,v 1.4 2004-09-09 15:25:35 doligez Exp $  *)
 
 type translator =
     (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
-    -> Mlproof.proof -> Llproof.prooftree array -> Llproof.prooftree
+    -> Mlproof.proof -> (Llproof.prooftree * Expr.expr list) array
+    -> Llproof.prooftree * Expr.expr list
 ;;
 
 type t = {
   name : string;
-  newnodes : Expr.expr -> Prio.t -> Node.node list * bool;
-  add_formula : Expr.expr -> Prio.t -> unit;
+  newnodes : int -> Expr.expr -> Node.node_item list Lazy.t;
+  add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   to_llproof : translator;
 };;
@@ -17,7 +18,7 @@ type t = {
 val register : t -> unit;;
 val activate : string -> unit;;
 
-val newnodes : Expr.expr -> Prio.t -> Node.node list * bool;;
-val add_formula : Expr.expr -> Prio.t -> unit;;
+val newnodes : int -> Expr.expr -> Node.node_item list Lazy.t list;;
+val add_formula : Expr.expr -> unit;;
 val remove_formula : Expr.expr -> unit;;
 val to_llproof : translator;;

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.5 2004-05-27 17:21:24 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.6 2004-09-09 15:25:35 doligez Exp $  *)
 
 open Expr;;
 
@@ -45,7 +45,7 @@ type binop =
 type rule =
   | Rfalse
     (*
-       ----- Rfalse
+       ------ Rfalse
        Efalse
 
      ********************)
@@ -61,6 +61,14 @@ type rule =
     (*
        ---------- Raxiom (p)
        p, Enot(p)
+
+     ********************)
+
+  | Rcut of expr
+    (*
+       p     Enot(p)
+       ------------- Rcut (p)
+
 
      ********************)
 
@@ -131,7 +139,7 @@ type rule =
 
   | Rall of expr * expr    (* prop, term *)
     (*
-           P{t}
+              P{t}
        ------------------ Rall (Eall (x, ty, P{x}, _), t)
        Eall (x, ty, P{x})
 
@@ -158,30 +166,30 @@ type rule =
   | Rpnotp of expr * expr
     (* 
        Enot (t1 = u1)        ...        Enot (tn = un)
-       ----------------------------------------------- RR
+       ----------------------------------------------- Rx
        Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un]))   
 
-       RR = Rpnotp (Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un])))
+       Rx = Rpnotp (Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un])))
 
      ********************)
 
   | Rnotequal of expr * expr
     (*
        Enot (t1 = u1)           ...          Enot (tn = un)
-       ---------------------------------------------------- RR
+       ---------------------------------------------------- Rx
        Enot ((Eapp (f, [t1...tn])) = (Eapp (f, [u1...un])))
 
-       RR = Rnotequal (Eapp (f, [t1...tn]), Eapp (f, [u1...un]))
+       Rx = Rnotequal (Eapp (f, [t1...tn]), Eapp (f, [u1...un]))
 
      ********************)
 
   | Requalnotequal of expr * expr * expr * expr
     (*
        Enot(t1=t3),Enot(t2=t3)       Enot(t2=t4),Enot(t1=t4)
-       ----------------------------------------------------- RR
+       ----------------------------------------------------- Rx
                         t1=t2, Enot(t3=t4)
 
-       RR = Requalnotequal (t1, t2, t3, t4)
+       Rx = Requalnotequal (t1, t2, t3, t4)
 
      ********************)
 
@@ -199,10 +207,10 @@ type rule =
   | Rextension of string * expr list * expr list * expr list list
     (*
        H11...H1n   ...   Hp1...Hpq
-       --------------------------- RR
+       --------------------------- Rx
                  C1...Cn
 
-       RR = Rextension (name, args, [C1...Cn], [[H11...H1n] ... [Hp1...Hpq]])
+       Rx = Rextension (name, args, [C1...Cn], [[H11...H1n] ... [Hp1...Hpq]])
 
        Ou name est le nom d'un lemme predefini tel que (name args) a le type:
        (H11 -> ... -> H1n -> False) -> ... -> (Hp1 -> ... -> Hpq -> False)

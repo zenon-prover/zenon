@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.7 2004-06-16 19:51:30 delahaye Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.8 2004-09-09 15:25:35 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -72,16 +72,16 @@ let rec constr_of_expr = function
     parth [< constr_of_expr e1; str "<->"; constr_of_expr e2 >]
   | Etrue -> [< str "True" >]
   | Efalse -> [< str "False" >]
-  | Eall (x, t, e, _) ->
+  | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; str " : "; if t <> "" then [< str t >]
              else [< str "Any" >]; str ","; constr_of_expr e >]
-  | Eex (x, t, e, _) ->
+  | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; str " : "; if t <> "" then [< str t >]
              else [< str "Any" >]; str ","; constr_of_expr e >]
-(*  | Eall (x, t, e, _) ->
+(*  | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
-  | Eex (x, t, e, _) ->
+  | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]*)
   | _ -> failwith "Error: unexpected expr to translate!"
@@ -313,6 +313,9 @@ let proof_rule ppvernac = function
     ppvernac [< str "intros; eapply "; if args = [] then str n else
                 [< List.fold_left (fun s e -> [< s; str " "; str e >])
                 [< str "("; str n >] args; str ")" >]; thenc; coqp "eauto" >]
+  | Rcut (e) ->
+    ppvernac [< str "cut "; parth (constr_of_expr e);
+                coqp "; [ intro | apply NNPP; intro ]" >]
   | _ -> ppvernac [< coqp "auto" >]
 
 let rec proof_build ppvernac pft =

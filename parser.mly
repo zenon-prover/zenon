@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.12 2004-07-12 16:09:26 prevosto Exp $";;
+Version.add "$Id: parser.mly,v 1.13 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -75,6 +75,8 @@ let hyp_counter = ref 0;;
 %token LET
 %token IN
 %token TILDE
+%token SLASHBACKSLASH
+%token BACKSLASHSLASH
 %token IF
 %token THEN
 %token ELSE
@@ -82,11 +84,15 @@ let hyp_counter = ref 0;;
 %token <string> BEGINPROOF
 %token ENDPROOF
 
-%nonassoc forall
-%nonassoc AND
-%right ARROW DOUBLEARROW
+/* these precedences are mostly for coq syntax */
 %nonassoc ELSE
+%nonassoc forall
+%right ARROW
+%nonassoc DOUBLEARROW
+%right BACKSLASHSLASH
+%right SLASHBACKSLASH
 %nonassoc TILDE
+%nonassoc EQUAL
 
 %start theory
 %type <Phrase.phrase list> theory
@@ -140,13 +146,13 @@ expr_list:
 ;
 
 lambda:
-  | OPEN OPEN IDENT STRING CLOSE expr CLOSE      { ($3, $4, $6) }
-  | OPEN OPEN IDENT CLOSE expr CLOSE             { ($3, "", $5) }
+  | OPEN OPEN IDENT STRING CLOSE expr CLOSE      { (evar $3, $4, $6) }
+  | OPEN OPEN IDENT CLOSE expr CLOSE             { (evar $3, "", $5) }
 ;
 
 ident_list:
   | /* empty */       { [] }
-  | IDENT ident_list  { $1 :: $2 }
+  | IDENT ident_list  { evar $1 :: $2 }
 ;
 
 int_opt:
@@ -203,8 +209,8 @@ tpatom:
   | tpexpr                         { $1 }
 ;
 tpvar_list:
-  | UIDENT COMMA tpvar_list        { $1 :: $3 }
-  | UIDENT                         { [$1] }
+  | UIDENT COMMA tpvar_list        { evar $1 :: $3 }
+  | UIDENT                         { [evar $1] }
 ;
 
 
@@ -221,7 +227,7 @@ coqexpr:
   | OPEN coqexpr CLOSE
       { $2 }
   | OPEN IDENT COLON IDENT CLOSE coqexpr %prec forall
-      { eall ($2, $4, $6) }
+      { eall (evar $2, $4, $6) }
   | coqapplication
       { eapp $1 }
   | TILDE coqexpr
@@ -240,13 +246,17 @@ coqexpr:
       { eimply ($1, $3) }
   | coqexpr DOUBLEARROW coqexpr
       { eequiv ($1, $3) }
+  | coqexpr SLASHBACKSLASH coqexpr
+      { eand ($1, $3) }
+  | coqexpr BACKSLASHSLASH coqexpr
+      { eor ($1, $3) }
 
   /* FIXME TODO voir comment coder les let-in */
 
   | LBRACKET IDENT COLONEQUAL coqexpr RBRACKET coqexpr %prec forall
-      { Expr.substitute [($2, $4)] $6 }
+      { Expr.substitute [(evar $2, $4)] $6 }
   | LET IDENT COLONEQUAL coqexpr IN coqexpr %prec forall
-      { Expr.substitute [($2, $4)] $6 }
+      { Expr.substitute [(evar $2, $4)] $6 }
 ;
 coqapplication:
   | OPEN IDENT coqexpr_list1 CLOSE
@@ -279,7 +289,7 @@ coqparam_expr:
   | coqexpr
       { ([], $1) }
   | LBRACKET IDENT COLON IDENT RBRACKET coqparam_expr
-      { let (params, expr) = $6 in ($2 :: params, expr) }
+      { let (params, expr) = $6 in ((evar $2) :: params, expr) }
 ;
 coqdef_list:
   | /* empty */           { [] }

@@ -1,11 +1,15 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.3 2004-05-25 11:43:34 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.4 2004-09-09 15:25:35 doligez Exp $  *)
 
 open Expr;;
 
+type side = L | R;;
+
 type rule =
-  | Close1 of expr              (* e!=e   /  (.)        *)
-  | Close2 of expr              (* p, -p  /  (.)        *)
+  | Close of expr               (* p, -p  /  (.)        *)
+  | Close_refl of string * expr (* -R(e,e)/  (.)        *)
+  | Close_sym of string * expr * expr
+                                (* R(e1,e2), -R(e2,e1)  /  (.)      *)
   | False                       (* false  /  (.)        *)
   | NotTrue                     (* -true  /  (.)        *)
   | NotNot of expr              (* --p    /  p          *)
@@ -21,10 +25,10 @@ type rule =
   | NotAnd of expr * expr       (* -(p/\q)  /  -p | -q  *)
   | Equiv of expr * expr        (* p<=>q  /  -p, -q | p, q    *)
   | NotEquiv of expr * expr     (* -(p<=>q)  /  -p, q | p, -q *)
-  | Equal_NotEqual of expr * expr * expr * expr
-                                (* a=b, c!=d  /  c!=a, c!=b | a!=d, b!=d *)
   | P_NotP of expr * expr       (* P(a0, ..., an), -P(b0, ..., bn)
                                       / a0!=b0 | ... | an!=bn     *)
+  | P_NotP_sym of string * expr * expr
+                                (* P(a,b), -P(c,d)  /  b!=c  |  a!=d *)
   | NotEqual of expr * expr     (* F(a0, ..., an)!=F(b0, ..., bn)
                                       / a0!=b0 | ... | an!=bn     *)
 
@@ -35,7 +39,17 @@ type rule =
   | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ...  *)
   | AllPartial of expr * expr   (* A.p  /  A.(\x.p(f(x)))         *)
   | NotExPartial of expr * expr (* -E.p  /  -E.(\x.p(f(x)))       *)
-  | CloseEq of expr * expr      (* e1 = e2, e2 != e1  /  (.)      *)
+  | Refl of string * expr * expr (* -P(a,b)  /  a!=b *)
+  | Trans of side * bool * expr * expr
+    (* Trans (side, sym, e1, e2):
+        side = L, sym = false:    -P(a,b) p(c,d)  /  c!=a | -P(d,b)
+        side = R, sym = false:    -P(a,b) p(c,d)  /  d!=b | -P(a,c)
+        side = L, sym = true:     -P(a,b) p(c,d)  /  c!=b | -P(a,d)
+        side = R, sym = true:     -P(a,b) p(c,d)  /  d!=a | -P(c,b)
+      In all these, p may be either P or =
+    *)
+
+  | Cut of expr                 (*   / p | -p  *)
 
   | Ext of string * string * expr list
                                 (* extension, rule, arguments *)
@@ -49,3 +63,6 @@ type proof = {
 };;
 
 val size : proof -> int;;
+val make_node :
+   Expr.expr list -> rule -> Expr.expr list -> proof list -> proof
+;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: step.ml,v 1.3 2004-05-19 13:24:44 doligez Exp $";;
+Version.add "$Id: step.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
 
 open Printf;;
 
@@ -21,14 +21,14 @@ let ifstep action =
 
 let forms msg fs =
   ifstep (fun () ->
-    printf "%s: " msg;
-    List.iter (fun (e, p) -> Print.expr_soft e; printf ", ") fs;
+    printf "#### %s: " msg;
+    List.iter (fun (e, g) -> Print.expr_soft e; printf ", ") fs;
   )
 ;;
 
 let rule msg r =
   ifstep (fun () ->
-    printf "%s: " msg;
+    printf "#### %s: " msg;
     Print.mlproof_rule_soft r;
   )
 ;;

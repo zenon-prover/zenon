@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_coqbool.7v,v 1.1 2004-05-28 08:10:51 doligez Exp $  *)
+(*  $Id: zenon_coqbool7.v,v 1.1 2004-09-09 15:25:36 doligez Exp $  *)
 
 Require Import Bool.
 

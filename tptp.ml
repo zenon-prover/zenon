@@ -1,39 +1,42 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.4 2004-05-28 20:53:19 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.5 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
 
+(* FIXME a faire: enlever le cas particulier pour l'egalite (?) *)
+
+let x = evar "x" and y = evar "y" and z = evar "z";;
+
 let equality_axioms = [
-  eall ("x", "", eapp ("=", [evar "x"; evar "x"]));
-  eall ("x", "",
-    eall ("y", "", eimply (eapp ("=", [evar "x"; evar "y"]),
-                           eapp ("=", [evar "y"; evar "x"]))));
-  eall ("x", "",
-    eall ("y", "",
-      eall ("z", "",
-        eimply (eand (eapp ("=", [evar "x"; evar "y"]),
-                      eapp ("=", [evar "y"; evar "z"])),
-                eapp ("=", [evar "x"; evar "z"])))));
+  eall (x, "", eapp ("=", [x; x]));
+  eall (x, "",
+    eall (y, "", eimply (eapp ("=", [x; y]), eapp ("=", [y; x]))));
+  eall (x, "",
+    eall (y, "",
+      eall (z, "",
+        eimply (eand (eapp ("=", [x; y]),
+                      eapp ("=", [y; z])),
+                eapp ("=", [x; z])))));
 ];;
 
 let check_arg context v1 v2 a1 a2 =
   match a1, a2 with
   | Evar (w1, _), Evar (w2, _) ->
-      w1 = w2 && List.mem w1 context
-      || w1 = v1 && w2 = v2
-      || w1 = v2 && w2 = v1
+      a1 == a2 && List.mem a1 context
+      || a1 == v1 && a2 == v2
+      || a1 == v2 && a2 == v1
   | _, _ -> false
 ;;
 
 let rec equ_form context f =
   match f with
   | Eall (v, t, g, _) -> equ_form (v::context) g
-  | Eimply (Eapp ("=", [Evar (v1, _); Evar (v2, _)], _),
+  | Eimply (Eapp ("=", [(Evar _ as v1); (Evar _ as v2)], _),
             Eapp ("=", [Eapp (s1, l1, _); Eapp (s2, l2, _)], _), _) ->
       s1 = s2 && List.mem v1 context && List.mem v2 context
       && List.for_all2 (check_arg context v1 v2) l1 l2
-  | Eimply (Eand (Eapp ("=", [Evar (v1, _); Evar (v2, _)], _),
+  | Eimply (Eand (Eapp ("=", [(Evar _ as v1); (Evar _ as v2)], _),
                   Eapp (s1, l1, _), _),
             Eapp (s2, l2, _), _) ->
       s1 = s2 && List.mem v1 context && List.mem v2 context

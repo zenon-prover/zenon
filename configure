@@ -1,8 +1,10 @@
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.5 2004-06-02 17:08:10 doligez Exp $
+#  $Id: configure,v 1.6 2004-09-09 15:25:35 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
+coqc7='coqc -v7'
+coqc8=coqc
 
 while : ; do
   case $# in 0) break;; esac
@@ -15,7 +17,14 @@ while : ; do
        libdir=$2
        shift 2
     ;;
-    *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>]' >&2
+    -coq7 | --coq7)
+       coqc7=coqc
+       coqc8=dummy_coqc8
+       (echo '#!/bin/sh'; echo 'touch "$1"o') >dummy_coqc8
+       chmod a+x dummy_coqc8
+       shift
+    ;;
+    *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>] [-coq7]' >&2
        exit 2
     ;;
   esac
@@ -24,8 +33,9 @@ done
 {
   echo BINDIR="$bindir"
   echo LIBDIR="$libdir"
+  echo COQC7="$coqc7"
+  echo COQC8="$coqc8"
 } >.config_var
 
 echo Configuration summary for zenon:
-echo BINDIR = "$bindir"
-echo LIBDIR = "$libdir"
+cat .config_var

@@ -1,11 +1,11 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.16 2004-06-21 19:24:56 doligez Exp $
+#  $Id: Makefile,v 1.17 2004-09-09 15:25:35 doligez Exp $
 
-CAMLP4 = -pp camlp4o
-CAMLFLAGS = -warn-error A ${CAMLP4}
+CAMLP4 = -pp 'camlp4o'
+CAMLFLAGS = ${CAMLP4}
 
 CAMLOPT = ocamlopt
-CAMLOPTFLAGS = ${CAMLFLAGS}
+CAMLOPTFLAGS = ${CAMLFLAGS} -p
 
 CAMLC = ocamlc
 CAMLCFLAGS = ${CAMLFLAGS} -g -dtypes
@@ -13,10 +13,8 @@ CAMLCFLAGS = ${CAMLFLAGS} -g -dtypes
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
-COQC = coqc
-
-MODULES = version misc heap globals prio expr eqrel \
-          phrase llproof mlproof index \
+MODULES = version misc heap globals expr prio \
+          phrase llproof mlproof eqrel index \
           print step node extension mltoll prove parser lexer tptp \
           ext_coqbool lltocoq coqterm \
           main
@@ -28,7 +26,7 @@ OBJOPT = ${MODULES:%=%.cmx}
 ADDBYT = unix.cma
 ADDOPT = unix.cmxa
 
-COQMODULES = zenon zenon_coqbool
+COQMODULES = zenon7 zenon_coqbool7 zenon8 zenon_coqbool8
 COQSRC = ${COQMODULES:%=%.v}
 COQOBJ = ${COQMODULES:%=%.vo}
 
@@ -68,7 +66,7 @@ zenon-logo-small.png: zenon-logo.png
 .PHONY: all
 all: zenon zenon.opt zenon.byt ${COQSRC} ${COQOBJ}
 
-.SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo .7v .8v
+.SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
 .ml.cmo:
 	${CAMLC} ${CAMLCFLAGS} -c $*.ml
@@ -88,19 +86,23 @@ parser.ml: parser.mly
 parser.mli: parser.ml
 	:
 
-## Changer les deux regles suivantes pour passer a Coq V8
+zenon7.vo: zenon7.v
+	${COQC7} zenon7.v
 
-.v.vo:
-	coqc -v7 $*.v
+zenon_coqbool7.vo: zenon_coqbool7.v
+	${COQC7} zenon_coqbool7.v
 
-.7v.v:
-	cp $*.7v $*.v
+zenon8.vo: zenon8.v
+	${COQC8} zenon8.v
+
+zenon_coqbool8.vo: zenon_coqbool8.v
+	${COQC8} zenon_coqbool8.v
 
 .PHONY: clean
 clean:
 	rm -f *.cmo *.cmi *.cmx *.o *.vo *.annot
 	rm -f parser.ml parser.mli lexer.ml
-	rm -f Makefile.bak zenon zenon.opt zenon.byt
+	rm -f Makefile.bak zenon zenon.opt zenon.byt dummy_coqc8
 	rm -f zenon-logo.png zenon-logo-small.png
 
 .PHONY: depend
@@ -120,10 +122,10 @@ heap.cmo: version.cmi heap.cmi
 heap.cmx: version.cmx heap.cmi 
 globals.cmo: version.cmi globals.cmi 
 globals.cmx: version.cmx globals.cmi 
-prio.cmo: version.cmi prio.cmi 
-prio.cmx: version.cmx prio.cmi 
 expr.cmo: globals.cmi misc.cmi version.cmi expr.cmi 
 expr.cmx: globals.cmx misc.cmx version.cmx expr.cmi 
+prio.cmo: expr.cmi version.cmi prio.cmi 
+prio.cmx: expr.cmx version.cmx prio.cmi 
 eqrel.cmo: expr.cmi version.cmi eqrel.cmi 
 eqrel.cmx: expr.cmx version.cmx eqrel.cmi 
 phrase.cmo: expr.cmi version.cmi phrase.cmi 
@@ -132,8 +134,8 @@ llproof.cmo: expr.cmi version.cmi llproof.cmi
 llproof.cmx: expr.cmx version.cmx llproof.cmi 
 mlproof.cmo: expr.cmi version.cmi mlproof.cmi 
 mlproof.cmx: expr.cmx version.cmx mlproof.cmi 
-index.cmo: expr.cmi globals.cmi mlproof.cmi prio.cmi version.cmi index.cmi 
-index.cmx: expr.cmx globals.cmx mlproof.cmx prio.cmx version.cmx index.cmi 
+index.cmo: expr.cmi globals.cmi misc.cmi mlproof.cmi version.cmi index.cmi 
+index.cmx: expr.cmx globals.cmx misc.cmx mlproof.cmx version.cmx index.cmi 
 print.cmo: expr.cmi index.cmi llproof.cmi mlproof.cmi phrase.cmi version.cmi \
     print.cmi 
 print.cmx: expr.cmx index.cmx llproof.cmx mlproof.cmx phrase.cmx version.cmx \
@@ -142,18 +144,20 @@ step.cmo: globals.cmi print.cmi version.cmi step.cmi
 step.cmx: globals.cmx print.cmx version.cmx step.cmi 
 node.cmo: expr.cmi mlproof.cmi prio.cmi version.cmi node.cmi 
 node.cmx: expr.cmx mlproof.cmx prio.cmx version.cmx node.cmi 
-extension.cmo: expr.cmi llproof.cmi mlproof.cmi node.cmi prio.cmi version.cmi \
+extension.cmo: expr.cmi llproof.cmi mlproof.cmi node.cmi version.cmi \
     extension.cmi 
-extension.cmx: expr.cmx llproof.cmx mlproof.cmx node.cmx prio.cmx version.cmx \
+extension.cmx: expr.cmx llproof.cmx mlproof.cmx node.cmx version.cmx \
     extension.cmi 
-mltoll.cmo: expr.cmi extension.cmi index.cmi llproof.cmi mlproof.cmi \
-    version.cmi mltoll.cmi 
-mltoll.cmx: expr.cmx extension.cmx index.cmx llproof.cmx mlproof.cmx \
-    version.cmx mltoll.cmi 
+mltoll.cmo: eqrel.cmi expr.cmi extension.cmi index.cmi llproof.cmi misc.cmi \
+    mlproof.cmi phrase.cmi version.cmi mltoll.cmi 
+mltoll.cmx: eqrel.cmx expr.cmx extension.cmx index.cmx llproof.cmx misc.cmx \
+    mlproof.cmx phrase.cmx version.cmx mltoll.cmi 
 prove.cmo: eqrel.cmi expr.cmi extension.cmi globals.cmi heap.cmi index.cmi \
-    mlproof.cmi node.cmi print.cmi prio.cmi step.cmi version.cmi prove.cmi 
+    misc.cmi mlproof.cmi node.cmi print.cmi prio.cmi step.cmi version.cmi \
+    prove.cmi 
 prove.cmx: eqrel.cmx expr.cmx extension.cmx globals.cmx heap.cmx index.cmx \
-    mlproof.cmx node.cmx print.cmx prio.cmx step.cmx version.cmx prove.cmi 
+    misc.cmx mlproof.cmx node.cmx print.cmx prio.cmx step.cmx version.cmx \
+    prove.cmi 
 parser.cmo: expr.cmi globals.cmi phrase.cmi version.cmi parser.cmi 
 parser.cmx: expr.cmx globals.cmx phrase.cmx version.cmx parser.cmi 
 lexer.cmo: parser.cmi version.cmi lexer.cmi 
@@ -161,31 +165,32 @@ lexer.cmx: parser.cmx version.cmx lexer.cmi
 tptp.cmo: expr.cmi lexer.cmi parser.cmi phrase.cmi version.cmi tptp.cmi 
 tptp.cmx: expr.cmx lexer.cmx parser.cmx phrase.cmx version.cmx tptp.cmi 
 ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi llproof.cmi \
-    mlproof.cmi node.cmi prio.cmi version.cmi ext_coqbool.cmi 
+    misc.cmi mlproof.cmi node.cmi prio.cmi version.cmi ext_coqbool.cmi 
 ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx llproof.cmx \
-    mlproof.cmx node.cmx prio.cmx version.cmx ext_coqbool.cmi 
-lltocoq.cmo: expr.cmi llproof.cmi version.cmi lltocoq.cmi 
-lltocoq.cmx: expr.cmx llproof.cmx version.cmx lltocoq.cmi 
+    misc.cmx mlproof.cmx node.cmx prio.cmx version.cmx ext_coqbool.cmi 
+lltocoq.cmo: version.cmi lltocoq.cmi 
+lltocoq.cmx: version.cmx lltocoq.cmi 
 coqterm.cmo: expr.cmi globals.cmi index.cmi llproof.cmi phrase.cmi \
     version.cmi coqterm.cmi 
 coqterm.cmx: expr.cmx globals.cmx index.cmx llproof.cmx phrase.cmx \
     version.cmx coqterm.cmi 
-main.cmo: coqterm.cmi extension.cmi globals.cmi lexer.cmi lltocoq.cmi \
-    mltoll.cmi parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi version.cmi \
-    main.cmi 
-main.cmx: coqterm.cmx extension.cmx globals.cmx lexer.cmx lltocoq.cmx \
-    mltoll.cmx parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx version.cmx \
-    main.cmi 
-eqrel.cmi: expr.cmi 
+main.cmo: coqterm.cmi eqrel.cmi extension.cmi globals.cmi lexer.cmi \
+    lltocoq.cmi mltoll.cmi parser.cmi phrase.cmi print.cmi prove.cmi tptp.cmi \
+    version.cmi main.cmi 
+main.cmx: coqterm.cmx eqrel.cmx extension.cmx globals.cmx lexer.cmx \
+    lltocoq.cmx mltoll.cmx parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx \
+    version.cmx main.cmi 
+prio.cmi: expr.cmi 
+eqrel.cmi: expr.cmi mlproof.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 
-index.cmi: expr.cmi mlproof.cmi prio.cmi 
+index.cmi: expr.cmi mlproof.cmi 
 print.cmi: expr.cmi llproof.cmi mlproof.cmi phrase.cmi 
-step.cmi: expr.cmi mlproof.cmi prio.cmi 
+step.cmi: expr.cmi mlproof.cmi 
 node.cmi: expr.cmi mlproof.cmi prio.cmi 
-extension.cmi: expr.cmi llproof.cmi mlproof.cmi node.cmi prio.cmi 
-mltoll.cmi: llproof.cmi mlproof.cmi 
+extension.cmi: expr.cmi llproof.cmi mlproof.cmi node.cmi 
+mltoll.cmi: llproof.cmi mlproof.cmi phrase.cmi 
 prove.cmi: expr.cmi mlproof.cmi 
 parser.cmi: phrase.cmi 
 lexer.cmi: parser.cmi 

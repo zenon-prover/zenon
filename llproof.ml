@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.5 2004-05-27 17:21:24 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.6 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 
@@ -14,6 +14,7 @@ type rule =
   | Rfalse
   | Rnottrue
   | Raxiom of expr
+  | Rcut of expr
   | Rnoteq of expr
   | Rnotnot of expr
   | Rconnect of binop * expr * expr

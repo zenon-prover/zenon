@@ -1,38 +1,52 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.3 2004-06-04 09:29:15 doligez Exp $";;
+Version.add "$Id: eqrel.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
+open Mlproof;;
 
 exception Wrong_shape;;
 
-let skeleton = ref None;;
+type direction = L | R;;
+
+let symbol = ref None;;
 let leaves = ref [];;
+let typ = ref "";;
 
-let rec check_pattern env pat e =
-  match pat, e with
-  | Eapp (sp, _, _), Eapp (se, [Evar (x, _); Evar (y, _)], _)
-  | Eapp (sp, _, _), Enot (Eapp (se, [Evar (x, _); Evar (y, _)], _), _)
-    when sp = se ->
-      if List.mem x env && List.mem y env then ()
-      else raise Wrong_shape;
-  | _, _ -> raise Wrong_shape;
-;;
-
-let make_skeleton env e =
+let rec check_pattern env sym e =
   match e with
-  | Enot ((Eapp _) as e1, _) -> skeleton := Some e1;
-  | Eapp _ -> skeleton := Some e;
+  | Eapp (s, [(Evar _ as x); (Evar _ as y)], _)
+  | Enot (Eapp (s, [(Evar _ as x); (Evar _ as y)], _), _)
+    when s = sym ->
+      if List.mem_assoc x env && List.mem_assoc y env then ()
+      else raise Wrong_shape;
   | _ -> raise Wrong_shape;
 ;;
 
+let get_skeleton e =
+  match e with
+  | Enot (Eapp (s, _, _), _) -> s
+  | Eapp (s, _, _) -> s
+  | _ -> raise Wrong_shape
+;;
+
+let get_type env e =
+  match e with
+  | Enot (Eapp (_, [Evar _ as x; _], _), _) -> List.assoc x env
+  | Eapp (_, [Evar _ as x; _], _) -> List.assoc x env
+  | _ -> assert false
+;;
+
 let do_leaf env e =
-  match !skeleton with
-  | Some pat ->
-      check_pattern env pat e;
+  match !symbol with
+  | Some s ->
+      check_pattern env s e;
       leaves := e :: !leaves;
   | None ->
-      make_skeleton env e;
+      let s = get_skeleton e in
+      check_pattern env s e;
+      symbol := Some s;
       leaves := e :: !leaves;
+      typ := get_type env e;
 ;;
 
 let rec do_disj env e =
@@ -41,36 +55,39 @@ let rec do_disj env e =
   | Eimply (e1, e2, _) -> do_disj env (enot e1); do_disj env e2;
   | Enot (Eand (e1, e2, _), _) -> do_disj env (enot e1); do_disj env (enot e2);
   | Enot (Enot (e1, _), _) -> do_disj env e1;
-  | Etrue | Efalse -> ()
+  | Enot (Etrue, _) | Efalse -> ()
   | _ -> do_leaf env e;
 ;;
 
-let get_leaves env e =
-  skeleton := None;
+let get_leaves path env e =
+  symbol := None;
   leaves := [];
+  typ := "";
   begin try do_disj env e; with Wrong_shape -> () end;
-  !leaves
+  (path, env, !leaves, !typ)
 ;;
 
 let subexprs = ref [];;
 
-let rec do_conj env e =
+let rec do_conj path env e =
   match e with
-  | Eand (e1, e2, _) -> do_conj env e1; do_conj env e2;
-  | Eall (v, t, e1, _) -> do_conj (v::env) e1;
-  | Enot (Eor (e1, e2, _), _) -> do_conj env (enot e1); do_conj env (enot e2);
-  | Enot (Eimply (e1, e2, _), _) -> do_conj env e1; do_conj env (enot e2);
-  | Enot (Eex (v, t, e1, _), _) -> do_conj (v::env) (enot e1);
-  | Enot (Enot (e1, _), _) -> do_conj env e1;
+  | Eand (e1, e2, _) -> do_conj (L::path) env e1; do_conj (R::path) env e2;
+  | Eall (v, t, e1, _) -> do_conj path ((v,t)::env) e1;
+  | Enot (Eor (e1, e2, _), _) ->
+      do_conj (L::path) env (enot e1); do_conj (R::path) env (enot e2);
+  | Enot (Eimply (e1, e2, _), _) ->
+      do_conj (L::path) env e1; do_conj (R::path) env (enot e2);
+  | Enot (Eex (v, t, e1, _), _) -> do_conj path ((v,t)::env) (enot e1);
+  | Enot (Enot (e1, _), _) -> do_conj path env e1;
   | Eequiv (e1, e2, _) ->
-      do_conj env (eimply (e1, e2));
-      do_conj env (eimply (e2, e1));
-  | _ -> subexprs := (get_leaves env e) :: !subexprs;
+      do_conj (L::path) env (eimply (e1, e2));
+      do_conj (R::path) env (eimply (e2, e1));
+  | _ -> subexprs := (get_leaves path env e) :: !subexprs;
 ;;
 
 let get_subexprs e =
   subexprs := [];
-  do_conj [] e;
+  do_conj [] [] e;
   !subexprs
 ;;
 
@@ -88,91 +105,340 @@ let rec partition pos neg l =
   | h :: t -> partition (h::pos) neg t
 ;;
 
-let is_refl l =
-  match l with
-  | [ Eapp (_, [Evar (x, _); Evar (y, _)], _) ] -> x = y
-  | _ -> false
+let rec number_var env v =
+  match env with
+  | (Evar (x, _), t) :: rest ->
+      if x = v then List.length rest else number_var rest v
+  | _ -> assert false
 ;;
 
-let is_sym l =
+let is_refl l e path env =
+  match l with
+  | [ Eapp (_, [Evar (x, _); Evar (y, _)], _) ] when x = y ->
+     Some (e, path, [number_var env x])
+  | _ -> None
+;;
+
+let is_sym l e path env =
   match partition [] [] l with
   | [ Eapp (_, [Evar (x1, _); Evar (y1, _)], _) ],
     [ Enot (Eapp (_, [Evar (x2, _); Evar (y2, _)], _), _) ]
-    -> x1 = y2 && y1 = x2
-  | _ -> false
+    when x1 = y2 && y1 = x2 ->
+      Some (e, path, List.map (number_var env) [x2; y2])
+  | _ -> None
 ;;
 
-let is_trans l =
+let is_trans l e path env =
   match partition [] [] l with
   | [ Eapp (_, [Evar (x1, _); Evar (y1, _)], _) ],
     [ Enot (Eapp (_, [Evar (x2, _); Evar (y2, _)], _), _);
       Enot (Eapp (_, [Evar (x3, _); Evar (y3, _)], _), _)]
-    ->    y2 = x3 && x1 = x2 && y1 = y3
-       || y3 = x2 && x1 = x3 && y1 = y2
-  | _ -> false
+    when y2 = x3 && x1 = x2 && y1 = y3 ->
+      Some (e, path, List.map (number_var env) [x1; y2; y1])
+  | [ Eapp (_, [Evar (x1, _); Evar (y1, _)], _) ],
+    [ Enot (Eapp (_, [Evar (x2, _); Evar (y2, _)], _), _);
+      Enot (Eapp (_, [Evar (x3, _); Evar (y3, _)], _), _)]
+    when y3 = x2 && x1 = x3 && y1 = y2 ->
+      Some (e, path, List.map (number_var env) [x1; x2; y1])
+  | _ -> None
 ;;
 
-let is_transsym l =
+let is_transsym l e path env =
   match partition [] [] l with
   | [ Eapp (_, [Evar (x1, _); Evar (y1, _)], _) ],
     [ Enot (Eapp (_, [Evar (x2, _); Evar (y2, _)], _), _);
       Enot (Eapp (_, [Evar (x3, _); Evar (y3, _)], _), _)]
-    ->    y2 = x3 && y1 = x2 && x1 = y3
-       || y3 = x2 && y1 = x3 && x1 = y2
-  | _ -> false
+    when y2 = x3 && y1 = x2 && x1 = y3 ->
+      Some (e, path, List.map (number_var env) [y1; y2; x1])
+  | [ Eapp (_, [Evar (x1, _); Evar (y1, _)], _) ],
+    [ Enot (Eapp (_, [Evar (x2, _); Evar (y2, _)], _), _);
+      Enot (Eapp (_, [Evar (x3, _); Evar (y3, _)], _), _)]
+    when y3 = x2 && y1 = x3 && x1 = y2 ->
+      Some (e, path, List.map (number_var env) [y1; x2; x1])
+  | _ -> None
 ;;
 
 type info = {
-  mutable refl : bool;
-  mutable sym : bool;
-  mutable trans : bool;
-  mutable transsym : bool;
+  mutable refl : (Expr.expr * direction list * int list) option;
+  mutable sym : (Expr.expr * direction list * int list) option;
+  mutable trans : (Expr.expr * direction list * int list) option;
+  mutable transsym : (Expr.expr * direction list * int list) option;
+  mutable typ : string;
+  mutable refl_hyp : Expr.expr option;
+  mutable sym_hyp : Expr.expr option;
+  mutable trans_hyp : Expr.expr option;
 };;
 
-let tbl = Hashtbl.create 97;;
+let tbl = (Hashtbl.create 97 : (string, info) Hashtbl.t);;
 
 let get_record s =
   try Hashtbl.find tbl s
   with Not_found ->
-    let result = {refl = false; sym = false; trans = false; transsym = false} in
+    let result = {refl = None; sym = None; trans = None;
+                  transsym = None; typ = "";
+                  refl_hyp = None; sym_hyp = None; trans_hyp = None}
+    in
     Hashtbl.add tbl s result;
     result
 ;;
 
-let analyse_subexpr sb =
-  if is_refl sb then (get_record (get_symbol sb)).refl <- true;
-  if is_sym sb then (get_record (get_symbol sb)).sym <- true;
-  if is_trans sb then (get_record (get_symbol sb)).trans <- true;
-  if is_transsym sb then (get_record (get_symbol sb)).transsym <- true;
+let analyse_subexpr e (path, env, sb, typ) =
+  let refl = is_refl sb e path env in
+  let sym = is_sym sb e path env in
+  let trans = is_trans sb e path env in
+  let transsym = is_transsym sb e path env in
+  match refl, sym, trans, transsym with
+  | None, None, None, None -> ()
+  | _, _, _, _ ->
+      let r = get_record (get_symbol sb) in
+      if refl <> None then r.refl <- refl;
+      if sym <> None then r.sym <- sym;
+      if trans <> None then r.trans <- trans;
+      if transsym <> None then r.transsym <- transsym;
+      r.typ <- typ
 ;;
 
-let analyse e = List.iter analyse_subexpr (get_subexprs e);;
+let analyse e = List.iter (analyse_subexpr e) (get_subexprs e);;
+
+let eq_origin = Some (etrue, [], []);;
+Hashtbl.add tbl "=" {
+  refl = eq_origin;
+  sym = eq_origin;
+  trans = eq_origin;
+  transsym = eq_origin;
+  typ = "";
+  refl_hyp = None;
+  sym_hyp = None;
+  trans_hyp = None;
+};;
 
 let refl s =
-  try let r = Hashtbl.find tbl s
-      in r.refl
+  try let r = Hashtbl.find tbl s in
+      match r.refl with
+      | None -> false
+      | Some _ -> true
   with Not_found -> false
 ;;
 
 let sym s =
-  try let r = Hashtbl.find tbl s
-      in r.sym || r.refl && r.transsym
+  try let r = Hashtbl.find tbl s in
+      match r.sym, r.refl, r.transsym with
+      | Some _, _, _ -> true
+      | _, Some _, Some _ -> true
+      | _, _, _ -> false
   with Not_found -> false
 ;;
 
 let trans s =
   try let r = Hashtbl.find tbl s in
-      r.trans || r.refl && r.transsym
+      match r.trans, r.refl, r.transsym with
+      | Some _, _, _ -> true
+      | _, Some _, Some _ -> true
+      | _, _, _ -> false
   with Not_found -> false
+;;
+
+let any s =
+  try let r = Hashtbl.find tbl s in
+      match r.refl, r.sym, r.trans with
+      | None, None, None -> false
+      | _, _, _ -> true
+  with Not_found -> false
+;;
+
+type origin = Expr.expr * direction list * int list;;
+type hyp_kind =
+  | Refl of origin
+  | Sym of origin
+  | Sym2 of origin * origin   (* refl, transsym *)
+  | Trans of origin
+  | Trans2 of origin * origin (* refl, transsym *)
+;;
+
+module HE = Hashtbl.Make (Expr);;
+let hyps_tbl =
+  (HE.create 97 : hyp_kind HE.t)
+;;
+
+let get_refl_hyp s =
+  let r = Hashtbl.find tbl s in
+  match r.refl_hyp with
+  | Some e -> e
+  | None ->
+      let vx = evar "x" in
+      let result = eall (vx, r.typ, eapp (s, [vx; vx])) in
+      r.refl_hyp <- Some result;
+      begin match r.refl with
+      | Some (e, dirs, vars) -> HE.add hyps_tbl result (Refl ((e, dirs, vars)))
+      | None -> assert false
+      end;
+      result
+;;
+
+let get_sym_hyp s =
+  let r = Hashtbl.find tbl s in
+  match r.sym_hyp with
+  | Some e -> e
+  | None ->
+      let vx = evar "x" and vy = evar "y" in
+      let result = eall (vx, r.typ, eall (vy, r.typ,
+                     eimply (eapp (s, [vx; vy]), eapp (s, [vy; vx]))))
+      in
+      r.sym_hyp <- Some result;
+      begin match r.refl, r.sym, r.transsym with
+      | _, Some (e, dirs, vars), _ ->
+          HE.add hyps_tbl result (Sym ((e, dirs, vars)))
+      | Some (e1, dir1, var1), _, Some (e2, dir2, var2) ->
+          HE.add hyps_tbl result (Sym2 ((e1, dir1, var1), (e2, dir2, var2)))
+      | _, _, _ -> assert false
+      end;
+      result
+;;
+
+let get_trans_hyp s =
+  let r = Hashtbl.find tbl s in
+  match r.trans_hyp with
+  | Some e -> e
+  | None ->
+      let vx = evar "x" and vy = evar "y" and vz = evar "z" in
+      let result = eall (vx, r.typ, eall (vy, r.typ, eall (vz, r.typ,
+                     eimply (eapp (s, [vx; vy]),
+                       eimply (eapp (s, [vy; vz]), eapp (s, [vx; vz]))))))
+      in
+      r.trans_hyp <- Some result;
+      begin match r.refl, r.trans, r.transsym with
+      | _, Some (e, dirs, vars), _ ->
+          HE.add hyps_tbl result (Trans ((e, dirs, vars)))
+      | Some (e1, dir1, var1), _, Some (e2, dir2, var2) ->
+          HE.add hyps_tbl result (Trans2 ((e1, dir1, var1), (e2, dir2, var2)))
+      | _, _, _ -> assert false
+      end;
+      result
+;;  
+
+let inst_nall e =
+  match e with
+  | Enot (Eall (v, ty, f, _), _) ->
+      let nf = enot f in
+      let t = etau (v, ty, nf) in
+      (Expr.substitute [(v, t)] nf, t)
+  | _ -> assert false
+;;
+
+let rec decompose_disj e forms =
+  match e with
+  | Eor (e1, e2, _) ->
+      let n1 = decompose_disj e1 forms in
+      let n2 = decompose_disj e2 forms in
+      make_node [e] (Or (e1, e2)) [e1; e2] [n1; n2]
+  | Eimply (e1, e2, _) ->
+      let ne1 = enot e1 in
+      let n1 = decompose_disj ne1 forms in
+      let n2 = decompose_disj e2 forms in
+      make_node [e] (Impl (e1, e2)) [ne1; e2] [n1; n2]
+  | Enot (Eand (e1, e2, _), _) ->
+      let ne1 = enot e1 in
+      let ne2 = enot e2 in
+      let n1 = decompose_disj ne1 forms in
+      let n2 = decompose_disj ne2 forms in
+      make_node [e] (NotAnd (e1, e2)) [ne1; ne2] [n1; n2]
+  | Enot (Enot (e1, _), _) ->
+      let n1 = decompose_disj e1 forms in
+      make_node [e] (NotNot (e1)) [e1] [n1]
+  | Efalse -> make_node [e] False [] []
+  | Enot (Etrue, _) -> make_node [e] NotTrue [] []
+  | Eapp (s, _, _) ->
+      let ne = enot e in
+      assert (List.exists (Expr.equal ne) forms);
+      make_node [e; ne] (Close e) [] []
+  | Enot (Eapp (s, _, _) as e1, _) ->
+      assert (List.exists (Expr.equal e1) forms);
+      make_node [e1; e] (Close e1) [] []
+  | _ -> assert false
+;;
+
+let rec decompose n e dirs vars forms taus =
+  match e, dirs, vars with
+  | Eand (e1, e2, _), L::rest, _ ->
+      let n1 = decompose n e1 rest vars forms taus in
+      make_node [e] (And (e1, e2)) [e1] [n1]
+  | Eand (e1, e2, _), R::rest, _ ->
+      let n1 = decompose n e2 rest vars forms taus in
+      make_node [e] (And (e1, e2)) [e2] [n1]
+  | Eall (v, ty, e1, _), _, w::rest when n = w ->
+      begin match taus with
+      | [] -> assert false
+      | x::t ->
+          let f = Expr.substitute [(v, x)] e1 in
+          let n1 = decompose (n+1) f dirs rest forms t in
+          make_node [e] (All (e, x)) [f] [n1]
+      end
+  | Eall (v, ty, e1, _), _, _ ->
+      let x = emeta (e) in
+      let f = Expr.substitute [(v, x)] e1 in
+      let n1 = decompose (n+1) f dirs vars forms taus in
+      make_node [e] (All (e, x)) [f] [n1]
+  | Enot (Eor (e1, e2, _), _), L::rest, _ ->
+      let ne1 = enot e1 in
+      let n1 = decompose n ne1 rest vars forms taus in
+      make_node [e] (NotOr (e1, e2)) [ne1] [n1]
+  | Enot (Eor (e1, e2, _), _), R::rest, _ ->
+      let ne2 = enot e2 in
+      let n1 = decompose n ne2 rest vars forms taus in
+      make_node [e] (NotOr (e1, e2)) [ne2] [n1]
+  | Enot (Eimply (e1, e2, _), _), L::rest, _ ->
+      let n1 = decompose n e1 rest vars forms taus in
+      make_node [e] (NotImpl (e1, e2)) [e1] [n1]
+  | Enot (Eimply (e1, e2, _), _), R::rest, _ ->
+      let ne2 = enot e2 in
+      let n1 = decompose n ne2 rest vars forms taus in
+      make_node [e] (NotOr (e1, e2)) [ne2] [n1]
+  | Enot (Eex (v, ty, e1, _), _), _, w::rest when n = w ->
+      begin match taus with
+      | [] -> assert false
+      | x::t ->
+          let f = Expr.substitute [(v, x)] (enot e1) in
+          let n1 = decompose (n+1) f dirs rest forms t in
+          make_node [e] (NotEx (e, x)) [f] [n1]
+      end
+  | Enot (Eex (v, ty, e1, _), _), _, _ ->
+      let x = emeta (e) in
+      let f = Expr.substitute [(v, x)] (enot e1) in
+      let n1 = decompose (n+1) f dirs vars forms taus in
+      make_node [e] (NotEx (e, x)) [f] [n1]
+  | Enot (Enot (e1, _), _), _, _ ->
+      let n1 = decompose n e1 dirs vars forms taus in
+      make_node [e] (NotNot e1) [e1] [n1]
+  | Eequiv (e1, e2, _), L::rest, _ -> assert false (* FIXME TODO *)
+  | Eequiv (e1, e2, _), R::rest, _ -> assert false (* FIXME TODO *)
+  | _, _, _ ->
+      assert (dirs = []);
+      assert (vars = []);
+      assert (taus = []);
+      decompose_disj e forms
+;;
+
+let get_proof e =
+  let ne = enot e in
+  match HE.find hyps_tbl e with
+  | Refl ((f, dirs, vars)) ->
+      let (form, tau) = inst_nall ne in
+      let n1 = decompose 0 f dirs vars [form] [tau] in
+      let n2 = make_node [ne] (NotAll ne) [form] [n1] in
+      (n2, [f])
+  | Sym ((f, dirs, vars)) -> assert false (* FIXME TODO *)
+  | Sym2 ((f1, dir1, var1), (f2, dir2, var2)) -> assert false (* FIXME TODO *)
+  | Trans ((f, dirs, vars)) -> assert false (* FIXME TODO *)
+  | Trans2 ((f1, dir1, var1), (f2, dir2, var2)) -> assert false (* FIXME TODO *)
 ;;
 
 let print_rels oc =
   let f k r =
     Printf.fprintf oc " %s:%s%s%s%s" k
-                   (if r.refl then "R" else "")
-                   (if r.sym then "S" else "")
-                   (if r.trans then "T" else "")
-                   (if r.transsym then "X" else "")
+                   (if r.refl = None then "" else "R")
+                   (if r.sym = None then "" else "S")
+                   (if r.trans = None then "" else "T")
+                   (if r.transsym = None then "" else "X")
   in
   Hashtbl.iter f tbl;
 ;;

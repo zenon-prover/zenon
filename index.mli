@@ -1,24 +1,39 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.2 2004-05-28 11:29:35 doligez Exp $  *)
+(*  $Id: index.mli,v 1.3 2004-09-09 15:25:35 doligez Exp $  *)
 
 open Expr;;
 
 (* ==== main formula list ==== *)
 
 (* [add] and [remove] must be used in LIFO order *)
-val add : expr -> Prio.t -> unit;;
+val add : expr -> int -> unit;;
 val remove : expr -> unit;;
 
 val member : expr -> bool;;
-val get_prio : expr -> Prio.t;;
+val get_goalness : expr -> int;;
 
 val find_pos : string -> expr list;;
 val find_neg : string -> expr list;;
-val find_equal : expr -> expr list;;
-val find_noteq : expr -> expr list;;
 
-val find_rewrite : expr -> (expr * expr) list;;
-(* same as find_equal, but return only oriented equations *)
+(* ==== transitive relations ==== *)
+
+type direction = Left | Right | Both;;
+
+val get_head : expr -> string;;
+
+val add_trans : expr -> direction -> unit;;
+val find_trans_left : string -> string -> expr list;;
+val find_trans_right : string -> string -> expr list;;
+
+val find_trans_leftonly : string -> string -> expr list;;
+val find_trans_rightonly : string -> string -> expr list;;
+
+val add_negtrans : expr -> unit;;
+val find_negtrans_left : string -> string -> expr list;;
+val find_negtrans_right : string -> string -> expr list;;
+
+val find_all_negtrans_left : string -> expr list;;
+val find_all_negtrans_right : string -> expr list;;
 
 (* ==== proof cache ==== *)
 
@@ -29,7 +44,7 @@ val search_proof : unit -> Mlproof.proof option;;
 
 val add_def : definition -> unit;;
 val has_def : string -> bool;;
-val get_def : string -> definition * string list * expr;;
+val get_def : string -> definition * expr list * expr;;
 
 (* ==== depth of metavariables ==== *)
 

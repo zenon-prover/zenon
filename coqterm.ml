@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.10 2004-06-29 09:50:34 prevosto Exp $";;
+Version.add "$Id: coqterm.ml,v 1.11 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -27,9 +27,14 @@ type coqproof = (string * coqterm) list * string * coqterm;;
 
 let lemma_env = (Hashtbl.create 97 : (string, coqterm) Hashtbl.t);;
 
+let mapping = ref [];;
+
 let getname e =
-  let result = sprintf "_h%X" (Index.get_number e)
-  in result;;
+  let result = sprintf "_h%X" (Index.get_number e) in
+  try List.assoc result !mapping
+  with Not_found -> result
+;;
+
 let getv e = Cvar (getname e);;
 
 let is_meta s = String.length s >= 3 && String.sub s 0 3 = "_Z_";;
@@ -62,9 +67,11 @@ let rec trexpr e =
   | Eequiv (e1, e2, _) -> Cequiv (trexpr e1, trexpr e2)
   | Etrue -> Cvar "True"
   | Efalse -> Cvar "False"
-  | Eall (v, t, e1, _) -> Call (v, t, trexpr e1)
-  | Eex (v, t, e1, _) -> Cex (v, t, trexpr e1)
-  | Etau (v, t, e1, _) -> assert false
+  | Eall (Evar (v, _), t, e1, _) -> Call (v, t, trexpr e1)
+  | Eall _ -> assert false
+  | Eex (Evar (v, _), t, e1, _) -> Cex (v, t, trexpr e1)
+  | Eex _ -> assert false
+  | Etau _ -> assert false
 ;;
 
 let tropt e = if !Globals.short_flag then Cwild else trexpr e;;
@@ -79,6 +86,10 @@ let rec trtree prefix node =
   | Rfalse -> getv (efalse)
   | Rnottrue -> Capp (Cvar "zenon_nottrue", [getv (enot (etrue))])
   | Raxiom (p) -> Capp (getv (enot p), [getv p])
+  | Rcut (p) ->
+      let (subp, subnp) = tr_subtree_2 prefix hyps in
+      let lamp = mklam p subp in
+      Clet (getname (enot p), lamp, subnp)
   | Rnoteq (e) ->
       let e_neq_e = getv (enot (eapp ("=", [e; e]))) in
       Capp (Cvar "zenon_noteq", [Cwild; trexpr e; e_neq_e])
@@ -128,30 +139,30 @@ let rec trtree prefix node =
       let lam2 = mklam p (mklam (enot q) sub2) in
       let concl = getv (enot (eequiv (p, q))) in
       Capp (Cvar "zenon_notequiv", [tropt p; tropt q; lam1; lam2; concl])
-  | Rex (Eex (x, ty, px, _) as exp, z) ->
+  | Rex (Eex (Evar (x, _) as vx, ty, px, _) as exp, z) ->
       let sub = tr_subtree_1 prefix hyps in
-      let pz = substitute [(x, evar z)] px in
+      let pz = substitute [(vx, evar z)] px in
       let lam = Clam (z, Cty ty, mklam pz sub) in
       Capp (Cvar "zenon_ex", [Cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
-  | Rnotall (Eall (x, ty, px, _) as allp, z) ->
+  | Rnotall (Eall (Evar (x, _) as vx, ty, px, _) as allp, z) ->
       let sub = tr_subtree_1 prefix hyps in
-      let npz = enot (substitute [(x, evar z)] px) in
+      let npz = enot (substitute [(vx, evar z)] px) in
       let lam = Clam (z, Cty ty, mklam npz sub) in
       let concl = getv (enot allp) in
       Capp (Cvar "zenon_notall", [Cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false
-  | Rall (Eall (x, ty, px, _) as allp, t) ->
+  | Rall (Eall (Evar (x, _) as vx, ty, px, _) as allp, t) ->
       let sub = tr_subtree_1 prefix hyps in
-      let pt = substitute [(x, t)] px in
+      let pt = substitute [(vx, t)] px in
       let lam = mklam pt sub in
       let p = trpred x ty px in
       let concl = getv allp in
       Capp (Cvar "zenon_all", [Cty ty; p; trexpr t; lam; concl])
   | Rall _ -> assert false
-  | Rnotex (Eex (x, ty, px, _) as exp, t) ->
+  | Rnotex (Eex (Evar (x, _) as vx, ty, px, _) as exp, t) ->
       let sub = tr_subtree_1 prefix hyps in
-      let npt = enot (substitute [(x, t)] px) in
+      let npt = enot (substitute [(vx, t)] px) in
       let lam = mklam npt sub in
       let p = trpred x ty px in
       let concl = getv (enot (exp)) in
@@ -159,8 +170,8 @@ let rec trtree prefix node =
   | Rnotex _ -> assert false
   | Rpnotp ((Eapp (p, args1, _) as pp),
             (Enot (Eapp (q, args2, _) as qq, _) as nqq)) ->
-      assert (p = q);      (*NdV: ajout Cwild *)
-      let peq = Capp (Cvar "refl_equal", [Cwild; Cvar p]) in
+      assert (p = q);
+      let peq = Capp (Cvar "zenon_equal_base", [Cwild; Cvar p]) in
       let ppeqq = make_equals prefix peq (Cvar p) args1 (Cvar p) args2 hyps in
       let vp = getv pp in
       let vnq = getv nqq in
@@ -168,8 +179,7 @@ let rec trtree prefix node =
   | Rpnotp _ -> assert false
   | Rnotequal ((Eapp (f, args1, _) as ff), (Eapp (g, args2, _) as gg)) ->
       assert (f = g);
-      (*NdV: ajout Cwild *)
-      let feg = Capp (Cvar "refl_equal", [Cwild; Cvar f]) in
+      let feg = Capp (Cvar "zenon_equal_base", [Cwild; Cvar f]) in
       let ffegg = make_equals prefix feg (Cvar f) args1 (Cvar f) args2 hyps in
       let fdg = getv (enot (eapp ("=", [ff; gg]))) in
       let optf = tropt ff in
@@ -230,6 +240,13 @@ let rec make_lambdas l term =
   | (e, ty) :: t -> Clam (e, ty, make_lambdas t term)
 ;;
 
+let rec rm_lambdas l term =
+  match l, term with
+  | [], _ -> term
+  | _ :: t, Clam (_, _, e) -> rm_lambdas t e
+  | _, _ -> assert false
+;;
+
 let compare_hyps (name1, _) (name2, _) = compare name1 name2;;
 
 let make_lemma prefix { name = name; params = params; proof = proof } =
@@ -245,7 +262,7 @@ let rec trp prefix l =
   match l with
   | [th] ->
       let (thproof, thname, thargs) = make_lemma prefix th
-      in ([], thproof, thname, thargs)
+      in ([], rm_lambdas thargs thproof, thname, thargs)
   | h::t ->
       let (lem, name, args) = make_lemma prefix h in
       let name1 = prepend prefix name in
@@ -255,16 +272,22 @@ let rec trp prefix l =
   | [] -> assert false
 ;;
 
-let rec find_name phrases s =
+let rec make_mapping phrases =
   match phrases with
-  | [] -> assert false
-  | Phrase.Hyp (n, e, _) :: t ->
-      let name = getname e in
-      if name = s then Cvar n else find_name t s
-  | _ :: t -> find_name t s
+  | [] -> []
+  | Phrase.Hyp (n, e, _) :: t -> (getname e, n) :: (make_mapping t)
+  | Phrase.Def _ :: t -> make_mapping t
 ;;
 
-let rec get_th_name = function
+let rec get_goal phrases =
+  match phrases with
+  | [] -> None
+  | Phrase.Hyp ("_Zgoal", e, _) :: _ -> Some e
+  | _ :: t -> get_goal t
+;;
+
+let rec get_th_name lemmas =
+  match lemmas with
   | [] -> assert false
   | [h] -> h.name
   | _ :: t -> get_th_name t
@@ -273,16 +296,13 @@ let rec get_th_name = function
 let trproof phrases l =
   Hashtbl.clear lemma_env;
   let prefix = get_th_name l in
+  mapping := make_mapping phrases;
   let (lemmas, raw, th_name, formals) = trp prefix l in
-  let f = function
-    | Cvar s -> find_name phrases s
-    | _ -> assert false
-  in
-  let actuals = List.map f formals in
-  let term = Capp (Cvar "NNPP", [Cwild;
-                                 Clam ("_Zgoal", Cwild, Capp (raw, actuals))])
-  in
-  (lemmas, th_name, term)
+  match get_goal phrases with
+  | Some goal ->
+      let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", tropt goal, raw)])
+      in (lemmas, th_name, term)
+  | None -> (lemmas, th_name, raw)
 ;;
 
 (* ******************************************* *)
@@ -339,11 +359,21 @@ let rec get_lams accu t =
   | _ -> (List.rev accu, t)
 ;;
 
+let make_lemma_type t =
+  let (tys, _) = get_lams [] t in
+  let make_funtype (v, ty1) ty2 =
+    match ty1 with
+    | Cty ty -> Call (v, ty, ty2)
+    | _ -> Cimply (ty1, ty2)
+  in
+  List.fold_right make_funtype tys (Cty "False")
+;;
+
 (* ******************************************* *)
     
 module V8 = struct
 
-  let pr_oc oc t =
+  let pr_oc oc prefix t =
     let rec pr b t =
       match t with
       | Cvar "" -> assert false
@@ -382,13 +412,22 @@ module V8 = struct
       List.iter f l;
     in
     init_buf ();
+    bprintf buf "%s" prefix;
     pr buf t;
     flush_buf oc;
   ;;
 
-  let print_one oc key (name, t) =
-    fprintf oc "%s %s :=\n" key name;
-    pr_oc oc t;
+  let print_lemma oc (name, t) =
+    let prefix = sprintf "Let %s:" name in
+    pr_oc oc prefix (make_lemma_type t);
+    fprintf oc ".\n";
+    pr_oc oc "Proof " t;
+    fprintf oc ".\n";
+  ;;
+
+  let print_theorem oc (name, t) =
+    let prefix = sprintf "Definition %s:=" name in
+    pr_oc oc prefix t;
     fprintf oc ".\n";
   ;;
 
@@ -398,8 +437,8 @@ module V8 = struct
       | Some f -> open_out f, close_out
     in
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    List.iter (print_one oc "Let") lemmas;
-    print_one oc "Definition" (thname, thproof);
+    List.iter (print_lemma oc) lemmas;
+    print_theorem oc (thname, thproof);
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
     close_oc oc;
   ;;
@@ -410,7 +449,7 @@ end;;
 
 module V7 = struct
 
-  let pr_oc oc t =
+  let pr_oc oc prefix t =
     let rec pr b t =
       match t with
       | Cvar "" -> assert false
@@ -451,13 +490,22 @@ module V7 = struct
       List.iter f l;
     in
     init_buf ();
+    bprintf buf "%s" prefix;
     pr buf t;
     flush_buf oc;
   ;;
 
-  let print_one oc key (name, t) =
-    fprintf oc "%s %s :=\n" key name;
-    pr_oc oc t;
+  let print_lemma oc (name, t) =
+    let prefix = sprintf "Local %s:" name in
+    pr_oc oc prefix (make_lemma_type t);
+    fprintf oc ".\n";
+    pr_oc oc "Proof " t;
+    fprintf oc ".\n";
+  ;;
+
+  let print_theorem oc (name, t) =
+    let prefix = sprintf "Definition %s:=" name in
+    pr_oc oc prefix t;
     fprintf oc ".\n";
   ;;
 
@@ -467,8 +515,8 @@ module V7 = struct
       | Some f -> open_out f, close_out
     in
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    List.iter (print_one oc "Local") lemmas;
-    print_one oc "Definition" (thname, thproof);
+    List.iter (print_lemma oc) lemmas;
+    print_theorem oc (thname, thproof);
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
     close_oc oc;
   ;;

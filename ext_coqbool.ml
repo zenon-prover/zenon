@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.7 2004-06-04 09:29:15 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.8 2004-09-09 15:25:35 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b *)
@@ -11,6 +11,7 @@ Version.add "$Id: ext_coqbool.ml,v 1.7 2004-06-04 09:29:15 doligez Exp $";;
 *)
 
 open Expr;;
+open Misc;;
 open Mlproof;;
 open Node;;
 
@@ -32,23 +33,33 @@ let hremove table key =
   r := List.tl !r;
 ;;
 
-let add_formula e p =
+let add_formula e =
   match e with
   | Eapp ("Is_true", [Eapp (f, _, _)], _) -> hadd istrue_forms f e;
+  | Eapp ("Is_true", [Emeta _], _) -> hadd istrue_forms "" e;
   | Enot (Eapp ("Is_true", [Eapp (f, _, _)], _), _) -> hadd isfalse_forms f e;
+  | Enot (Eapp ("Is_true", [Emeta _], _), _) -> hadd isfalse_forms "" e;
   | _ -> ()
 ;;
 
 let remove_formula e =
   match e with
   | Eapp ("Is_true", [Eapp (f, _, _)], _) -> hremove istrue_forms f;
+  | Eapp ("Is_true", [Emeta _], _) -> hremove istrue_forms "";
   | Enot (Eapp ("Is_true", [Eapp (f, _, _)], _), _) -> hremove isfalse_forms f;
+  | Enot (Eapp ("Is_true", [Emeta _], _), _) -> hremove isfalse_forms "";
   | _ -> ()
 ;;
 
 let find tbl s =
-  try !(H.find tbl s)
-  with Not_found -> []
+  let exact = try !(H.find tbl s) with Not_found -> [] in
+  let meta = try !(H.find tbl "") with Not_found -> [] in
+  meta @@ exact
+;;
+
+let map_all tbl f =
+  let do_list k d accu = List.map f !d @@ accu in
+  H.fold do_list tbl []
 ;;
 
 let wrong_arity s =
@@ -56,162 +67,154 @@ let wrong_arity s =
     Printf.eprintf "Warning: defined symbol %s is used with wrong arity\n" s;
     flush stderr;
   end;
-  ([], false)
 ;;
 
 let istrue e = eapp ("Is_true", [e]);;
 
-let make_notequal prio1 prio2 e f =
+let make_notequal depth e f =
   match e, f with
   | Eapp ("Is_true", [e1], _), Enot (Eapp ("Is_true", [f1], _), _) ->
-      let w1 = if has_meta e1 && has_meta f1 then Prio.weight_meta_neq else 0 in
+      let branches = [| [enot (eapp ("=", [e1; f1]))] |] in
       {
         nconc = [e; f];
         nrule = P_NotP (e, f);
-        nprio = {
-          Prio.shape = Prio.sh_p_notp;
-          Prio.origin = min prio1.Prio.origin prio2.Prio.origin;
-          Prio.weight1 = prio2.Prio.weight1 + Prio.weight_notequiv + w1;
-          Prio.weight2 = prio1.Prio.weight1;
-        };
-        branches = [| [enot (eapp ("=", [e1; f1]))] |];
+        nprio = Prio.make depth Prio.Correl branches;
+        nbranches = branches;
       }
   | _ -> assert false
 ;;
 
-let newnodes e p =
+let newnodes depth e =
   match e with
   | Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "and", [e1; e2]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [eand (istrue e1, istrue e2)] |];
-          } ],
-        true)
+      let branches = [| [eand (istrue e1, istrue e2)] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "and", [e1; e2]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "or", [e1; e2]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [eor (istrue e1, istrue e2)] |];
-          } ],
-        true)
+      let branches = [| [eor (istrue e1, istrue e2)] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "or", [e1; e2]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "xor", [e1; e2]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [enot (eequiv (istrue e1, istrue e2))] |];
-          } ],
-        true)
+      let branches = [| [enot (eequiv (istrue e1, istrue e2))] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "xor", [e1; e2]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "not", [e1]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [enot (istrue e1)] |];
-          } ],
-        true)
-
+      let branches = [| [enot (istrue e1)] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "not", [e1]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Enot (Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _), _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "notand", [e1; e2]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [enot (eand (istrue e1, istrue e2))] |];
-          } ],
-        true)
+      let branches = [| [enot (eand (istrue e1, istrue e2))] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "notand", [e1; e2]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Enot (Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _), _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "notor", [e1; e2]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [enot (eor (istrue e1, istrue e2))] |];
-          } ],
-        true)
+      let branches = [| [enot (eor (istrue e1, istrue e2))] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "notor", [e1; e2]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Enot (Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _), _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "notxor", [e1; e2]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [eequiv (istrue e1, istrue e2)] |];
-          } ],
-        true)
+      let branches = [| [eequiv (istrue e1, istrue e2)] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "notxor", [e1; e2]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
   | Enot (Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _), _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "notnot", [e1]);
-            nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-            branches = [| [istrue e1] |];
-          } ],
-        true)
-
-  | Eapp ("Is_true", [Evar ("true", _)], _) -> ([], true)
-  | Enot (Eapp ("Is_true", [Evar ("false", _)], _), _) -> ([], true)
+      let branches = [| [istrue e1] |] in
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "notnot", [e1]);
+        nprio = Prio.make depth Prio.Alpha1 branches;
+        nbranches = branches;
+      }; Stop ]
+  | Eapp ("Is_true", [Evar ("true", _)], _) -> [Stop]
+  | Enot (Eapp ("Is_true", [Evar ("false", _)], _), _) -> [Stop]
 
   | Eapp ("Is_true", [Evar ("false", _)], _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "false", []);
-            nprio = Prio.update p Prio.sh_close1 0 0;
-            branches = [| |];
-          } ],
-        true)
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "false", []);
+        nprio = Prio.make depth Prio.Close [| |];
+        nbranches = [| |];
+      }; Stop ]
   | Enot (Eapp ("Is_true", [Evar ("true", _)], _), _) ->
-      ( [ {
-            nconc = [e];
-            nrule = Ext ("coqbool", "nottrue", []);
-            nprio = Prio.update p Prio.sh_close1 0 0;
-            branches = [| |];
-          } ],
-        true)
-
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "nottrue", []);
+        nprio = Prio.make depth Prio.Close [| |];
+        nbranches = [| |];
+      }; Stop ]
+(* FIXME TODO: faire nrule = Ext, et etendre la traduction *)
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
       begin try
         let (d, params, body) = Index.get_def s in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = eapp ("Is_true", [substitute subst body]) in
-        ( [ {
-              nconc = [e];
-              nrule = Definition (d, e, unfolded);
-              nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-              branches = [| [unfolded] |];
-          } ],
-          true)
+        let branches = [| [unfolded] |] in
+        [ Node {
+          nconc = [e];
+          nrule = Definition (d, e, unfolded);
+          nprio = Prio.make depth Prio.Alpha1 branches;
+          nbranches = branches;
+        }; Stop ]
       with
-      | Invalid_argument "List.map2" -> wrong_arity s
-      | Not_found -> assert false
+        | Invalid_argument "List.map2" -> wrong_arity s; []
+        | Not_found -> assert false
       end
-
   | Enot (Eapp ("Is_true", [Eapp (s, args, _)], _), _) when Index.has_def s ->
       begin try
         let (d, params, body) = Index.get_def s in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = enot (eapp ("Is_true", [substitute subst body])) in
-        ( [ {
-              nconc = [e];
-              nrule = Definition (d, e, unfolded);
-              nprio = Prio.update p Prio.sh_def Prio.weight_def 0;
-              branches = [| [unfolded] |];
-          } ],
-          true)
+        let branches = [| [unfolded] |] in
+        [ Node {
+            nconc = [e];
+            nrule = Definition (d, e, unfolded);
+            nprio = Prio.make depth Prio.Alpha1 branches;
+            nbranches = branches;
+        }; Stop ]
       with
-      | Invalid_argument "List.map2" -> wrong_arity s
-      | Not_found -> assert false
+        | Invalid_argument "List.map2" -> wrong_arity s; []
+        | Not_found -> assert false
       end
-
   | Eapp ("Is_true", [Eapp (s, _, _)], _) ->
       let matches = find isfalse_forms s in
-      let do_match x = make_notequal (Index.get_prio x) p e x in
-      (List.map do_match matches, true)
-
+      let do_match x = Node (make_notequal depth e x) in
+      (List.map do_match matches) @ [Stop]
+  | Eapp ("Is_true", [Emeta _], _) ->
+      let do_match x = Node (make_notequal depth e x) in
+      map_all isfalse_forms do_match
   | Enot (Eapp ("Is_true", [Eapp (s, _, _)], _), _) ->
       let matches = find istrue_forms s in
-      let do_match x = make_notequal (Index.get_prio x) p x e in
-      (List.map do_match matches, true)
-
-  | _ -> ([], false)
+      let do_match x = Node (make_notequal depth x e) in
+      (List.map do_match matches) @ [Stop]
+  | Enot (Eapp ("Is_true", [Emeta _], _), _) ->
+      let do_match x = Node (make_notequal depth x e) in
+      map_all istrue_forms do_match
+  | _ -> []
 ;;
 
 let get_1 = function
@@ -264,16 +267,20 @@ let to_llargs tr_prop tr_term r =
 
 let to_llproof tr_prop tr_term mlp args =
   let (name, meta, con, hyp) = to_llargs tr_prop tr_term mlp.mlrule in
-  {
-    Llproof.conc = List.map tr_prop mlp.mlconc;
-    Llproof.rule = Llproof.Rextension (name, meta, con, hyp);
-    Llproof.hyps = Array.to_list args;
-  }
+  let (subs, exts) = List.split (Array.to_list args) in
+  let ext = List.fold_left Expr.union [] exts in
+  let extras = Expr.diff ext mlp.mlconc in
+  let nn = {
+      Llproof.conc = List.map tr_prop (extras @@ mlp.mlconc);
+      Llproof.rule = Llproof.Rextension (name, meta, con, hyp);
+      Llproof.hyps = subs;
+    }
+  in (nn, extras)
 ;;
 
 Extension.register {
   Extension.name = "coqbool";
-  Extension.newnodes = newnodes;
+  Extension.newnodes = (fun depth e -> lazy (newnodes depth e));
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.to_llproof = to_llproof;

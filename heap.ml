@@ -1,5 +1,5 @@
 (*  Copyright 2001 INRIA  *)
-Version.add "$Id: heap.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: heap.ml,v 1.3 2004-09-09 15:25:35 doligez Exp $";;
 
 type 'a tree =
   | Node of 'a * 'a tree * 'a tree
@@ -24,7 +24,7 @@ let rec insert_aux cmp t x =
   | Leaf -> Node (x, Leaf, Leaf)
   | Node (y, b1, b2) ->
      let (nb1, nb2) = if Rnd.bool rnd then (b1, b2) else (b2, b1) in
-     if cmp x y <= 0
+     if cmp x y < 0
      then Node (x, insert_aux cmp nb1 y, nb2)
      else Node (y, insert_aux cmp nb1 x, nb2)
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.8 2004-06-07 19:56:58 delahaye Exp $";;
+Version.add "$Id: print.ml,v 1.9 2004-09-09 15:25:35 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -13,10 +13,16 @@ let printf s = fprintf !outc s
 
 let is_letter c = c >= 'A' && c <= 'Z'  ||  c >= 'a' && c <= 'z';;
 
-let print_vartype (v, t) =
+let print_var oc v =
+  match v with
+  | Evar (s, _) -> fprintf oc "%s" s
+  | _ -> assert false
+;;
+
+let print_vartype oc (v, t) =
   if t = ""
-  then printf "%s " v
-  else printf "%s:\"%s\" " v t
+  then print_var oc v
+  else fprintf oc "%a:\"%s\" " print_var v t
 ;;
 
 let rec expr = function
@@ -36,17 +42,17 @@ let rec expr = function
   | Etrue -> printf "(True)";
   | Efalse -> printf "(False)";
   | Eall (v, "", e, _) ->
-      printf "(A. ((%s) " v; expr e; printf "))";
+      printf "(A. ((%a) " print_var v; expr e; printf "))";
   | Eall (v, t, e, _) ->
-      printf "(A. ((%s \"%s\") " v t; expr e; printf "))";
+      printf "(A. ((%a \"%s\") " print_var v t; expr e; printf "))";
   | Eex (v, "", e, _) ->
-      printf "(E. ((%s) " v; expr e; printf "))";
+      printf "(E. ((%a) " print_var v; expr e; printf "))";
   | Eex (v, t, e, _) ->
-      printf "(E. ((%s \"%s\") " v t; expr e; printf "))";
+      printf "(E. ((%a \"%s\") " print_var v t; expr e; printf "))";
   | Etau (v, "", e, _) ->
-      printf "(t. ((%s) " v; expr e; printf "))";
+      printf "(t. ((%a) " print_var v; expr e; printf "))";
   | Etau (v, t, e, _) ->
-      printf "(t. ((%s \"%s\") " v t; expr e; printf "))";
+      printf "(t. ((%a \"%s\") " print_var v t; expr e; printf "))";
 ;;
 
 let rec expr_soft = function
@@ -71,14 +77,15 @@ let rec expr_soft = function
       printf "("; expr_soft e1; printf " <=> "; expr_soft e2; printf ")";
   | Etrue -> printf "True";
   | Efalse -> printf "False";
-  | Eall (v, "", e, _) ->
+  | Eall (Evar (v, _), "", e, _) ->
       printf "(All %s, " v; expr_soft e; printf ")";
-  | Eall (v, t, e, _) ->
+  | Eall (Evar (v, _), t, e, _) ->
       printf "(All %s:%s, " v t; expr_soft e; printf ")";
-  | Eex (v, "", e, _) ->
+  | Eex (Evar (v, _), "", e, _) ->
       printf "(Ex %s, " v; expr_soft e; printf ")";
-  | Eex (v, t, e, _) ->
+  | Eex (Evar (v, _), t, e, _) ->
       printf "(Ex %s:%s, " v t; expr_soft e; printf ")";
+  | Eall _ | Eex _ -> assert false
   | Etau _ as e ->
       printf "T_%d" (Index.get_number e);
 ;;
@@ -87,7 +94,7 @@ let phrase = function
   | Phrase.Hyp (n, e, p) -> printf "# %s:\n$%d " n p; expr e; printf "\n";
   | Phrase.Def (DefReal (s, args, e)) ->
       printf "$def %s (" s;
-      List.iter (fun x -> printf " %s" x) args;
+      List.iter (print_var stdout) args;
       printf ") ";
       expr e;
       printf "\n";
@@ -95,7 +102,7 @@ let phrase = function
       printf "#pseudo-def: ";
       expr hyp;
       printf "\n$def %s (" s;
-      List.iter (fun x -> printf " %s" x) args;
+      List.iter (print_var stdout) args;
       printf ") ";
       expr e;
       printf "\n";
@@ -106,8 +113,9 @@ let sequent l =
 ;;
 
 let get_rule_name = function
-  | Close1 e -> "EqRefl", [e]
-  | Close2 e -> "Axiom", [e]
+  | Close e -> "Axiom", [e]
+  | Close_refl (s, e) -> "Refl("^s^")", [e]
+  | Close_sym (s, e1, e2) -> "Sym("^s^")", [e1; e2]
   | False -> "False", []
   | NotTrue -> "NotTrue", []
   | NotNot (e) -> "NotNot", [e]
@@ -125,15 +133,20 @@ let get_rule_name = function
   | Equiv (e1, e2) -> "Equiv", [e1; e2]
   | NotEquiv (e1, e2) -> "NotEquiv", [e1; e2]
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
-  | Equal_NotEqual (e1, e2, e3, e4) -> "Eq-NotEq", [e1; e2; e3; e4]
+  | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
   | Definition (DefReal (s, _, _), e, _) -> "Definition("^s^")", [e]
   | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
   | ConjTree e -> "ConjTree", [e]
   | DisjTree e -> "DisjTree", [e]
   | AllPartial (e1, e2) -> "All-Partial", [e1; e2]
   | NotExPartial (e1, e2) -> "NotEx-Partial", [e1; e2]
-  | CloseEq (e1, e2) -> "EqSym", [e1; e2]
-  | Ext (th, ru, args) -> ("Extension/"^th^"/"^ru), args
+  | Refl (s, e1, e2) -> "Refl("^s^")", [e1; e2]
+  | Trans (L, false, e1, e2) -> "Trans(L)", [e1; e2]
+  | Trans (R, false, e1, e2) -> "Trans(R)", [e1; e2]
+  | Trans (L, true, e1, e2) -> "TransSym(L)", [e1; e2]
+  | Trans (R, true, e1, e2) -> "TransSym(R)", [e1; e2]
+  | Cut (e1) -> "Cut", [e1]
+  | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
 ;;
 
 let mlproof_rule r =
@@ -176,8 +189,10 @@ let rec mlproof_aux p =
 let mlproof p = ignore (mlproof_aux p);;
 
 let hlrule_name = function
-  | Close1 (e) -> "EqRefl", [enot (eapp ("=", [e; e]))]
-  | Close2 (e) -> "Axiom", [e; enot (e)]
+  | Close (e) -> "Axiom", [e; enot (e)]
+  | Close_refl (s, e) -> "Refl("^s^")", [enot (eapp (s, [e; e]))]
+  | Close_sym (s, e1, e2) ->
+      "Sym("^s^")", [eapp (s, [e1; e2]); enot (eapp (s, [e2; e1]))]
   | False -> "False", []
   | NotTrue -> "NotTrue", []
   | NotNot (e) -> "NotNot", [enot (enot (e))]
@@ -193,9 +208,8 @@ let hlrule_name = function
   | NotAnd (e1, e2) -> "NotAnd", [enot (eand (e1, e2))]
   | Equiv (e1, e2) -> "Equiv", [eequiv (e1, e2)]
   | NotEquiv (e1, e2) -> "NotEquiv", [enot (eequiv (e1, e2))]
-  | Equal_NotEqual (e1, e2, e3, e4) ->
-      "Eq-NotEq", [eapp ("=", [e1; e2]); enot (eapp ("=", [e3; e4]))]
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
+  | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
   | NotEqual (e1, e2) -> "NotEqual", [enot (eapp ("=", [e1; e2]))]
   | Definition ((DefReal (s, _, _) | DefPseudo (_, s, _, _)), e, _) ->
       "Definition("^s^")", [e]
@@ -203,8 +217,12 @@ let hlrule_name = function
   | DisjTree (e) -> "DisjTree", [e]
   | AllPartial (e1, e2) -> "All", [e1]
   | NotExPartial (e1, e2) -> "NotExists", [e1]
-  | CloseEq (e1, e2) ->
-      "EqSym", [eapp ("=", [e1; e2]); enot (eapp ("=", [e2; e1]))]
+  | Refl (s, e1, e2) -> "Refl("^s^")", [enot (eapp (s, [e1; e2]))]
+  | Trans (L, false, e1, e2) -> "Trans(L)", [e1; e2]
+  | Trans (R, false, e1, e2) -> "Trans(R)", [e1; e2]
+  | Trans (L, true, e1, e2) -> "TransSym(L)", [e1; e2]
+  | Trans (R, true, e1, e2) -> "TransSym(R)", [e1; e2]
+  | Cut (e1) -> "Cut", [e1]
   | Ext (th, ru, args) -> ("Extension/"^th^"/"^ru), args
 ;;
 
@@ -293,15 +311,12 @@ let rec llproof_prop = function
       printf "("; llproof_prop p1; printf " => "; llproof_prop p2; printf ")";
   | Eequiv (p1, p2, _) ->
       printf "("; llproof_prop p1; printf " <=> "; llproof_prop p2; printf ")";
-  | Eall (v, "", p, _) -> printf "All %s, " v; llproof_prop p;
-  | Eex (v, "", p, _) -> printf "Ex %s, " v; llproof_prop p;
-  | Eall (v, t, p, _) -> printf "All %s:%s, " v t; llproof_prop p;
-  | Eex (v, t, p, _) -> printf "Ex %s:%s, " v t; llproof_prop p;
+  | Eall (v, t, p, _) -> printf "All %a, " print_vartype (v, t); llproof_prop p;
+  | Eex (v, t, p, _) -> printf "Ex %a, " print_vartype (v, t); llproof_prop p;
   | Eapp ("=", [t1; t2], _) ->
       printf "("; llproof_term t1; printf " = "; llproof_term t2; printf ")";
   | Eapp (s, [], _) -> printf "%s" s;
   | Eapp (s, args, _) -> printf "%s(" s; llproof_term_list args; printf ")";
-
   | Evar (s, _) -> printf "%s" s;
   | Emeta _ | Etau _ -> assert false;
 ;;
@@ -317,6 +332,7 @@ let llproof_rule = function
   | Rfalse -> printf "---false";
   | Rnottrue -> printf "---nottrue";
   | Raxiom (p) -> printf "---axiom "; llproof_prop p;
+  | Rcut (p) -> printf "---cut "; llproof_prop p;
   | Rnoteq (t) -> printf "---noteq "; llproof_term t;
   | Rnotnot (p) -> printf "---notnot "; llproof_prop p;
   | Rconnect (op, p, q) ->
@@ -389,11 +405,17 @@ let rec llproof_tree i t =
   incr nodes;
 ;;
 
+let print_idtype (v, t) =
+  if t = ""
+  then printf "%s " v
+  else printf "%s:\"%s\" " v t
+;;
+
 let llproof_lemma {name=name; params=params; proof=tree} =
   printf "%s" name;
   if params <> [] then begin
     printf " [";
-    List.iter print_vartype params;
+    List.iter print_idtype params;
     printf "]";
   end;
   printf "\n";
