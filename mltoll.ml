@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.7 2004-06-01 11:56:29 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.8 2004-06-14 19:25:22 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -271,7 +271,7 @@ and recomp_disj_n sub f =
       let la = tr_prop a and lb = tr_prop b in
       let (n1, sub1) = recomp_disj_n sub a in
       let c1 = remove (enot la) n1.LL.conc in
-      let (n2, sub2) = recomp_disj_n sub b in
+      let (n2, sub2) = recomp_disj_n sub1 b in
       let c2 = remove (enot lb) n2.LL.conc in
       let nn = {
           LL.conc = enot (tr_prop f) :: (union c1 c2);
