@@ -1,0 +1,102 @@
+%!
+
+%  Copyright 2004 INRIA
+% $Id: zenon-logo.ps,v 1.1 2004-04-25 18:10:47 doligez Exp $
+
+% Use ghostscript to translate to png format:
+(
+  gs -sDEVICE=png16m -sOutputFile=zenon-logo.png -r720 -g2430x780 \
+     -dNOPAUSE -dBATCH zenon-logo.ps
+) pop
+
+% arrow
+
+/arrow {
+    -10 5 rmoveto
+    10 -5 rlineto
+    -10 -5 rlineto
+    stroke
+} def
+
+1 setlinecap
+2 setlinewidth
+0.3 0.2 0.0 setrgbcolor
+newpath
+25 18 moveto
+140 18 lineto
+stroke
+
+1 setlinewidth
+0.2 0.2 0.2 setrgbcolor
+25 18 moveto arrow
+30 18 moveto arrow
+35 18 moveto arrow
+
+0 0 0 setrgbcolor
+143 18 moveto
+133 23 lineto
+138 18 lineto
+133 13 lineto
+closepath fill
+
+% turtle
+
+0.0 0.2 0.0 setrgbcolor
+
+175 15 moveto
+170 13 lineto
+179 14 lineto
+closepath fill
+
+181 14 moveto
+170 10 180 5 185 13 curveto
+closepath fill
+
+214 14 moveto
+225 10 215 5 210 13 curveto
+closepath fill
+
+220 15 moveto
+224 20 224 20 226 19 curveto
+230 19 230 23 226 24 curveto
+223 25 223 25 217 17 curveto
+closepath fill
+
+0.1 0.5 0.1 setrgbcolor
+
+newpath
+175 15 moveto
+190 30 205 30 220 15 curveto
+205 10 190 10 175 15 curveto
+fill
+
+% greek letters: Zenon
+
+0 0 0 setrgbcolor
+
+/Symbol findfont 48 scalefont setfont
+
+0 35 moveto
+
+/ratio 0.6 def
+/kern1 1 def
+/kern2 -1 def
+/kern3 -3.5 def
+/kern4 -3.5 def
+
+4 1 scale
+(Z) show
+kern1 0 rmoveto
+ratio 1 scale
+(e) show
+kern2 0 rmoveto
+ratio 1 scale
+(n) show
+kern3 0 rmoveto
+ratio 1 scale
+(o) show
+kern4 0 rmoveto
+ratio 1 scale
+(n) show
+
+showpage
