@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.4 2004-05-23 19:53:49 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.5 2004-05-26 16:22:36 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -11,6 +11,17 @@ let rec mk_quant q vs body =
   | [] -> body
   | h::t -> q (h, "", mk_quant q t body)
 ;;
+
+let rec myfold f e el =
+  match el with
+  | [] -> e
+  | h::t -> f (e, myfold f h t)
+;;
+
+let mkand e el = myfold eand e el;;
+let mkor e el = myfold eor e el;;
+let mkimply e el = myfold eimply e el;;
+let mkequiv e el = myfold eequiv e el;;
 
 %}
 
@@ -101,10 +112,10 @@ expr:
   | IDENT                                { evar $1 }
   | OPEN IDENT expr_list CLOSE           { eapp ($2, $3) }
   | OPEN NOT expr CLOSE                  { enot ($3) }
-  | OPEN AND expr expr CLOSE             { eand ($3, $4) }
-  | OPEN OR expr expr CLOSE              { eor ($3, $4) }
-  | OPEN IMPLY expr expr CLOSE           { eimply ($3, $4) }
-  | OPEN EQUIV expr expr CLOSE           { eequiv ($3, $4) }
+  | OPEN AND expr expr_list CLOSE        { mkand $3 $4 }
+  | OPEN OR expr expr_list CLOSE         { mkor $3 $4 }
+  | OPEN IMPLY expr expr_list CLOSE      { mkimply $3 $4 }
+  | OPEN EQUIV expr expr_list CLOSE      { mkequiv $3 $4 }
   | OPEN TRUE CLOSE                      { etrue }
   | TRUE                                 { etrue }
   | OPEN FALSE CLOSE                     { efalse }
