@@ -4,9 +4,12 @@
 
 ; Attention, ce fichier a ete modifie a la main
 
-    (* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: foo
+%%statement
 (Is_true (((setoid_equal  self_s2 ) (scnd x ) (scnd x ) ))
 )
 By s2equal_reflexive: (x: abst_T) (Is_true ((setoid_equal self_s2  x x)) )
 By def 
-(* Qed *).
+%%end-auto-proof

@@ -2,7 +2,10 @@
 ; species: partially_ordered_additive_monoid
 ; property: sup_commutes / __lemma_1_2
 
-    (* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: foo
+%%statement
 
 (Is_true
 ((abst_equal (abst_plus (abst_inf y x ) (abst_sup y x ) ) (abst_plus x y ) ))
@@ -28,4 +31,4 @@ By
    y))))
   )
 By def 
-(* Qed *).
+%%end-auto-proof

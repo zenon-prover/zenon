@@ -20,13 +20,5 @@ $goal (A. ((x "abst_T") (A. ((y "abst_T")
             (=> (Is_true (abst_leq x y))
                 (\/ (Is_true (abst_lt x y)) (Is_true (abst_equal x y)))))))))
 
-$def abst_different (x y) (not_b (abst_equal x y))
-$def abst_lt (x y) (and_b (abst_leq x y) (not_b (abst_equal x y)))
-
-
-# theorems that should be integrated in the prover somehow
-# (lifting boolean operators into connectives)
-
-;$2 (A. ((x) (<=> (Is_true (not_b x)) (-. (Is_true x)))))
-;$2 (A. ((x) (A. ((y)
-;     (<=> (Is_true (and_b x y)) (/\ (Is_true x) (Is_true y)))))))
+$def abst_different (x y) (__g_not_b (abst_equal x y))
+$def abst_lt (x y) (__g_and_b (abst_leq x y) (__g_not_b (abst_equal x y)))

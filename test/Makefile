@@ -1,32 +1,16 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.1 2004-05-27 17:20:35 doligez Exp $
+#  $Id: Makefile,v 1.2 2004-06-04 09:24:11 doligez Exp $
 
 .PHONY: test
 test:
-	for i in test*.znn; do \
+	@for i in test*; do \
 	  echo -n $$i' '; \
-	  if ../zenon -w -q -iz -x coqbool $$i; then \
+	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
+	  if ../zenon -w -q -i$$fmt -x coqbool $$i; then \
 	    : ; \
 	  else \
-	    echo '>>> TEST FAILED <<<' ; \
+	    echo $$i '>>> TEST FAILED <<<' ; \
 	    exit 3 ; \
 	  fi ; \
-	done
-	for i in test*.coz; do \
-	  echo -n $$i' '; \
-	  if ../zenon -w -q -ifocal -x coqbool $$i; then \
-	    : ; \
-	  else \
-	    echo '>>> TEST FAILED <<<' ; \
-	    exit 3 ; \
-	  fi ; \
-	done
-	for i in test*.p; do \
-	  echo -n $$i' '; \
-	  if ../zenon -w -q -itptp -x coqbool $$i; then \
-	    : ; \
-	  else \
-	    echo '>>> TEST FAILED <<<' ; \
-	    exit 3 ; \
-	  fi ; \
-	done
+	done; \
+	echo

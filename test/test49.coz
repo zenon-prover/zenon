@@ -2,7 +2,10 @@
 ; species: partially_ordered_additive_monoid
 ; property: add_absorbes_sup / __goal_11
 
-    (* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: foo
+%%statement
 (Is_true ((abst_order_sup (abst_plus x y ) x ))
 )
 By
@@ -15,4 +18,4 @@ By
    ))
   )
 By def abst_order_sup:= [x: abst_T][y: abst_T](abst_equal  x (abst_sup  x y))
-(* Qed *).
+%%end-auto-proof

@@ -2,7 +2,10 @@
 ; species: partially_ordered_additive_monoid
 ; property: sup_idempotent / __lemma_1_1_2
 
-    (* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: __lemma_1_1_2
+%%statement
 (Is_true ((abst_equal (abst_inf x y ) y ))
 )
 By
@@ -18,4 +21,4 @@ By
     (Is_true ((abst_equal  x (abst_inf  x y))) ) H_1_1: (Is_true
   ((abst_equal x y )) )
 By def 
-(* Qed *).
+%%end-auto-proof

@@ -20,11 +20,4 @@ $1
   (A. ((x "abst_T") (A. ((y "abst_T")
     (\/ (Is_true (abst_leq x y)) (Is_true (abst_leq y x)))))))
 
-$def abst_equal (x y) (and_b (abst_leq x y) (abst_leq y x))
-
-
-# from Bool.v
-
-$2 (A. ((x) (A. ((y)
-     (<=> (Is_true (and_b x y))
-          (/\ (Is_true x) (Is_true y)))))))
+$def abst_equal (x y) (__g_and_b (abst_leq x y) (abst_leq y x))

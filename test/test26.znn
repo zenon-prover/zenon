@@ -1,14 +1,4 @@
-$2 (-. (= true false))
-
-$def Is_true (x) (= x true)
-
-$2 (A. ((y) (A. ((z) (= (ite true y z) y)))))
-$2 (A. ((x) (A. ((y) (A. ((z) (=> (-. (Is_true x)) (= (ite x y z) z))))))))
-
-
-$def not_b (x) (ite x false true)
-
-$def abst_different (x y) (not_b (abst_equal x y))
+$def abst_different (x y) (__g_not_b (abst_equal x y))
 
 $goal (A. ((x "abst_T") (A. ((y "abst_T")
          (=> (Is_true (abst_equal x y)) (-. (Is_true (abst_different x y))))))))

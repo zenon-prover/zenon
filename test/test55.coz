@@ -2,7 +2,10 @@
 ; species: partially_ordered_additive_monoid
 ; property: order_inf_reverse_order_sup / __lemma_1_1
 
-    (* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: foo
+%%statement
 (Is_true
 ((abst_equal
   (abst_plus (abst_inf x y ) y ) (abst_plus (abst_inf x y ) (abst_sup x y ) )
@@ -25,4 +28,4 @@ By
    y))))
   )
 By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
-(* Qed *).
+%%end-auto-proof

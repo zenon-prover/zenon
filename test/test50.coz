@@ -1,7 +1,10 @@
 ; test du parseur de syntaxe Coq
 
-(* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: foo
+%%statement
 (x: nat) A -> (y: nat) B -> A
 By
 By def
-(* Qed *).
+%%end-auto-proof

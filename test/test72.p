@@ -26,7 +26,46 @@
 % Comments : 
 %--------------------------------------------------------------------------
 %----Include axioms of equality
-include('Axioms/EQU001+0.ax').
+%--------------------------------------------------------------------------
+%%%%%%%%%%%%%%%%%include('Axioms/EQU001+0.ax').
+% File     : EQU001+0 : TPTP v2.6.0. Bugfixed v2.0.0.
+% Domain   : Equality
+% Axioms   : Reflexivity, symmetry and transitivity, of equality
+% Version  : 
+% English  : 
+
+% Refs     : 
+% Source   : [TPTP]
+% Names    : 
+
+% Status   : 
+% Syntax   : Number of formulae    :    3 (   1 unit)
+%            Number of atoms       :    6 (   6 equality)
+%            Maximal formula depth :    4 (   3 average)
+%            Number of connectives :    3 (   0 ~  ;   0  |;   1  &)
+%                                         (   0 <=>;   2 =>;   0 <=)
+%                                         (   0 <~>;   0 ~|;   0 ~&)
+%            Number of predicates  :    1 (   0 propositional; 2-2 arity)
+%            Number of functors    :    0 (   0 constant; --- arity)
+%            Number of variables   :    6 (   0 singleton;   6 !;   0 ?)
+%            Maximal term depth    :    1 (   1 average)
+
+% Comments : 
+%--------------------------------------------------------------------------
+input_formula(reflexivity,axiom,
+    ! [X] : equal(X,X)   ).
+
+input_formula(symmetry,axiom,
+    ! [X,Y] : 
+      ( equal(X,Y)
+     => equal(Y,X) )   ).
+
+input_formula(transitivity,axiom,
+    ! [X,Y,Z] : 
+      ( ( equal(X,Y)
+        & equal(Y,Z) )
+     => equal(X,Z) )   ).
+%--------------------------------------------------------------------------
 %--------------------------------------------------------------------------
 %----Substitution axioms
 input_formula(big_f_substitution_1,axiom,(

@@ -4,7 +4,10 @@
 
 ; Attention, ce fichier a ete modifie a la main
 
-    (* to be proved *)
+%%begin-auto-proof
+%%location: []
+%%name: foo
+%%statement
 (Is_true ((abst_equal x x ))
 )
 By 
@@ -21,4 +24,4 @@ By def
       [ b2:= (scnd  b)]
       (and_b  ((setoid_equal  self_s1 )  a1 b1) ((setoid_equal  self_s2 )  a2
       b2))
-(* Qed *).
+%%end-auto-proof

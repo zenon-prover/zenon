@@ -48,10 +48,5 @@ $1 (A. ((x "abst_T") (A. ((y "abst_T")
          (=> (Is_true (abst_leq y x))
              (Is_true (abst_equal x y))))))))
 
-$def abst_different (x y) (not_b (abst_equal x y))
-$def abst_lt (x y) (not_b (abst_leq y x))
-
-
-# from Bool.v
-
-$2 (A. ((x) (<=> (Is_true (not_b x)) (-. (Is_true x)))))
+$def abst_different (x y) (__g_not_b (abst_equal x y))
+$def abst_lt (x y) (__g_not_b (abst_leq y x))
