@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.2 2004-04-25 18:11:57 doligez Exp $
+#  $Id: Makefile,v 1.3 2004-04-26 00:38:44 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -32,6 +32,10 @@ zenon.byt: ${OBJBYT}
 
 zenon: zenon.opt
 	cp zenon.opt zenon
+
+zenon-logo.png: zenon-logo.ps
+	gs -sDEVICE=png16m -sOutputFile=zenon-logo.png -r720 -g2400x800 \
+	   -dNOPAUSE -dBATCH zenon-logo.ps
 
 all: zenon zenon.opt zenon.byt
 
