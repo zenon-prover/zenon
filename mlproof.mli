@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.4 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.5 2004-09-28 13:12:58 doligez Exp $  *)
 
 open Expr;;
 
@@ -37,8 +37,10 @@ type rule =
 
   | ConjTree of expr            (* p1/\p2/\...  /  p1, p2, ...    *)
   | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ...  *)
-  | AllPartial of expr * expr   (* A.p  /  A.(\x.p(f(x)))         *)
-  | NotExPartial of expr * expr (* -E.p  /  -E.(\x.p(f(x)))       *)
+  | AllPartial of expr * string * int
+                                (* Ax.p(x)  /  Axyz.p(s(xyz)) *)
+  | NotExPartial of expr * string * int
+                                (* -Ex.p(x)  /  -Exyz.p(s(xyz)) *)
   | Refl of string * expr * expr (* -P(a,b)  /  a!=b *)
   | Trans of side * bool * expr * expr
     (* Trans (side, sym, e1, e2):
@@ -64,5 +66,5 @@ type proof = {
 
 val size : proof -> int;;
 val make_node :
-   Expr.expr list -> rule -> Expr.expr list -> proof list -> proof
+   Expr.expr list -> rule -> Expr.expr list list -> proof list -> proof
 ;;

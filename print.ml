@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.9 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.10 2004-09-28 13:12:58 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -138,8 +138,8 @@ let get_rule_name = function
   | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
   | ConjTree e -> "ConjTree", [e]
   | DisjTree e -> "DisjTree", [e]
-  | AllPartial (e1, e2) -> "All-Partial", [e1; e2]
-  | NotExPartial (e1, e2) -> "NotEx-Partial", [e1; e2]
+  | AllPartial (e1, s, n) -> "All-Partial", [e1]
+  | NotExPartial (e1, s, n) -> "NotEx-Partial", [e1]
   | Refl (s, e1, e2) -> "Refl("^s^")", [e1; e2]
   | Trans (L, false, e1, e2) -> "Trans(L)", [e1; e2]
   | Trans (R, false, e1, e2) -> "Trans(R)", [e1; e2]
@@ -215,8 +215,8 @@ let hlrule_name = function
       "Definition("^s^")", [e]
   | ConjTree (e) -> "ConjTree", [e]
   | DisjTree (e) -> "DisjTree", [e]
-  | AllPartial (e1, e2) -> "All", [e1]
-  | NotExPartial (e1, e2) -> "NotExists", [e1]
+  | AllPartial (e1, s, n) -> "All", [e1]
+  | NotExPartial (e1, s, n) -> "NotExists", [e1]
   | Refl (s, e1, e2) -> "Refl("^s^")", [enot (eapp (s, [e1; e2]))]
   | Trans (L, false, e1, e2) -> "Trans(L)", [e1; e2]
   | Trans (R, false, e1, e2) -> "Trans(R)", [e1; e2]

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.11 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.12 2004-09-28 13:12:58 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -378,8 +378,7 @@ module V8 = struct
       match t with
       | Cvar "" -> assert false
       | Cvar s -> bprintf b "%s" s; flush_buf oc;
-      | Cty "" -> bprintf b "_U";
-      | Cty s -> bprintf b "%s" s;
+      | Cty s -> bprintf b "%a" pr_ty s;
       | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
       | Clam (_, _, Clam _) ->
           let (lams, body) = get_lams [] t in
@@ -394,15 +393,15 @@ module V8 = struct
       | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
       | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
       | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
-      | Call (v, "", t1) -> bprintf b "(forall %s:_U,%a)" v pr t1;
-      | Call (v, ty, t1) -> bprintf b "(forall %s:%s,%a)" v ty pr t1;
-      | Cex (v, "", t1) -> bprintf b "(exists %s:_U,%a)" v pr t1;
-      | Cex (v, ty, t1) -> bprintf b "(exists %s:%s,%a)" v ty pr t1;
+      | Call (v, ty, t1) -> bprintf b "(forall %s:%a,%a)" v pr_ty ty pr t1;
+      | Cex (v, ty, t1) -> bprintf b "(exists %s:%a,%a)" v pr_ty ty pr t1;
       | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
       | Cwild -> bprintf b "_";
+
     and pr_list b l =
       let f t = bprintf b " %a" pr t; in
       List.iter f l;
+
     and pr_lams b l =
       let f (v, ty) =
         match ty with
@@ -410,7 +409,14 @@ module V8 = struct
         | _ -> bprintf b "(%s:%a)" v pr ty;
       in
       List.iter f l;
+
+    and pr_ty b t =
+      match t with
+      | "" -> bprintf b "_U";
+      | "?" -> bprintf b "_";
+      | s -> bprintf b "%s" s;
     in
+
     init_buf ();
     bprintf buf "%s" prefix;
     pr buf t;
@@ -454,8 +460,7 @@ module V7 = struct
       match t with
       | Cvar "" -> assert false
       | Cvar s -> bprintf b "%s" s; flush_buf oc;
-      | Cty "" -> bprintf b "_U";
-      | Cty s -> bprintf b "%s" s;
+      | Cty s -> bprintf b "%a" pr_ty s;
       | Clam (s, Cwild, t2) -> bprintf b "([%s]%a)" s pr t2;
       | Clam (_, _, Clam _) ->
           let (lams, body) = get_lams [] t in
@@ -470,10 +475,8 @@ module V7 = struct
       | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
       | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
       | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
-      | Call (v, "", t1) -> bprintf b "((%s:_U)%a)" v pr t1;
-      | Call (v, ty, t1) -> bprintf b "((%s:%s)%a)" v ty pr t1;
-      | Cex (v, "", t1) -> bprintf b "(Ex[%s:_U]%a)" v pr t1;
-      | Cex (v, ty, t1) -> bprintf b "(Ex[%s:%s]%a)" v ty pr t1;
+      | Call (v, ty, t1) -> bprintf b "((%s:%a)%a)" v pr_ty ty pr t1;
+      | Cex (v, ty, t1) -> bprintf b "(Ex[%s:%a]%a)" v pr_ty ty pr t1;
       | Clet (v, t1, t2) -> bprintf b "([%s:=%a]%a)" v pr t1 pr t2;
       | Cwild -> bprintf b "?";
 
@@ -488,6 +491,12 @@ module V7 = struct
         | _ -> bprintf b "[%s:%a]" v pr ty;
       in
       List.iter f l;
+
+    and pr_ty b t =
+      match t with
+      | "" -> bprintf b "_U";
+      | "?" -> bprintf b "?";
+      | s -> bprintf b "%s" s;
     in
     init_buf ();
     bprintf buf "%s" prefix;

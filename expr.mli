@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.7 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.8 2004-09-28 13:12:58 doligez Exp $  *)
 
 type private_info;;
 
@@ -72,15 +72,16 @@ val preunify : expr -> expr -> (expr * expr) list;;
    Return an empty list if they are not pre-unifiable.
 *)
 
-val occurs : expr -> expr -> bool;;
-(* [occurs e1 e2] returns true if e1 occurs in e2 *)
+val occurs_as_meta : expr -> expr -> bool;;
+(* [occurs e1 e2] returns true if [Emeta (e1, _)] occurs in [e2] *)
 
-val size : expr -> int;;
 val substitute : (expr * expr) list -> expr -> expr;;
 
 val newvar : unit -> expr;;
 
-val has_meta : expr -> bool;;
+val size : expr -> int;;
+val has_metas : expr -> bool;;
+val count_metas : expr -> int;;
 
 val free_var : expr -> (string * (bool * int)) list
 val type_list : expr -> string list

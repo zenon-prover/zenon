@@ -14,6 +14,7 @@ header.ml
 header.mli
 gmon.out
 .DS_Store
+parser.output
 
 zenon7.v
 zenon8.v

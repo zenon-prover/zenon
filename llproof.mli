@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.6 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.7 2004-09-28 13:12:58 doligez Exp $  *)
 
 open Expr;;
 
@@ -8,6 +8,11 @@ open Expr;;
   1. Emeta et Etau ne sont pas utilises.
   2. La distinction entre terme et proposition est respectee.
   3. Le predicat "=" a toujours deux arguments.
+
+  Types:
+   "" -> pas de type specifie par l'utilisateur -> "_U"
+   "?" -> wildcard -> "?" ou "_"
+   chaine -> type specifie par l'utilisateur
 *)
 
 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.8 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.9 2004-09-28 13:12:58 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b *)
@@ -167,7 +167,9 @@ let newnodes depth e =
         nprio = Prio.make depth Prio.Close [| |];
         nbranches = [| |];
       }; Stop ]
-(* FIXME TODO: faire nrule = Ext, et etendre la traduction *)
+(* FIXME TODO: faire nrule = Ext, et etendre la traduction
+   pour que les pseudo-defs marchent correctement
+*)
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
       begin try
         let (d, params, body) = Index.get_def s in

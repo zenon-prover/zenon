@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: prio.ml,v 1.3 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: prio.ml,v 1.4 2004-09-28 13:12:58 doligez Exp $";;
 
 type shape =
   | Close
@@ -11,6 +11,7 @@ type shape =
   | Beta2
   | Correl
   | Gamma_inst of Expr.expr
+  | Gamma_inst_partial
 ;;
 
 type t = int;;
@@ -32,5 +33,6 @@ let make depth shape branches =
     | Beta1 | Gamma_meta | Beta2 -> 10.0 *. m +. dp *. d +. size ()
     | Correl -> 100.0 *. m +. dp *. d +. size ()
     | Gamma_inst e -> 1000.0 *. m +. dp *. d +. s *. float (Expr.size e)
+    | Gamma_inst_partial -> 1000.0 *. m +. dp *. d +. size ()
   in int_of_float result
 ;;

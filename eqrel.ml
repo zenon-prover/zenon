@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: eqrel.ml,v 1.5 2004-09-28 13:12:58 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -82,6 +82,7 @@ let rec do_conj path env e =
   | Eequiv (e1, e2, _) ->
       do_conj (L::path) env (eimply (e1, e2));
       do_conj (R::path) env (eimply (e2, e1));
+  (* FIXME TODO: traiter Enot (Eequiv) *)
   | _ -> subexprs := (get_leaves path env e) :: !subexprs;
 ;;
 
@@ -330,21 +331,21 @@ let rec decompose_disj e forms =
   | Eor (e1, e2, _) ->
       let n1 = decompose_disj e1 forms in
       let n2 = decompose_disj e2 forms in
-      make_node [e] (Or (e1, e2)) [e1; e2] [n1; n2]
+      make_node [e] (Or (e1, e2)) [[e1]; [e2]] [n1; n2]
   | Eimply (e1, e2, _) ->
       let ne1 = enot e1 in
       let n1 = decompose_disj ne1 forms in
       let n2 = decompose_disj e2 forms in
-      make_node [e] (Impl (e1, e2)) [ne1; e2] [n1; n2]
+      make_node [e] (Impl (e1, e2)) [[ne1]; [e2]] [n1; n2]
   | Enot (Eand (e1, e2, _), _) ->
       let ne1 = enot e1 in
       let ne2 = enot e2 in
       let n1 = decompose_disj ne1 forms in
       let n2 = decompose_disj ne2 forms in
-      make_node [e] (NotAnd (e1, e2)) [ne1; ne2] [n1; n2]
+      make_node [e] (NotAnd (e1, e2)) [[ne1]; [ne2]] [n1; n2]
   | Enot (Enot (e1, _), _) ->
       let n1 = decompose_disj e1 forms in
-      make_node [e] (NotNot (e1)) [e1] [n1]
+      make_node [e] (NotNot (e1)) [[e1]] [n1]
   | Efalse -> make_node [e] False [] []
   | Enot (Etrue, _) -> make_node [e] NotTrue [] []
   | Eapp (s, _, _) ->
@@ -357,60 +358,69 @@ let rec decompose_disj e forms =
   | _ -> assert false
 ;;
 
-let rec decompose n e dirs vars forms taus =
+let rec decompose_conj n e dirs vars forms taus =
   match e, dirs, vars with
   | Eand (e1, e2, _), L::rest, _ ->
-      let n1 = decompose n e1 rest vars forms taus in
-      make_node [e] (And (e1, e2)) [e1] [n1]
+      let n1 = decompose_conj n e1 rest vars forms taus in
+      make_node [e] (And (e1, e2)) [[e1]] [n1]
   | Eand (e1, e2, _), R::rest, _ ->
-      let n1 = decompose n e2 rest vars forms taus in
-      make_node [e] (And (e1, e2)) [e2] [n1]
+      let n1 = decompose_conj n e2 rest vars forms taus in
+      make_node [e] (And (e1, e2)) [[e2]] [n1]
   | Eall (v, ty, e1, _), _, w::rest when n = w ->
       begin match taus with
       | [] -> assert false
       | x::t ->
           let f = Expr.substitute [(v, x)] e1 in
-          let n1 = decompose (n+1) f dirs rest forms t in
-          make_node [e] (All (e, x)) [f] [n1]
+          let n1 = decompose_conj (n+1) f dirs rest forms t in
+          make_node [e] (All (e, x)) [[f]] [n1]
       end
   | Eall (v, ty, e1, _), _, _ ->
       let x = emeta (e) in
       let f = Expr.substitute [(v, x)] e1 in
-      let n1 = decompose (n+1) f dirs vars forms taus in
-      make_node [e] (All (e, x)) [f] [n1]
+      let n1 = decompose_conj (n+1) f dirs vars forms taus in
+      make_node [e] (All (e, x)) [[f]] [n1]
   | Enot (Eor (e1, e2, _), _), L::rest, _ ->
       let ne1 = enot e1 in
-      let n1 = decompose n ne1 rest vars forms taus in
-      make_node [e] (NotOr (e1, e2)) [ne1] [n1]
+      let n1 = decompose_conj n ne1 rest vars forms taus in
+      make_node [e] (NotOr (e1, e2)) [[ne1]] [n1]
   | Enot (Eor (e1, e2, _), _), R::rest, _ ->
       let ne2 = enot e2 in
-      let n1 = decompose n ne2 rest vars forms taus in
-      make_node [e] (NotOr (e1, e2)) [ne2] [n1]
+      let n1 = decompose_conj n ne2 rest vars forms taus in
+      make_node [e] (NotOr (e1, e2)) [[ne2]] [n1]
   | Enot (Eimply (e1, e2, _), _), L::rest, _ ->
-      let n1 = decompose n e1 rest vars forms taus in
-      make_node [e] (NotImpl (e1, e2)) [e1] [n1]
+      let n1 = decompose_conj n e1 rest vars forms taus in
+      make_node [e] (NotImpl (e1, e2)) [[e1]] [n1]
   | Enot (Eimply (e1, e2, _), _), R::rest, _ ->
       let ne2 = enot e2 in
-      let n1 = decompose n ne2 rest vars forms taus in
-      make_node [e] (NotOr (e1, e2)) [ne2] [n1]
+      let n1 = decompose_conj n ne2 rest vars forms taus in
+      make_node [e] (NotOr (e1, e2)) [[ne2]] [n1]
   | Enot (Eex (v, ty, e1, _), _), _, w::rest when n = w ->
       begin match taus with
       | [] -> assert false
       | x::t ->
           let f = Expr.substitute [(v, x)] (enot e1) in
-          let n1 = decompose (n+1) f dirs rest forms t in
-          make_node [e] (NotEx (e, x)) [f] [n1]
+          let n1 = decompose_conj (n+1) f dirs rest forms t in
+          make_node [e] (NotEx (e, x)) [[f]] [n1]
       end
   | Enot (Eex (v, ty, e1, _), _), _, _ ->
       let x = emeta (e) in
       let f = Expr.substitute [(v, x)] (enot e1) in
-      let n1 = decompose (n+1) f dirs vars forms taus in
-      make_node [e] (NotEx (e, x)) [f] [n1]
+      let n1 = decompose_conj (n+1) f dirs vars forms taus in
+      make_node [e] (NotEx (e, x)) [[f]] [n1]
   | Enot (Enot (e1, _), _), _, _ ->
-      let n1 = decompose n e1 dirs vars forms taus in
-      make_node [e] (NotNot e1) [e1] [n1]
-  | Eequiv (e1, e2, _), L::rest, _ -> assert false (* FIXME TODO *)
-  | Eequiv (e1, e2, _), R::rest, _ -> assert false (* FIXME TODO *)
+      let n1 = decompose_conj n e1 dirs vars forms taus in
+      make_node [e] (NotNot e1) [[e1]] [n1]
+  | Eequiv (e1, e2, _), L::rest, _ ->
+      let ne1 = enot e1 in
+      let n1 = decompose_disj ne1 forms in
+      let n2 = decompose_disj e2 forms in
+      make_node [e] (Equiv (e1, e2)) [[ne1]; [e2]] [n1; n2]
+  | Eequiv (e1, e2, _), R::rest, _ ->
+      let ne2 = enot e2 in
+      let n1 = decompose_disj e1 forms in
+      let n2 = decompose_disj ne2 forms in
+      make_node [e] (Equiv (e1, e2)) [[ne2]; [e1]] [n2; n1]
+  (* FIXME TODO: traiter Enot (Eequiv) *)
   | _, _, _ ->
       assert (dirs = []);
       assert (vars = []);
@@ -422,13 +432,41 @@ let get_proof e =
   let ne = enot e in
   match HE.find hyps_tbl e with
   | Refl ((f, dirs, vars)) ->
-      let (form, tau) = inst_nall ne in
-      let n1 = decompose 0 f dirs vars [form] [tau] in
-      let n2 = make_node [ne] (NotAll ne) [form] [n1] in
+      let (f1, tau) = inst_nall ne in
+      let n1 = decompose_conj 0 f dirs vars [f1] [tau] in
+      let n2 = make_node [ne] (NotAll ne) [[f1]] [n1] in
       (n2, [f])
-  | Sym ((f, dirs, vars)) -> assert false (* FIXME TODO *)
+  | Sym ((f, dirs, vars)) ->
+      let (f1, tau1) = inst_nall ne in
+      let (f2, tau2) = inst_nall f1 in
+      begin match f2 with
+      | Enot (Eimply (f3, f4, _), _) ->
+          let nf4 = enot f4 in
+          let n1 = decompose_conj 0 f dirs vars [f3; nf4] [tau1; tau2] in
+          let n2 = make_node [f2] (NotImpl (f3, f4)) [[f3; nf4]] [n1] in
+          let n3 = make_node [f1] (NotAll f1) [[f2]] [n2] in
+          let n4 = make_node [ne] (NotAll ne) [[f1]] [n3] in
+          (n4, [f])
+      | _ -> assert false
+      end
   | Sym2 ((f1, dir1, var1), (f2, dir2, var2)) -> assert false (* FIXME TODO *)
-  | Trans ((f, dirs, vars)) -> assert false (* FIXME TODO *)
+  | Trans ((f, dirs, vars)) ->
+      let (f1, tau1) = inst_nall ne in
+      let (f2, tau2) = inst_nall f1 in
+      let (f3, tau3) = inst_nall f2 in
+      begin match f3 with
+      | Enot (Eimply (f4, (Eimply (f5, f6, _) as f56), _), _) ->
+          let nf6 = enot f6 in
+          let n1 = decompose_conj 0 f dirs vars [f4; f5; nf6] [tau1; tau2; tau3]
+          in
+          let n2 = make_node [f56] (NotImpl (f5, f6)) [[f5; nf6]] [n1] in
+          let n3 = make_node [f3] (NotImpl (f4, f56)) [[f4; enot f56]] [n2] in
+          let n4 = make_node [f2] (NotAll f2) [[f3]] [n3] in
+          let n5 = make_node [f1] (NotAll f1) [[f2]] [n4] in
+          let n6 = make_node [ne] (NotAll ne) [[f1]] [n5] in
+          (n6, [f])
+      | _ -> assert false
+      end
   | Trans2 ((f1, dir1, var1), (f2, dir2, var2)) -> assert false (* FIXME TODO *)
 ;;
 

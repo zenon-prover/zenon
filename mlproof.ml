@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.5 2004-09-28 13:12:58 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -32,8 +32,10 @@ type rule =
 
   | ConjTree of expr            (* p1/\p2/\...  /  p1, p2, ... *)
   | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ... *)
-  | AllPartial of expr * expr   (* A.p  /  A.(\x.p(f(x))) *)
-  | NotExPartial of expr * expr (* -E.p  /  -E.(\x.p(f(x))) *)
+  | AllPartial of expr * string * int
+                                (* Ax.p(x)  /  Axyz.p(s(xyz)) *)
+  | NotExPartial of expr * string * int
+                                (* -Ex.p(x)  /  -Exyz.p(s(xyz)) *)
   | Refl of string * expr * expr
   | Trans of side * bool * expr * expr
 
@@ -57,7 +59,7 @@ let rec size p =
 ;;
 
 let make_node conc rule hyps subs =
-  let remove_hyp hyp sub = diff sub.mlconc [hyp] in
+  let remove_hyp hyp sub = diff sub.mlconc hyp in
   let extras = List.map2 remove_hyp hyps subs in
   let extra = List.flatten extras in
   {

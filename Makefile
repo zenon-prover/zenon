@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.17 2004-09-09 15:25:35 doligez Exp $
+#  $Id: Makefile,v 1.18 2004-09-28 13:12:58 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = ${CAMLP4}
@@ -81,7 +81,7 @@ lexer.ml: lexer.mll
 	${CAMLLEX} lexer.mll
 
 parser.ml: parser.mly
-	${CAMLYACC} parser.mly
+	${CAMLYACC} -v parser.mly
 
 parser.mli: parser.ml
 	:
@@ -126,14 +126,14 @@ expr.cmo: globals.cmi misc.cmi version.cmi expr.cmi
 expr.cmx: globals.cmx misc.cmx version.cmx expr.cmi 
 prio.cmo: expr.cmi version.cmi prio.cmi 
 prio.cmx: expr.cmx version.cmx prio.cmi 
-eqrel.cmo: expr.cmi version.cmi eqrel.cmi 
-eqrel.cmx: expr.cmx version.cmx eqrel.cmi 
 phrase.cmo: expr.cmi version.cmi phrase.cmi 
 phrase.cmx: expr.cmx version.cmx phrase.cmi 
 llproof.cmo: expr.cmi version.cmi llproof.cmi 
 llproof.cmx: expr.cmx version.cmx llproof.cmi 
 mlproof.cmo: expr.cmi version.cmi mlproof.cmi 
 mlproof.cmx: expr.cmx version.cmx mlproof.cmi 
+eqrel.cmo: expr.cmi mlproof.cmi version.cmi eqrel.cmi 
+eqrel.cmx: expr.cmx mlproof.cmx version.cmx eqrel.cmi 
 index.cmo: expr.cmi globals.cmi misc.cmi mlproof.cmi version.cmi index.cmi 
 index.cmx: expr.cmx globals.cmx misc.cmx mlproof.cmx version.cmx index.cmi 
 print.cmo: expr.cmi index.cmi llproof.cmi mlproof.cmi phrase.cmi version.cmi \
@@ -168,8 +168,8 @@ ext_coqbool.cmo: expr.cmi extension.cmi globals.cmi index.cmi llproof.cmi \
     misc.cmi mlproof.cmi node.cmi prio.cmi version.cmi ext_coqbool.cmi 
 ext_coqbool.cmx: expr.cmx extension.cmx globals.cmx index.cmx llproof.cmx \
     misc.cmx mlproof.cmx node.cmx prio.cmx version.cmx ext_coqbool.cmi 
-lltocoq.cmo: version.cmi lltocoq.cmi 
-lltocoq.cmx: version.cmx lltocoq.cmi 
+lltocoq.cmo: expr.cmi index.cmi llproof.cmi version.cmi lltocoq.cmi 
+lltocoq.cmx: expr.cmx index.cmx llproof.cmx version.cmx lltocoq.cmi 
 coqterm.cmo: expr.cmi globals.cmi index.cmi llproof.cmi phrase.cmi \
     version.cmi coqterm.cmi 
 coqterm.cmx: expr.cmx globals.cmx index.cmx llproof.cmx phrase.cmx \
@@ -181,10 +181,10 @@ main.cmx: coqterm.cmx eqrel.cmx extension.cmx globals.cmx lexer.cmx \
     lltocoq.cmx mltoll.cmx parser.cmx phrase.cmx print.cmx prove.cmx tptp.cmx \
     version.cmx main.cmi 
 prio.cmi: expr.cmi 
-eqrel.cmi: expr.cmi mlproof.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 
+eqrel.cmi: expr.cmi mlproof.cmi 
 index.cmi: expr.cmi mlproof.cmi 
 print.cmi: expr.cmi llproof.cmi mlproof.cmi phrase.cmi 
 step.cmi: expr.cmi mlproof.cmi 

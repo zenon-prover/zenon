@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.14 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.15 2004-09-28 13:12:58 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -144,7 +144,9 @@ let rec argspec = [
      "        suppress warnings";
   "-x", Arg.String Extension.activate,
      "<ext>   activate extension <ext>"
+(* FIXME TODO ajouter option "-standalone" *)
 ]
+
 and print_usage () =
   Arg.usage argspec umsg;
   exit 0;
@@ -155,35 +157,47 @@ if !check || !valid then proof_level := Proof_coq;;
 
 let parse_file f =
   try
-    let (chan, close) =
-      if f = "-" then (stdin, ignore) else (open_in f, close_in)
+    let (name, chan, close) =
+      if f = "-" then ("", stdin, ignore) else (f, open_in f, close_in)
     in
     let lexbuf = Lexing.from_channel chan in
-    match !input_format with
-    | I_tptp ->
-        let tpphrases = Parser.tpfile Lexer.tptoken lexbuf in
-        close chan;
-        let d = Filename.dirname f in
-        let pp = Filename.parent_dir_name in
-        let cat = Filename.concat in
-        let upup = Filename.concat (Filename.concat d pp) pp in
-        let incpath = List.rev (upup :: d :: !include_path) in
-        ("theorem", Tptp.translate incpath tpphrases)
-    | I_focal ->
-        let (name, result) = Parser.coqfile Lexer.coqtoken lexbuf in
-        close chan;
-        (name, result)
-    | I_zenon ->
-        Globals.goal_found := false;
-        let result = Parser.theory Lexer.token lexbuf in
-        close chan;
-        if (not !Globals.goal_found) && !Globals.warnings_flag then begin
-          eprintf "Warning: no goal given.\n";
-          flush stderr;
-        end;
-        ("theorem", result)
-  with
-  | Sys_error (msg) -> eprintf "%s\n" msg; exit 2
+    lexbuf.Lexing.lex_curr_p <- {
+       Lexing.pos_fname = name;
+       Lexing.pos_lnum = 1;
+       Lexing.pos_bol = 0;
+       Lexing.pos_cnum = 0;
+    };
+    try
+      match !input_format with
+      | I_tptp ->
+          let tpphrases = Parser.tpfile Lexer.tptoken lexbuf in
+          close chan;
+          let d = Filename.dirname f in
+          let pp = Filename.parent_dir_name in
+          let cat = Filename.concat in
+          let upup = Filename.concat (Filename.concat d pp) pp in
+          let incpath = List.rev (upup :: d :: !include_path) in
+          ("theorem", Tptp.translate incpath tpphrases)
+      | I_focal ->
+          let (name, result) = Parser.coqfile Lexer.coqtoken lexbuf in
+          close chan;
+          (name, result)
+      | I_zenon ->
+          Globals.goal_found := false;
+          let result = Parser.theory Lexer.token lexbuf in
+          close chan;
+          if (not !Globals.goal_found) && !Globals.warnings_flag then begin
+            eprintf "Warning: no goal given.\n";
+            flush stderr;
+          end;
+          ("theorem", result)
+    with Parsing.Parse_error ->
+      let p = Lexing.lexeme_start_p lexbuf in
+      Printf.eprintf "File \"%s\", line %d, character %d: syntax error.\n"
+                     p.Lexing.pos_fname p.Lexing.pos_lnum
+                     (p.Lexing.pos_cnum - p.Lexing.pos_bol);
+      exit 2
+  with Sys_error (msg) -> eprintf "%s\n" msg; exit 2
 ;;
 
 Gc.set {(Gc.get ()) with
@@ -249,7 +263,7 @@ let main () =
     eprintf "proof nodes created: %d\n" !Globals.proof_nodes;
     eprintf "formulas created: %d\n" !Globals.num_expr;
     eprintf "\n";
-    Gc.print_stat stderr;
+    (*Gc.print_stat stderr;*)
   end;
   exit !retcode;
 ;;

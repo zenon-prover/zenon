@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.13 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.14 2004-09-28 13:12:58 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -70,10 +70,12 @@ let hyp_counter = ref 0;;
 %token BYDEF
 %token COLONEQUAL
 %token ARROW
+%token FUNARROW
 %token DOUBLEARROW
 %token FORALL
 %token LET
 %token IN
+%token FUN
 %token TILDE
 %token SLASHBACKSLASH
 %token BACKSLASHSLASH
@@ -228,6 +230,8 @@ coqexpr:
       { $2 }
   | OPEN IDENT COLON IDENT CLOSE coqexpr %prec forall
       { eall (evar $2, $4, $6) }
+  | FORALL IDENT COLON IDENT COMMA coqexpr %prec forall
+      { eall (evar $2, $4, $6) }
   | coqapplication
       { eapp $1 }
   | TILDE coqexpr
@@ -290,6 +294,8 @@ coqparam_expr:
       { ([], $1) }
   | LBRACKET IDENT COLON IDENT RBRACKET coqparam_expr
       { let (params, expr) = $6 in ((evar $2) :: params, expr) }
+  | FUN OPEN IDENT COLON IDENT CLOSE FUNARROW coqparam_expr
+      { let (params, expr) = $8 in ((evar $3) :: params, expr) }
 ;
 coqdef_list:
   | /* empty */           { [] }

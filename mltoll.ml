@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.9 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.10 2004-09-28 13:12:58 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -16,7 +16,7 @@ let lemma_name n = sprintf "lemma_%d" n;;
 let make_tau_name p = sprintf "_T_%d" (Index.get_number p);;
 let make_any_name p = sprintf "_Z_%d" (Index.get_number p);;
 
-(* TODO: memoifier tr_term et tr_prop *)
+(* FIXME TODO: memoifier tr_term et tr_prop (?) *)
 
 let rec tr_term t =
   match t with
@@ -371,6 +371,60 @@ let inst_all e f =
   | _ -> assert false
 ;;
 
+let rec make_vars n =
+  if n = 0 then [] else Expr.newvar () :: make_vars (n-1)
+;;
+
+let rec add_foralls vs e =
+  match vs with
+  | [] -> e
+  | h::t -> eall (h, "?", add_foralls t e)
+;;
+
+let rec add_exists vs e =
+  match vs with
+  | [] -> e
+  | h::t -> eex (h, "?", add_exists t e)
+;;
+
+let rec decompose_forall e v p naxyz arity f args =
+  if arity = 0 then begin
+    let fttt = eapp (f, args) in
+    let pfttt = substitute [(v, fttt)] p in
+    let n1 = make_node [pfttt; naxyz] (Close pfttt) [] [] in
+    let n2 = make_node [e; naxyz] (All (e, fttt)) [[pfttt]] [n1] in
+    n2
+  end else begin
+    match naxyz with
+    | Enot (Eall (v1, t1, p1, _), _) ->
+        let tau = etau (v1, t1, enot p1) in
+        let nayz = enot (substitute [(v1, tau)] p1) in
+        let n1 = decompose_forall e v p nayz (arity-1) f (args @ [tau]) in
+        let n2 = make_node [naxyz] (NotAll naxyz) [[nayz]] [n1] in
+        n2
+    | _ -> assert false
+  end
+;;
+
+let rec decompose_exists e v p exyz arity f args =
+  if arity = 0 then begin
+    let fttt = eapp (f, args) in
+    let npfttt = enot (substitute [(v, fttt)] p) in
+    let n1 = make_node [npfttt; exyz] (Close exyz) [] [] in
+    let n2 = make_node [e; exyz] (NotEx (e, fttt)) [[npfttt]] [n1] in
+    n2
+  end else begin
+    match exyz with
+    | Eex (v1, t1, p1, _) ->
+        let tau = etau (v1, t1, p1) in
+        let eyz = substitute [(v1, tau)] p1 in
+        let n1 = decompose_exists e v p eyz (arity-1) f (args @ [tau]) in
+        let n2 = make_node [exyz] (Ex exyz) [[eyz]] [n1] in
+        n2
+    | _ -> assert false
+  end
+;;
+
 let rec to_llproof p =
   if p.mlrefc < 0 then
     get_lemma p
@@ -421,38 +475,30 @@ and translate_derived p =
       let (node, extras, subs) = recomp_disj sub e in
       assert (subs = []);
       (node, extras)
-  | AllPartial ((Eall (v1, t1, q, _) as e1), (Eall (v2, t2, qf, _) as e2)) ->
+  | AllPartial ((Eall (v1, t1, q, _) as e1), f, arity) ->
       let n1 = match p.mlhyps with
         | [| n1 |] -> n1
         | _ -> assert false
       in
-      let t = etau (v2, t2, qf) in
-      let (x, f) = find_subst e1 e2 in
-      let ft = Expr.substitute [(x, t)] f in
-      let qft = Expr.substitute [(v2, t)] qf in
-      let nqft = enot qft in
-      let ne2 = enot e2 in
-      let n2 = make_node [qft; nqft] (Close qft) [] [] in
-      let n3 = make_node [e1] (All (e1, ft)) [qft] [n2] in
-      let n4 = make_node [ne2] (NotAll ne2) [nqft] [n3] in
-      let n5 = make_node [] (Cut e2) [e2; ne2] [n1; n4] in
-      to_llproof n5
-  | NotExPartial ((Enot ((Eex (v1, t1, q, _) as e1), _) as ne1),
-                  (Enot ((Eex (v2, t2, qf, _) as e2), _) as ne2)) ->
+      let vs = make_vars arity in
+      let sxyz = eapp (f, vs) in
+      let axyz = add_foralls vs (substitute [(v1, sxyz)] q) in
+      let naxyz = enot (axyz) in
+      let n2 = decompose_forall e1 v1 q naxyz arity f [] in
+      let n3 = make_node [] (Cut axyz) [[axyz]; [naxyz]] [n1; n2] in
+      to_llproof n3
+  | NotExPartial ((Enot ((Eex (v1, t1, q, _) as e1), _) as ne1), f, arity) ->
       let n1 = match p.mlhyps with
         | [| n1 |] -> n1
         | _ -> assert false
       in
-      let t = etau (v2, t2, qf) in
-      let (x, f) = find_subst e1 e2 in
-      let ft = Expr.substitute [(x, t)] f in
-      let qft = Expr.substitute [(v2, t)] qf in
-      let nqft = enot qft in
-      let n2 = make_node [qft; nqft] (Close qft) [] [] in
-      let n3 = make_node [ne1] (NotEx (ne1, ft)) [nqft] [n2] in
-      let n4 = make_node [e2] (Ex e2) [qft] [n3] in
-      let n5 = make_node [] (Cut e2) [e2; ne2] [n4; n1] in
-      to_llproof n5
+      let vs = make_vars arity in
+      let sxyz = eapp (f, vs) in
+      let exyz = add_exists vs (substitute [(v1, sxyz)] q) in
+      let nexyz = enot (exyz) in
+      let n2 = decompose_exists ne1 v1 q exyz arity f [] in
+      let n3 = make_node [] (Cut exyz) [[exyz]; [nexyz]] [n2; n1] in
+      to_llproof n3
   | Close_sym ("=", a, b) ->
       let aeb = eapp ("=", [a; b]) in
       let nbea = enot (eapp ("=", [b; a])) in
@@ -461,7 +507,7 @@ and translate_derived p =
       let n1 = make_node [naea] (Close_refl ("=", a)) [] [] in
       let n2 = make_node [nbeb] (Close_refl ("=", b)) [] [] in
       let n3 = make_node [aeb; nbea] (P_NotP_sym ("=", aeb, nbea))
-                         [nbeb; naea] [n2; n1]
+                         [[nbeb]; [naea]] [n2; n1]
       in
       to_llproof n3
   | Close_sym (s, a, b) ->
@@ -474,16 +520,16 @@ and translate_derived p =
       let aypayipya = inst_all sym_hyp a in
       let n1 = make_node [pab; npab] (Close pab) [] [] in
       let n2 = make_node [pba; npba] (Close pba) [] [] in
-      let n3 = make_node [pabipba] (Impl (pab, pba)) [npab; pba] [n1; n2] in
-      let n4 = make_node [aypayipya] (All (aypayipya, b)) [pabipba] [n3] in
-      let n5 = make_node [sym_hyp] (All (sym_hyp, a)) [aypayipya] [n4] in
+      let n3 = make_node [pabipba] (Impl (pab, pba)) [[npab]; [pba]] [n1; n2] in
+      let n4 = make_node [aypayipya] (All (aypayipya, b)) [[pabipba]] [n3] in
+      let n5 = make_node [sym_hyp] (All (sym_hyp, a)) [[aypayipya]] [n4] in
       let (n, ext) = to_llproof n5 in
       (n, union [sym_hyp] ext)
   | Close_refl (s, a) ->
       let refl_hyp = Eqrel.get_refl_hyp s in
       let paa = eapp (s, [a; a]) in
       let n1 = make_node [paa; enot paa] (Close paa) [] [] in
-      let n2 = make_node [refl_hyp] (All (refl_hyp, a)) [paa] [n1] in
+      let n2 = make_node [refl_hyp] (All (refl_hyp, a)) [[paa]] [n1] in
       let (n, ext) = to_llproof n2 in
       (n, union [refl_hyp] ext)
   | P_NotP_sym (s, (Eapp (s1, [a; b], _) as pab), (Eapp (s2, [c; d], _) as pcd))
@@ -501,11 +547,12 @@ and translate_derived p =
       let pabipba = eimply (pab, pba) in
       let aypayipya = inst_all sym_hyp a in
       let n3 = make_node [npab; pab] (Close pab) [] [] in
-      let n4 = make_node [pba; npcd] (P_NotP (pba, npcd)) [nbec; naed] [n1; n2]
+      let n4 = make_node [pba; npcd] (P_NotP (pba, npcd))
+                         [[nbec]; [naed]] [n1; n2]
       in
-      let n5 = make_node [pabipba] (Impl (pab, pba)) [npab; pba] [n3; n4] in
-      let n6 = make_node [aypayipya] (All (aypayipya, b)) [pabipba] [n5] in
-      let n7 = make_node [sym_hyp] (All (sym_hyp, a)) [aypayipya] [n6] in
+      let n5 = make_node [pabipba] (Impl (pab, pba)) [[npab]; [pba]] [n3; n4] in
+      let n6 = make_node [aypayipya] (All (aypayipya, b)) [[pabipba]] [n5] in
+      let n7 = make_node [sym_hyp] (All (sym_hyp, a)) [[aypayipya]] [n6] in
       let (n, ext) = to_llproof n7 in
       (n, union [sym_hyp] ext)
   | Refl (s, a, b) ->
@@ -519,9 +566,10 @@ and translate_derived p =
       let naea = enot (eapp ("=", [a; a])) in
       let naeb = enot (eapp ("=", [a; b])) in
       let n2 = make_node [naea] (Close_refl (s, a)) [] [] in
-      let n3 = make_node [paa; npab] (P_NotP (paa, npab)) [naea; naeb] [n2; n1]
+      let n3 = make_node [paa; npab] (P_NotP (paa, npab))
+                         [[naea]; [naeb]] [n2; n1]
       in
-      let n4 = make_node [refl_hyp] (All (refl_hyp, a)) [paa] [n3] in
+      let n4 = make_node [refl_hyp] (All (refl_hyp, a)) [[paa]] [n3] in
       let (n, ext) = to_llproof n4 in
       (n, union [refl_hyp] ext)
   | Trans (side, sym, Enot (Eapp (s, [a; b], _), _), Eapp ("=", [c; d], _)) ->
@@ -562,11 +610,11 @@ and translate_trans_equal side sym p a b c d prnode =
   let rule4 = if cross2 then (P_NotP (ced, nveu))
                         else (P_NotP_sym (p, ced, nveu))
   in
-  let n4 = make_node [nveu; ced] rule4 [nvev; nteu] [n3; n1] in
+  let n4 = make_node [nveu; ced] rule4 [[nvev]; [nteu]] [n3; n1] in
   let n5 = make_node [nzez] (Close_refl ("=", z)) [] [] in
   let subs6 = if cross1 then [n5; n4] else [n4; n5] in
-  let n6 = make_node [pxy; npab] (P_NotP (pxy, npab)) [nxea; nyeb] subs6 in
-  let n7 = make_node [] (Cut pxy) [pxy; enot pxy] [n6; n2] in
+  let n6 = make_node [pxy; npab] (P_NotP (pxy, npab)) [[nxea]; [nyeb]] subs6 in
+  let n7 = make_node [] (Cut pxy) [[pxy]; [enot pxy]] [n6; n2] in
   to_llproof n7
 
 and translate_trans side sym p a b c d prnode =
@@ -600,7 +648,7 @@ and translate_trans side sym p a b c d prnode =
       make_node [npzt; pcd] (Close pcd) [] []
     ) else (
       let n3 = make_node [nueu] (Close_refl ("=", u)) [] [] in
-      let hyps4 = if cross2 then [nueu; nvew] else [nvew; nueu] in
+      let hyps4 = if cross2 then [[nueu]; [nvew]] else [[nvew]; [nueu]] in
       let subs4 = if cross2 then [n3; n1] else [n1; n3] in
       let n4 = make_node [npzt; pcd] (P_NotP (pcd, npzt)) hyps4 subs4 in
       n4
@@ -612,10 +660,10 @@ and translate_trans side sym p a b c d prnode =
       let ptz = eapp (p, [t; z]) in
       let n5 = make_node [ptz; enot ptz] (Close ptz) [] [] in
       let pztiptz = eimply (pzt, ptz) in
-      let n6 = make_node [pztiptz] (Impl (pzt, ptz)) [npzt; ptz] [n4; n5] in
+      let n6 = make_node [pztiptz] (Impl (pzt, ptz)) [[npzt]; [ptz]] [n4; n5] in
       let akpzkipkz = inst_all sym_hyp z in
-      let n7 = make_node [akpzkipkz] (All (akpzkipkz, t)) [pztiptz] [n6] in
-      let n8 = make_node [sym_hyp] (All (sym_hyp, z)) [akpzkipkz] [n7] in
+      let n7 = make_node [akpzkipkz] (All (akpzkipkz, t)) [[pztiptz]] [n6] in
+      let n8 = make_node [sym_hyp] (All (sym_hyp, z)) [[akpzkipkz]] [n7] in
       (n8, [sym_hyp])
     ) else (
       (n4, [])
@@ -624,21 +672,21 @@ and translate_trans side sym p a b c d prnode =
   let n9 = make_node [pab; enot pab] (Close pab) [] [] in
   let subs10 = if cross1 then [n8; n9] else [n2; n9] in
   let pubipab = eimply (pub, pab) in
-  let n10 = make_node [pubipab] (Impl (pub, pab)) [enot pub; pab] subs10 in
+  let n10 = make_node [pubipab] (Impl (pub, pab)) [[enot pub]; [pab]] subs10 in
   let subs11 = if cross1 then [n2; n10] else [n8; n10] in
   let pauipubipab = eimply (pau, pubipab) in
   let n11 = make_node [pauipubipab] (Impl (pau, pubipab))
-                      [enot pau; pubipab] subs11
+                      [[enot pau]; [pubipab]] subs11
   in
   let alakpaliplkipak = inst_all trans_hyp a in
   let akpauipukipak = inst_all alakpaliplkipak u in
   let n12 = make_node [akpauipukipak] (All (akpauipukipak, b))
-                      [pauipubipab] [n11]
+                      [[pauipubipab]] [n11]
   in
   let n13 = make_node [alakpaliplkipak] (All (alakpaliplkipak, u))
-                      [akpauipukipak] [n12]
+                      [[akpauipukipak]] [n12]
   in
-  let n14 = make_node [trans_hyp] (All (trans_hyp, a)) [alakpaliplkipak] [n13]
+  let n14 = make_node [trans_hyp] (All (trans_hyp, a)) [[alakpaliplkipak]] [n13]
   in
   let (n, ext) = to_llproof n14 in
   (n, union (trans_hyp :: sym_hyps) ext)
@@ -649,7 +697,7 @@ and translate_pseudo_def p def_hyp s args body folded unfolded =
   | a1::rest ->
       let newhyp = inst_all def_hyp a1 in
       let n1 = translate_pseudo_def p newhyp s rest body folded unfolded in
-      make_node [def_hyp] (All (def_hyp, a1)) [newhyp] [n1]
+      make_node [def_hyp] (All (def_hyp, a1)) [[newhyp]] [n1]
 
 and translate_pseudo_def_base p def_hyp s body folded unfolded =
   let n1 = match p.mlhyps with
@@ -658,15 +706,15 @@ and translate_pseudo_def_base p def_hyp s body folded unfolded =
   in
   match def_hyp with
   | Eequiv (a, b, _) ->
-      let (q, nq, cross) = match folded with
-        | Enot (q, _) -> (q, folded, true)
-        | q -> (q, enot q, false)
+      let (q, nq, unf, nunf, cross) = match folded, unfolded with
+        | Enot (q, _), Enot (unf, _) -> (q, folded, unf, unfolded, true)
+        | q, unf -> (q, enot q, unf, enot unf, false)
       in
       let n2 = make_node [q; nq] (Close q) [] [] in
       if cross then
-        make_node [def_hyp] (Equiv (q, unfolded)) [unfolded; q] [n1; n2]
+        make_node [def_hyp] (Equiv (q, unf)) [[nunf]; [q]] [n1; n2]
       else
-        make_node [def_hyp] (Equiv (q, unfolded)) [nq; unfolded] [n2; n1]
+        make_node [def_hyp] (Equiv (q, unf)) [[nq]; [unf]] [n2; n1]
   | Eapp ("=", [_; _], _) when Expr.equal folded (enot def_hyp) ->
       make_node [folded; def_hyp] (Close def_hyp) [] []
   | Eapp ("=", [_; _], _) ->
@@ -696,15 +744,15 @@ and translate_pseudo_def_base p def_hyp s body folded unfolded =
       let rule2 = if sym then Close_sym ("=", y, x) else Close def_hyp in
       let n2 = make_node [nfeb; def_hyp] rule2 [] [] in
       let n3 = make_node [neee] (Close_refl ("=", e)) [] [] in
-      let hyps4 = if cross2 then [neee; nfeb] else [nfeb; neee] in
+      let hyps4 = if cross2 then [[neee]; [nfeb]] else [[nfeb]; [neee]] in
       let subs4 = if cross2 then [n3; n2] else [n2; n3] in
       let rule4 = if cross1 then P_NotP (baseunf, folded)
                             else P_NotP (folded, baseunf)
       in
       let n4 = make_node [negunf; folded] rule4 hyps4 subs4 in
       if cross1
-        then make_node [] (Cut baseunf) [baseunf; enot baseunf] [n4; n1]
-        else make_node [] (Cut baseunf) [baseunf; enot baseunf] [n1; n4]
+        then make_node [] (Cut baseunf) [[baseunf]; [enot baseunf]] [n4; n1]
+        else make_node [] (Cut baseunf) [[baseunf]; [enot baseunf]] [n1; n4]
   | _ -> assert false
 ;;
 

@@ -1,17 +1,11 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.10 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.11 2004-09-28 13:12:58 doligez Exp $";;
 
 open Misc;;
 
 let _equal = ( = );;
 let ( = ) = ();;
 let string_equal x y = String.compare x y == 0;;
-
-type private_info = {
-  hash : int;
-  skel_hash : int;
-  free_vars : string list;
-};;
 
 type expr =
   | Evar of string * private_info
@@ -29,12 +23,43 @@ type expr =
   | Eall of expr * string * expr * private_info
   | Eex of expr * string * expr * private_info
   | Etau of expr * string * expr * private_info
-;;
+
+and private_info = {
+  hash : int;
+  skel_hash : int;
+  free_vars : string list;
+  size : int;
+  metas : expr list;
+};;
 
 type definition =
   | DefReal of string * expr list * expr
   | DefPseudo of (expr * int) * string * expr list * expr
 ;;
+
+
+(************************)
+(* small sets of formulas (represented as lists) *)
+
+let rec diff l1 l2 =
+  match l1 with
+  | [] -> []
+  | e::t -> if List.exists ((==) e) l2
+            then diff t l2
+            else e :: (diff t l2)
+;;
+
+let union l1 l2 = (diff l1 l2) @@ l2;;
+
+let rec disjoint l1 l2 =
+  match l1 with
+  | [] -> true
+  | h::t -> if List.exists ((==) h) l2
+            then false
+            else disjoint t l2
+;;
+
+(*******************)
 
 let k_true = 123000
 and k_false = 456
@@ -50,14 +75,19 @@ and k_ex = 223017
 and k_tau = 323019
 ;;
 
-let mkpriv skel fv = {
+let size_meta = 15;;
+let size_tau_inverse = 1000;;
+
+let mkpriv skel fv sz metas = {
   hash = Hashtbl.hash (skel, fv);
   skel_hash = skel;
   free_vars = fv;
+  size = sz;
+  metas = metas;
 };;
 
-let priv_true = mkpriv k_true [];;
-let priv_false = mkpriv k_false [];;
+let priv_true = mkpriv k_true [] 1 [];;
+let priv_false = mkpriv k_false [] 1 [];;
 
 let get_priv = function
   | Evar (_, h) -> h
@@ -80,6 +110,8 @@ let get_priv = function
 let get_hash e = (get_priv e).hash;;
 let get_skel e = (get_priv e).skel_hash;;
 let get_fv e = (get_priv e).free_vars;;
+let get_size e = (get_priv e).size;;
+let get_metas e = (get_priv e).metas;;
 
 let rec str_union l1 l2 =
   match l1, l2 with
@@ -98,33 +130,56 @@ let rec remove x l =
 
 let combine x y = (x lsl 1) + (x lsr 30) + y;;
 
-let priv_var s = mkpriv 0 [s];;
-let priv_meta e = mkpriv (combine k_meta (get_skel e)) (get_fv e);;
+let priv_var s = mkpriv 0 [s] 1 [];;
+let priv_meta e =
+  mkpriv (combine k_meta (get_skel e)) (get_fv e) size_meta [e]
+;;
 let priv_app s args =
   let comb_skel sk e = combine sk (get_skel e) in
   let skel = combine k_app (List.fold_left comb_skel (Hashtbl.hash s) args) in
-  mkpriv skel (List.fold_left str_union [] (List.map get_fv args))
+  let sz = List.fold_left (fun a e -> a + get_size e) 1 args in
+  let metas = List.fold_left (fun a e -> union (get_metas e) a) [] args in
+  mkpriv skel (List.fold_left str_union [] (List.map get_fv args)) sz metas
 ;;
-let priv_not e = mkpriv (combine k_not (get_skel e)) (get_fv e);;
+let priv_not e =
+  mkpriv (combine k_not (get_skel e)) (get_fv e) (get_size e + 1) (get_metas e)
+;;
 let priv_and e1 e2 =
   mkpriv (combine k_and (combine (get_skel e1) (get_skel e2)))
          (str_union (get_fv e1) (get_fv e2))
+         (get_size e1 + get_size e2 + 1)
+         (union (get_metas e1) (get_metas e2))
 ;;
 let priv_or e1 e2 =
   mkpriv (combine k_or (combine (get_skel e1) (get_skel e2)))
          (str_union (get_fv e1) (get_fv e2))
+         (get_size e1 + get_size e2 + 1)
+         (union (get_metas e1) (get_metas e2))
 ;;
 let priv_imply e1 e2 =
   mkpriv (combine k_imply (combine (get_skel e1) (get_skel e2)))
          (str_union (get_fv e1) (get_fv e2))
+         (get_size e1 + get_size e2 + 1)
+         (union (get_metas e1) (get_metas e2))
 ;;
 let priv_equiv e1 e2 =
   mkpriv (combine k_equiv (combine (get_skel e1) (get_skel e2)))
          (str_union (get_fv e1) (get_fv e2))
+         (get_size e1 + get_size e2 + 1)
+         (union (get_metas e1) (get_metas e2))
 ;;
-let priv_all v t e = mkpriv (combine k_all (get_skel e)) (remove v (get_fv e));;
-let priv_ex v t e = mkpriv (combine k_ex (get_skel e)) (remove v (get_fv e));;
-let priv_tau v t e = mkpriv (combine k_tau (get_skel e)) (remove v (get_fv e));;
+let priv_all v t e =
+  mkpriv (combine k_all (get_skel e)) (remove v (get_fv e))
+         (1 + get_size e) (get_metas e)
+;;
+let priv_ex v t e =
+  mkpriv (combine k_ex (get_skel e)) (remove v (get_fv e))
+         (1 + get_size e) (get_metas e)
+;;
+let priv_tau v t e =
+  mkpriv (combine k_tau (get_skel e)) (remove v (get_fv e))
+         (1 + get_size e / size_tau_inverse) (get_metas e)
+;;
 
 
 module HashedExpr = struct
@@ -243,27 +298,6 @@ let hash = get_hash;;
 let equal = (==);;
 
 (************************)
-(* small sets of formulas (represented as lists) *)
-
-let rec diff l1 l2 =
-  match l1 with
-  | [] -> []
-  | e::t -> if List.exists (equal e) l2
-            then diff t l2
-            else e :: (diff t l2)
-;;
-
-let union l1 l2 = (diff l1 l2) @@ l2;;
-
-let rec disjoint l1 l2 =
-  match l1 with
-  | [] -> true
-  | h::t -> if List.exists (equal h) l2
-            then false
-            else disjoint t l2
-;;
-(************************)
-
 
 exception Mismatch;;
 
@@ -277,51 +311,21 @@ let rec xpreunify accu e1 e2 =
   | _, _ -> raise Mismatch
 ;;
 
-let preunify e1 e2 = xpreunify [] e1 e2;;
+let preunify e1 e2 =
+  try xpreunify [] e1 e2
+  with Mismatch -> []
+;;
 
 let preunifiable e1 e2 =
-  try ignore (preunify e1 e2);
+  try ignore (xpreunify [] e1 e2);
       true
   with Mismatch -> false
 ;;
 
-let rec occurs e f =
-  if e == f then true else begin
-    match f with
-    | Evar _ -> false
-    | Emeta _ -> false
-    | Eapp (_, args, _) -> List.exists (occurs e) args
-    | Enot (g, _) -> occurs e g
-    | Eand (g, h, _) -> occurs e g || occurs e h
-    | Eor (g, h, _) -> occurs e g || occurs e h
-    | Eimply (g, h, _) -> occurs e g || occurs e h
-    | Eequiv (g, h, _) -> occurs e g || occurs e h
-    | Etrue -> false
-    | Efalse -> false
-    | Eall (_, _, g, _) -> occurs e g
-    | Eex (_, _, g, _) -> occurs e g
-    | Etau (_, _, g, _) -> occurs e g
-  end
-;;
-
-let meta_weight = 15;;
-
-let rec xsize accu e =
-  match e with
-  | Evar _ -> accu+1
-  | Emeta (f, _) -> accu + meta_weight
-  | Eapp (_, args, _) -> List.fold_left xsize (accu+1) args
-  | Enot (f, _) -> xsize (accu+1) f
-  | Eand (f, g, _) | Eor (f, g, _) | Eimply (f, g, _) | Eequiv (f, g, _)
-     -> xsize (xsize (accu+1) f) g
-  | Etrue | Efalse -> accu+1
-  | Eall (_, _, f, _) | Eex (_, _, f, _) -> xsize (accu+1) f
-  | Etau _ -> accu+1
-;;
-
-let size e = xsize 0 e;;
-
-
+let occurs_as_meta e f = List.exists ((==) e) (get_metas f);;
+let size = get_size;;
+let has_metas e = get_metas e <> [];;
+let count_metas e = List.length (get_metas e);;
 
 let cursym = ref "_Z";;
 
@@ -395,22 +399,6 @@ let rec substitute map e =
         etau (nv, t, substitute ((v, nv) :: map1) f)
       else
         etau (v, t, substitute map1 f)
-;;
-
-let rec has_meta = function
-  | Evar _ -> false
-  | Emeta _ -> true
-  | Eapp (_, args, _) -> List.exists has_meta args
-  | Enot (f, _) -> has_meta f
-  | Eand (f, g, _) -> has_meta f || has_meta g
-  | Eor (f, g, _) -> has_meta f || has_meta g
-  | Eimply (f, g, _) -> has_meta f || has_meta g
-  | Eequiv (f, g, _) -> has_meta f || has_meta g
-  | Etrue -> false
-  | Efalse -> false
-  | Eall (_, _, f, _) -> has_meta f
-  | Eex (_, _, f, _) -> has_meta f
-  | Etau (_, _, f, _) -> has_meta f
 ;;
 
 let rec fv_rec sort bvl fvl = function

@@ -1,8 +1,9 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.10 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.11 2004-09-28 13:12:58 doligez Exp $";;
 
-open Parser
+open Parser;;
+open Lexing;;
 
 }
 
@@ -19,7 +20,11 @@ let coqidchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' '`' ]
 rule token = parse
   | '#' [^ '\010' '\013'] * { token lexbuf }
   | ';' [^ '\010' '\013'] * { token lexbuf }
-  | newline     { token lexbuf }
+  | newline     { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
+                    pos_bol = lexbuf.lex_curr_p.pos_cnum;
+                    pos_lnum = lexbuf.lex_curr_p.pos_lnum + 1;
+                  };
+                  token lexbuf }
   | space +     { token lexbuf }
   | "("         { OPEN }
   | ")"         { CLOSE }
@@ -53,7 +58,11 @@ rule token = parse
 
 and tptoken = parse
   | '%' [^ '\010' '\013'] * { tptoken lexbuf }
-  | newline          { tptoken lexbuf }
+  | newline     { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
+                    pos_bol = lexbuf.lex_curr_p.pos_cnum;
+                    pos_lnum = lexbuf.lex_curr_p.pos_lnum + 1;
+                  };
+                  tptoken lexbuf }
   | space +          { tptoken lexbuf }
   | "("              { OPEN }
   | ")"              { CLOSE }
@@ -93,17 +102,25 @@ and tptoken = parse
 and coqtoken = parse
   | '#' [^ '\010' '\013'] * { coqtoken lexbuf }
   | ';' [^ '\010' '\013'] * { coqtoken lexbuf }
-  | newline                 { coqtoken lexbuf }
+  | newline     { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
+                    pos_bol = lexbuf.lex_curr_p.pos_cnum;
+                    pos_lnum = lexbuf.lex_curr_p.pos_lnum + 1;
+                  };
+                  coqtoken lexbuf }
   | space +                 { coqtoken lexbuf }
   | "Local"                 { LOCAL }
   | "Let"                   { LOCAL }
   | "(* to be proved *)"    { TOBE }
   | "(* Qed *)."            { QED }
-  | "%%begin-auto-proof" blank+
-    "%%location:" blank* '[' [^ ']']* ']' blank+
-    "%%name:" blank* (identchar+ as name) blank+
-    "%%statement" blank+
-                            { BEGINPROOF name }
+  | "%%begin-auto-proof" blank* newline blank*
+    "%%location:" blank* '[' [^ ']']* ']' blank* newline blank*
+    "%%name:" blank* (identchar+ as name) blank* newline blank*
+    "%%statement" blank* newline
+                { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
+                    pos_bol = lexbuf.lex_curr_p.pos_cnum;
+                    pos_lnum = lexbuf.lex_curr_p.pos_lnum + 4;
+                  };
+                  BEGINPROOF name }
   | "%%end-auto-proof"      { ENDPROOF }
   | "(*"                    { coqcomment lexbuf }
   | "By"                    { BY }
@@ -118,6 +135,7 @@ and coqtoken = parse
   | "if"                    { IF }
   | "then"                  { THEN }
   | "else"                  { ELSE }
+  | "fun"                   { FUN }
   | "="                     { EQUAL }
   | '('                     { OPEN }
   | ')'                     { CLOSE }
@@ -126,9 +144,11 @@ and coqtoken = parse
   | '['                     { LBRACKET }
   | ']'                     { RBRACKET }
   | "->"                    { ARROW }
+  | "=>"                    { FUNARROW }
   | "<->"                   { DOUBLEARROW }
   | "~"                     { TILDE }
   | "."                     { DOT }
+  | ","                     { COMMA }
   | coqidchar +             { IDENT (Lexing.lexeme lexbuf) }
   | eof                     { EOF }
   | "\"" stringchar + "\"" {
@@ -139,4 +159,9 @@ and coqtoken = parse
 
 and coqcomment = parse
   | "*)"                    { coqtoken lexbuf }
-  | _                       { coqcomment lexbuf }
+  | [^ '\010' '\013'] *     { coqcomment lexbuf }
+  | newline     { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
+                    pos_bol = lexbuf.lex_curr_p.pos_cnum;
+                    pos_lnum = lexbuf.lex_curr_p.pos_lnum + 1;
+                  };
+                  coqcomment lexbuf }
