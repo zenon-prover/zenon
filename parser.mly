@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.3 2004-05-19 13:24:44 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.4 2004-05-23 19:53:49 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -58,10 +58,15 @@ let rec mk_quant q vs body =
 %token COLONEQUAL
 %token ARROW
 %token DOUBLEARROW
+%token FORALL
+%token LET
+%token IN
+%token TILDE
 
 %nonassoc forall
 %nonassoc AND
 %right ARROW DOUBLEARROW
+%nonassoc TILDE
 
 %start theory
 %type <Phrase.phrase list> theory
@@ -195,10 +200,12 @@ coqfile:
 coqexpr:
   | OPEN coqexpr CLOSE
       { $2 }
-  | OPEN IDENT COLON IDENT CLOSE coqexpr  %prec forall
+  | OPEN IDENT COLON IDENT CLOSE coqexpr %prec forall
       { eall ($2, $4, $6) }
   | coqapplication
       { eapp $1 }
+  | TILDE coqexpr
+      { enot ($2) }
   | OPEN AND coqexpr coqexpr CLOSE
       { eand ($3, $4) }
   | OPEN OR coqexpr coqexpr CLOSE
@@ -212,7 +219,7 @@ coqexpr:
   | coqexpr DOUBLEARROW coqexpr
       { eequiv ($1, $3) }
   /* FIXME TODO voir comment coder les let-in */
-  | LBRACKET IDENT COLONEQUAL coqexpr RBRACKET coqexpr %prec forall
+  | LET IDENT COLONEQUAL coqexpr IN coqexpr %prec forall
       { Expr.substitute [($2, $4)] $6 }
 ;
 coqapplication:

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.2 2004-04-29 13:04:52 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.3 2004-05-23 19:53:49 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, and_b, or_b, not_b, xor_b, _if_then_else *)
@@ -77,7 +77,7 @@ let make_notequal prio1 prio2 e f =
 
 let newnodes e p =
   match e with
-  | Eapp ("Is_true", [Eapp ("and_b", [e1; e2], _)], _) ->
+  | Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "and_b", [e1; e2]);
@@ -85,7 +85,7 @@ let newnodes e p =
             branches = [| [eand (istrue e1, istrue e2)] |];
           } ],
         true)
-  | Eapp ("Is_true", [Eapp ("or_b", [e1; e2], _)], _) ->
+  | Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "or_b", [e1; e2]);
@@ -93,7 +93,7 @@ let newnodes e p =
             branches = [| [eor (istrue e1, istrue e2)] |];
           } ],
         true)
-  | Eapp ("Is_true", [Eapp ("xor_b", [e1; e2], _)], _) ->
+  | Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "xor_b", [e1; e2]);
@@ -101,7 +101,7 @@ let newnodes e p =
             branches = [| [enot (eequiv (istrue e1, istrue e2))] |];
           } ],
         true)
-  | Eapp ("Is_true", [Eapp ("not_b", [e1], _)], _) ->
+  | Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "not_b", [e1]);
@@ -110,7 +110,7 @@ let newnodes e p =
           } ],
         true)
 
-  | Enot (Eapp ("Is_true", [Eapp ("and_b", [e1; e2], _)], _), _) ->
+  | Enot (Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _), _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "notand_b", [e1; e2]);
@@ -118,7 +118,7 @@ let newnodes e p =
             branches = [| [enot (eand (istrue e1, istrue e2))] |];
           } ],
         true)
-  | Enot (Eapp ("Is_true", [Eapp ("or_b", [e1; e2], _)], _), _) ->
+  | Enot (Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _), _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "notor_b", [e1; e2]);
@@ -126,7 +126,7 @@ let newnodes e p =
             branches = [| [enot (eor (istrue e1, istrue e2))] |];
           } ],
         true)
-  | Enot (Eapp ("Is_true", [Eapp ("xor_b", [e1; e2], _)], _), _) ->
+  | Enot (Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _), _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "notxor_b", [e1; e2]);
@@ -134,7 +134,7 @@ let newnodes e p =
             branches = [| [eequiv (istrue e1, istrue e2)] |];
           } ],
         true)
-  | Enot (Eapp ("Is_true", [Eapp ("not_b", [e1], _)], _), _) ->
+  | Enot (Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _), _) ->
       ( [ {
             nconc = [e];
             nrule = Ext ("coqbool", "notnot_b", [e1]);

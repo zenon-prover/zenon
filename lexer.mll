@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.3 2004-05-19 13:24:44 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.4 2004-05-23 19:53:49 doligez Exp $";;
 
 open Parser
 
@@ -99,6 +99,9 @@ and coqtoken = parse
   | "(*"                    { coqcomment lexbuf }
   | "By"                    { BY }
   | "By def"                { BYDEF }
+  | "forall"                { FORALL }
+  | "let"                   { LET }
+  | "in"                    { IN }
   | "and"                   { AND }
   | "or"                    { OR }
   | "="                     { EQUAL }
@@ -110,6 +113,8 @@ and coqtoken = parse
   | ']'                     { RBRACKET }
   | "->"                    { ARROW }
   | "<->"                   { DOUBLEARROW }
+  | "~"                     { TILDE }
+  | "."                     { DOT }
   | coqidchar +             { IDENT (Lexing.lexeme lexbuf) }
   | eof                     { EOF }
   | _           { raise (Failure ("unknown char " ^ Lexing.lexeme lexbuf)) }
