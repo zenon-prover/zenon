@@ -1,7 +1,7 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.7v,v 1.1 2004-05-28 08:10:51 doligez Exp $  *)
+(*  $Id: zenon.7v,v 1.2 2004-06-21 19:22:19 doligez Exp $  *)
 
-Require Import Classical.
+Require Export Classical.
 
 (*   (zenon_false H) === H
   Lemma zenon_false :
