@@ -8,3 +8,4 @@ lexer.ml
 gmon.out
 .DS_Store
 *.cm[iox]
+*.png

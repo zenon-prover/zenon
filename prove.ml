@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Misc.version "$Id: prove.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: prove.ml,v 1.2 2004-04-25 18:11:57 doligez Exp $";;
 
 open Printf;;
 
@@ -1011,7 +1011,7 @@ let rec reduce_initial_list accu l =
 let ticker () =
   let tm = Sys.time () in
   let heap_size = (Gc.stat ()).Gc.heap_words in  (* FIXME use Gc.quick_stat *)
-  Globals.progress begin fun () ->
+  Globals.do_progress begin fun () ->
     eprintf "depth %5d/%d  search %d  proof %d  \
              lemma %d  size %dM  time %.0f\n"
             !cur_depth !top_depth !Globals.inferences !Globals.proof_nodes 
@@ -1042,7 +1042,7 @@ let prove defs l =
   let result = refute [] (Heap.empty order_nodes) pl in
   Gc.delete_alarm al;
   ticker ();
-  Globals.progress (fun () -> eprintf "search finished\n");
+  Globals.do_progress (fun () -> eprintf "search finished\n");
   match result with
   | Closed p -> p
   | Back _ -> assert false

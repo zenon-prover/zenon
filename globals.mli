@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(* $Id: globals.mli,v 1.1 2004-04-01 11:37:44 doligez Exp $ *)
+(* $Id: globals.mli,v 1.2 2004-04-25 18:11:57 doligez Exp $ *)
 
 val step_count : int ref;;
 (* =< 0 means infinite; otherwise pause after that many steps *)
@@ -9,8 +9,9 @@ val stats_flag : bool ref;;
 val size_limit : float ref;;
 val time_limit : float ref;;
 
-val progress_flag : bool ref;;
-val progress : (unit -> unit) -> unit;;
+type progress = Progress_none | Progress_bar | Progress_messages;;
+val progress_level : progress ref;;
+val do_progress : (unit -> unit) -> unit;;
 
 val inferences : int ref;;
 val proof_nodes : int ref;;

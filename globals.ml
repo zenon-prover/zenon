@@ -1,22 +1,47 @@
 (*  Copyright 1997 INRIA  *)
-Misc.version "$Id: globals.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: globals.ml,v 1.2 2004-04-25 18:11:57 doligez Exp $";;
 
 let step_count = ref 0;;
 let warnings_flag = ref true;;
 let stats_flag = ref false;;
-let size_limit = ref infinity;;
-let time_limit = ref infinity;;
+let size_limit = ref 100_000_000.;;
+let time_limit = ref 300.;;
 
-let progress_flag = ref false;;
+type progress = Progress_none | Progress_bar | Progress_messages;;
+let progress_level = ref Progress_bar;;
 
-let progress f =
-  if !progress_flag then begin
-    flush stdout;
-    flush stderr;
-    f ();
-    flush stdout;
-    flush stderr;
-  end;
+let progress_cur = ref 0;;
+let progress_char = ref (-1);;
+let progress_anim = "\\|//-";;
+let progress_bar = '#';;
+
+let do_progress f =
+  match !progress_level with
+  | Progress_none -> ()
+  | Progress_bar ->
+      let tm = Sys.time () in
+      let cur = int_of_float (50. *. tm /. !time_limit) in
+      if !progress_char = -1 then begin
+        progress_char := 0;
+      end else begin
+        Printf.eprintf "\008";
+      end;
+      if cur <> !progress_cur then begin
+        for i = !progress_cur to cur - 1 do
+          Printf.eprintf "%c" progress_bar;
+        done;
+        progress_cur := cur;
+      end;
+      let c = (!progress_char + 1) mod (String.length progress_anim) in
+      Printf.eprintf "%c" (progress_anim.[c]);
+      progress_char := c;
+      flush stderr;
+  | Progress_messages ->
+      flush stdout;
+      flush stderr;
+      f ();
+      flush stdout;
+      flush stderr;
 ;;
 
 let inferences = ref 0;;

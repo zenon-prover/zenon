@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Misc.version "$Id: main.ml,v 1.1 2004-04-01 11:37:44 doligez Exp $";;
+Misc.version "$Id: main.ml,v 1.2 2004-04-25 18:11:57 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -48,13 +48,17 @@ let argspec = [
   "-ll", Arg.Unit (fun () -> proof_level := Ll_proof),
        "       output proof in LL format";
   "-max-size", Arg.String (int_arg size_limit),
-             "<s>[kMG]    limit heap size to <s> (kilo/mega/giga) words";
+             "<s>[kMG]  limit heap size to <s> kilo/mega/giga words"
+             ^ " (default 100M)";
   "-max-time", Arg.String (int_arg time_limit),
-             "<t>[smhd]   limit CPU time to <t> (seconds/minutes/hours/days)";
+             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
+             ^ " (default 5m)";
   "-ml", Arg.Unit (fun () -> proof_level := Ml_proof),
        "       output proof in ML format";
-  "-p", Arg.Set progress_flag,
+  "-p", Arg.Unit (fun () -> progress_level := Progress_messages),
       "        turn on progress messages";
+  "-q", Arg.Unit (fun () -> progress_level := Progress_none),
+      "        turn off progress bar";
   "-s", Arg.Set stats_flag,
       "        print statistics";
   "-versions", Arg.Unit versions,
