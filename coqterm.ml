@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.15 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.16 2005-04-15 14:08:20 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -28,6 +28,11 @@ let getname e =
   let result = sprintf "_h%X" (Index.get_number e) in
   try List.assoc result !mapping
   with Not_found -> result
+;;
+
+let is_mapped e =
+  let rawname = sprintf "_h%X" (Index.get_number e) in
+  List.mem_assoc rawname !mapping
 ;;
 
 let getv e = Cvar (getname e);;
@@ -74,6 +79,13 @@ let trpred v ty p = Clam (v, Cty ty, trexpr p);;
 
 let mklam v t = Clam (getname v, tropt v, t);;
 let mklams args t = List.fold_right mklam args t;;
+
+let rec common_prefix accu l1 l2 l3 =
+  match l1, l2, l3 with
+  | h1::t1, h2::t2, h3::t3 when Expr.equal h1 h2 ->
+      common_prefix (h1::accu) t1 t2 t3
+  | _, _, _ -> (List.rev accu, l1, l2, l3)
+;;
 
 let rec trtree node =
   let {conc = conc; rule = rule; hyps = hyps} = node in
@@ -166,16 +178,20 @@ let rec trtree node =
   | Rpnotp ((Eapp (p, args1, _) as pp),
             (Enot (Eapp (q, args2, _) as qq, _) as nqq)) ->
       assert (p = q);
-      let peq = Capp (Cvar "zenon_equal_base", [Cwild; Cvar p]) in
-      let ppeqq = make_equals peq (Cvar p) args1 (Cvar p) args2 hyps in
+      let (common, args1, args2, hyps) = common_prefix [] args1 args2 hyps in
+      let pref = Capp (Cvar p, List.map trexpr common) in
+      let peq = Capp (Cvar "zenon_equal_base", [Cwild; pref]) in
+      let ppeqq = make_equals peq pref args1 pref args2 hyps in
       let vp = getv pp in
       let vnq = getv nqq in
       Capp (Cvar "zenon_pnotp", [tropt pp; tropt qq; ppeqq; vp; vnq])
   | Rpnotp _ -> assert false
   | Rnotequal ((Eapp (f, args1, _) as ff), (Eapp (g, args2, _) as gg)) ->
       assert (f = g);
-      let feg = Capp (Cvar "zenon_equal_base", [Cwild; Cvar f]) in
-      let ffegg = make_equals feg (Cvar f) args1 (Cvar f) args2 hyps in
+      let (common, args1, args2, hyps) = common_prefix [] args1 args2 hyps in
+      let pref = Capp (Cvar f, List.map trexpr common) in
+      let feg = Capp (Cvar "zenon_equal_base", [Cwild; pref]) in
+      let ffegg = make_equals feg pref args1 pref args2 hyps in
       let fdg = getv (enot (eapp ("=", [ff; gg]))) in
       let optf = tropt ff in
       let optg = tropt gg in
@@ -201,7 +217,7 @@ let rec trtree node =
       let hypargs = List.map2 mklams hs (List.map trtree hyps) in
       let conargs = List.map getv c in
       Capp (Cvar name, metargs @ hypargs @ conargs)
-  | Rlemma (name, args) -> 
+  | Rlemma (name, args) ->
       Hashtbl.find lemma_env name
 
 and tr_subtree_1 l =
@@ -246,8 +262,9 @@ let rec rm_lambdas l term =
 let compare_hyps (name1, _) (name2, _) = compare name1 name2;;
 
 let make_lemma { name = name; params = params; proof = proof } =
-  let hyps = List.map (fun x -> (getname x, trexpr x)) proof.conc in
-  let hyps1 = List.sort compare_hyps hyps in
+  let hyps = List.filter (fun x -> not (is_mapped x)) proof.conc in
+  let hyps0 = List.map (fun x -> (getname x, trexpr x)) hyps in
+  let hyps1 = List.sort compare_hyps hyps0 in
   let pars = List.map (fun (x, y) -> (x, Cty y)) params in
   let formals = pars @ hyps1 in
   let actuals = List.map (fun (x, _) -> Cvar x) formals in
@@ -295,7 +312,7 @@ let trproof phrases l =
   match get_goal phrases with
   | Some goal ->
       let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", tropt goal, raw)])
-      in 
+      in
         (lemmas, th_name, term)
   | None -> (lemmas, th_name, raw)
 ;;
@@ -365,12 +382,12 @@ let make_lemma_type t =
 ;;
 
 (* ******************************************* *)
-    
+
 let pr_oc oc prefix t =
   let rec pr b t =
     match t with
     | Cvar "" -> assert false
-    | Cvar s -> 
+    | Cvar s ->
         Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
     | Cty s -> bprintf b "%a" pr_ty s;
     | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
