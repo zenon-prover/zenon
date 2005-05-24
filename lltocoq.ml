@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.20 2005-04-15 14:08:20 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.21 2005-05-24 14:15:38 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -410,7 +410,7 @@ let proof_rule ppvernac = function
     begin
       if !debug then ppvernac [< strnl "(* not(ex) *)" >];
       ppvernac [< str "apply"; hyp; coqend >];
-      declare_inst ppvernac (get_type p) t;
+(*    declare_inst ppvernac (get_type p) t; *)
       ppvernac [< str "exists "; constr_of_expr t; thenc;
                   str "apply NNPP; red; intro"; inst_name t p; coqend >]
     end;
@@ -419,7 +419,7 @@ let proof_rule ppvernac = function
     let hyp = gen_name p in
     begin
       if !debug then ppvernac [< strnl "(* all *)" >];
-      declare_inst ppvernac (get_type p) t;
+(*    declare_inst ppvernac (get_type p) t; *)
       ppvernac [< str "generalize ("; hyp; str " "; constr_of_expr t;
                   str "); cintro"; inst_name t p; coqend >]
     end;
