@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.22 2005-06-23 07:07:59 prevosto Exp $";;
+Version.add "$Id: main.ml,v 1.23 2005-06-23 13:05:47 prevosto Exp $";;
 
 open Printf;;
 open Globals;;
@@ -191,7 +191,7 @@ let parse_file f =
           let upup = Filename.concat (Filename.concat d pp) pp in
           let incpath = List.rev (upup :: d :: !include_path) in
           let forms = Tptp.translate incpath tpphrases in
-          ("theorem", Tptp.process_annotations forms)
+          (Tptp.get_thm_name (), Tptp.process_annotations forms)
       | I_focal ->
           let (name, result) = Parser.coqfile Lexer.coqtoken lexbuf in
           close chan;

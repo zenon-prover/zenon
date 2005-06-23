@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.6 2005-06-23 07:07:59 prevosto Exp $";;
+Version.add "$Id: tptp.ml,v 1.7 2005-06-23 13:05:47 prevosto Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -10,11 +10,28 @@ open Phrase;;
    produced by focal. *)
 let trans_table = Hashtbl.create 35;;
 
-let add_annotation s = 
-  try Scanf.sscanf s "coq_binding %s is %s" (Hashtbl.add trans_table)
-  with 
+(* names of formula that have to be treated as (real) definitions. *)
+let eq_defs = ref []
+
+(* name of the coq theorem. *)
+let thm_name = ref "theorem"
+let get_thm_name () = !thm_name
+
+let add_annotation s =
+  try
+    let annot_kind = String.sub s 0 (String.index s ' ') in
+      match annot_kind with
+          "coq_binding" ->  
+            Scanf.sscanf s "coq_binding %s is %s" (Hashtbl.add trans_table)
+        | "eq_def" ->
+            Scanf.sscanf s "eq_def %s" (fun x -> eq_defs:= x :: !eq_defs)
+        | "thm_name" -> 
+            Scanf.sscanf s "thm_name %s" (fun x -> thm_name:=x)
+        | _ -> () (* other annotations are irrelevant for zenon. *)
+  with (* unknown annotations. *)
       Scanf.Scan_failure _ -> ()
     | End_of_file -> ()
+    | Not_found -> ()
 
 let tptp_to_coq s = try Hashtbl.find trans_table s with Not_found -> s
 
@@ -34,11 +51,27 @@ let rec make_annot_expr =
     | Eex (x,s,e,_) -> eex (x, s, make_annot_expr e)
     | Etau (x,s,e,_) -> etau (x, s, make_annot_expr e)
 
+(* transform a fof into a real definition. *)
+let make_definition name form body p =
+  if Phrase.is_def [] body then
+    let def = Phrase.make_def (body,p)  [] body in
+      match def with
+          DefPseudo (_,s,args,def) -> Def (DefReal(s,args,def))
+        | DefReal _ -> Def def
+  else
+    (if !Globals.warnings_flag then
+       Printf.eprintf "Warning: formula %s is not a definition, \
+                       although annotated as one." name;
+     form)
+
 let process_annotations forms = 
   let process_one form =
     match form with
       | Hyp (name, body, kind) ->
-          Hyp (tptp_to_coq name, make_annot_expr body, kind)
+          if List.mem name !eq_defs then
+            make_definition name form (make_annot_expr body) kind
+          else
+            Hyp (tptp_to_coq name, make_annot_expr body, kind)
       | Def def -> assert false 
           (* for now, TPTP does not directly support definitions. *)
   in

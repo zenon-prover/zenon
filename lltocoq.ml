@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.21 2005-05-24 14:15:38 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.22 2005-06-23 13:05:47 prevosto Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -76,20 +76,19 @@ let rec constr_of_expr = function
     parth [< constr_of_expr e1; str "<->"; constr_of_expr e2 >]
   | Etrue -> [< str "True" >]
   | Efalse -> [< str "False" >]
-  | Eall (Evar (x, _), t, e, _) ->
+(*  | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; str " : "; if t <> "" then [< str t >]
              else [< str "U" >]; str ","; constr_of_expr e >]
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; str " : "; if t <> "" then [< str t >]
              else [< str "U" >]; str ","; constr_of_expr e >]
-(*
+*)
   | Eall (Evar (x, _), t, e, _) ->
     parth [< str "forall "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
   | Eex (Evar (x, _), t, e, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
-*)
   | _ -> if !debug then [< str "..." >] else assert false
 
 let parth_constr_of_expr e =
@@ -145,7 +144,7 @@ let declare_lem chns lem =
   let concl = lem.proof.conc in
   let typ = List.flatten (List.map type_list concl)
   and fvr = List.flatten (List.map free_var concl) in
-  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "U" :: typ
+  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "_" :: typ
   else typ
 
 let declare chns llp =
@@ -171,12 +170,14 @@ let rec make_mapping phrases =
 
 let rec make_params = function
   | [] -> [< >]
-  | (x, typ) :: l -> [< str "forall "; str x; str " : "; if typ = "" then
-                        str "U" else str typ; str ", "; make_params l >]
+  | (x, typ) :: l -> [< str "forall "; str x; 
+                        if typ <> "" then [< str ":"; str typ >] 
+                        else [< >];
+                        str ", "; make_params l >]
 
 let rec make_type atom sort arity =
   if arity = 0 then if sort then [< str "Prop" >]
-                    else if atom then [< str "U" >] else [< str "_" >]
+    (* else if atom then [< str "U" >] *) else [< str "_" >]
   else [< str "_ -> "; make_type false sort (arity - 1) >]
 
 let rec make_fvar = function
@@ -254,7 +255,7 @@ let inst_var = ref []
 let reset_var () = inst_var := []
 
 let get_type = function
-  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> if typ = "" then "U" else typ
+  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> if typ = "" then "_" else typ
   | _ -> assert false
 
 let declare_inst ppvernac typ = function
