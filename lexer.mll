@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.15 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: lexer.mll,v 1.16 2005-06-23 07:07:59 prevosto Exp $";;
 
 open Parser;;
 open Lexing;;
@@ -62,6 +62,7 @@ rule token = parse
   | _           { raise (Lex_error ("bad character " ^ Lexing.lexeme lexbuf)) }
 
 and tptoken = parse
+  | "%@" ([^ '\010' '\013'] * as annot) { TPANNOT annot }
   | '%' [^ '\010' '\013'] * { tptoken lexbuf }
   | newline     { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
                     pos_bol = lexbuf.lex_curr_p.pos_cnum;
@@ -84,6 +85,8 @@ and tptoken = parse
   | "=>"             { IMPLY }
   | "<="             { RIMPLY }
   | "<=>"            { EQUIV }
+  | "="              { EQSYM }
+  | "!="             { NEQSYM }
   | "<~>"            { XOR }
   | "~|"             { NOR }
   | "~&"             { NAND }
@@ -91,7 +94,9 @@ and tptoken = parse
   | "--"             { NEGATIVE }
   | "include"        { INCLUDE }
   | "input_clause"   { INPUT_CLAUSE }
+  | "cnf"            { INPUT_CLAUSE }
   | "input_formula"  { INPUT_FORMULA }
+  | "fof"            { INPUT_FORMULA }
   | "equal"          { EQUAL }
   | "\'" stringchar + "\'" {
       let s = Lexing.lexeme lexbuf in
@@ -200,6 +205,7 @@ and coqtoken = parse
   | "%%begin-auto-proof" blank* newline blank*
     "%%location:" blank* '[' [^ ']']* ']' blank* newline blank*
     "%%name:" blank* (identchar+ as name) blank* newline blank*
+    "%%syntax:" blank* identchar+ blank* newline blank*
     "%%statement" blank* newline
                 { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
                     pos_bol = lexbuf.lex_curr_p.pos_cnum;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.5 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.6 2005-06-23 07:07:59 prevosto Exp $";;
 
 open Expr;;
 
@@ -168,4 +168,5 @@ let separate l = xseparate [] [] [] [] l;;
 type tpphrase =
   | Include of string
   | Formula of string * string * expr
+  | Annotation of string
 ;;

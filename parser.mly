@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.19 2005-01-26 14:49:00 doligez Exp $";;
+Version.add "$Id: parser.mly,v 1.20 2005-06-23 07:07:59 prevosto Exp $";;
 
 open Printf;;
 
@@ -189,10 +189,23 @@ let mk_coq_let id expr body =
 %token POSITIVE
 %token NEGATIVE
 %token COMMA
+%token EQSYM
+%token NEQSYM
 %token COLON
 %token XOR
 %token NOR
 %token NAND
+%token <string> TPANNOT
+
+/* precedences for TPTP */
+%nonassoc OPEN
+%nonassoc ALL EXISTS
+%nonassoc EQSYM NEQSYM
+%left XOR NOR NAND AND OR
+%right IMPLY
+%left RIMPLY
+%nonassoc EQUIV
+%nonassoc lowest
 
 /* precedences for coq syntax */
 
@@ -286,11 +299,14 @@ tpphrase:
   | INCLUDE OPEN STRING CLOSE DOT  { Phrase.Include $3 }
   | INPUT_FORMULA OPEN LIDENT COMMA LIDENT COMMA tpformula CLOSE DOT
                                    { Phrase.Formula ($3, $5, $7) }
+  | TPANNOT                        { Phrase.Annotation $1 }
 ;
 tpexpr:
   | UIDENT                                 { evar ($1) }
   | LIDENT tparguments                     { eapp ($1, $2) }
   | EQUAL OPEN tpexpr COMMA tpexpr CLOSE   { eapp ("=", [$3; $5]) }
+  | tpexpr EQSYM tpexpr                    { eapp ("=", [$1; $3]) }
+  | tpexpr NEQSYM tpexpr                   { enot (eapp ("=", [$1; $3])) }
 ;
 tparguments:
   | OPEN tpexpr_list CLOSE         { $2 }
@@ -301,7 +317,7 @@ tpexpr_list:
   | tpexpr                         { [$1] }
 ;
 tpformula:
-  | tpatom                         { $1 }
+  | tpatom %prec lowest            { $1 }
   | tpatom AND tpformula           { eand ($1, $3) }
   | tpatom OR tpformula            { eor ($1, $3) }
   | tpatom IMPLY tpformula         { eimply ($1, $3) }

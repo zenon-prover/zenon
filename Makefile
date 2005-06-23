@@ -1,8 +1,8 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.22 2004-11-09 10:22:17 prevosto Exp $
+#  $Id: Makefile,v 1.23 2005-06-23 07:07:59 prevosto Exp $
 
 CAMLP4 = -pp 'camlp4o'
-CAMLFLAGS = -warn-error A
+CAMLFLAGS = ${CAMLP4} -warn-error A
 
 CAMLOPT = ocamlopt
 CAMLOPTFLAGS = ${CAMLFLAGS} ${OPTDEBUGFLAGS}
