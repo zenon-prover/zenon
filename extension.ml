@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.4 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.5 2005-07-01 12:24:47 prevosto Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -31,6 +31,9 @@ let activate name =
     (* FIXME TODO afficher la liste des extensions disponibles *)
     raise Not_found
 ;;
+
+let is_enabled name = 
+  name = "core" || List.exists (fun x -> x.name = name) !active
 
 let rec find_extension name l =
   match l with

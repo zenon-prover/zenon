@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.4 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: extension.mli,v 1.5 2005-07-01 12:24:47 prevosto Exp $  *)
 
 type translator =
     (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
@@ -17,6 +17,8 @@ type t = {
 
 val register : t -> unit;;
 val activate : string -> unit;;
+
+val is_enabled: string -> bool
 
 val newnodes : int -> Expr.expr -> Node.node_item list Lazy.t list;;
 val add_formula : Expr.expr -> unit;;

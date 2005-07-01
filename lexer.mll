@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.16 2005-06-23 07:07:59 prevosto Exp $";;
+Version.add "$Id: lexer.mll,v 1.17 2005-07-01 12:24:47 prevosto Exp $";;
 
 open Parser;;
 open Lexing;;
@@ -206,7 +206,7 @@ and coqtoken = parse
     "%%location:" blank* '[' [^ ']']* ']' blank* newline blank*
     "%%name:" blank* (identchar+ as name) blank* newline blank*
     "%%syntax:" blank* identchar+ blank* newline blank*
-    "%%statement" blank* newline
+    "%%statement" [^'.']+ '.' blank* newline
                 { lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
                     pos_bol = lexbuf.lex_curr_p.pos_cnum;
                     pos_lnum = lexbuf.lex_curr_p.pos_lnum + 4;
