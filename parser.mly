@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.20 2005-06-23 07:07:59 prevosto Exp $";;
+Version.add "$Id: parser.mly,v 1.21 2005-07-21 15:28:59 prevosto Exp $";;
 
 open Printf;;
 
@@ -33,7 +33,7 @@ let rec mk_type_string e =
   | Evar (s, _) -> s
   | Emeta _ -> assert false
   | Eapp (s, args, _) ->
-      List.fold_left (fun s a -> sprintf "%s %s" s (mk_type_string e)) s args
+      List.fold_left (fun s a -> sprintf "%s %s" s (mk_type_string a)) s args
   | _ -> assert false (* FIXME TODO *)
 ;;
 
