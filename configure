@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.10 2004-11-19 15:07:39 doligez Exp $
+#  $Id: configure,v 1.11 2005-07-21 15:27:29 prevosto Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
@@ -9,7 +9,7 @@ coqc=coqc
 debug=false
 
 case `hostname` in
-  macaque*) debug=true;;
+  macaque* | mpi*) debug=true;;
 esac
 
 while : ; do
