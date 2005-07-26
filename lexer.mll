@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
 {
-Version.add "$Id: lexer.mll,v 1.17 2005-07-01 12:24:47 prevosto Exp $";;
+Version.add "$Id: lexer.mll,v 1.18 2005-07-26 13:09:28 prevosto Exp $";;
 
 open Parser;;
 open Lexing;;
@@ -56,8 +56,7 @@ rule token = parse
       STRING (String.sub s 1 (String.length s - 2))
     }
 
-  | identchar + { IDENT (Lexing.lexeme lexbuf) }
-
+  | identchar +  { IDENT (Lexing.lexeme lexbuf) }
   | eof         { EOF }
   | _           { raise (Lex_error ("bad character " ^ Lexing.lexeme lexbuf)) }
 
@@ -200,7 +199,9 @@ and coqtoken = parse
   | "where"                 { WHERE }
   | "with"                  { WITH }
 
-  | coqidbegin coqidchar *  { IDENT (Lexing.lexeme lexbuf) }
+  | coqidbegin coqidchar *  ('.' coqidbegin coqidchar*)*
+    { let s = Lexing.lexeme lexbuf in
+        if String.contains s '.' then FQN s else IDENT s }
 
   | "%%begin-auto-proof" blank* newline blank*
     "%%location:" blank* '[' [^ ']']* ']' blank* newline blank*

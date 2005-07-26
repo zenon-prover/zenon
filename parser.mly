@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.21 2005-07-21 15:28:59 prevosto Exp $";;
+Version.add "$Id: parser.mly,v 1.22 2005-07-26 13:09:28 prevosto Exp $";;
 
 open Printf;;
 
@@ -70,6 +70,7 @@ let mk_coq_let id expr body =
 
 /* tokens for parsing coq syntax */
 
+%token <string> FQN
 %token BANG_
 %token PERCENT_
 %token AMPER_
@@ -209,7 +210,8 @@ let mk_coq_let id expr body =
 
 /* precedences for coq syntax */
 
-%nonassoc LPAREN_ IDENT
+%nonassoc LPAREN_
+%nonassoc IDENT FQN
 %nonassoc FORALL EXISTS COMMA_ IF THEN ELSE
 %right DASH_GT_ LT_DASH_GT_
 %right BACKSL_SLASH_
@@ -350,6 +352,13 @@ coqfile:
   | coqexpr coq_hyp_def_list EOF
       { ("theorem", Hyp ("_Zgoal", enot $1, 0) :: $2) }
 ;
+
+coqident:
+  | IDENT { $1 }
+  | FQN { $1 }
+/* Directly handled by the lexer as FQN */
+/*  | IDENT PERIOD_ coqident %prec fqn { $1 ^ "." ^ $3 } */
+
 coqexpr:
   | FORALL coqbindings COMMA_ coqexpr
       { mk_coq_all $2 $4 }
@@ -379,7 +388,7 @@ coqexpr:
   | TILDE_ coqexpr
       { enot ($2) }
 
-  | coqexpr1 coqexpr1_list  %prec apply
+  | coqexpr1 coqexpr1_list  %prec apply 
       { mk_coq_apply ($1, $2) }
 
   | coqexpr1
@@ -387,7 +396,7 @@ coqexpr:
 ;
 
 coqexpr1:
-  | IDENT
+  | coqident
       { evar ($1) }
   | LPAREN_ coqexpr RPAREN_
       { $2 }
@@ -434,8 +443,9 @@ id_or_coqexpr:
 coqparam_expr:
   | coqexpr
       { ([], $1) }
-  | FUN LPAREN_ IDENT COLON_ coqtype RPAREN_ EQ_GT_ coqparam_expr
-      { let (params, expr) = $8 in ((evar $3) :: params, expr) }
+  | LPAREN_ FUN LPAREN_ IDENT COLON_ coqtype RPAREN_ EQ_GT_ coqparam_expr
+      RPAREN_
+      { let (params, expr) = $9 in ((evar $4) :: params, expr) }
 ;
 
 parameter:
