@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.16 2005-04-15 14:08:20 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.17 2005-07-26 14:27:06 prevosto Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -425,7 +425,7 @@ let pr_oc oc prefix t =
     match t with
     | "" -> bprintf b "_U";
     | "?" -> bprintf b "_";
-    | s -> bprintf b "%s" s;
+    | s -> bprintf b "(%s)" s;
   in
 
   init_buf ();
