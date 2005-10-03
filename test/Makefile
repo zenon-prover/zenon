@@ -1,12 +1,28 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.3 2004-06-14 20:30:07 delahaye Exp $
+#  $Id: Makefile,v 1.3.2.1 2005-10-03 10:22:30 doligez Exp $
+
+ZOPT = -q -x coqbool -max-time 10m -max-size 500M
+
+BENCH = test13.znn test16.znn test38.znn test41.znn test48.znn
+
+.PHONY: bench
+bench:
+	@for i in ${BENCH}; do \
+	  echo -n $$i' '; \
+	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
+	  (/usr/bin/time -p sh -c "../zenon ${ZOPT} -i$$fmt $$i 2>&4" 2>&1 \
+           | while read k t; \
+	     do case $$k in user) echo $$i $$t '       ';; esac; \
+	     done) \
+          4>&2; \
+	done
 
 .PHONY: test
 test:
 	@for i in test*; do \
 	  echo -n $$i' '; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
-	  if ../zenon -w -q -i$$fmt -x coqbool $$i; then \
+	  if ../zenon ${ZOPT} -i$$fmt $$i; then \
 	    : ; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \

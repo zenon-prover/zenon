@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.22 2005-06-23 13:05:47 prevosto Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.21.2.1 2005-10-03 10:22:30 doligez Exp $";;
 
 (**********************************************************************)
 (* Some preliminary remarks:                                          *)
@@ -58,6 +58,13 @@ let ppvernac_dir outc s = flush_strm s outc
 (* Translation expr to constr *)
 (******************************)
 
+let constr_of_type t =
+  match t with
+  | "" -> [< str "_U" >]
+  | "?" -> [< str "_" >]
+  | s -> [< str s >]
+;;
+
 let rec constr_of_expr = function
   | Evar (v, _) -> [< 'v >]
   | Eapp ("=", [e1; e2], _) ->
@@ -76,17 +83,10 @@ let rec constr_of_expr = function
     parth [< constr_of_expr e1; str "<->"; constr_of_expr e2 >]
   | Etrue -> [< str "True" >]
   | Efalse -> [< str "False" >]
-(*  | Eall (Evar (x, _), t, e, _) ->
-    parth [< str "forall "; str x; str " : "; if t <> "" then [< str t >]
-             else [< str "U" >]; str ","; constr_of_expr e >]
-  | Eex (Evar (x, _), t, e, _) ->
-    parth [< str "exists "; str x; str " : "; if t <> "" then [< str t >]
-             else [< str "U" >]; str ","; constr_of_expr e >]
-*)
-  | Eall (Evar (x, _), t, e, _) ->
+  | Eall (Evar (x, _), t, e, _, _) ->
     parth [< str "forall "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
-  | Eex (Evar (x, _), t, e, _) ->
+  | Eex (Evar (x, _), t, e, _, _) ->
     parth [< str "exists "; str x; if t <> "" then [< str ":"; str t >]
              else [< >]; str ","; constr_of_expr e >]
   | _ -> if !debug then [< str "..." >] else assert false
@@ -144,7 +144,7 @@ let declare_lem chns lem =
   let concl = lem.proof.conc in
   let typ = List.flatten (List.map type_list concl)
   and fvr = List.flatten (List.map free_var concl) in
-  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "_" :: typ
+  if List.exists (fun (_, (s, a)) -> s = false && a = 0) fvr then "_U" :: typ
   else typ
 
 let declare chns llp =
@@ -170,19 +170,20 @@ let rec make_mapping phrases =
 
 let rec make_params = function
   | [] -> [< >]
-  | (x, typ) :: l -> [< str "forall "; str x; 
-                        if typ <> "" then [< str ":"; str typ >] 
+  | (x, typ) :: l -> [< str "forall "; str x;
+                        if typ <> "" then [< str ":"; str typ >]
                         else [< >];
                         str ", "; make_params l >]
 
-let rec make_type atom sort arity =
-  if arity = 0 then if sort then [< str "Prop" >]
-    (* else if atom then [< str "U" >] *) else [< str "_" >]
-  else [< str "_ -> "; make_type false sort (arity - 1) >]
+let rec make_type sort arity =
+  if arity = 0 then
+    if sort then [< str "Prop" >] else [< str "_" >]
+  else
+    [< str "_ -> "; make_type sort (arity - 1) >]
 
 let rec make_fvar = function
   | [] -> [< >]
-  | (n, (s, a)) :: l -> [< str "forall "; str n; str " : "; make_type true s a;
+  | (n, (s, a)) :: l -> [< str "forall "; str n; str " : "; make_type s a;
                            str ", "; make_fvar l >]
 
 let get_goals concl =
@@ -196,13 +197,10 @@ let declare_lemma ppvernac name params fvar concl =
 
 let declare_theorem ppvernac name params fvar concl =
   let prod_concl =
-    if !Globals.ctx_flag then
-      make_prod concl
-    else
-      match get_goals concl with
-      | [ Enot (e, _) ] -> [< constr_of_expr e >]
-      | [] -> [< str " False " >]
-      | _ -> assert false
+    match get_goals concl with
+    | [ Enot (e, _) ] -> [< constr_of_expr e >]
+    | [] -> [< str " False " >]
+    | _ -> assert false
   in
   ppvernac [< str "Lemma "; str name; str " : "; make_params params;
               make_fvar fvar; prod_concl; coqend >]
@@ -211,8 +209,7 @@ let rec gen_name e =
   let n = Index.get_number e in
   try
     let name = Hashtbl.find mapping n in
-      Watch.use_hyp name;
-      [< str " "; str name >]
+    [< str " "; str name >]
   with Not_found -> [< str " ZH"; ints (Index.get_number e) >]
 ;;
 
@@ -231,12 +228,12 @@ let rec print_all_names ppvernac n =
 
 let proof_init ppvernac nfv conc is_lemma =
   let lnam = List.fold_left (fun s e -> [< s; gen_name e >]) [< >] conc in
-  if !Globals.ctx_flag || is_lemma then
+  if is_lemma then
     ppvernac [< str "do "; ints nfv; str " intro; intros"; lnam; coqend >]
   else
    let intros =
      match get_goals conc with
-     | [ e ] -> [< str " apply NNPP; intros "; gen_name e; coqend >]
+     | [ e ] -> [< str " apply NNPP; intros"; gen_name e; coqend >]
      | [] -> [< >]
      | _ -> assert false
    in
@@ -254,29 +251,35 @@ let proof_end ppvernac =
 let inst_var = ref []
 let reset_var () = inst_var := []
 
-let get_type = function
-  | Eex (_, typ, _, _) | Eall (_, typ, _, _) -> if typ = "" then "_" else typ
-  | _ -> assert false
-
-let declare_inst ppvernac typ = function
-  | Evar (x, _) when String.length x > 2 && (String.sub x 0 2) = "_Z" &&
-                     not(List.mem x !inst_var) ->
-    begin
-      inst_var := x :: !inst_var;
-      ppvernac [< str "Parameter "; str x; str " : "; coqp typ >]
-    end
-  | _ -> ()
-
 let inst_name t = function
-  | Eex (x, _, e, _) -> let ti = enot (substitute [ x, t ] e) in gen_name ti
-  | Eall (x, _, e, _) -> let ti = substitute [ x, t ] e in gen_name ti
+  | Eex (x, _, e, _, _) -> let ti = enot (substitute [ x, t ] e) in gen_name ti
+  | Eall (x, _, e, _, _) -> let ti = substitute [ x, t ] e in gen_name ti
   | _ -> assert false
+;;
 
-let rec list_of f l term =
+let get_type = function
+  | Eex (_, typ, _, _, _) | Eall (_, typ, _, _, _)
+    -> if typ = "" then "_" else typ
+  | _ -> assert false
+;;
+
+let rec list_of f l sep =
   match l with
   | [] -> [< >]
   | [h] -> [< f h >]
-  | h::t -> [< f h; str term; list_of f t term >]
+  | h::t -> [< f h; str sep; list_of f t sep >]
+;;
+
+let rec init_list_of f l sep =
+  match l with
+  | [] -> [< >]
+  | h::t -> [< str sep; f h; init_list_of f t sep >]
+;;
+
+let rec term_list_of f l sep =
+  match l with
+  | [] -> [< >]
+  | h::t -> [< f h; str sep; term_list_of f t sep >]
 ;;
 
 let wildcard _ = [< str "_" >];;
@@ -398,7 +401,7 @@ let proof_rule ppvernac = function
     ppvernac [< str "apply"; hyp0; thenc; str "clear"; hyp0; thenc;
                 str "intro"; hyp1; coqend >];
     0
-  | Rnotall (Eall (x, _, e, _) as t, z) ->
+  | Rnotall (Eall (x, _, e, _, _) as t, z) ->
     let hyp0 = gen_name (enot t)
     and hyp1 = gen_name (enot (substitute [(x, evar z)] e)) in
     if !debug then ppvernac [< strnl "(* not(all) *)" >];
@@ -411,7 +414,6 @@ let proof_rule ppvernac = function
     begin
       if !debug then ppvernac [< strnl "(* not(ex) *)" >];
       ppvernac [< str "apply"; hyp; coqend >];
-(*    declare_inst ppvernac (get_type p) t; *)
       ppvernac [< str "exists "; constr_of_expr t; thenc;
                   str "apply NNPP; red; intro"; inst_name t p; coqend >]
     end;
@@ -420,12 +422,11 @@ let proof_rule ppvernac = function
     let hyp = gen_name p in
     begin
       if !debug then ppvernac [< strnl "(* all *)" >];
-(*    declare_inst ppvernac (get_type p) t; *)
       ppvernac [< str "generalize ("; hyp; str " "; constr_of_expr t;
                   str "); cintro"; inst_name t p; coqend >]
     end;
     0
-  | Rex (Eex (x, _, e, _) as t, z) ->
+  | Rex (Eex (x, _, e, _, _) as t, z) ->
     let hyp0 = gen_name t
     and hyp1 = gen_name (substitute [(x, evar z)] e) in
     if !debug then ppvernac [< strnl "(* ex *)" >];
@@ -435,9 +436,9 @@ let proof_rule ppvernac = function
   | Rex _ -> assert false
   | Rlemma (n, args) ->
     if !debug then ppvernac [< strnl "(* lemma *)" >];
-    ppvernac [< str "intros; eapply "; if args = [] then str n else
-                [< List.fold_left (fun s e -> [< s; str " "; str e >])
-                [< str "("; str n >] args; str ")" >]; thenc; coqp "eauto" >];
+    ppvernac [< str "intros; apply ("; str n;
+                List.fold_left (fun s e -> [< s; str " "; str e >]) [< >] args;
+                str ")"; thenc; coqp "trivial" >];
     0
   | Rcut (e) ->
     if !debug then ppvernac [< strnl "(* cut *)" >];
@@ -452,10 +453,10 @@ let proof_rule ppvernac = function
                 coqp ")" >];
     0
   | Rextension (name, args, conc, hyps) ->
-    ppvernac [< str "apply ("; str name; str " ";
-                list_of parth_constr_of_expr args " ";
-                str "); ["; list_of make_intros hyps " | ";
-                str " | "; list_of make_exact conc " | "; coqp "]" >];
+    ppvernac [< str "apply ("; str name;
+                init_list_of parth_constr_of_expr args " ";
+                str "); ["; term_list_of make_intros hyps " | ";
+                list_of make_exact conc " | "; coqp "]" >];
     0
   | Rdefinition (c, h) ->
     if !debug then ppvernac [< strnl "(* definition *)" >];
@@ -544,8 +545,8 @@ let proof_rule_short ppvernac = function
                 str "; cintro"; hyp4; coqp " ]" >];
     0
   | Rextension (name, args, conc, hyps) ->
-    ppvernac [< str "apply ("; str name; str "_s ";
-                list_of wildcard args " "; list_of gen_name conc " ";
+    ppvernac [< str "apply ("; str name; str "_s";
+                init_list_of wildcard args " "; list_of gen_name conc "";
                 str "); ["; list_of make_intros hyps " | "; coqp "]" >];
     0
   | x -> proof_rule ppvernac x
@@ -584,10 +585,7 @@ let rec proof_lem ppvernac lems =
   and params = lem.params
   and pft = lem.proof in
   let fvccl =
-    if !Globals.ctx_flag then
-      normal (fun (e, _) l -> List.mem_assoc e l)
-             (List.flatten (List.map free_var concl))
-    else List.map (fun (x, _) -> (x, (false, 0))) params
+    List.map (fun (x, _) -> (x, (false, 0))) params
   in
   let fvccl1 = List.filter (fun (e, _) -> e <> "=") fvccl in
   let fvar = List.filter (fun (e, _) -> not (List.mem_assoc e params)) fvccl1 in
@@ -723,16 +721,12 @@ let close_dir valid outc = function
   | Some _ -> close_out outc
   | _ -> ()
 
-let produce_proof_dir ofn valid llp =
+let produce_proof_dir ofn valid llp phrases =
   let fnm = get_filename ofn in
   let outc = open_dir valid fnm ofn in
   let ppvernac = ppvernac_dir outc in
   begin
-    if !Globals.ctx_flag then begin
-      require ppvernac;
-      tactic ppvernac;
-      declare ppvernac llp;
-    end;
+    if !Globals.ctx_flag then Coqterm.declare_context outc phrases;
     proof ppvernac llp;
     close_dir valid outc ofn;
     print_proof fnm ofn;
@@ -745,6 +739,9 @@ let produce_proof_dir ofn valid llp =
 (* Translation *)
 (***************)
 
-let produce_proof phrases check =
+let produce_proof phrases check outfile valid proof =
   make_mapping phrases;
-  if check then produce_proof_coq else produce_proof_dir
+  if check
+  then produce_proof_coq outfile valid proof
+  else produce_proof_dir outfile valid proof phrases
+;;

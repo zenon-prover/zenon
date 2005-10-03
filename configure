@@ -1,15 +1,15 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.11 2005-07-21 15:27:29 prevosto Exp $
+#  $Id: configure,v 1.10.2.1 2005-10-03 10:22:30 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
 coqc=coqc
 debug=false
 
-case `hostname` in
-  macaque* | mpi*) debug=true;;
+case `whoami` in
+  doligez | prevosto) debug=true;;
 esac
 
 while : ; do
@@ -34,8 +34,8 @@ while : ; do
 done
 
 if $debug; then
-  bytdebugflags="-g -dtypes"
-  optdebugflags=
+  bytdebugflags="-g"
+  optdebugflags="-dtypes"
 else
   bytdebugflags=
   optdebugflags=

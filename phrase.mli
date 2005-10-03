@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: phrase.mli,v 1.5 2005-06-23 13:05:47 prevosto Exp $  *)
+(*  $Id: phrase.mli,v 1.3.2.1 2005-10-03 10:22:30 doligez Exp $  *)
 
 open Expr;;
 

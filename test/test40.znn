@@ -41,4 +41,4 @@ $goal
 ; __lemma_1_1
 (Is_true (abst_equal (abst_plus abst_min x) x))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))

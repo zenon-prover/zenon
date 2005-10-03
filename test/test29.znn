@@ -44,9 +44,9 @@ $1
             (\/ (Is_true (abst_lt x y)) (Is_true (abst_equal x y)))))))))
 
 
-$def abst_different (x y) (not_b (abst_equal x y))
-$def abst_geq (x y) (abst_leq y x)
-$def abst_gt (x y) (abst_lt y x)
+$def (abst_different x y) (not_b (abst_equal x y))
+$def (abst_geq x y) (abst_leq y x)
+$def (abst_gt x y) (abst_lt y x)
 
 
 # from Bool.v

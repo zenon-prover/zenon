@@ -45,5 +45,5 @@ $goal
   (Is_true (abst_equal (abst_plus x y)
                        (abst_plus (abst_inf x y) (abst_sup x y))))))))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
-$def abst_order_sup (x y) (abst_equal x (abst_sup x y))
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
+$def (abst_order_sup x y) (abst_equal x (abst_sup x y))

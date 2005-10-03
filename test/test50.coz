@@ -1,10 +1,11 @@
+(*
 ; test du parseur de syntaxe Coq
+*)
 
 %%begin-auto-proof
 %%location: []
 %%name: foo
-%%statement
-(x: nat) A -> (y: nat) B -> A
-By
-By def
+%%syntax: coq
+%%statement theorem.
+forall (x: nat), A -> forall (y: nat), B -> A
 %%end-auto-proof

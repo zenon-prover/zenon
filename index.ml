@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.5 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.5.2.1 2005-10-03 10:22:30 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -71,7 +71,7 @@ let rec do_trans action e dir =
   match dir, e with
   | Left, Eapp (r, [e1; e2], _) ->
       action pos_trans_left (r, get_head e1) e;
-  | Right, Eapp (r, [e1; e2], _) -> 
+  | Right, Eapp (r, [e1; e2], _) ->
       action pos_trans_right (r, get_head e2) e;
   | Both, Eapp (r, [e1; e2], _) ->
       action pos_trans_left (r, get_head e1) e;
@@ -89,14 +89,25 @@ let try_find tbl k =
   with Not_found -> []
 ;;
 
+let find_all tbl rel =
+  let f (r, _) elr accu =
+    if string_equal r rel then !elr @@ accu else accu
+  in
+  Hashtbl.fold f tbl []
+;;
+
 let find_trans_left rel head =
-  (if string_equal head "" then [] else try_find pos_trans_left (rel, head))
-  @@ (try_find pos_trans_left (rel, ""))
+  if string_equal head ""
+  then find_all pos_trans_left rel
+  else try_find pos_trans_left (rel, head)
+       @@ (try_find pos_trans_left (rel, ""))
 ;;
 
 let find_trans_right rel head =
-  (if string_equal head "" then [] else try_find pos_trans_right (rel, head))
-  @@ (try_find pos_trans_right (rel, ""))
+  if string_equal head ""
+  then find_all pos_trans_right rel
+  else try_find pos_trans_right (rel, head)
+       @@ (try_find pos_trans_right (rel, ""))
 ;;
 
 let find_trans_leftonly rel head =
@@ -202,6 +213,8 @@ let remove e =
   begin try (HE.find proofs e).present <- false with Not_found -> (); end;
 ;;
 
+let get_all () = HE.fold (fun e _ l -> e::l) allforms [];;
+
 let member e = HE.mem allforms e;;
 
 let get_goalness e = HE.find allforms e;;
@@ -304,42 +317,6 @@ let metas = (HE.create tblsize : int HE.t);;
 let add_meta e i = HE.add metas e i;;
 let remove_meta e = HE.remove metas e;;
 let get_meta e = HE.find metas e;;
-
-(* ==== *)
-
-let branch_forms = (HE.create tblsize : int ref HE.t);;
-
-let add_branches a =
-  if Array.length a > 1 then begin
-    let f e =
-      try incr (HE.find branch_forms e)
-      with Not_found -> HE.add branch_forms e (ref 1)
-    in
-    Array.iter (List.iter f) a
-  end;
-;;
-
-let remove_branches a =
-  if Array.length a > 1 then begin
-    let f e =
-      try
-        let r = HE.find branch_forms e in
-        decr r;
-        if !r == 0 then HE.remove branch_forms e;
-      with Not_found -> ()
-    in
-    Array.iter (List.iter f) a
-  end;
-;;
-
-let get_branches l =
-  let get_branches_1 n e =
-    try n + !(HE.find branch_forms e)
-    with Not_found -> n
-  in
-  List.fold_left get_branches_1 0 l
-;;
-    
 
 (* ==== *)
 

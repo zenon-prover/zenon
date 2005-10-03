@@ -1,8 +1,12 @@
 *.proof
 *.cm[iox]
+*.output
 *.annot
 *.png
 *.vo
+parsezen.ml
+parsezen.mli
+lexzen.ml
 parser.ml
 parser.mli
 lexer.ml

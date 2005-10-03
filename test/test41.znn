@@ -23,10 +23,10 @@ $goal
 (Is_true (abst_equal x (abst_inf x (abst_inf y z))))
 
 ; abst_equal_transitive
-$1 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
-     (=> (Is_true (abst_equal x y))
-         (=> (Is_true (abst_equal y z))
-             (Is_true (abst_equal x z))))))))))
+(A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
+  (=> (Is_true (abst_equal x y))
+      (=> (Is_true (abst_equal y z))
+          (Is_true (abst_equal x z))))))))))
 
 ; abst_inf_congruence
 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
@@ -40,4 +40,4 @@ $1 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
 ; H1_1_1
 (Is_true (abst_order_inf x y))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))

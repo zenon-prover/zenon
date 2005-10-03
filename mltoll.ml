@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.14 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.14.2.1 2005-10-03 10:22:30 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -15,7 +15,7 @@ let lemma_list = ref [];;
 let lemma_name n = sprintf "%s_lem%d" !lemma_prefix n;;
 
 let make_tau_name p = sprintf "_T_%d" (Index.get_number p);;
-let make_any_name p = sprintf "_Z_%d" (Index.get_number p);;
+let make_any_name p = sprintf "_Z_%d" p;;
 
 
 module HE = Hashtbl.Make (Expr);;
@@ -56,8 +56,8 @@ let rec xtr_prop a =
   | Eequiv (p, q, _) -> eequiv (tr_prop p, tr_prop q)
   | Etrue -> etrue
   | Efalse -> efalse
-  | Eall (v, t, e, _) -> eall (v, t, tr_prop e)
-  | Eex (v, t, e, _) -> eex (v, t, tr_prop e)
+  | Eall (v, t, e, o, _) -> eall (v, t, tr_prop e, o)
+  | Eex (v, t, e, o, _) -> eex (v, t, tr_prop e, o)
 
   | Etau _ -> assert false
 
@@ -74,10 +74,10 @@ let tr_rule r =
   | And (p, q) -> LL.Rconnect (LL.And, tr_prop p, tr_prop q)
   | NotOr (p, q) -> LL.Rnotconnect (LL.Or, tr_prop p, tr_prop q)
   | NotImpl (p, q) -> LL.Rnotconnect (LL.Imply, tr_prop p, tr_prop q)
-  | NotAll (Enot (Eall (v, t, p, _) as pp, _)) ->
+  | NotAll (Enot (Eall (v, t, p, _, _) as pp, _)) ->
       LL.Rnotall (tr_prop pp, make_tau_name (etau (v, t, enot (p))))
   | NotAll _ -> assert false
-  | Ex (Eex (v, t, p, _) as pp) ->
+  | Ex (Eex (v, t, p, _, _) as pp) ->
       LL.Rex (tr_prop pp, make_tau_name (etau (v, t, p)))
   | Ex _ -> assert false
   | All (p, t) -> LL.Rall (tr_prop p, tr_term t)
@@ -117,6 +117,41 @@ let tr_rule r =
   | Close_refl (s, _) (* when s <> "=" *) -> assert false
 ;;
 
+let meta_types_table = (Hashtbl.create 97 : (int, string) Hashtbl.t);;
+
+let rec init_meta e =
+  match e with
+  | Evar _ -> ()
+  | Emeta _ -> ()
+  | Eapp (_, el, _) -> List.iter init_meta el;
+  | Enot (e, _) -> init_meta e;
+  | Eand (e1, e2, _)
+  | Eor (e1, e2, _)
+  | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _)
+    -> init_meta e1; init_meta e2;
+  | Etrue | Efalse -> ()
+  | Eall (_, t, e, m, _)
+  | Eex (_, t, e, m, _)
+    -> Hashtbl.add meta_types_table m t; init_meta e;
+  | Etau (_, _, e, _) -> init_meta e;
+;;
+
+let extract_meta_types phrases =
+  let f ph =
+    match ph with
+    | Phrase.Hyp (_, e, _) -> init_meta e;
+    | Phrase.Def (DefReal (_, _, e)) -> init_meta e;
+    | Phrase.Def (DefPseudo ((e, _), _, _, _)) -> init_meta e;
+  in
+  List.iter f phrases
+;;
+
+let get_meta_type m =
+  try Hashtbl.find meta_types_table m
+  with Not_found -> assert false
+;;
+
 let rec merge l1 l2 =
   match l1 with
   | [] -> l2
@@ -129,10 +164,7 @@ let rec merge l1 l2 =
 let rec get_params accu p =
   match p with
   | Evar (v, _) -> accu
-  | Emeta (Eall (v, t, _, _) as p, _) -> merge [(make_any_name p, t)] accu
-  | Emeta (Enot (Eex (v, t, _, _), _) as p, _) ->
-      merge [(make_any_name p, t)] accu
-  | Emeta _ -> assert false
+  | Emeta (m, _) -> merge [(make_any_name m, get_meta_type m)] accu
   | Eapp (_, es, _) -> List.fold_left get_params accu es
 
   | Enot (e, _) -> get_params accu e
@@ -142,8 +174,8 @@ let rec get_params accu p =
   | Eequiv (e, f, _) -> get_params (get_params accu e) f
   | Etrue -> accu
   | Efalse -> accu
-  | Eall (v, t, e, _) -> get_params accu e
-  | Eex (v, t, e, _) -> get_params accu e
+  | Eall (v, t, e, _, _) -> get_params accu e
+  | Eex (v, t, e, _, _) -> get_params accu e
   | Etau (v, t, _, _) -> merge [(make_tau_name p, t)] accu
 ;;
 
@@ -325,10 +357,10 @@ let rec xfind_occ v e1 e2 =
   | Eequiv (f1, g1, _), Eequiv (f2, g2, _) ->
       xfind_occ v f1 f2; xfind_occ v g1 g2
   | Efalse, _ -> ()
-  | Eall (v1, _, _, _), _ when Expr.equal v1 v -> ()
-  | Eall (_, _, f1, _), Eall (_, _, f2, _) -> xfind_occ v f1 f2
-  | Eex (v1, _, _, _), _ when Expr.equal v1 v -> ()
-  | Eex (_, _, f1, _), Eex (_, _, f2, _) -> xfind_occ v f1 f2
+  | Eall (v1, _, _, _, _), _ when Expr.equal v1 v -> ()
+  | Eall (_, _, f1, _, _), Eall (_, _, f2, _, _) -> xfind_occ v f1 f2
+  | Eex (v1, _, _, _, _), _ when Expr.equal v1 v -> ()
+  | Eex (_, _, f1, _, _), Eex (_, _, f2, _, _) -> xfind_occ v f1 f2
   | Etau _, _ -> ()
   | _ -> assert false
 ;;
@@ -341,19 +373,19 @@ let find_occ v e1 e2 =
 
 let find_subst e1 e2 =
   match e1, e2 with
-  | Eall (v1, _, f1, _), Eall (v2, _, f2, _) -> (v2, find_occ v1 f1 f2)
-  | Eex (v1, _, f1, _), Eex (v2, _, f2, _) -> (v2, find_occ v1 f1 f2)
+  | Eall (v1, _, f1, _, _), Eall (v2, _, f2, _, _) -> (v2, find_occ v1 f1 f2)
+  | Eex (v1, _, f1, _, _), Eex (v2, _, f2, _, _) -> (v2, find_occ v1 f1 f2)
   | _, _ -> assert false
 ;;
 
 let rec get_actuals env var =
   match var with
   | [] -> []
-  | (v, fm) :: rest ->
+  | (v, m) :: rest ->
       let act =
-        if List.mem_assoc v rest then emeta (fm) else
+        if List.mem_assoc v rest then emeta (m) else
         begin try List.assoc v env
-        with Not_found -> emeta (fm)
+        with Not_found -> emeta (m)
         end
       in
       act :: (get_actuals env rest)
@@ -362,17 +394,24 @@ let rec get_actuals env var =
 let rec find_diff f1 f2 =
   match f1, f2 with
   | Enot (g1, _), Enot (g2, _) -> find_diff g1 g2
-  | Eapp (s1, [g1; h1], _), Eapp (s2, [g2; h2], _) when s1 = s2 ->
-      if Expr.equal g1 g2 then find_diff h1 h2
-      else (assert (Expr.equal h1 h2); find_diff g1 g2)
+  | Eapp (s1, args1, _), Eapp (s2, args2, _) when s1 = s2 ->
+      find_diff_list args1 args2
   | Eapp (s1, args1, _), _ -> args1
   | Evar _, _ -> []
   | _ -> assert false
+
+and find_diff_list l1 l2 =
+  match l1, l2 with
+  | h1::t1, h2::t2 when Expr.equal h1 h2 -> find_diff_list t1 t2
+  | h1::t1, h2::t2 ->
+      assert (List.for_all2 Expr.equal t1 t2);
+      find_diff h1 h2
+  | _, _ -> assert false
 ;;
 
 let rec get_univ f =
   match f with
-  | Eall (v, ty, body, _) -> (v, f) :: get_univ body
+  | Eall (v, ty, body, m, _) -> (v, m) :: get_univ body
   | _ -> []
 ;;
 
@@ -385,24 +424,12 @@ let get_args def args folded unfolded =
 
 let inst_all e f =
   match e with
-  | Eall (v, t, e1, _) -> Expr.substitute [(v, f)] e1
+  | Eall (v, t, e1, _, _) -> Expr.substitute [(v, f)] e1
   | _ -> assert false
 ;;
 
 let rec make_vars n =
   if n = 0 then [] else Expr.newvar () :: make_vars (n-1)
-;;
-
-let rec add_foralls vs e =
-  match vs with
-  | [] -> e
-  | h::t -> eall (h, "?", add_foralls t e)
-;;
-
-let rec add_exists vs e =
-  match vs with
-  | [] -> e
-  | h::t -> eex (h, "?", add_exists t e)
 ;;
 
 let rec decompose_forall e v p naxyz arity f args =
@@ -414,7 +441,7 @@ let rec decompose_forall e v p naxyz arity f args =
     n2
   end else begin
     match naxyz with
-    | Enot (Eall (v1, t1, p1, _), _) ->
+    | Enot (Eall (v1, t1, p1, _, _), _) ->
         let tau = etau (v1, t1, enot p1) in
         let nayz = enot (substitute [(v1, tau)] p1) in
         let n1 = decompose_forall e v p nayz (arity-1) f (args @ [tau]) in
@@ -433,7 +460,7 @@ let rec decompose_exists e v p exyz arity f args =
     n2
   end else begin
     match exyz with
-    | Eex (v1, t1, p1, _) ->
+    | Eex (v1, t1, p1, _, _) ->
         let tau = etau (v1, t1, p1) in
         let eyz = substitute [(v1, tau)] p1 in
         let n1 = decompose_exists e v p eyz (arity-1) f (args @ [tau]) in
@@ -493,26 +520,26 @@ and translate_derived p =
       let (node, extras, subs) = recomp_disj sub e in
       assert (subs = []);
       (node, extras)
-  | AllPartial ((Eall (v1, t1, q, _) as e1), f, arity) ->
+  | AllPartial ((Eall (v1, t1, q, o, _) as e1), f, arity) ->
       let n1 = match p.mlhyps with
         | [| n1 |] -> n1
         | _ -> assert false
       in
       let vs = make_vars arity in
       let sxyz = eapp (f, vs) in
-      let axyz = add_foralls vs (substitute [(v1, sxyz)] q) in
+      let axyz = all_list vs (substitute [(v1, sxyz)] q) in
       let naxyz = enot (axyz) in
       let n2 = decompose_forall e1 v1 q naxyz arity f [] in
       let n3 = make_node [] (Cut axyz) [[axyz]; [naxyz]] [n1; n2] in
       to_llproof n3
-  | NotExPartial ((Enot (Eex (v1, t1, q, _), _) as ne1), f, arity) ->
+  | NotExPartial ((Enot (Eex (v1, t1, q, o, _), _) as ne1), f, arity) ->
       let n1 = match p.mlhyps with
         | [| n1 |] -> n1
         | _ -> assert false
       in
       let vs = make_vars arity in
       let sxyz = eapp (f, vs) in
-      let exyz = add_exists vs (substitute [(v1, sxyz)] q) in
+      let exyz = ex_list vs (substitute [(v1, sxyz)] q) in
       let nexyz = enot (exyz) in
       let n2 = decompose_exists ne1 v1 q exyz arity f [] in
       let n3 = make_node [] (Cut exyz) [[exyz]; [nexyz]] [n2; n1] in
@@ -626,7 +653,7 @@ and translate_trans_equal side sym p a b c d prnode =
   let nyeb = enot (eapp ("=", [y; b])) in
   let n3 = make_node [nvev] (Close_refl ("=", v)) [] [] in
   let rule4 = if cross2 then (P_NotP (ced, nveu))
-                        else (P_NotP_sym (p, ced, nveu))
+                        else (P_NotP_sym ("=", ced, nveu))
   in
   let n4 = make_node [nveu; ced] rule4 [[nvev]; [nteu]] [n3; n1] in
   let n5 = make_node [nzez] (Close_refl ("=", z)) [] [] in
@@ -702,6 +729,10 @@ and translate_trans side sym p a b c d prnode =
   in
   let n14 = make_node [trans_hyp] (All (trans_hyp, a)) [[alakpaliplkipak]] [n13]
   in
+(*
+  let (r, s) = if cross1 then (a, u) else (u, b) in
+  let ... FIXME TODO
+*)
   let (n, ext) = to_llproof n14 in
   (n, union (trans_hyp :: sym_hyps) ext)
 
@@ -745,23 +776,27 @@ and translate_pseudo_def_base p def_hyp s body folded unfolded =
           when s1 = s -> (not cross1, f, body)
         | _ -> assert false
       in
-      let (cross2, e) = match (folded, unfolded) with
-        | Eapp (_, [f1; f2], _), Eapp (_, [u1; u2], _)
-        | Enot (Eapp (_, [f1; f2], _), _), Enot (Eapp (_, [u1; u2], _), _)
-           -> if Expr.equal f1 u1 then (true, f1)
-              else (assert (Expr.equal f2 u2); (false, f2))
-        | _ -> assert false
-      in
       let (x, y) = if cross1 then (body, f) else (f, body) in
       let nfeb = enot (eapp ("=", [x; y])) in
-      let neee = enot (eapp ("=", [e; e])) in
       let rule2 = if sym then Close_sym ("=", y, x) else Close def_hyp in
       let n2 = make_node [nfeb; def_hyp] rule2 [] [] in
-      let n3 = make_node [neee] (Close_refl ("=", e)) [] [] in
-      let hyps4 = if cross2 then [[neee]; [nfeb]] else [[nfeb]; [neee]] in
-      let subs4 = if cross2 then [n3; n2] else [n2; n3] in
+      let hyps_subs4 =
+        let f f1 u1 =
+          if Expr.equal f1 u1 then begin
+            let neee = enot (eapp ("=", [f1; f1])) in
+            ([neee], make_node [neee] (Close_refl ("=", f1)) [] [])
+          end else
+            ([nfeb], n2)
+        in
+        match folded, unfolded with
+        | Eapp (_, args1, _), Eapp (_, args2, _)
+        | Enot (Eapp (_, args1, _), _), Enot (Eapp (_, args2, _), _)
+          -> List.map2 f args1 args2
+        | _ -> assert false
+      in
+      let hyps4, subs4 = List.split hyps_subs4 in
       let rule4 = if cross1 then P_NotP (baseunf, folded)
-                            else P_NotP (folded, baseunf)
+                            else P_NotP (folded, negunf)
       in
       let n4 = make_node [negunf; folded] rule4 hyps4 subs4 in
       if cross1

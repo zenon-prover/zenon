@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.3 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: index.mli,v 1.3.2.1 2005-10-03 10:22:30 doligez Exp $  *)
 
 open Expr;;
 
@@ -11,6 +11,7 @@ val remove : expr -> unit;;
 
 val member : expr -> bool;;
 val get_goalness : expr -> int;;
+val get_all : unit -> expr list;;
 
 val find_pos : string -> expr list;;
 val find_neg : string -> expr list;;
@@ -51,12 +52,6 @@ val get_def : string -> definition * expr list * expr;;
 val add_meta : expr -> int -> unit;;
 val remove_meta : expr -> unit;;
 val get_meta : expr -> int;;
-
-(* ==== number of nodes in the heap made redundant by a formula ==== *)
-
-val add_branches : expr list array -> unit;;
-val remove_branches : expr list array -> unit;;
-val get_branches : expr list -> int;;
 
 (* ==== numbering for formulas ==== *)
 

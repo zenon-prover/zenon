@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.6 2004-10-28 16:09:03 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.6.2.1 2005-10-03 10:22:30 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -68,4 +68,9 @@ let make_node conc rule hyps subs =
     mlhyps = Array.of_list subs;
     mlrefc = 1;
   }
+;;
+
+let rec iter f p =
+  f p;
+  Array.iter (iter f) p.mlhyps;
 ;;

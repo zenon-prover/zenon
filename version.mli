@@ -1,13 +1,14 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: version.mli,v 1.1 2004-04-29 13:04:52 doligez Exp $  *)
+(*  $Id: version.mli,v 1.1.2.1 2005-10-03 10:22:30 doligez Exp $  *)
 
 (* whole-program release and version numbers *)
+
+val number : int;;
+val date : string;;
 
 val major : int;;
 val minor : int;;
 val bugfix : int;;
-val date : string;;
-val number : int;;
 
 val short : string;;
 val full : string;;

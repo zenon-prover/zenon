@@ -19,4 +19,4 @@ $goal
 (A. ((x) (/\ (Is_true (abst_equal (abst_plus x abst_zero) x))
              (Is_true (abst_equal (abst_plus abst_zero x) x)))))
 
-$def abst_min () abst_zero
+$def (abst_min) abst_zero

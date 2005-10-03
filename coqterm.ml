@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.17 2005-07-26 14:27:06 prevosto Exp $";;
+Version.add "$Id: coqterm.ml,v 1.16.2.1 2005-10-03 10:22:30 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -18,7 +18,9 @@ type coqterm =
   | Cwild
 ;;
 
-type coqproof = (string * coqterm) list * string * coqterm;;
+type coqproof =
+  Phrase.phrase list * (string * coqterm) list * string * coqterm
+;;
 
 let lemma_env = (Hashtbl.create 97 : (string, coqterm) Hashtbl.t);;
 
@@ -39,19 +41,21 @@ let getv e = Cvar (getname e);;
 
 let is_meta s = String.length s >= 3 && String.sub s 0 3 = "_Z_";;
 
+exception Unused_variable of expr;;
+
 (* For now, [synthesize] is very simple-minded. *)
 let synthesize s =
   let len = String.length s in
   assert (len > 3);
   let i = int_of_string (String.sub s 3 (len - 3)) in
   let ty = match Index.get_formula i with
-           | Eall (_, ty, _, _) | Enot (Eex (_, ty, _, _), _) -> ty
+           | Eall (_, ty, _, _, _) | Enot (Eex (_, ty, _, _, _), _) -> ty
            | _ -> assert false
   in
   match ty with
   | "" | "_U" -> Cvar "_any"
   | "nat" -> Cvar "(0)"
-  | _ -> Cvar s
+  | _ -> raise (Unused_variable (Index.get_formula i))
 ;;
 
 let rec trexpr e =
@@ -67,9 +71,9 @@ let rec trexpr e =
   | Eequiv (e1, e2, _) -> Cequiv (trexpr e1, trexpr e2)
   | Etrue -> Cvar "True"
   | Efalse -> Cvar "False"
-  | Eall (Evar (v, _), t, e1, _) -> Call (v, t, trexpr e1)
+  | Eall (Evar (v, _), t, e1, _, _) -> Call (v, t, trexpr e1)
   | Eall _ -> assert false
-  | Eex (Evar (v, _), t, e1, _) -> Cex (v, t, trexpr e1)
+  | Eex (Evar (v, _), t, e1, _, _) -> Cex (v, t, trexpr e1)
   | Eex _ -> assert false
   | Etau _ -> assert false
 ;;
@@ -146,20 +150,20 @@ let rec trtree node =
       let lam2 = mklam p (mklam (enot q) sub2) in
       let concl = getv (enot (eequiv (p, q))) in
       Capp (Cvar "zenon_notequiv", [tropt p; tropt q; lam1; lam2; concl])
-  | Rex (Eex (Evar (x, _) as vx, ty, px, _) as exp, z) ->
+  | Rex (Eex (Evar (x, _) as vx, ty, px, _, _) as exp, z) ->
       let sub = tr_subtree_1 hyps in
       let pz = substitute [(vx, evar z)] px in
       let lam = Clam (z, Cty ty, mklam pz sub) in
       Capp (Cvar "zenon_ex", [Cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
-  | Rnotall (Eall (Evar (x, _) as vx, ty, px, _) as allp, z) ->
+  | Rnotall (Eall (Evar (x, _) as vx, ty, px, _, _) as allp, z) ->
       let sub = tr_subtree_1 hyps in
       let npz = enot (substitute [(vx, evar z)] px) in
       let lam = Clam (z, Cty ty, mklam npz sub) in
       let concl = getv (enot allp) in
       Capp (Cvar "zenon_notall", [Cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false
-  | Rall (Eall (Evar (x, _) as vx, ty, px, _) as allp, t) ->
+  | Rall (Eall (Evar (x, _) as vx, ty, px, _, _) as allp, t) ->
       let sub = tr_subtree_1 hyps in
       let pt = substitute [(vx, t)] px in
       let lam = mklam pt sub in
@@ -167,7 +171,7 @@ let rec trtree node =
       let concl = getv allp in
       Capp (Cvar "zenon_all", [Cty ty; p; trexpr t; lam; concl])
   | Rall _ -> assert false
-  | Rnotex (Eex (Evar (x, _) as vx, ty, px, _) as exp, t) ->
+  | Rnotex (Eex (Evar (x, _) as vx, ty, px, _, _) as exp, t) ->
       let sub = tr_subtree_1 hyps in
       let npt = enot (substitute [(vx, t)] px) in
       let lam = mklam npt sub in
@@ -259,7 +263,7 @@ let rec rm_lambdas l term =
   | _, _ -> assert false
 ;;
 
-let compare_hyps (name1, _) (name2, _) = compare name1 name2;;
+let compare_hyps (name1, _) (name2, _) = Pervasives.compare name1 name2;;
 
 let make_lemma { name = name; params = params; proof = proof } =
   let hyps = List.filter (fun x -> not (is_mapped x)) proof.conc in
@@ -267,7 +271,7 @@ let make_lemma { name = name; params = params; proof = proof } =
   let hyps1 = List.sort compare_hyps hyps0 in
   let pars = List.map (fun (x, y) -> (x, Cty y)) params in
   let formals = pars @ hyps1 in
-  let actuals = List.map (fun (x, _) -> Cvar x) formals in
+  let actuals = List.map (fun (x, _) -> trexpr (evar x)) formals in
   (make_lambdas formals (trtree proof), name, actuals)
 ;;
 
@@ -306,15 +310,30 @@ let rec get_th_name lemmas =
 ;;
 
 let trproof phrases l =
-  Hashtbl.clear lemma_env;
-  mapping := make_mapping phrases;
-  let (lemmas, raw, th_name, formals) = trp l in
-  match get_goal phrases with
-  | Some goal ->
-      let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", tropt goal, raw)])
-      in
-        (lemmas, th_name, term)
-  | None -> (lemmas, th_name, raw)
+  try
+    Hashtbl.clear lemma_env;
+    mapping := make_mapping phrases;
+    let (lemmas, raw, th_name, formals) = trp l in
+    match get_goal phrases with
+    | Some goal ->
+        let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", tropt goal, raw)])
+        in
+        (phrases, lemmas, th_name, term)
+    | None -> (phrases, lemmas, th_name, raw)
+  with
+  | Unused_variable e ->
+      begin
+        let v = match e with
+        | Eall (Evar (v, _), _, _, _, _)
+        | Enot (Eex (Evar (v, _), _, _, _, _), _)
+          -> v
+        | _ -> assert false
+        in
+        eprintf "Error: unused variable %s in:\n" v;
+        Print.expr (Print.Chan stderr) e;
+        flush stderr;
+        raise (Failure "unused variable");
+      end
 ;;
 
 (* ******************************************* *)
@@ -387,8 +406,7 @@ let pr_oc oc prefix t =
   let rec pr b t =
     match t with
     | Cvar "" -> assert false
-    | Cvar s ->
-        Watch.use_hyp s; bprintf b "%s" s; flush_buf oc;
+    | Cvar s -> bprintf b "%s" s; flush_buf oc;
     | Cty s -> bprintf b "%a" pr_ty s;
     | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
     | Clam (_, _, Clam _) ->
@@ -448,11 +466,107 @@ let print_theorem oc (name, t) =
   fprintf oc ".\n";
 ;;
 
-let print outf (lemmas, thname, thproof) =
+type result = Prop | Term | Indirect of string;;
+type signature = int * result;;
+
+let get_signatures ps =
+  let symtbl = (Hashtbl.create 97 : (string, signature) Hashtbl.t) in
+  let defined = ref ["="] in
+  let add_sig sym arity kind =
+    if not (Hashtbl.mem symtbl sym) then
+      Hashtbl.add symtbl sym (arity, kind)
+  in
+  let rec get_sig r env e =
+    match e with
+    | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 r;
+    | Emeta _ | Etrue | Efalse -> ()
+    | Eapp (s, args, _) ->
+        add_sig s (List.length args) r;
+        List.iter (get_sig Term env) args;
+    | Eand (e1, e2, _) | Eor (e1, e2, _)
+    | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
+      -> get_sig Prop env e1;
+         get_sig Prop env e2;
+    | Enot (e1, _) -> get_sig Prop env e1;
+    | Eall (Evar (v, _), _, e1, _, _) | Eex (Evar (v, _), _, e1, _, _)
+    | Etau (Evar (v, _), _, e1, _)
+      -> get_sig Prop (v::env) e1;
+    | Eall _ | Eex _ | Etau _ -> assert false
+  in
+  let do_phrase p =
+    match p with
+    | Phrase.Hyp (_, e, _) -> get_sig Prop [] e;
+    | Phrase.Def (DefReal (s, _, e)) ->
+        defined := s :: !defined;
+        get_sig (Indirect s) [] e;
+    | _ -> assert false
+  in
+  List.iter do_phrase ps;
+  let rec follow_indirect path s =
+    if List.mem s path then Prop else
+      begin try
+        match Hashtbl.find symtbl s with
+        | (_, ((Prop|Term) as kind)) -> kind
+        | (_, Indirect s1) -> follow_indirect (s::path) s1
+      with Not_found -> Prop
+      end
+  in
+  let find_sig sym sign l =
+    if List.mem sym !defined then l
+    else begin
+      match sign with
+      | (arity, ((Prop|Term) as kind)) -> (sym, arity, kind) :: l
+      | (arity, Indirect s) -> (sym, arity, follow_indirect [] s) :: l
+    end
+  in
+  Hashtbl.fold find_sig symtbl []
+;;
+
+let print_signature oc (sym, arity, kind) =
+  let rec print_arity n =
+    if n = 0 then () else begin
+      fprintf oc "_U -> ";
+      print_arity (n-1);
+    end;
+  in
+  fprintf oc "Parameter %s : " sym;
+  print_arity arity;
+  match kind with
+  | Prop -> fprintf oc "Prop.\n";
+  | Term -> fprintf oc "_U.\n";
+  | Indirect _ -> assert false;
+;;
+
+let declare_hyp oc h =
+  match h with
+  | Phrase.Hyp ("_Zgoal", _, _) -> ()
+  | Phrase.Hyp (name, stmt, _) ->
+      pr_oc oc (sprintf "Parameter %s : " name) (trexpr stmt);
+      fprintf oc ".\n";
+  | Phrase.Def (DefReal (sym, params, body)) ->
+      assert false (* FIXME TODO recuperer les types des params *)
+  | Phrase.Def _ -> assert false
+;;
+
+let declare_context oc phrases =
+  if not !Globals.quiet_flag then fprintf oc "(* BEGIN-CONTEXT *)\n";
+  fprintf oc "Require Import zenon.\n";
+  (* FIXME TODO import lemmas for extensions *)
+  fprintf oc "Parameter _U : Set.\n";
+  fprintf oc "Parameter _any : _U.\n";
+  let sigs = get_signatures phrases in
+  List.iter (print_signature oc) sigs;
+  List.iter (declare_hyp oc) phrases;
+  if not !Globals.quiet_flag then fprintf oc "(* END-CONTEXT *)\n";
+  flush oc;
+;;
+
+let print outf (phrases, lemmas, thname, thproof) =
   let (oc, close_oc) = match outf with
     | None -> stdout, fun _ -> ()
     | Some f -> open_out f, close_out
   in
+  if !Globals.ctx_flag then declare_context oc phrases;
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
   List.iter (print_lemma oc) lemmas;
   print_theorem oc (thname, thproof);

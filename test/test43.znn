@@ -42,4 +42,4 @@ $1 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
 ; __lemma_1_1
 (Is_true (abst_equal x (abst_inf x (abst_inf y z))))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))

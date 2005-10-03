@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.5 2004-09-28 13:12:58 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.5.2.1 2005-10-03 10:22:30 doligez Exp $  *)
 
 open Expr;;
 
@@ -44,11 +44,12 @@ type rule =
   | Refl of string * expr * expr (* -P(a,b)  /  a!=b *)
   | Trans of side * bool * expr * expr
     (* Trans (side, sym, e1, e2):
-        side = L, sym = false:    -P(a,b) p(c,d)  /  c!=a | -P(d,b)
-        side = R, sym = false:    -P(a,b) p(c,d)  /  d!=b | -P(a,c)
-        side = L, sym = true:     -P(a,b) p(c,d)  /  c!=b | -P(a,d)
-        side = R, sym = true:     -P(a,b) p(c,d)  /  d!=a | -P(c,b)
+        side = L, sym = false:    -P(a,b) p(c,d)  /  c!=a | -P(d,b) [,d!=b]
+        side = R, sym = false:    -P(a,b) p(c,d)  /  d!=b | -P(a,c) [,a!=c]
+        side = L, sym = true:     -P(a,b) p(c,d)  /  c!=b | -P(a,d) [,a!=d]
+        side = R, sym = true:     -P(a,b) p(c,d)  /  d!=a | -P(c,b) [,c!=b]
       In all these, p may be either P or =
+      the part in [brackets] is included only if p is P.
     *)
 
   | Cut of expr                 (*   / p | -p  *)
@@ -68,3 +69,5 @@ val size : proof -> int;;
 val make_node :
    Expr.expr list -> rule -> Expr.expr list list -> proof list -> proof
 ;;
+
+val iter : (proof -> unit) -> proof -> unit;;

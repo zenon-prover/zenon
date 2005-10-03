@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.7 2004-09-28 13:12:58 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.7.2.1 2005-10-03 10:22:30 doligez Exp $  *)
 
 open Expr;;
 
@@ -12,7 +12,7 @@ open Expr;;
   Types:
    "" -> pas de type specifie par l'utilisateur -> "_U"
    "?" -> wildcard -> "?" ou "_"
-   chaine -> type specifie par l'utilisateur
+   autre -> type specifie par l'utilisateur
 *)
 
 
@@ -169,10 +169,10 @@ type rule =
      *********************)
 
   | Rpnotp of expr * expr
-    (* 
+    (*
        Enot (t1 = u1)        ...        Enot (tn = un)
        ----------------------------------------------- Rx
-       Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un]))   
+       Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un]))
 
        Rx = Rpnotp (Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un])))
 

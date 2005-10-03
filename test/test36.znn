@@ -19,4 +19,4 @@ $goal (Is_true (abst_equal x (abst_inf x (abst_plus x abst_zero))))
 $1 (A. ((x) (A. ((y)
      (Is_true (abst_order_inf x (abst_plus x y)))))))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))

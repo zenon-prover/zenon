@@ -40,4 +40,4 @@ $goal (Is_true (abst_equal x (abst_inf x y)))
 ; __lemma_1_1
 (Is_true (abst_equal (abst_plus x abst_zero) y))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
