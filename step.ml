@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: step.ml,v 1.4.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: step.ml,v 1.4.2.2 2005-10-04 15:57:04 doligez Exp $";;
 
 open Printf;;
 
@@ -12,6 +12,20 @@ let cond = ref (Count (0, false));;
 
 let str_tail s =
   String.sub s 1 (String.length s - 1)
+;;
+
+let cmp_forms f1 f2 =
+  compare (Index.get_number f1) (Index.get_number f2)
+;;
+
+let print_forms b fs =
+  let f init e =
+    bprintf b "%s[%d]" init (Index.get_number e);
+    Print.expr_soft (Print.Buff b) e;
+  in
+  match fs with
+  | [] | [_] -> List.iter (f "") fs;
+  | _ -> List.iter (f "\n    ") fs;
 ;;
 
 let rec pause () =
@@ -27,8 +41,14 @@ let rec pause () =
     | '.' when len = 1 -> Count (0, true)
     | '.' -> Count (int_of_string (str_tail l), true)
     | 'q' -> failwith "exit"
+    | 'd' ->
+        eprintf "display current branch:\n";
+        let b = Buffer.create 1000 in
+        print_forms b (List.sort cmp_forms (Index.get_all ()));
+        Buffer.output_buffer stderr b;
+        pause ()
     | _ ->
-       fprintf stderr "please type [.]<num> or /<string> or q\n";
+       fprintf stderr "please type [.]<num> or /<string> or d or q\n";
        flush stderr;
        pause ()
   end
@@ -66,13 +86,7 @@ let ifstep action =
 let forms msg fs =
   ifstep (fun b ->
     bprintf b "#### %s: " msg;
-    let f init e =
-      bprintf b "%s[%d]" init (Index.get_number e);
-      Print.expr_soft (Print.Buff b) e;
-    in
-    match fs with
-    | [] | [_] -> List.iter (f "") fs;
-    | _ -> List.iter (f "\n    ") fs;
+    print_forms b fs;
   )
 ;;
 

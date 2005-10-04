@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.12.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.12.2.2 2005-10-04 15:57:04 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -869,8 +869,10 @@ let newnodes_match_trans st fm =
         Index.add_trans fm Index.Left;
         let matches_ll = Index.find_neg s in
         let matches_rl = if Eqrel.sym s then matches_ll else [] in
-        let crit_r = Index.find_trans_rightonly s "" in
-        let crit_l = if Eqrel.sym s then Index.find_trans_leftonly s "" else []
+        let crit_r = Index.find_trans_rightonly s Index.Wild in
+        let crit_l = if Eqrel.sym s
+                     then Index.find_trans_leftonly s Index.Wild
+                     else []
         in
         let pairs = (List.map get_lhs crit_l) @@ (List.map get_rhs crit_r) in
         let nodes = List.map (mknode_negtrans L L fm) matches_ll
@@ -884,8 +886,10 @@ let newnodes_match_trans st fm =
         Index.add_trans fm Index.Right;
         let matches_rr = Index.find_neg s in
         let matches_lr = if Eqrel.sym s then matches_rr else [] in
-        let crit_l = Index.find_trans_leftonly s "" in
-        let crit_r = if Eqrel.sym s then Index.find_trans_rightonly s "" else []
+        let crit_l = Index.find_trans_leftonly s Index.Wild in
+        let crit_r = if Eqrel.sym s
+                     then Index.find_trans_rightonly s Index.Wild
+                     else []
         in
         let pairs = (List.map get_rhs crit_r) @@ (List.map get_lhs crit_l) in
         let nodes = List.map (mknode_negtrans R R fm) matches_rr
