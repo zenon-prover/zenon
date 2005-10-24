@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.12.2.2 2005-10-04 15:57:04 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.12.2.3 2005-10-24 15:54:53 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -787,65 +787,61 @@ let newnodes_match_congruence st fm =
           nbranches = branches;
         }, false
       end else (arity_warning f1; (st, false))
+(*
+  FIXME determiner ci c'est utile...
   | Enot (Eapp ("=", [Etau (v1, t1, f1, _); Etau (v2, t2, f2, _)], _), _) ->
       let f2a = Expr.substitute [(v2, v1)] f2 in
       let u = Expr.preunify f1 f2a in
       let f (st, _) (m, e) = make_inst st m e in
       List.fold_left f (st, false) u
+*)
   | _ -> st, false
 ;;
 
-let mknode_trans s1 s2 e1 e2 =
-  let (s, ss, a, b, c, d) =
+let mknode_trans sym e1 e2 =
+  let (r, a, b, c, d) =
     match e1, e2 with
-    | Enot (Eapp (s, [a; b], _), _), Eapp (ss, [c; d], _) -> (s, ss, a, b, c, d)
+    | Eapp (r, [a; b], _), Enot (Eapp (rr, [c; d], _), _) ->
+      assert (r === rr);
+      (r, a, b, c, d)
     | _, _ -> assert false
   in
-  let side, sym, x, y, z, t =
-    match s1, s2 with
-    | L, L -> (L, false, c, a, d, b)
-    | R, R -> (R, false, d, b, a, c)
-    | R, L -> (L, true, c, b, a, d)
-    | L, R -> (R, true, d, a, c, b)
-  in
-  let branches =
-    if ss === "=" then
-      [| [enot (eapp ("=", [x; y]))]; [enot (eapp (s, [z; t]))] |]
-    else
-      [| [enot (eapp ("=", [x; y]))];
-         [enot (eapp (s, [z; t])); enot (eapp ("=", [z; t]))] |]
-  in
+  let (x, y, z, t) = if sym then (d, a, b, c) else (c, a, b, d) in
+  let branches = [|
+    [enot (eapp ("=", [x; y])); enot (eapp (r, [x; y]))];
+    [enot (eapp ("=", [z; t])); enot (eapp (r, [z; t]))];
+  |] in
   {
     nconc = [e1; e2];
-    nrule = Trans (side, sym, e1, e2);
+    nrule = if sym then Trans_sym (e1, e2) else Trans (e1, e2);
     nprio = Arity;
     nbranches = branches;
   }
 ;;
 
-let mknode_negtrans s1 s2 e2 e1 = mknode_trans s1 s2 e1 e2;;
+let mknode_negtrans sym e2 e1 = mknode_trans sym e1 e2;;
 
-let find_trans_left s h e =
-  (if s === "=" then [] else Index.find_trans_left s h)
-  @@ Index.find_trans_left "=" h
+let mknode_transeq sym e1 e2 =
+  let (r, a, b, c, d) =
+    match e1, e2 with
+    | Eapp ("=", [a; b], _), Enot (Eapp (r, [c; d], _), _) -> (r, a, b, c, d)
+    | _, _ -> assert false
+  in
+  let (x, y, z, t) = if sym then (d, a, b, c) else (c, a, b, d) in
+  let branches = [|
+    [enot (eapp ("=", [x; y])); enot (eapp (r, [x; y]))];
+    [enot (eapp ("=", [z; t])); enot (eapp (r, [z; t]))];
+    [enot (eapp (r, [x; y])); enot (eapp (r, [z; t]))];
+  |] in
+  {
+    nconc = [e1; e2];
+    nrule = if sym then TransEq_sym (a, b, e2) else TransEq (a, b, e2);
+    nprio = Arity;
+    nbranches = branches;
+  }
 ;;
 
-let find_trans_right s h e =
-  (if s === "=" then [] else Index.find_trans_right s h)
-  @@ Index.find_trans_right "=" h
-;;
-
-let find_negtrans_left s h =
-  if s === "="
-  then Index.find_all_negtrans_left h
-  else Index.find_negtrans_left s h
-;;
-
-let find_negtrans_right s h =
-  if s === "="
-  then Index.find_all_negtrans_right h
-  else Index.find_negtrans_right s h
-;;
+let mknode_negtranseq sym e2 e1 = mknode_transeq sym e1 e2;;
 
 let get_rhs e =
   match e with
@@ -859,7 +855,230 @@ let get_lhs e =
   | _ -> assert false
 ;;
 
-(* FIXME refaire cette regle qui n'est pas symetrique. *)
+let newnodes_match_trans st fm =
+  match fm with
+  | Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _) ->
+(*
+      (st, true)
+*)
+      if m2 > m1 then begin
+        Index.add_trans fm Index.Left;
+        let matches_ll = Index.find_all_negtrans () in
+        let matches_rl = matches_ll in
+        let nodes = List.flatten [
+          List.map (mknode_transeq false fm) matches_ll;
+          List.map (mknode_transeq true fm) matches_rl;
+        ] in
+        let st1 = add_node_list st nodes in
+        let crit_r = Index.find_all_trans_rightonly Index.Wild in
+        let crit_l = Index.find_all_trans_leftonly Index.Wild in
+        let pairs = (List.map get_lhs crit_l) @@ (List.map get_rhs crit_r) in
+        let f (st, _) e = make_inst st m1 e in
+        let (st2, _) = List.fold_left f (st1, true) pairs in
+        (st2, true)
+      end else begin
+        Index.add_trans fm Index.Right;
+        let matches_rr = Index.find_all_negtrans () in
+        let matches_lr = matches_rr in
+        let nodes = List.flatten [
+          List.map (mknode_trans false fm) matches_rr;
+          List.map (mknode_trans true fm) matches_lr;
+        ] in
+        let st1 = add_node_list st nodes in
+        let crit_l = Index.find_all_trans_leftonly Index.Wild in
+        let crit_r = Index.find_all_trans_rightonly Index.Wild in
+        let pairs = (List.map get_rhs crit_r) @@ (List.map get_lhs crit_l) in
+        let f (st, _) e = make_inst st m2 e in
+        let (st2, _) = List.fold_left f (st1, true) pairs in
+        (st2, true)
+      end
+  | Eapp (s, [Emeta (m1, _); Emeta (m2, _)], _) when Eqrel.trans s ->
+(*
+      (st, true)
+*)
+      if m2 > m1 then begin
+        Index.add_trans fm Index.Left;
+        let matches_ll = Index.find_neg s in
+        let matches_rl = if Eqrel.sym s then matches_ll else [] in
+        let nodes = List.flatten [
+          List.map (mknode_trans false fm) matches_ll;
+          List.map (mknode_trans true fm) matches_rl;
+        ] in
+        let st1 = add_node_list st nodes in
+        let crit_r = Index.find_trans_rightonly s Index.Wild in
+        let crit_l =
+          if Eqrel.sym s then Index.find_trans_leftonly s Index.Wild else []
+        in
+        let pairs = (List.map get_lhs crit_l) @@ (List.map get_rhs crit_r) in
+        let f (st, _) e = make_inst st m1 e in
+        let (st2, _) = List.fold_left f (st1, true) pairs in
+        (st2, true)
+      end else begin
+        Index.add_trans fm Index.Right;
+        let matches_rr = Index.find_neg s in
+        let matches_lr = if Eqrel.sym s then matches_rr else [] in
+        let nodes = List.flatten [
+          List.map (mknode_trans false fm) matches_rr;
+          List.map (mknode_trans true fm) matches_lr;
+        ] in
+        let st1 = add_node_list st nodes in
+        let crit_l = Index.find_trans_leftonly s Index.Wild in
+        let crit_r =
+          if Eqrel.sym s then Index.find_trans_rightonly s Index.Wild else []
+        in
+        let pairs = (List.map get_rhs crit_r) @@ (List.map get_lhs crit_l) in
+        let f (st, _) e = make_inst st m2 e in
+        let (st2, _) = List.fold_left f (st1, true) pairs in
+        (st2, true)
+      end
+  | Eapp ("=", [Emeta _; e2], _) ->
+      Index.add_trans fm Index.Right;
+      let h2 = Index.get_head e2 in
+      let matches_rr = Index.find_all_negtrans_right h2 in
+      let matches_lr = Index.find_all_negtrans_left h2 in
+      let nodes = List.flatten [
+        List.map (mknode_transeq false fm) matches_rr;
+        List.map (mknode_transeq true fm) matches_lr;
+      ] in
+      let st1 = add_node_list st nodes in
+      let crit_l = Index.find_all_trans_leftonly h2 in
+      let crit_r = Index.find_all_trans_rightonly h2 in
+      let pairs_l = List.map (fun e -> preunify e2 (get_lhs e)) crit_l in
+      let pairs_r = List.map (fun e -> preunify e2 (get_rhs e)) crit_r in
+      let pairs = List.flatten (pairs_r @@ pairs_l) in
+      let f (st, _) (m, e) = make_inst st m e in
+      let (st2, _) = List.fold_left f (st1, true) pairs in
+      (st2, true)
+  | Eapp (s, [Emeta _; e2], _) when Eqrel.trans s ->
+      Index.add_trans fm Index.Right;
+      let h2 = Index.get_head e2 in
+      let matches_rr = Index.find_negtrans_right s h2 in
+      let matches_lr =
+        if Eqrel.sym s then Index.find_negtrans_left s h2 else []
+      in
+      let nodes = List.flatten [
+        List.map (mknode_trans false fm) matches_rr;
+        List.map (mknode_trans true fm) matches_lr;
+      ] in
+      let st1 = add_node_list st nodes in
+      let crit_l = Index.find_trans_leftonly s h2 in
+      let crit_r = if Eqrel.sym s then Index.find_trans_rightonly s h2 else []
+      in
+      let pairs_l = List.map (fun e -> preunify e2 (get_lhs e)) crit_l in
+      let pairs_r = List.map (fun e -> preunify e2 (get_rhs e)) crit_r in
+      let pairs = List.flatten (pairs_r @@ pairs_l) in
+      let f (st, _) (m, e) = make_inst st m e in
+      let (st2, _) = List.fold_left f (st1, true) pairs in
+      (st2, true)
+  | Eapp ("=", [e1; Emeta _], _) ->
+      Index.add_trans fm Index.Left;
+      let h1 = Index.get_head e1 in
+      let matches_ll = Index.find_all_negtrans_left h1 in
+      let matches_rl = Index.find_all_negtrans_right h1 in
+      let nodes = List.flatten [
+        List.map (mknode_transeq false fm) matches_ll;
+        List.map (mknode_transeq true fm) matches_rl;
+      ] in
+      let st1 = add_node_list st nodes in
+      let crit_r = Index.find_all_trans_rightonly h1 in
+      let crit_l = Index.find_all_trans_leftonly h1 in
+      let pairs_r = List.map (fun e -> preunify e1 (get_rhs e)) crit_r in
+      let pairs_l = List.map (fun e -> preunify e1 (get_lhs e)) crit_l in
+      let pairs = List.flatten (pairs_l @@ pairs_r) in
+      let f (st, _) (m, e) = make_inst st m e in
+      let (st2, _) = List.fold_left f (st1, true) pairs in
+      (st2, true)
+  | Eapp (s, [e1; Emeta _], _) when Eqrel.trans s ->
+      Index.add_trans fm Index.Left;
+      let h1 = Index.get_head e1 in
+      let matches_ll = Index.find_negtrans_left s h1 in
+      let matches_rl =
+        if Eqrel.sym s then Index.find_negtrans_right s h1 else []
+      in
+      let nodes = List.flatten [
+        List.map (mknode_trans false fm) matches_ll;
+        List.map (mknode_trans true fm) matches_rl;
+      ] in
+      let st1 = add_node_list st nodes in
+      let crit_r = Index.find_trans_rightonly s h1 in
+      let crit_l = if Eqrel.sym s then Index.find_trans_leftonly s h1 else [] in
+      let pairs_r = List.map (fun e -> preunify e1 (get_rhs e)) crit_r in
+      let pairs_l = List.map (fun e -> preunify e1 (get_lhs e)) crit_l in
+      let pairs = List.flatten (pairs_l @@ pairs_r) in
+      let f (st, _) (m, e) = make_inst st m e in
+      let (st2, _) = List.fold_left f (st1, true) pairs in
+      (st2, true)
+  | Eapp ("=", [e1; e2], _) ->
+      Index.add_trans fm Index.Both;
+      let h1 = Index.get_head e1 in
+      let h2 = Index.get_head e2 in
+      let matches_ll = Index.find_all_negtrans_left h1 in
+      let matches_rr = Index.find_all_negtrans_right h2 in
+      let matches_lr = Index.find_all_negtrans_left h2 in
+      let matches_rl = Index.find_all_negtrans_right h1 in
+      let nodes = List.flatten [
+        List.map (mknode_transeq false fm) matches_ll;
+        List.map (mknode_transeq true fm) matches_lr;
+        List.map (mknode_transeq true fm) matches_rl;
+        List.map (mknode_transeq false fm) matches_rr;
+      ] in
+      add_node_list st nodes, true
+  | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
+      Index.add_trans fm Index.Both;
+      let h1 = Index.get_head e1 in
+      let h2 = Index.get_head e2 in
+      let matches_ll = Index.find_negtrans_left s h1 in
+      let matches_rr = Index.find_negtrans_right s h2 in
+      let matches_lr = if Eqrel.sym s then Index.find_negtrans_left s h2 else []
+      in
+      let matches_rl =
+        if Eqrel.sym s then Index.find_negtrans_right s h1 else []
+      in
+      let nodes = List.flatten [
+        List.map (mknode_trans false fm) matches_ll;
+        List.map (mknode_trans true fm) matches_lr;
+        List.map (mknode_trans true fm) matches_rl;
+        List.map (mknode_trans false fm) matches_rr;
+      ] in
+      add_node_list st nodes, true
+  | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
+      Index.add_negtrans fm;
+      let h1 = Index.get_head e1 in
+      let h2 = Index.get_head e2 in
+      let matches_ll = Index.find_trans_left s h1 in
+      let matches_rr = Index.find_trans_right s h2 in
+      let matches_lr = if Eqrel.sym s then Index.find_trans_right s h1 else []
+      in
+      let matches_rl = if Eqrel.sym s then Index.find_trans_left s h2 else []
+      in
+      let nodes = List.flatten [
+        List.map (mknode_negtrans false fm) matches_ll;
+        List.map (mknode_negtrans true fm) matches_lr;
+        List.map (mknode_negtrans true fm) matches_rl;
+        List.map (mknode_negtrans false fm) matches_rr;
+      ] in
+      let eqnodes =
+        if s === "=" then [] else
+        let eqmatches_ll = Index.find_trans_left "=" h1 in
+        let eqmatches_rr = Index.find_trans_right "=" h2 in
+        let eqmatches_lr =
+          if Eqrel.sym s then Index.find_trans_right "=" h1 else []
+        in
+        let eqmatches_rl =
+          if Eqrel.sym s then Index.find_trans_left "=" h2 else []
+        in
+        List.flatten [
+          List.map (mknode_negtranseq false fm) eqmatches_ll;
+          List.map (mknode_negtranseq true fm) eqmatches_lr;
+          List.map (mknode_negtranseq true fm) eqmatches_rl;
+          List.map (mknode_negtranseq false fm) eqmatches_rr;
+        ]
+      in
+      add_node_list st (eqnodes @@ nodes), true
+  | _ -> st, false
+;;
+
+(***********************
 let newnodes_match_trans st fm =
   match fm with
   | Eapp (s, [Emeta (m1, _); Emeta (m2, _)], _)
@@ -976,6 +1195,7 @@ let newnodes_match_trans st fm =
 
   | _ -> (st, false)
 ;;
+***********************)
 
 let newnodes_match_sym st fm =
   match fm with
@@ -1146,7 +1366,7 @@ let find_open_branch node brstate =
         let cmp (len1, size1, _) (len2, size2, _) =
           if len1 === len2
           then size1 - size2
-(*
+(* FIXME mieux ? pire ? pareil ?
           then if len1 === 0 then size1 - size2 else size2 - size1
 *)
           else len2 - len1
@@ -1166,6 +1386,12 @@ let dummy_proof = {
   mlrefc = 0;
 };;
 
+let is_equiv r =
+  match r with
+  | Equiv _ | NotEquiv _ -> true
+  | _ -> false
+;;
+
 let add_virtual_branch n =
   let len = Array.length n.nbranches in
   if len < 2 then begin
@@ -1173,19 +1399,6 @@ let add_virtual_branch n =
   end else begin
     let branches = Array.make (len+1) [] in
     let brstate = Array.make (len+1) Open in
-(*
-    let maxmeta = ref 0 in
-    for i = 0 to len - 1 do
-      branches.(i) <- n.nbranches.(i);
-      let c = count_meta_list n.nbranches.(i) in
-      if c > !maxmeta then begin
-        branches.(len) <- n.nbranches.(i);
-        maxmeta := c;
-      end else if c === !maxmeta then begin
-        branches.(len) <- n.nbranches.(i) @@ branches.(len);
-      end;
-    done;
-*)
     for i = 0 to len - 1 do
       branches.(i) <- n.nbranches.(i);
       let has_metas fm = Expr.count_metas fm > 0 in
@@ -1193,7 +1406,7 @@ let add_virtual_branch n =
       branches.(len) <- with_metas @@ branches.(len);
     done;
 
-    if List.length branches.(len) < 2 then begin
+    if List.length branches.(len) < 2 || is_equiv n.nrule then begin
       brstate.(len) <- Closed dummy_proof;
     end;
     ({n with nbranches = branches}, brstate)
@@ -1262,7 +1475,7 @@ let check_limits heap_size =
   if tm > !progress_last +. 0.001 then begin
     let new_period = float !progress_period *. period_base
                      /. (tm -. !progress_last) in
-    progress_period := (int_of_float new_period + !progress_period) / 2;
+    progress_period := int_of_float new_period;
   end;
   if !progress_period < 1 then progress_period := 1;
   progress_last := tm;

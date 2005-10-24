@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: step.ml,v 1.4.2.2 2005-10-04 15:57:04 doligez Exp $";;
+Version.add "$Id: step.ml,v 1.4.2.3 2005-10-24 15:54:53 doligez Exp $";;
 
 open Printf;;
 
@@ -29,7 +29,7 @@ let print_forms b fs =
 ;;
 
 let rec pause () =
-  eprintf " >>> ";
+  eprintf " ###> ";
   flush stderr;
   let l = read_line () in
   let len = String.length l in

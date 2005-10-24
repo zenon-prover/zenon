@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.5.2.2 2005-10-04 15:57:04 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.5.2.3 2005-10-24 15:54:53 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -91,7 +91,7 @@ let try_find tbl k =
   with Not_found -> []
 ;;
 
-let find_all tbl rel =
+let find_all_rel tbl rel =
   let f (r, _) elr accu =
     if string_equal r rel then !elr @@ accu else accu
   in
@@ -100,14 +100,14 @@ let find_all tbl rel =
 
 let find_trans_left rel head =
   if head === Wild
-  then find_all pos_trans_left rel
+  then find_all_rel pos_trans_left rel
   else try_find pos_trans_left (rel, head)
        @@ (try_find pos_trans_left (rel, Wild))
 ;;
 
 let find_trans_right rel head =
   if head === Wild
-  then find_all pos_trans_right rel
+  then find_all_rel pos_trans_right rel
   else try_find pos_trans_right (rel, head)
        @@ (try_find pos_trans_right (rel, Wild))
 ;;
@@ -119,6 +119,26 @@ let find_trans_leftonly rel head =
 
 let find_trans_rightonly rel head =
   let l = find_trans_right rel head in
+  List.filter (fun e -> (HE.find pos_trans_key e) === Right) l
+;;
+
+let find_all_head tbl head =
+  let f (_, h) elr accu =
+    match head, h with
+    | Wild, _ | _, Wild -> !elr @@ accu
+    | h1, h2 when h1 === h2 -> !elr @@ accu
+    | _, _ -> accu
+  in
+  Hashtbl.fold f tbl []
+;;
+
+let find_all_trans_leftonly head =
+  let l = find_all_head pos_trans_left head in
+  List.filter (fun e -> (HE.find pos_trans_key e) === Left) l
+;;
+
+let find_all_trans_rightonly head =
+  let l = find_all_head pos_trans_right head in
   List.filter (fun e -> (HE.find pos_trans_key e) === Right) l
 ;;
 
@@ -193,6 +213,11 @@ let find_all_negtrans_left head =
 let find_all_negtrans_right head =
   assert (head <> Wild);
   try_find all_neg_trans_right head
+;;
+
+let find_all_negtrans () =
+  let f k _ l = k::l in
+  HE.fold f neg_trans_key []
 ;;
 
 (* ==== *)

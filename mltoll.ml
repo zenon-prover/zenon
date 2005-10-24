@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.14.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.14.2.2 2005-10-24 15:54:53 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -110,6 +110,9 @@ let tr_rule r =
   | Close_sym _
   | Refl _
   | Trans _
+  | Trans_sym _
+  | TransEq _
+  | TransEq_sym _
   | Definition (DefPseudo _, _, _)
     -> assert false
 
@@ -617,18 +620,23 @@ and translate_derived p =
       let n4 = make_node [refl_hyp] (All (refl_hyp, a)) [[paa]] [n3] in
       let (n, ext) = to_llproof n4 in
       (n, union [refl_hyp] ext)
-  | Trans (side, sym, Enot (Eapp (s, [a; b], _), _), Eapp ("=", [c; d], _)) ->
-      translate_trans_equal side sym s a b c d p
-  | Trans (side, sym, Enot (Eapp (s1, [a; b], _), _), Eapp (s2, [c; d], _))
-    when s1 = s2 ->
-      translate_trans side sym s1 a b c d p
-  | Trans _ -> assert false
+  | Trans (Eapp (s1, [a; b], _), Enot (Eapp (s2, [c; d], _), _)) ->
+      assert (s1 = s2);
+      translate_trans s1 a b c d p
+  | Trans_sym (Eapp (s1, [a; b], _), Enot (Eapp (s2, [c; d], _), _)) ->
+      assert (s1 = s2);
+      translate_trans_sym s1 a b c d p
+  | TransEq (a, b, Enot (Eapp (s, [c; d], _), _)) ->
+      translate_transeq s a b c d p
+  | TransEq_sym (a, b, Enot (Eapp (s, [c; d], _), _)) ->
+      translate_transeq_sym s a b c d p
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in
       Extension.to_llproof tr_prop tr_term p sub
 
   | _ -> assert false
 
+(************ old stuff
 and translate_trans_equal side sym p a b c d prnode =
   let (x, y, z, t, u, v, cross1, cross2) =
     match side, sym with
@@ -661,8 +669,17 @@ and translate_trans_equal side sym p a b c d prnode =
   let n6 = make_node [pxy; npab] (P_NotP (pxy, npab)) [[nxea]; [nyeb]] subs6 in
   let n7 = make_node [] (Cut pxy) [[pxy]; [enot pxy]] [n6; n2] in
   to_llproof n7
+*****************)
 
-and translate_trans side sym p a b c d prnode =
+and translate_trans r a b c d prnode =
+  assert false
+and translate_trans_sym r a b c d prnode =
+  assert false
+and translate_transeq r a b c d prnode =
+  assert false
+and translate_transeq_sym r a b c d prnode =
+  assert false
+(***************
   let trans_hyp = Eqrel.get_trans_hyp p in
   let (u, v, w, x, y, z, t, cross1, cross2) =
     match side, sym with
@@ -735,6 +752,7 @@ and translate_trans side sym p a b c d prnode =
 *)
   let (n, ext) = to_llproof n14 in
   (n, union (trans_hyp :: sym_hyps) ext)
+**************)
 
 and translate_pseudo_def p def_hyp s args body folded unfolded =
   match args with

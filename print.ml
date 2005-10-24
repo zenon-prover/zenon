@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.11.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.11.2.2 2005-10-24 15:54:53 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -184,10 +184,10 @@ let get_rule_name = function
   | AllPartial (e1, s, n) -> "All-Partial", [e1]
   | NotExPartial (e1, s, n) -> "NotEx-Partial", [e1]
   | Refl (s, e1, e2) -> "Refl("^s^")", [e1; e2]
-  | Trans (L, false, e1, e2) -> "Trans(L)", [e1; e2]
-  | Trans (R, false, e1, e2) -> "Trans(R)", [e1; e2]
-  | Trans (L, true, e1, e2) -> "TransSym(L)", [e1; e2]
-  | Trans (R, true, e1, e2) -> "TransSym(R)", [e1; e2]
+  | Trans (e1, e2) -> "Trans", [e1; e2]
+  | Trans_sym (e1, e2) -> "Trans_sym", [e1; e2]
+  | TransEq (e1, e2, e3) -> "TransEq", [e1; e2; e3]
+  | TransEq_sym (e1, e2, e3) -> "TransEq_sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
 ;;
@@ -270,10 +270,10 @@ let hlrule_name = function
   | AllPartial (e1, s, n) -> "All", [e1]
   | NotExPartial (e1, s, n) -> "NotExists", [e1]
   | Refl (s, e1, e2) -> "Refl("^s^")", [enot (eapp (s, [e1; e2]))]
-  | Trans (L, false, e1, e2) -> "Trans(L)", [e1; e2]
-  | Trans (R, false, e1, e2) -> "Trans(R)", [e1; e2]
-  | Trans (L, true, e1, e2) -> "TransSym(L)", [e1; e2]
-  | Trans (R, true, e1, e2) -> "TransSym(R)", [e1; e2]
+  | Trans (e1, e2) -> "Trans", [e1; e2]
+  | Trans_sym (e1, e2) -> "Trans_sym", [e1; e2]
+  | TransEq (e1, e2, e3) -> "TransEq", [e1; e2; e3]
+  | TransEq_sym (e1, e2, e3) -> "TransEq_sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
   | Ext (th, ru, args) -> ("Extension/"^th^"/"^ru), args
 ;;

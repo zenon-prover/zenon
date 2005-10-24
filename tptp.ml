@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.5.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.5.2.2 2005-10-24 15:54:53 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -104,8 +104,11 @@ let rec translate dirs ps =
       Hyp (name, body, 1) :: (translate dirs t)
   | Formula (name, "conjecture", body) :: t ->
       Hyp ("_Zgoal", enot (body), 0) :: (translate dirs t)
+  | Formula (name, "negated_conjecture", body) :: t ->
+      Hyp ("_Zgoal", body, 0) :: (translate dirs t)
   | Formula (name, k, body) :: t ->
-      failwith ("unknown formula kind: " ^ k)
+      Error.warn ("unknown formula kind: " ^ k);
+      Hyp (name, body, 1) :: (translate dirs t)
 
 and try_incl dirs f =
   let rec loop = function

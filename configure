@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.10.2.1 2005-10-03 10:22:30 doligez Exp $
+#  $Id: configure,v 1.10.2.2 2005-10-24 15:54:53 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
@@ -25,6 +25,10 @@ while : ; do
     ;;
     -debug | --debug)
        debug=true
+       shift
+    ;;
+    -nodebug | --nodebug)
+       debug=false
        shift
     ;;
     *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>]' >&2

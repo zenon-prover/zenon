@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.3.2.2 2005-10-04 15:57:04 doligez Exp $  *)
+(*  $Id: index.mli,v 1.3.2.3 2005-10-24 15:54:53 doligez Exp $  *)
 
 open Expr;;
 
@@ -29,6 +29,8 @@ val find_trans_right : string -> head -> expr list;;
 
 val find_trans_leftonly : string -> head -> expr list;;
 val find_trans_rightonly : string -> head -> expr list;;
+val find_all_trans_leftonly : head -> expr list;;
+val find_all_trans_rightonly : head -> expr list;;
 
 val add_negtrans : expr -> unit;;
 val find_negtrans_left : string -> head -> expr list;;
@@ -36,6 +38,7 @@ val find_negtrans_right : string -> head -> expr list;;
 
 val find_all_negtrans_left : head -> expr list;;
 val find_all_negtrans_right : head -> expr list;;
+val find_all_negtrans : unit -> expr list;;
 
 (* ==== proof cache ==== *)
 

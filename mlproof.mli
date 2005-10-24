@@ -1,15 +1,13 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.5.2.1 2005-10-03 10:22:30 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.5.2.2 2005-10-24 15:54:53 doligez Exp $  *)
 
 open Expr;;
-
-type side = L | R;;
 
 type rule =
   | Close of expr               (* p, -p  /  (.)        *)
   | Close_refl of string * expr (* -R(e,e)/  (.)        *)
   | Close_sym of string * expr * expr
-                                (* R(e1,e2), -R(e2,e1)  /  (.)      *)
+                                (* R(a,b), -R(b,a)  /  (.)      *)
   | False                       (* false  /  (.)        *)
   | NotTrue                     (* -true  /  (.)        *)
   | NotNot of expr              (* --p    /  p          *)
@@ -41,16 +39,15 @@ type rule =
                                 (* Ax.p(x)  /  Axyz.p(s(xyz)) *)
   | NotExPartial of expr * string * int
                                 (* -Ex.p(x)  /  -Exyz.p(s(xyz)) *)
-  | Refl of string * expr * expr (* -P(a,b)  /  a!=b *)
-  | Trans of side * bool * expr * expr
-    (* Trans (side, sym, e1, e2):
-        side = L, sym = false:    -P(a,b) p(c,d)  /  c!=a | -P(d,b) [,d!=b]
-        side = R, sym = false:    -P(a,b) p(c,d)  /  d!=b | -P(a,c) [,a!=c]
-        side = L, sym = true:     -P(a,b) p(c,d)  /  c!=b | -P(a,d) [,a!=d]
-        side = R, sym = true:     -P(a,b) p(c,d)  /  d!=a | -P(c,b) [,c!=b]
-      In all these, p may be either P or =
-      the part in [brackets] is included only if p is P.
-    *)
+  | Refl of string * expr * expr(* -P(a,b)  /  a!=b *)
+  | Trans of expr * expr
+      (* R(a,b),-R(c,d)  /  c!=a,-R(c,a) | b!=d,-R(b,d) *)
+  | Trans_sym of expr * expr
+      (* R(a,b),-R(c,d)  /  d!=a,-R(d,a) | b!=c,-R(b,c) *)
+  | TransEq of expr * expr * expr
+      (* a=b,-R(c,d)  /  c!=a,-R(c,a) | -R(c,a),-R(b,d) | b!=d,-R(b,d) *)
+  | TransEq_sym of expr * expr * expr
+      (* a=b,-R(c,d)  /  d!=a,-R(d,a) | -R(d,a),-R(b,c) | b!=c,-R(b,c) *)
 
   | Cut of expr                 (*   / p | -p  *)
 

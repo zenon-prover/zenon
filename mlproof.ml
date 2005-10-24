@@ -1,10 +1,8 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.6.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.6.2.2 2005-10-24 15:54:53 doligez Exp $";;
 
 open Expr;;
 open Printf;;
-
-type side = L | R;;
 
 type rule =
   | Close of expr
@@ -37,9 +35,12 @@ type rule =
   | NotExPartial of expr * string * int
                                 (* -Ex.p(x)  /  -Exyz.p(s(xyz)) *)
   | Refl of string * expr * expr
-  | Trans of side * bool * expr * expr
+  | Trans of expr * expr
+  | Trans_sym of expr * expr
+  | TransEq of expr * expr * expr
+  | TransEq_sym of expr * expr * expr
 
-  | Cut of expr                 (*   / p | -p  *)
+  | Cut of expr
 
   | Ext of string * string * expr list
 ;;
