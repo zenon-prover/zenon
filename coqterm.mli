@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: coqterm.mli,v 1.5.2.1 2005-10-03 10:22:30 doligez Exp $  *)
+(*  $Id: coqterm.mli,v 1.5.2.2 2005-10-26 16:12:39 doligez Exp $  *)
 
 type coqterm;;
 
@@ -9,4 +9,4 @@ val trproof : Phrase.phrase list -> Llproof.proof -> coqproof;;
 
 val declare_context : out_channel -> Phrase.phrase list -> unit;;
 
-val print : string option -> coqproof -> unit;;
+val print : out_channel -> coqproof -> unit;;

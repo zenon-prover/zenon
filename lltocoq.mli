@@ -1,6 +1,6 @@
 (*  Copyright 2004 INRIA  *)
-(* $Id: lltocoq.mli,v 1.3 2004-10-15 11:55:03 doligez Exp $ *)
+(* $Id: lltocoq.mli,v 1.3.2.1 2005-10-26 16:12:39 doligez Exp $ *)
 
 val produce_proof :
-  Phrase.phrase list -> bool -> string option -> bool -> Llproof.proof -> int
+  out_channel -> Phrase.phrase list -> Llproof.proof -> unit
 ;;

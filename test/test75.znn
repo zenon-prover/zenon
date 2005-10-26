@@ -1,0 +1,5 @@
+$1 (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (r X Y) (r Y Z)) (r X Z))))))))
+$1 (A. ((X Y) (=> (r X Y) (r Y X))))
+$1 (A. ((x) (r b x)))
+$1 (=> True (= a b))
+$goal (r c a)

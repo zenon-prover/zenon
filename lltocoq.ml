@@ -1,15 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.21.2.1 2005-10-03 10:22:30 doligez Exp $";;
-
-(**********************************************************************)
-(* Some preliminary remarks:                                          *)
-(*   - we use Coq V8 and higher (V7 is not supported)                 *)
-(*   - there are two translations:                                    *)
-(*     (1) a direct translation (with a raw pretty-print)             *)
-(*     (2) a translation using Coq (which parses and pretty-prints)   *)
-(*     (1) is faster than (2) whereas (2) is safer and nicer than (1) *)
-(*   - we use "Unixies" but all of them are supported under Windows   *)
-(**********************************************************************)
+Version.add "$Id: lltocoq.ml,v 1.21.2.2 2005-10-26 16:12:39 doligez Exp $";;
 
 open Expr
 open Llproof
@@ -45,12 +35,6 @@ let flush_strm stm outc =
 let read_msg inc =
   try while true do ignore (input_line inc) done
   with Sys_blocked_io -> ()
-
-let ppvernac_coq (inc, outc) s =
-  begin
-    flush_strm [< str "ppvernac (parse_vernac \""; s; camlp "\")" >] outc;
-    read_msg inc
-  end
 
 let ppvernac_dir outc s = flush_strm s outc
 
@@ -605,143 +589,13 @@ let proof ppvernac lems =
   if not !Globals.quiet_flag then ppvernac [< strnl "(* END-PROOF *)" >];
 ;;
 
-(**************************************)
-(* Prelude and exit of Coq's toplevel *)
-(**************************************)
-
-let opens = [ "Pp"; "Term" ]
-
-let open_libs =
-  List.fold_left (fun s e -> [< s; strnl ("open " ^ e ^ ";;") >]) [< >]
-
-let prelude (inc, outc) fnm =
-  let strm =
-    [< strnl "Drop."; open_libs opens;
-       camlp ("let outc = open_out \"" ^ fnm ^ "\"");
-       camlp "let ftr = Pp_control.with_output_to outc";
-       camlp "let parse_vernac = Pcoq.parse_string Pcoq.Vernac_.vernac";
-       strnl "let ppvernac t = (msgnl_with ftr (Ppvernacnew.pr_vernac t); ";
-       camlp "flush outc)" >] in
-  begin
-    flush_strm strm outc;
-    read_msg inc
-  end
-
-let exit (inc, outc) =
-  let strm = [< camlp "flush outc"; camlp "close_out outc";
-                camlp "Toplevel.loop ()"; coqp "Quit" >] in
-  begin
-    flush_strm strm outc;
-    read_msg inc
-  end
-
-(*************************)
-(* Translation using Coq *)
-(*************************)
-
-let cmd pgm =
-  let cnm = try (Sys.getenv "COQBIN") ^ pgm
-            with | Not_found -> pgm in
-  if Sys.file_exists cnm then cnm
-  else failwith "Error: Coq is not accessible!"
-
-let get_filename = function
-  | None -> Filename.temp_file "zenon" "coq.v"
-  | Some f -> f
-
-let print_proof fnm = function
-  | None ->
-    let inc = open_in fnm in
-    (try while true do print_endline (input_line inc) done
-     with End_of_file -> close_in inc)
-  | _ -> ()
-
-let verify valid fnm =
-  if valid then
-    let pgm = cmd "coqc" in
-    let pid = Unix.create_process pgm [|pgm;fnm|]
-                                  Unix.stdin Unix.stdout Unix.stderr in
-    begin
-      print_endline "(* VALIDATION *)";
-      match (Unix.waitpid [] pid) with
-      | _, Unix.WEXITED 0 ->
-        print_endline "The proof has been verified by Coq!"; 0
-      | _ -> print_endline "Error: the proof has not been verified by Coq!"; 1
-    end
-  else 0
-
-let clean fnm = function
-  | None ->
-      begin try
-        Sys.remove fnm;
-        Sys.remove (Filename.chop_suffix fnm "v" ^ "vo");
-      with Sys_error _ -> ()
-      end
-  | _ -> ()
-
-let produce_proof_coq ofn valid llp =
-  let pgm = cmd "coqtop.byte"
-  and fnm = get_filename ofn in
-  let coq_ind, coq_outd = Unix.pipe ()
-  and zenon_ind, zenon_outd = Unix.pipe () in
-  let coq_outc = Unix.out_channel_of_descr coq_outd
-  and zenon_inc = Unix.in_channel_of_descr zenon_ind
-  and pid = Unix.create_process pgm [|pgm|] coq_ind zenon_outd zenon_outd in
-  let chns = zenon_inc, coq_outc in
-  let ppvernac = ppvernac_coq chns in
-  begin
-    Unix.set_nonblock zenon_ind;
-    set_binary_mode_in zenon_inc false;
-    set_binary_mode_out coq_outc false;
-    prelude chns fnm;
-    if !Globals.ctx_flag then begin
-      require ppvernac;
-      tactic ppvernac;
-      declare ppvernac llp;
-    end;
-    proof ppvernac llp;
-    exit chns;
-    ignore (Unix.waitpid [] pid);
-    print_proof fnm ofn;
-    let retcode = verify valid fnm in
-    clean fnm ofn;
-    retcode
-  end
-
-(**********************)
-(* Direct translation *)
-(**********************)
-
-let open_dir valid fnm = function
-  | None -> if valid then open_out fnm else stdout
-  | Some f -> open_out f
-
-let close_dir valid outc = function
-  | None when valid -> close_out outc
-  | Some _ -> close_out outc
-  | _ -> ()
-
-let produce_proof_dir ofn valid llp phrases =
-  let fnm = get_filename ofn in
-  let outc = open_dir valid fnm ofn in
-  let ppvernac = ppvernac_dir outc in
-  begin
-    if !Globals.ctx_flag then Coqterm.declare_context outc phrases;
-    proof ppvernac llp;
-    close_dir valid outc ofn;
-    print_proof fnm ofn;
-    let retcode = verify valid fnm in
-    clean fnm ofn;
-    retcode
-  end
-
 (***************)
 (* Translation *)
 (***************)
 
-let produce_proof phrases check outfile valid proof =
+let produce_proof oc phrases llp =
   make_mapping phrases;
-  if check
-  then produce_proof_coq outfile valid proof
-  else produce_proof_dir outfile valid proof phrases
+  let ppvernac = ppvernac_dir oc in
+  if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
+  proof ppvernac llp;
 ;;

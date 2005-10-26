@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.7.2.1 2005-10-03 10:22:30 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.7.2.2 2005-10-26 16:12:39 doligez Exp $  *)
 
 open Expr;;
 
@@ -11,7 +11,7 @@ open Expr;;
 
   Types:
    "" -> pas de type specifie par l'utilisateur -> "_U"
-   "?" -> wildcard -> "?" ou "_"
+   "?" -> wildcard -> "_"
    autre -> type specifie par l'utilisateur
 *)
 
@@ -248,3 +248,6 @@ type lemma = {
 };;
 
 type proof = lemma list;;
+
+(* peephole optimiser for LL proofs *)
+val optimise : proof -> proof;;

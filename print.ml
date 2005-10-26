@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.11.2.2 2005-10-24 15:54:53 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.11.2.3 2005-10-26 16:12:40 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -431,7 +431,7 @@ let llproof_rule o r =
       llproof_prop o q;
       printf ")";
   | Rnotconnect (op, p, q) ->
-      printf "---notconnect ~(%s, " (binop_name op);
+      printf "---notconnect (%s, " (binop_name op);
       llproof_prop o p;
       printf ", ";
       llproof_prop o q;

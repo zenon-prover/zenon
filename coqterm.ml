@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.16.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.16.2.2 2005-10-26 16:12:39 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -316,8 +316,8 @@ let trproof phrases l =
     let (lemmas, raw, th_name, formals) = trp l in
     match get_goal phrases with
     | Some goal ->
-        let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", tropt goal, raw)])
-        in
+        let trg = tropt goal in
+        let term = Capp (Cvar "NNPP", [Cwild; Clam ("_Zgoal", trg, raw)]) in
         (phrases, lemmas, th_name, term)
     | None -> (phrases, lemmas, th_name, raw)
   with
@@ -460,9 +460,15 @@ let print_lemma oc (name, t) =
   fprintf oc ".\n";
 ;;
 
-let print_theorem oc (name, t) =
-  let prefix = sprintf "Definition %s:=" name in
-  pr_oc oc prefix t;
+let print_theorem oc (name, t) phrases =
+  let prefix = sprintf "Definition %s:" name in
+  begin match get_goal phrases with
+  | Some (Enot (g, _)) -> pr_oc oc prefix (trexpr g);
+  | None -> pr_oc oc prefix (trexpr efalse);
+  | _ -> assert false
+  end;
+  fprintf oc ":=\n";
+  pr_oc oc "" t;
   fprintf oc ".\n";
 ;;
 
@@ -561,15 +567,10 @@ let declare_context oc phrases =
   flush oc;
 ;;
 
-let print outf (phrases, lemmas, thname, thproof) =
-  let (oc, close_oc) = match outf with
-    | None -> stdout, fun _ -> ()
-    | Some f -> open_out f, close_out
-  in
+let print oc (phrases, lemmas, thname, thproof) =
   if !Globals.ctx_flag then declare_context oc phrases;
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
   List.iter (print_lemma oc) lemmas;
-  print_theorem oc (thname, thproof);
+  print_theorem oc (thname, thproof) phrases;
   if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
-  close_oc oc;
 ;;

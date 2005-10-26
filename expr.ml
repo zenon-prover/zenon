@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.14.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.14.2.2 2005-10-26 16:12:39 doligez Exp $";;
 
 open Misc;;
 
@@ -166,16 +166,16 @@ let priv_equiv e1 e2 =
          (union (get_metas e1) (get_metas e2))
 ;;
 let priv_all v t e m =
-  mkpriv (combine k_all (combine m (get_skel e))) (remove v (get_fv e))
-         (1 + get_size e) (get_metas e)
+  mkpriv (combine k_all (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) (1 + get_size e) (get_metas e)
 ;;
 let priv_ex v t e m =
-  mkpriv (combine k_ex (combine m (get_skel e))) (remove v (get_fv e))
-         (1 + get_size e) (get_metas e)
+  mkpriv (combine k_ex (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) (1 + get_size e) (get_metas e)
 ;;
 let priv_tau v t e =
-  mkpriv (combine k_tau (get_skel e)) (remove v (get_fv e))
-         1 (get_metas e)
+  mkpriv (combine k_tau (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) 1 (get_metas e)
 ;;
 
 
@@ -227,9 +227,8 @@ module HashedExpr = struct
       -> true
     | Eall (v1, t1, f1, m1, _), Eall (v2, t2, f2, m2, _)
     | Eex (v1, t1, f1, m1, _), Eex (v2, t2, f2, m2, _)
-      -> m1 === m2
-         && (List.mem (var_name v1) (get_fv f1))
-            === (List.mem (var_name v2) (get_fv f2))
+      -> (List.mem (var_name v1) (get_fv f1))
+          === (List.mem (var_name v2) (get_fv f2))
          && equal_in_env (v1::env1) (v2::env2) f1 f2
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
       -> (List.mem (var_name v1) (get_fv f1))
@@ -258,8 +257,7 @@ module HashedExpr = struct
       -> f1 == f2 && g1 == g2
     | Eall (v1, t1, f1, m1, _), Eall (v2, t2, f2, m2, _)
     | Eex (v1, t1, f1, m1, _), Eex (v2, t2, f2, m2, _)
-      -> m1 === m2
-         && string_equal t1 t2
+      -> string_equal t1 t2
          && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
       -> string_equal t1 t2

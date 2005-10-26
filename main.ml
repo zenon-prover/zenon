@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.21.2.1 2005-10-03 10:22:30 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.21.2.2 2005-10-26 16:12:39 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -24,10 +24,10 @@ let input_format = ref I_zenon;;
 
 let include_path = ref [];;
 
+let opt_level = ref 1;;
+
 (* Output file, script checking and validation *)
 let outf = ref None
-let check = ref false
-let valid = ref false
 
 let set_out () =
   match !outf with
@@ -51,9 +51,10 @@ let int_arg r arg =
   else
     try
       match arg.[l-1] with
-      | 'k' -> multiplier 1_000.
-      | 'M' -> multiplier 1_000_000.
-      | 'G' -> multiplier 1_000_000_000.
+      | 'k' -> multiplier 1e3
+      | 'M' -> multiplier 1e6
+      | 'G' -> multiplier 1e9
+      | 'T' -> multiplier 1e12
       | 's' -> multiplier 1.
       | 'm' -> multiplier 60.
       | 'h' -> multiplier 3600.
@@ -82,9 +83,6 @@ let umsg = "Usage: zenon [options] <file>";;
 let rec argspec = [
   "-", Arg.Unit (fun () -> add_file "-"),
     "                  read input from stdin";
-  "-check", Arg.Set check,
-         "             check & pretty-print the Coq proof script\
-\n                        (implies -ocoq and -context)";
   "-context", Arg.Set ctx_flag,
            "           provide context for checking the proof independently";
   "-d", Arg.Unit (fun () -> Globals.debug_flag := true;
@@ -105,13 +103,11 @@ let rec argspec = [
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
          "             read input file in TPTP format";
   "-max-size", Arg.String (int_arg size_limit),
-            "<s>[kMG]  limit heap size to <s> kilo/mega/giga words"
+            "<s>[kMGT]  limit heap size to <s> kilo/mega/giga/tera word"
             ^ " (default 100M)";
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (default 5m)";
-  "-o", Arg.String (fun f -> outf := (Some f)),
-     "<file>           print the proof to <file> instead of stdout";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "              print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
@@ -126,12 +122,16 @@ let rec argspec = [
       "                print the proof in middle-level format";
   "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
          "             do not print the proof (default)";
+  "-opt0", Arg.Unit (fun () -> opt_level := 0),
+        "              do not optimise the proof";
+  "-opt1", Arg.Unit (fun () -> opt_level := 1),
+        "              do peephole optimisation of the proof (default)";
   "-p0", Arg.Unit (fun () -> Progress.level := Progress.No),
       "                turn off progress bar and progress messages";
   "-p1", Arg.Unit (fun () -> Progress.level := Progress.Bar),
-      "                turn on progress bar (default)";
+      "                display progress bar (default)";
   "-p2", Arg.Unit (fun () -> Progress.level := Progress.Msg),
-      "                turn on progress messages";
+      "                display progress messages";
   "-q", Arg.Set quiet_flag,
      "                 suppress proof-found/no-proof/begin-proof/end-proof";
   "-stats", Arg.Set stats_flag,
@@ -140,8 +140,6 @@ let rec argspec = [
          "             output a less detailed proof";
   "-v", Arg.Unit short_version,
      "                 print version string and exit";
-  "-valid", Arg.Set valid,
-         "             verify the Coq proof (implies -ocoq and -context)";
   "-versions", Arg.Unit cvs_version,
             "          print CVS version strings and exit";
   "-w", Arg.Clear Error.warnings_flag,
@@ -159,11 +157,6 @@ and print_usage () =
 
 try Arg.parse argspec add_file umsg
 with Not_found -> exit 2
-;;
-if !check || !valid then begin
-  proof_level := Proof_coq;
-  ctx_flag := true;
-end
 ;;
 
 let report_error lexbuf msg =
@@ -234,6 +227,13 @@ let rec extract_strong accu phr_dep =
   | (_, false) :: t -> extract_strong accu t
 ;;
 
+let optim p =
+  match !opt_level with
+  | 0 -> p
+  | 1 -> Llproof.optimise p
+  | _ -> assert false
+;;
+
 let main () =
   let file = match !files with
              | [f] -> f
@@ -267,33 +267,30 @@ let main () =
     end;
     Watch.warn strong_dep proof;
     if !proof_level <> Proof_none then begin
-      let oc = set_out () in
-      let o = Print.Chan oc in
       begin match !proof_level with
       | Proof_none -> assert false;
-      | Proof_h n -> Print.hlproof o n proof;
-      | Proof_m -> Print.mlproof o proof;
+      | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
+      | Proof_m -> Print.mlproof (Print.Chan stdout) proof;
       | Proof_lx ->
-          let llp = Mltoll.translate th_name ppphrases proof in
-          Print.llproof o llp;
+          let llp = optim (Mltoll.translate th_name ppphrases proof) in
+          Print.llproof (Print.Chan stdout) llp;
       | Proof_l ->
-          let llp = Extension.postprocess
-                       (Mltoll.translate th_name ppphrases proof)
+          let llp = optim (Extension.postprocess
+                             (Mltoll.translate th_name ppphrases proof))
           in
-          Print.llproof o llp;
+          Print.llproof (Print.Chan stdout) llp;
       | Proof_coq ->
-          let llp = Extension.postprocess
-                       (Mltoll.translate th_name ppphrases proof)
+          let llp = optim (Extension.postprocess
+                             (Mltoll.translate th_name ppphrases proof))
           in
-          retcode := Lltocoq.produce_proof phrases !check !outf !valid llp;
+          Lltocoq.produce_proof stdout phrases llp;
       | Proof_coqterm ->
-          let llp = Extension.postprocess
-                       (Mltoll.translate th_name ppphrases proof)
+          let llp = optim (Extension.postprocess
+                             (Mltoll.translate th_name ppphrases proof))
           in
-          let p = Coqterm.trproof phrases llp in
-          Coqterm.print !outf p;
+          let p = Coqterm.trproof phrases (optim llp) in
+          Coqterm.print stdout p;
       end;
-      close_out oc;
     end;
   with Prove.NoProof ->
     retcode := 10;
