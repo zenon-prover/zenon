@@ -1,5 +1,5 @@
 (*  Copyright 2001 INRIA  *)
-Version.add "$Id: heap.ml,v 1.3 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: heap.ml,v 1.4 2005-11-05 11:13:17 doligez Exp $";;
 
 type 'a tree =
   | Node of 'a * 'a tree * 'a tree
@@ -9,29 +9,30 @@ type 'a tree =
 type 'a t = {
   cmp : 'a -> 'a -> int;
   tree : 'a tree;
+  curpath : int;
 };;
 
 let empty cmp = {
   cmp = cmp;
   tree = Leaf;
+  curpath = 0;
 };;
 
-module Rnd = Random.State;;
-let rnd = Rnd.make [| 234; 45362; 3451314; 9780709 |];;
-
-let rec insert_aux cmp t x =
+let rec insert_aux cmp t x path =
   match t with
   | Leaf -> Node (x, Leaf, Leaf)
   | Node (y, b1, b2) ->
-     let (nb1, nb2) = if Rnd.bool rnd then (b1, b2) else (b2, b1) in
-     if cmp x y < 0
-     then Node (x, insert_aux cmp nb1 y, nb2)
-     else Node (y, insert_aux cmp nb1 x, nb2)
+     let (here, next) = if cmp x y < 0 then (x, y) else (y, x) in
+     let newpath = path lsr 1 in
+     if path land 1 = 0
+     then Node (here, insert_aux cmp b1 next newpath, b2)
+     else Node (here, b1, insert_aux cmp b2 next newpath)
 ;;
 
 let insert hp x = {
   cmp = hp.cmp;
-  tree = insert_aux hp.cmp hp.tree x;
+  tree = insert_aux hp.cmp hp.tree x hp.curpath;
+  curpath = hp.curpath + 1;
 };;
 
 let rec remove_aux cmp t =
@@ -48,8 +49,8 @@ let rec remove_aux cmp t =
 
 let remove hp =
   match remove_aux hp.cmp hp.tree with
-  | Some (x, newtree) -> Some (x, { cmp = hp.cmp; tree = newtree })
   | None -> None
+  | Some (x, newtree) -> Some (x, { hp with tree = newtree })
 ;;
 
 let head hp =

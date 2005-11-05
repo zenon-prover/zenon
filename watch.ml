@@ -1,50 +1,58 @@
-(* Copyright 2004 INRIA. *)
-(* $Id: watch.ml,v 1.1 2004-11-09 10:22:17 prevosto Exp $ *)
-(* ajout Virgile 2004-11-08: tables des symboles a surveiller pour voir s'ils 
-   sont reellement utilises dans la preuve. *)
-let hyps = Hashtbl.create 13
-let defs = Hashtbl.create 13
+(*  Copyright 2005 INRIA  *)
+Version.add "$Id: watch.ml,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
 
-let watch_hyp name = Hashtbl.add hyps name true
-let watch_def name = Hashtbl.add defs name true
+open Printf;;
 
-let use tbl name = 
-  try
-    if (Hashtbl.find tbl name) then Hashtbl.replace tbl name false
-  with Not_found -> ()
+open Expr;;
+open Mlproof;;
 
-let use_hyp name = use hyps name
-let use_def name = use defs name
+type item =
+  | Hyp of expr
+  | Def of string
+;;
 
-let assume_use_definition = ref false
-let force_definitions_use () = assume_use_definition:=true
+module HashedItem = struct
+  type t = item;;
+  let equal i1 i2 =
+    match i1, i2 with
+    | Hyp h1, Hyp h2 -> Expr.equal h1 h2
+    | Def s1, Def s2 -> s1 = s2
+    | _, _ -> false
+  ;;
+  let hash i =
+    match i with
+    | Hyp h -> Expr.hash h
+    | Def s -> Hashtbl.hash s
+  ;;
+end;;
 
-let clear_watch () = 
-  Hashtbl.clear hyps;
-  Hashtbl.clear defs
+module HI = Hashtbl.Make (HashedItem);;
 
+let used = (HI.create 97 : unit HI.t);;
+let test i = HI.mem used i;;
+let add i = if test i then () else HI.add used i ();;
 
-let warn_unused th_name =
-  if !Globals.warnings_flag then
-    begin
-      let init = ref false in
-      let print_warn prefix name unused = 
-        if unused then
-          begin
-            if not !init then
-              begin
-                init:=true;
-                Printf.eprintf "In theorem %s:\n" th_name
-              end;
-            Printf.eprintf 
-              "Warning: %s %s is unused in the proof.\n" prefix name
-          end
-      in 
-        Hashtbl.iter (print_warn "hypothesis") hyps;
-        if not (!assume_use_definition) then
-          Hashtbl.iter (print_warn "definition") defs;
-        flush stderr
-    end;
+let add_def p =
+  match p.mlrule with
+  | Definition (DefReal (s, _, _), _, _) -> add (Def s)
+  | Definition (DefPseudo ((e, _), _, _, _), _, _) -> add (Hyp e)
+  | _ -> ()
+;;
 
-  
+let check phr =
+  match phr with
+  | Phrase.Hyp (name, e, _) when not (test (Hyp e)) ->
+      Error.warn (sprintf "unused hypothesis %s" name);
+  | Phrase.Def (DefReal (s, _, _)) when not (test (Def s)) ->
+      Error.warn (sprintf "unused definition %s" s);
+  | _ -> ()
+;;
 
+let warn deps prf =
+  if !Globals.warnings_flag && deps <> [] then begin
+    HI.clear used;
+    List.iter (fun e -> add (Hyp e)) prf.mlconc;
+    Mlproof.iter add_def prf;
+    List.iter check deps;
+  end
+;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.5 2005-07-01 12:24:47 prevosto Exp $";;
+Version.add "$Id: extension.ml,v 1.6 2005-11-05 11:13:17 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -11,10 +11,13 @@ type translator =
 ;;
 type t = {
   name : string;
-  newnodes : int -> Expr.expr -> Node.node_item list Lazy.t;
+  newnodes : int -> Expr.expr -> Node.node_item list;
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
+  preprocess : Phrase.phrase list -> Phrase.phrase list;
+  postprocess : Llproof.proof -> Llproof.proof;
   to_llproof : translator;
+  declare_context_coq : out_channel -> string list;
 };;
 
 let theories = ref ([] : t list);;
@@ -27,13 +30,16 @@ let activate name =
     let t = List.find (fun t -> t.name = name) !theories in
     active := t :: !active;
   with Not_found ->
-    eprintf "Error: extension %s does not exist\n" name;
-    (* FIXME TODO afficher la liste des extensions disponibles *)
-    raise Not_found
+    eprintf "Error: extension %s does not exist.\n" name;
+    eprintf "Available extensions are:";
+    List.iter (fun e -> eprintf " %s" e.name) !theories;
+    eprintf ".\n";
+    raise Not_found;
 ;;
 
-let is_enabled name = 
+let is_active name =
   name = "core" || List.exists (fun x -> x.name = name) !active
+;;
 
 let rec find_extension name l =
   match l with
@@ -54,10 +60,26 @@ let remove_formula e =
   List.iter (fun t -> t.remove_formula e) !active
 ;;
 
+let preprocess l =
+  List.fold_left (fun hyps ext -> ext.preprocess hyps) l (List.rev !active)
+;;
+
+let postprocess p =
+  List.fold_left (fun prf ext -> ext.postprocess prf) p !active
+;;
+
 let to_llproof tr_prop tr_term node subs =
   match node.mlrule with
   | Ext (th, rule, args) ->
       let t = find_extension th !active in
       t.to_llproof tr_prop tr_term node subs
   | _ -> assert false
+;;
+
+let declare_context_coq oc =
+  let f ext decl =
+    let dd = ext.declare_context_coq oc in
+    dd @ decl
+  in
+  List.fold_right f !active []
 ;;

@@ -16,10 +16,9 @@
 ;       x y) (abst_inf  x y)))
 ; (* Qed *).
 
-$goal
-(A. ((x) (A. ((y)
-  (Is_true (abst_equal (abst_plus x y)
-                       (abst_plus (abst_inf x y) (abst_sup x y))))))))
+$sig abst_equal ("" "") "bool"
+
+$def (abst_sup x y) (non_failed (abst_minus (abst_plus x y) (abst_inf x y)))
 
 ; abst_minus_substracts
 (A. ((x) (A. ((y) (A. ((z)
@@ -29,4 +28,7 @@ $goal
 ; abst_equal_reflexive:
 (A. ((x) (Is_true (abst_equal x x))))
 
-$def abst_sup (x y) (non_failed (abst_minus (abst_plus x y) (abst_inf x y)))
+$goal
+(A. ((x) (A. ((y)
+  (Is_true (abst_equal (abst_plus x y)
+                       (abst_plus (abst_inf x y) (abst_sup x y))))))))

@@ -1,10 +1,8 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.10 2004-10-18 16:53:28 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.11 2005-11-05 11:13:17 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b *)
-
-(* We essentially treat Is_true as if it weren't there. *)
 
 (* FIXME TODO:
    warning s'il y a une definition de Is_true, __g_and_b, etc.
@@ -14,140 +12,95 @@ open Expr;;
 open Misc;;
 open Mlproof;;
 open Node;;
+open Phrase;;
 
-module H = Hashtbl;;
-
-let istrue_forms = (H.create 997 : (string, expr list ref) H.t);;
-let isfalse_forms = (H.create 997 : (string, expr list ref) H.t);;
-
-let hadd table key data =
-  try
-    let r = H.find table key in
-    r := data :: !r;
-  with Not_found ->
-    H.add table key (ref [data]);
+let rec is_prefix n s1 s2 =
+  if n >= String.length s1 then true
+  else if n >= String.length s2 then false
+  else if s1.[n] <> s2.[n] then false
+  else is_prefix (n+1) s1 s2
 ;;
 
-let hremove table key =
-  let r = H.find table key in
-  r := List.tl !r;
+let chop_prefix s1 s2 =
+  let l1 = String.length s1 in
+  let l2 = String.length s2 in
+  assert (String.sub s2 0 l1 = s1);
+  String.sub s2 l1 (l2 - l1)
 ;;
 
-let add_formula e =
-  match e with
-  | Eapp ("Is_true", [Eapp (f, _, _)], _) -> hadd istrue_forms f e;
-  | Eapp ("Is_true", [Emeta _], _) -> hadd istrue_forms "" e;
-  | Enot (Eapp ("Is_true", [Eapp (f, _, _)], _), _) -> hadd isfalse_forms f e;
-  | Enot (Eapp ("Is_true", [Emeta _], _), _) -> hadd isfalse_forms "" e;
-  | _ -> ()
-;;
-
-let remove_formula e =
-  match e with
-  | Eapp ("Is_true", [Eapp (f, _, _)], _) -> hremove istrue_forms f;
-  | Eapp ("Is_true", [Emeta _], _) -> hremove istrue_forms "";
-  | Enot (Eapp ("Is_true", [Eapp (f, _, _)], _), _) -> hremove isfalse_forms f;
-  | Enot (Eapp ("Is_true", [Emeta _], _), _) -> hremove isfalse_forms "";
-  | _ -> ()
-;;
-
-let find tbl s =
-  let exact = try !(H.find tbl s) with Not_found -> [] in
-  let meta = try !(H.find tbl "") with Not_found -> [] in
-  meta @@ exact
-;;
-
-let map_all tbl f =
-  let do_list k d accu = List.map f !d @@ accu in
-  H.fold do_list tbl []
-;;
+let add_formula e = ();;
+let remove_formula e = ();;
 
 let wrong_arity s =
-  if !Globals.warnings_flag then begin
-    Printf.eprintf "Warning: defined symbol %s is used with wrong arity\n" s;
-    flush stderr;
-  end;
+  Error.warn (Printf.sprintf "defined symbol %s is used with wrong arity" s);
 ;;
 
 let istrue e = eapp ("Is_true", [e]);;
 
-let make_notequal depth e f =
-  match e, f with
-  | Eapp ("Is_true", [e1], _), Enot (Eapp ("Is_true", [f1], _), _) ->
-      let branches = [| [enot (eapp ("=", [e1; f1]))] |] in
-      {
-        nconc = [e; f];
-        nrule = P_NotP (e, f);
-        nprio = Prio.make depth Prio.Correl branches;
-        nbranches = branches;
-      }
-  | _ -> assert false
-;;
-
 let newnodes depth e =
   match e with
-  | Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _) ->
+  | Eapp ("Is_true**__g_and_b", [e1; e2], _) ->
       let branches = [| [eand (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "and", [e1; e2]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _) ->
+  | Eapp ("Is_true**__g_or_b", [e1; e2], _) ->
       let branches = [| [eor (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "or", [e1; e2]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _) ->
+  | Eapp ("Is_true**__g_xor_b", [e1; e2], _) ->
       let branches = [| [enot (eequiv (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "xor", [e1; e2]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _) ->
+  | Eapp ("Is_true**__g_not_b", [e1], _) ->
       let branches = [| [enot (istrue e1)] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "not", [e1]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true", [Eapp ("__g_and_b", [e1; e2], _)], _), _) ->
+  | Enot (Eapp ("Is_true**__g_and_b", [e1; e2], _), _) ->
       let branches = [| [enot (eand (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "notand", [e1; e2]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true", [Eapp ("__g_or_b", [e1; e2], _)], _), _) ->
+  | Enot (Eapp ("Is_true**__g_or_b", [e1; e2], _), _) ->
       let branches = [| [enot (eor (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "notor", [e1; e2]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true", [Eapp ("__g_xor_b", [e1; e2], _)], _), _) ->
+  | Enot (Eapp ("Is_true**__g_xor_b", [e1; e2], _), _) ->
       let branches = [| [eequiv (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "notxor", [e1; e2]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true", [Eapp ("__g_not_b", [e1], _)], _), _) ->
+  | Enot (Eapp ("Is_true**__g_not_b", [e1], _), _) ->
       let branches = [| [istrue e1] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "notnot", [e1]);
-        nprio = Prio.make depth Prio.Alpha1 branches;
+        nprio = Arity;
         nbranches = branches;
       }; Stop ]
   | Eapp ("Is_true", [Evar ("true", _)], _) -> [Stop]
@@ -157,18 +110,35 @@ let newnodes depth e =
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "false", []);
-        nprio = Prio.make depth Prio.Close [| |];
+        nprio = Arity;
         nbranches = [| |];
       }; Stop ]
   | Enot (Eapp ("Is_true", [Evar ("true", _)], _), _) ->
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "nottrue", []);
-        nprio = Prio.make depth Prio.Close [| |];
+        nprio = Arity;
         nbranches = [| |];
       }; Stop ]
-(* FIXME TODO: faire nrule = Ext, et etendre la traduction
-   pour que les pseudo-defs marchent correctement
+  | Enot (Eapp ("=", [Evar ("true", _); Evar ("false", _)], _), _) -> [Stop]
+  | Enot (Eapp ("=", [Evar ("false", _); Evar ("true", _)], _), _) -> [Stop]
+  | Eapp ("=", [Evar ("true", _); Evar ("false", _)], _) ->
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "truefalse", []);
+        nprio = Arity;
+        nbranches = [| |];
+      }; Stop ]
+  | Eapp ("=", [Evar ("false", _); Evar ("true", _)], _) ->
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("coqbool", "falsetrue", []);
+        nprio = Arity;
+        nbranches = [| |];
+      }; Stop ]
+(*
+  | Eapp ("Is_true", [Emeta _], _) -> FIXME TODO instancier par false
+  | Enot (Eapp ("Is_true", [Emeta _], _) -> FIXME TODO instancier par true
 *)
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
       begin try
@@ -179,7 +149,7 @@ let newnodes depth e =
         [ Node {
           nconc = [e];
           nrule = Definition (d, e, unfolded);
-          nprio = Prio.make depth Prio.Alpha1 branches;
+          nprio = Arity;
           nbranches = branches;
         }; Stop ]
       with
@@ -195,27 +165,47 @@ let newnodes depth e =
         [ Node {
             nconc = [e];
             nrule = Definition (d, e, unfolded);
-            nprio = Prio.make depth Prio.Alpha1 branches;
+            nprio = Arity;
             nbranches = branches;
         }; Stop ]
       with
         | Invalid_argument "List.map2" -> wrong_arity s; []
         | Not_found -> assert false
       end
-  | Eapp ("Is_true", [Eapp (s, _, _)], _) ->
-      let matches = find isfalse_forms s in
-      let do_match x = Node (make_notequal depth e x) in
-      (List.map do_match matches) @ [Stop]
-  | Eapp ("Is_true", [Emeta _], _) ->
-      let do_match x = Node (make_notequal depth e x) in
-      map_all isfalse_forms do_match
-  | Enot (Eapp ("Is_true", [Eapp (s, _, _)], _), _) ->
-      let matches = find istrue_forms s in
-      let do_match x = Node (make_notequal depth x e) in
-      (List.map do_match matches) @ [Stop]
-  | Enot (Eapp ("Is_true", [Emeta _], _), _) ->
-      let do_match x = Node (make_notequal depth x e) in
-      map_all istrue_forms do_match
+  | Eapp ("Is_true", [Eapp (s, args, _)], _) ->
+      let branches = [| [eapp ("Is_true**" ^ s, args)] |] in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "merge", []);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Eapp (s, args, _) when is_prefix 0 "Is_true**" s ->
+      let ss = chop_prefix "Is_true**" s in
+      let branches = [| [eapp ("Is_true", [eapp (ss, args)])] |] in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "split", []);
+          nprio = Arity;
+          nbranches = branches;
+      } ]
+  | Enot (Eapp ("Is_true", [Eapp (s, args, _)], _), _) ->
+      let branches = [| [enot (eapp ("Is_true**" ^ s, args))] |] in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "merge", []);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Enot (Eapp (s, args, _), _) when is_prefix 0 "Is_true**" s ->
+      let ss = chop_prefix "Is_true**" s in
+      let branches = [| [enot (eapp ("Is_true", [eapp (ss, args)]))] |] in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "split", []);
+          nprio = Arity;
+          nbranches = branches;
+      } ]
   | _ -> []
 ;;
 
@@ -259,6 +249,14 @@ let to_llargs tr_prop tr_term r =
   | Ext (_, "nottrue", []) ->
       let c = tr_prop (enot (istrue (evar "true"))) in
       ("zenon_coqbool_nottrue", [], [c], []);
+  | Ext (_, "falsetrue", []) ->
+      let c = tr_prop (eapp ("=", [evar "false"; evar "true"])) in
+      ("zenon_coqbool_falsetrue", [], [c], []);
+  | Ext (_, "truefalse", []) ->
+      let c = tr_prop (eapp ("=", [evar "true"; evar "false"])) in
+      ("zenon_coqbool_truefalse", [], [c], []);
+  | Ext (_, "merge", _) -> ("zenon_coqbool_merge", [], [], [])
+  | Ext (_, "split", _) -> ("zenon_coqbool_split", [], [], [])
   | _ -> assert false
 ;;
 
@@ -275,10 +273,133 @@ let to_llproof tr_prop tr_term mlp args =
   in (nn, extras)
 ;;
 
+let rec fold_istrue e =
+  match e with
+  | Evar _ -> e
+  | Emeta _ -> e
+  | Eapp ("Is_true", [Eapp (s, args, _)], _) ->
+      eapp ("Is_true**" ^ s, List.map fold_istrue args)
+  | Eapp (s, args, _) -> eapp (s, List.map fold_istrue args)
+  | Enot (e1, _) -> enot (fold_istrue e1)
+  | Eand (e1, e2, _) -> eand (fold_istrue e1, fold_istrue e2)
+  | Eor (e1, e2, _) -> eor (fold_istrue e1, fold_istrue e2)
+  | Eimply (e1, e2, _) -> eimply (fold_istrue e1, fold_istrue e2)
+  | Eequiv (e1, e2, _) -> eequiv (fold_istrue e1, fold_istrue e2)
+  | Etrue -> e
+  | Efalse -> e
+  | Eall (v, t, e, o, _) -> eall (v, t, fold_istrue e, o)
+  | Eex (v, t, e, o, _) -> eex (v, t, fold_istrue e, o)
+  | Etau (v, t, e, _) -> etau (v, t, fold_istrue e)
+;;
+
+let preprocess l =
+  let f x =
+    match x with
+    | Hyp (name, e, goalness) -> Hyp (name, fold_istrue e, goalness)
+    | Def (DefReal (sym, formals, body)) ->
+        Def (DefReal (sym, formals, fold_istrue body))
+    | Def (DefPseudo _) -> assert false
+    | Sig _ -> x
+  in
+  List.map f l
+;;
+
+let rec process_expr e =
+  match e with
+  | Evar _ -> e
+  | Emeta _ -> e
+  | Eapp (s, args, _) when is_prefix 0 "Is_true**" s ->
+      let s1 = chop_prefix "Is_true**" s in
+      eapp ("Is_true", [eapp (s1, List.map process_expr args)])
+  | Eapp (s, args, _) -> eapp (s, List.map process_expr args)
+  | Enot (e1, _) -> enot (process_expr e1)
+  | Eand (e1, e2, _) -> eand (process_expr e1, process_expr e2)
+  | Eor (e1, e2, _) -> eor (process_expr e1, process_expr e2)
+  | Eimply (e1, e2, _) -> eimply (process_expr e1, process_expr e2)
+  | Eequiv (e1, e2, _) -> eequiv (process_expr e1, process_expr e2)
+  | Etrue -> e
+  | Efalse -> e
+  | Eall (e1, t, e2, o, _) -> eall (process_expr e1, t, process_expr e2, o)
+  | Eex (e1, t, e2, o, _) -> eex (process_expr e1, t, process_expr e2, o)
+  | Etau (e1, t, e2, _) -> etau (process_expr e1, t, process_expr e2)
+;;
+
+let rec process_expr_set accu l =
+  match l with
+  | [] -> accu
+  | h::t -> process_expr_set (Expr.union [process_expr h] accu) t
+;;
+
+open Llproof;;
+
+let rec process_prooftree p =
+  let pconc = process_expr_set [] p.conc in
+  let phyps = List.map process_prooftree p.hyps in
+  match p.rule with
+  | Rpnotp (Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _))
+    when is_prefix 0 "Is_true**" s1 ->
+      assert (s1 = s2);
+      let s = chop_prefix "Is_true**" s1 in
+      let fa1 = eapp (s, List.map process_expr args1) in
+      let fa2 = eapp (s, List.map process_expr args2) in
+      let step1 = {
+        conc = Expr.union [enot (eapp ("=", [fa1; fa2]))] pconc;
+        rule = Rnotequal (fa1, fa2);
+        hyps = phyps;
+      } in
+      let step2 = {
+        conc = pconc;
+        rule = Rpnotp (eapp ("Is_true", [fa1]), enot (eapp ("Is_true", [fa2])));
+        hyps = [step1];
+      } in
+      step2
+  | Rextension ("zenon_coqbool_merge", _, _, _)
+  | Rextension ("zenon_coqbool_split", _, _, _)
+    -> begin match phyps with
+       | [ p ] -> p
+       | _ -> assert false
+       end
+  | r -> { conc = pconc; rule = process_rule r; hyps = phyps }
+
+and process_rule r =
+  match r with
+  | Rfalse -> Rfalse
+  | Rnottrue -> Rnottrue
+  | Raxiom (e1) -> Raxiom (process_expr e1)
+  | Rcut (e1) -> Rcut (process_expr e1)
+  | Rnoteq (e1) -> Rnoteq (process_expr e1)
+  | Rnotnot (e1) -> Rnotnot (process_expr e1)
+  | Rconnect (op, e1, e2) -> Rconnect (op, process_expr e1, process_expr e2)
+  | Rnotconnect (op, e1, e2) ->
+      Rnotconnect (op, process_expr e1, process_expr e2)
+  | Rex (e1, v) -> Rex (process_expr e1, v)
+  | Rall (e1, e2) -> Rall (process_expr e1, process_expr e2)
+  | Rnotex (e1, e2) -> Rnotex (process_expr e1, process_expr e2)
+  | Rnotall (e1, v) -> Rnotall (process_expr e1, v)
+  | Rpnotp (e1, e2) -> Rpnotp (process_expr e1, process_expr e2)
+  | Rnotequal (e1, e2) -> Rnotequal (process_expr e1, process_expr e2)
+  | Rdefinition (e1, e2) -> Rdefinition (process_expr e1, process_expr e2);
+  | Rextension (s, el1, el2, ell) ->
+      Rextension (s, List.map process_expr el1, List.map process_expr el2,
+                  List.map (List.map process_expr) ell)
+  | Rlemma (_, _) -> r
+;;
+
+let process_lemma l = { l with proof = process_prooftree l.proof };;
+let postprocess p = List.map process_lemma p;;
+
+let declare_context_coq oc =
+  Printf.fprintf oc "Require Import zenon_coqbool.\n";
+  ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b"]
+;;
+
 Extension.register {
   Extension.name = "coqbool";
-  Extension.newnodes = (fun depth e -> lazy (newnodes depth e));
+  Extension.newnodes = newnodes;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
+  Extension.preprocess = preprocess;
+  Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
+  Extension.declare_context_coq = declare_context_coq;
 };;

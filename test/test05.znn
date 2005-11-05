@@ -1,5 +1,7 @@
 # TPTP syn051+1
 
+$sig F ("nat") "Prop"
+
 (E. ((X "nat") (=> p (F X))))
 (E. ((X "nat") (=> (F X) p)))
 

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.23 2005-06-23 13:05:47 prevosto Exp $";;
+Version.add "$Id: main.ml,v 1.24 2005-11-05 11:13:17 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -9,6 +9,7 @@ type proof_level =
   | Proof_h of int
   | Proof_m
   | Proof_l
+  | Proof_lx
   | Proof_coq
   | Proof_coqterm
 ;;
@@ -23,20 +24,22 @@ let input_format = ref I_zenon;;
 
 let include_path = ref [];;
 
+let opt_level = ref 1;;
+
 (* Output file, script checking and validation *)
 let outf = ref None
-let check = ref false
-let valid = ref false
 
 let set_out () =
   match !outf with
-  | Some f -> Print.set_outc (open_out f)
-  | _ -> ()
+  | Some f -> open_out f
+  | _ -> stdout
+;;
 
-let cls_out () =
+let close_out oc =
   match !outf with
-  | Some _ -> close_out (Print.get_outc ())
+  | Some _ -> close_out oc
   | _ -> ()
+;;
 
 let int_arg r arg =
   let l = String.length arg in
@@ -48,9 +51,10 @@ let int_arg r arg =
   else
     try
       match arg.[l-1] with
-      | 'k' -> multiplier 1_000.
-      | 'M' -> multiplier 1_000_000.
-      | 'G' -> multiplier 1_000_000_000.
+      | 'k' -> multiplier 1e3
+      | 'M' -> multiplier 1e6
+      | 'G' -> multiplier 1e9
+      | 'T' -> multiplier 1e12
       | 's' -> multiplier 1.
       | 'm' -> multiplier 60.
       | 'h' -> multiplier 3600.
@@ -78,69 +82,72 @@ let umsg = "Usage: zenon [options] <file>";;
 
 let rec argspec = [
   "-", Arg.Unit (fun () -> add_file "-"),
-    "         read input from stdin";
-  "-check", Arg.Set check,
-         "    check & pretty-print the Coq proof script\
-\n               (implies -ocoq and -context)";
+    "                  read input from stdin";
   "-context", Arg.Set ctx_flag,
-           "  provide context for checking the proof independently";
-  "-d", Arg.Unit (fun () -> Globals.debug_count := 1;
-                            progress_level := Progress_none),
-     "        debug mode";
+           "           provide context for checking the proof independently";
+  "-d", Arg.Unit (fun () -> Globals.debug_flag := true;
+                            Progress.level := Progress.No),
+     "                 debug mode";
+  "-errmsg", Arg.String Error.set_header,
+          "<message>   prefix warnings and errors with <message>";
   "-help", Arg.Unit print_usage,
-        "     print this option list and exit";
+        "              print this option list and exit";
   "--help", Arg.Unit print_usage,
-         "    print this option list and exit";
+         "             print this option list and exit";
   "-I", Arg.String (fun x -> include_path := x :: !include_path),
-     " <dir>  add <dir> to the include path (for TPTP input format)";
+     " <dir>           add <dir> to the include path (for TPTP input format)";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
-      "       read input file in zenon format (default)";
+      "                read input file in zenon format (default)";
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
-          "   read input file in focal format";
+          "            read input file in focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
-         "    read input file in TPTP format";
+         "             read input file in TPTP format";
   "-max-size", Arg.String (int_arg size_limit),
-            "<s>[kMG]  limit heap size to <s> kilo/mega/giga words"
+            "<s>[kMGT]  limit heap size to <s> kilo/mega/giga/tera word"
             ^ " (default 100M)";
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (default 5m)";
-  "-o", Arg.String (fun f -> outf := (Some f)),
-     "<file>  output proof to <file>";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
-        "     print the proof in Coq script format";
+        "              print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
-            " print the proof in Coq term format";
+            "          print the proof in Coq term format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
-      "<n>    print the proof in high-level format up to depth <n>";
+      "<n>             print the proof in high-level format up to depth <n>";
   "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
-      "       print the proof in low-level format";
+      "                print the proof in low-level format";
+  "-olx", Arg.Unit (fun () -> proof_level := Proof_lx),
+       "               print the proof in low-level format with extensions";
   "-om", Arg.Unit (fun () -> proof_level := Proof_m),
-      "       print the proof in middle-level format";
+      "                print the proof in middle-level format";
   "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
-         "    do not print the proof (default)";
-  "-p0", Arg.Unit (fun () -> progress_level := Progress_none),
-      "       turn off progress bar and progress messages";
-  "-p1", Arg.Unit (fun () -> progress_level := Progress_bar),
-      "       turn on progress bar (default)";
-  "-p2", Arg.Unit (fun () -> progress_level := Progress_messages),
-      "       turn on progress messages";
+         "             do not print the proof (default)";
+  "-opt0", Arg.Unit (fun () -> opt_level := 0),
+        "              do not optimise the proof";
+  "-opt1", Arg.Unit (fun () -> opt_level := 1),
+        "              do peephole optimisation of the proof (default)";
+  "-p0", Arg.Unit (fun () -> Progress.level := Progress.No),
+      "                turn off progress bar and progress messages";
+  "-p1", Arg.Unit (fun () -> Progress.level := Progress.Bar),
+      "                display progress bar (default)";
+  "-p2", Arg.Unit (fun () -> Progress.level := Progress.Msg),
+      "                display progress messages";
   "-q", Arg.Set quiet_flag,
-     "        suppress proof-found/no-proof/begin-proof/end-proof tags";
+     "                 suppress proof-found/no-proof/begin-proof/end-proof";
   "-stats", Arg.Set stats_flag,
-         "    print statistics";
+         "             print statistics";
   "-short", Arg.Set short_flag,
-         "    output a less detailed proof";
+         "             output a less detailed proof";
   "-v", Arg.Unit short_version,
-     "        print version string and exit";
-  "-valid", Arg.Set valid,
-         "    verify the Coq proof (implies -ocoq and -context)";
+     "                 print version string and exit";
   "-versions", Arg.Unit cvs_version,
-            " print CVS version strings and exit";
-  "-w", Arg.Clear warnings_flag,
-     "        suppress warnings";
+            "          print CVS version strings and exit";
+  "-w", Arg.Clear Error.warnings_flag,
+     "                 suppress warnings";
+  "-wout", Arg.Set_string Error.err_file,
+        "<file>        output errors and warnings to <file> instead of stderr";
   "-x", Arg.String Extension.activate,
-     "<ext>   activate extension <ext>"
+     "<ext>            activate extension <ext>"
 ]
 
 and print_usage () =
@@ -148,17 +155,9 @@ and print_usage () =
   exit 0;
 ;;
 
-Arg.parse argspec add_file umsg;;
-if !check || !valid then begin
-  proof_level := Proof_coq;
-  ctx_flag := true;
-end
+try Arg.parse argspec add_file umsg
+with Not_found -> exit 2
 ;;
-
-if !proof_level = Proof_coqterm && !ctx_flag then begin
-  eprintf "support for -context with -ocoqterm[78] is not implemented\n";
-  exit 2;
-end;;
 
 let report_error lexbuf msg =
   let p = Lexing.lexeme_start_p lexbuf in
@@ -184,30 +183,34 @@ let parse_file f =
     try
       match !input_format with
       | I_tptp ->
-          let tpphrases = Parser.tpfile Lexer.tptoken lexbuf in
+          let tpphrases = Parsetptp.file Lextptp.token lexbuf in
           close chan;
           let d = Filename.dirname f in
           let pp = Filename.parent_dir_name in
           let upup = Filename.concat (Filename.concat d pp) pp in
           let incpath = List.rev (upup :: d :: !include_path) in
           let forms = Tptp.translate incpath tpphrases in
-          (Tptp.get_thm_name (), Tptp.process_annotations forms)
+          let annotated = Tptp.process_annotations forms in
+          let f x = (x, false) in
+          (Tptp.get_thm_name (), List.map f annotated)
       | I_focal ->
-          let (name, result) = Parser.coqfile Lexer.coqtoken lexbuf in
+          let (name, result) = Parsecoq.file Lexcoq.token lexbuf in
           close chan;
           (name, result)
       | I_zenon ->
-          Globals.goal_found := false;
-          let result = Parser.theory Lexer.token lexbuf in
+          let phrases = Parsezen.file Lexzen.token lexbuf in
           close chan;
-          if (not !Globals.goal_found) && !Globals.warnings_flag then begin
-            eprintf "Warning: no goal given.\n";
-            flush stderr;
-          end;
+          let result = List.map (fun x -> (x, false)) phrases in
+          let is_goal = function
+            | (Phrase.Hyp ("z'goal", _, _), _) -> true
+            | _ -> false
+          in
+          let goal_found = List.exists is_goal result in
+          if not goal_found then Error.warn "no goal given";
           ("theorem", result)
     with
     | Parsing.Parse_error -> report_error lexbuf "syntax error."
-    | Lexer.Lex_error msg -> report_error lexbuf msg
+    | Error.Lex_error msg -> report_error lexbuf msg
   with Sys_error (msg) -> eprintf "%s\n" msg; exit 2
 ;;
 
@@ -217,28 +220,44 @@ Gc.set {(Gc.get ()) with
        }
 ;;
 
+let rec extract_strong accu phr_dep =
+  match phr_dep with
+  | [] -> accu
+  | (p, true) :: t -> extract_strong (p::accu) t
+  | (_, false) :: t -> extract_strong accu t
+;;
+
+let optim p =
+  match !opt_level with
+  | 0 -> p
+  | 1 -> Llproof.optimise p
+  | _ -> assert false
+;;
+
 let main () =
-  Watch.clear_watch ();
   let file = match !files with
              | [f] -> f
              | _ -> Arg.usage argspec umsg; exit 2
   in
-  let (th_name, phrases) = parse_file file in
+  let (th_name, phrases_dep) = parse_file file in
   let retcode = ref 0 in
   begin try
-    let (defs, hyps) = Phrase.separate phrases in
+    let strong_dep = extract_strong [] phrases_dep in
+    let phrases = List.map fst phrases_dep in
+    let ppphrases = Extension.preprocess phrases in
+    let (defs, hyps) = Phrase.separate ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
-    if !debug_count > 0 then begin
+    if !debug_flag then begin
       let ph_defs = List.map (fun x -> Phrase.Def x) defs in
       let ph_hyps = List.map (fun (x, y) -> Phrase.Hyp ("", x, y)) hyps in
-      printf "initial formulas:\n";
-      List.iter Print.phrase (ph_defs @ ph_hyps);
-      printf "relations: ";
-      Eqrel.print_rels stdout;
-      printf "\n";
-      printf "----\n";
-      flush stdout;
+      eprintf "initial formulas:\n";
+      List.iter (Print.phrase (Print.Chan stderr)) (ph_defs @ ph_hyps);
+      eprintf "relations: ";
+      Eqrel.print_rels stderr;
+      eprintf "\n";
+      eprintf "----\n";
+      flush stderr;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
     let proof = Prove.prove defs hyps in
@@ -246,25 +265,30 @@ let main () =
       printf "(* PROOF-FOUND *)\n";
       flush stdout;
     end;
-    if !proof_level <> Proof_none then begin
-      set_out ();
-      begin match !proof_level with
-      | Proof_none -> assert false;
-      | Proof_h n -> Print.hlproof n proof;
-      | Proof_m -> Print.mlproof proof;
-      | Proof_l -> Print.llproof (Mltoll.translate th_name phrases proof);
-      | Proof_coq ->
-          Watch.force_definitions_use ();
-          let llp = Mltoll.translate th_name phrases proof in
-            retcode := Lltocoq.produce_proof phrases !check !outf !valid llp;
-            Watch.warn_unused th_name
-      | Proof_coqterm ->
-          Watch.force_definitions_use ();
-          let llpr = Mltoll.translate th_name phrases proof in
-          let p = Coqterm.trproof phrases llpr in
-          Coqterm.print !outf p;
-      end;
-      cls_out ()
+    Watch.warn strong_dep proof;
+    begin match !proof_level with
+    | Proof_none -> ()
+    | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
+    | Proof_m -> Print.mlproof (Print.Chan stdout) proof;
+    | Proof_lx ->
+        let llp = optim (Mltoll.translate th_name ppphrases proof) in
+        Print.llproof (Print.Chan stdout) llp;
+    | Proof_l ->
+        let llp = optim (Extension.postprocess
+                           (Mltoll.translate th_name ppphrases proof))
+        in
+        Print.llproof (Print.Chan stdout) llp;
+    | Proof_coq ->
+        let llp = optim (Extension.postprocess
+                           (Mltoll.translate th_name ppphrases proof))
+        in
+        Lltocoq.produce_proof stdout phrases llp;
+    | Proof_coqterm ->
+        let llp = optim (Extension.postprocess
+                           (Mltoll.translate th_name ppphrases proof))
+        in
+        let p = Coqterm.trproof phrases (optim llp) in
+        Coqterm.print stdout p;
     end;
   with Prove.NoProof ->
     retcode := 10;

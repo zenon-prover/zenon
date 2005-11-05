@@ -1,15 +1,26 @@
+(*
 ; file: products.foc
 ; species: cartesian
 ; property: equal_reflexive / __lemma_1_1
 
 ; Attention, ce fichier a ete modifie a la main
+*)
 
 %%begin-auto-proof
 %%location: []
-%%name: foo
+%%name: bar
+%%syntax:
 %%statement
 (Is_true (((setoid_equal  self_s1 ) (first x ) (first x ) ))
 )
-By s1equal_reflexive: (x: abst_T) (Is_true ((setoid_equal self_s1  x x)) )
-By def 
+
+Parameter abst_T : Type.
+Parameter foo : Type.
+Parameter x : foo.
+Parameter first : foo -> abst_T.
+Parameter setoid_equal : foo -> abst_T -> abst_T -> bool.
+Parameter self_s1 : foo.
+
+Parameter s1equal_reflexive: forall (x: abst_T),
+ (Is_true ((setoid_equal self_s1  x x)) ).
 %%end-auto-proof

@@ -31,12 +31,10 @@
 ; By def 
 ; (* Qed *).
 
-$goal
-(Is_true (abst_equal (abst_plus x (abst_plus x y))
-                     (abst_plus x (abst_sup (abst_plus x y) x))))
+$sig abst_equal ("" "") "bool"
 
 ; abst_equal_symmetric
-(A. ((x "abst_T") (A. ((y "abst_T")
+(A. ((x) (A. ((y)
   (=> (Is_true (abst_equal x y)) (Is_true (abst_equal y x)))))))
 
 ; abst_equal_transitive
@@ -57,3 +55,7 @@ $goal
 (Is_true (abst_equal (abst_plus x (abst_plus x y))
                      (abst_plus (abst_inf (abst_plus x y) x)
                                 (abst_sup (abst_plus x y) x))))
+
+$goal
+(Is_true (abst_equal (abst_plus x (abst_plus x y))
+                     (abst_plus x (abst_sup (abst_plus x y) x))))

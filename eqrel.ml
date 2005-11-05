@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.7 2004-10-28 13:51:38 doligez Exp $";;
+Version.add "$Id: eqrel.ml,v 1.8 2005-11-05 11:13:17 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -72,12 +72,12 @@ let subexprs = ref [];;
 let rec do_conj path env e =
   match e with
   | Eand (e1, e2, _) -> do_conj (L::path) env e1; do_conj (R::path) env e2;
-  | Eall (v, t, e1, _) -> do_conj path ((v,t)::env) e1;
+  | Eall (v, t, e1, _, _) -> do_conj path ((v,t)::env) e1;
   | Enot (Eor (e1, e2, _), _) ->
       do_conj (L::path) env (enot e1); do_conj (R::path) env (enot e2);
   | Enot (Eimply (e1, e2, _), _) ->
       do_conj (L::path) env e1; do_conj (R::path) env (enot e2);
-  | Enot (Eex (v, t, e1, _), _) -> do_conj path ((v,t)::env) (enot e1);
+  | Enot (Eex (v, t, e1, _, _), _) -> do_conj path ((v,t)::env) (enot e1);
   | Enot (Enot (e1, _), _) -> do_conj path env e1;
   | Eequiv (e1, e2, _) ->
       do_conj (L::path) env (eimply (e1, e2));
@@ -209,7 +209,6 @@ let subsumed_subexpr e (path, env, sb, typ) =
   else if is_sym sb e path env <> None then
     (get_record (get_symbol sb)).sym <> None
   else if is_trans sb e path env <> None then
-    false &&  (* FIXME *)
     (get_record (get_symbol sb)).trans <> None
   else if is_transsym sb e path env <> None then
     let r = get_record (get_symbol sb) in
@@ -280,12 +279,13 @@ let hyps_tbl =
 ;;
 
 let get_refl_hyp s =
+  assert (s <> "=");
   let r = Hashtbl.find tbl s in
   match r.refl_hyp with
   | Some e -> e
   | None ->
       let vx = evar "x" in
-      let result = eall (vx, r.typ, eapp (s, [vx; vx])) in
+      let result = ealln (vx, r.typ, eapp (s, [vx; vx])) in
       r.refl_hyp <- Some result;
       begin match r.refl with
       | Some (e, dirs, vars) -> HE.add hyps_tbl result (Refl ((e, dirs, vars)))
@@ -295,12 +295,13 @@ let get_refl_hyp s =
 ;;
 
 let get_sym_hyp s =
+  assert (s <> "=");
   let r = Hashtbl.find tbl s in
   match r.sym_hyp with
   | Some e -> e
   | None ->
       let vx = evar "x" and vy = evar "y" in
-      let result = eall (vx, r.typ, eall (vy, r.typ,
+      let result = ealln (vx, r.typ, ealln (vy, r.typ,
                      eimply (eapp (s, [vx; vy]), eapp (s, [vy; vx]))))
       in
       r.sym_hyp <- Some result;
@@ -315,12 +316,13 @@ let get_sym_hyp s =
 ;;
 
 let get_trans_hyp s =
+  assert (s <> "=");
   let r = Hashtbl.find tbl s in
   match r.trans_hyp with
   | Some e -> e
   | None ->
       let vx = evar "x" and vy = evar "y" and vz = evar "z" in
-      let result = eall (vx, r.typ, eall (vy, r.typ, eall (vz, r.typ,
+      let result = ealln (vx, r.typ, ealln (vy, r.typ, ealln (vz, r.typ,
                      eimply (eapp (s, [vx; vy]),
                        eimply (eapp (s, [vy; vz]), eapp (s, [vx; vz]))))))
       in
@@ -334,11 +336,11 @@ let get_trans_hyp s =
       | _, _, _ -> assert false
       end;
       result
-;;  
+;;
 
 let inst_nall e =
   match e with
-  | Enot (Eall (v, ty, f, _), _) ->
+  | Enot (Eall (v, ty, f, _, _), _) ->
       let nf = enot f in
       let t = etau (v, ty, nf) in
       (Expr.substitute [(v, t)] nf, t)
@@ -385,7 +387,7 @@ let rec decompose_conj n e dirs vars forms taus =
   | Eand (e1, e2, _), R::rest, _ ->
       let n1 = decompose_conj n e2 rest vars forms taus in
       make_node [e] (And (e1, e2)) [[e2]] [n1]
-  | Eall (v, ty, e1, _), _, w::rest when n = w ->
+  | Eall (v, ty, e1, _, _), _, w::rest when n = w ->
       begin match taus with
       | [] -> assert false
       | x::t ->
@@ -393,8 +395,8 @@ let rec decompose_conj n e dirs vars forms taus =
           let n1 = decompose_conj (n+1) f dirs rest forms t in
           make_node [e] (All (e, x)) [[f]] [n1]
       end
-  | Eall (v, ty, e1, _), _, _ ->
-      let x = emeta (e) in
+  | Eall (v, ty, e1, m, _), _, _ ->
+      let x = emeta (m) in
       let f = Expr.substitute [(v, x)] e1 in
       let n1 = decompose_conj (n+1) f dirs vars forms taus in
       make_node [e] (All (e, x)) [[f]] [n1]
@@ -413,7 +415,7 @@ let rec decompose_conj n e dirs vars forms taus =
       let ne2 = enot e2 in
       let n1 = decompose_conj n ne2 rest vars forms taus in
       make_node [e] (NotOr (e1, e2)) [[ne2]] [n1]
-  | Enot (Eex (v, ty, e1, _), _), _, w::rest when n = w ->
+  | Enot (Eex (v, ty, e1, _, _), _), _, w::rest when n = w ->
       begin match taus with
       | [] -> assert false
       | x::t ->
@@ -421,8 +423,8 @@ let rec decompose_conj n e dirs vars forms taus =
           let n1 = decompose_conj (n+1) f dirs rest forms t in
           make_node [e] (NotEx (e, x)) [[f]] [n1]
       end
-  | Enot (Eex (v, ty, e1, _), _), _, _ ->
-      let x = emeta (e) in
+  | Enot (Eex (v, ty, e1, m, _), _), _, _ ->
+      let x = emeta (m) in
       let f = Expr.substitute [(v, x)] (enot e1) in
       let n1 = decompose_conj (n+1) f dirs vars forms taus in
       make_node [e] (NotEx (e, x)) [[f]] [n1]

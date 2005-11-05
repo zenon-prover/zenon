@@ -14,11 +14,15 @@
 #      (abst_equal  x y)))
 #(* Qed *).
 
+$sig abst_T () "Type"
+$sig abst_leq ("abst_T" "abst_T") "bool"
+$sig abst_equal ("abst_T" "abst_T") "bool"
+
+$def (abst_different x y) (__g_not_b (abst_equal x y))
+$def (abst_lt x y) (__g_and_b (abst_leq x y) (__g_not_b (abst_equal x y)))
+
 $goal (A. ((x "abst_T") (A. ((y "abst_T")
         (/\ (=> (Is_true (abst_lt x y))
                 (/\ (Is_true (abst_leq x y)) (Is_true (abst_different x y))))
             (=> (Is_true (abst_leq x y))
                 (\/ (Is_true (abst_lt x y)) (Is_true (abst_equal x y)))))))))
-
-$def abst_different (x y) (__g_not_b (abst_equal x y))
-$def abst_lt (x y) (__g_and_b (abst_leq x y) (__g_not_b (abst_equal x y)))

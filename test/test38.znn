@@ -20,7 +20,9 @@
 ; By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
 ; (* Qed *).
 
-$goal (Is_true (abst_equal x (abst_inf x y)))
+$sig abst_equal ("" "") "bool"
+
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
 ; abst_add_keeps_inf
 (A. ((x) (A. ((y) (Is_true (abst_order_inf x (abst_plus x y)))))))
@@ -40,4 +42,4 @@ $goal (Is_true (abst_equal x (abst_inf x y)))
 ; __lemma_1_1
 (Is_true (abst_equal (abst_plus x abst_zero) y))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$goal (Is_true (abst_equal x (abst_inf x y)))

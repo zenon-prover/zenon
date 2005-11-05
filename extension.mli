@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.5 2005-07-01 12:24:47 prevosto Exp $  *)
+(*  $Id: extension.mli,v 1.6 2005-11-05 11:13:17 doligez Exp $  *)
 
 type translator =
     (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
@@ -9,18 +9,24 @@ type translator =
 
 type t = {
   name : string;
-  newnodes : int -> Expr.expr -> Node.node_item list Lazy.t;
+  newnodes : int -> Expr.expr -> Node.node_item list;
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
+  preprocess : Phrase.phrase list -> Phrase.phrase list;
+  postprocess : Llproof.proof -> Llproof.proof;
   to_llproof : translator;
+  declare_context_coq : out_channel -> string list;
 };;
 
 val register : t -> unit;;
 val activate : string -> unit;;
 
-val is_enabled: string -> bool
+val is_active: string -> bool;;
 
-val newnodes : int -> Expr.expr -> Node.node_item list Lazy.t list;;
+val newnodes : int -> Expr.expr -> Node.node_item list list;;
 val add_formula : Expr.expr -> unit;;
 val remove_formula : Expr.expr -> unit;;
+val preprocess : Phrase.phrase list -> Phrase.phrase list;;
+val postprocess : Llproof.proof -> Llproof.proof;;
 val to_llproof : translator;;
+val declare_context_coq : out_channel -> string list;;

@@ -17,7 +17,7 @@
 ; By def 
 ; (* Qed *).
 
-$goal (Is_true (abst_equal (abst_plus x abst_zero) y))
+$sig abst_equal ("" "") "bool"
 
 ; abst_equal_transitive
 (A. ((x) (A. ((y) (A. ((z)
@@ -31,3 +31,5 @@ $goal (Is_true (abst_equal (abst_plus x abst_zero) y))
 
 ; H_1_1
 (Is_true (abst_equal x y))
+
+$goal (Is_true (abst_equal (abst_plus x abst_zero) y))

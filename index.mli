@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.3 2004-09-09 15:25:35 doligez Exp $  *)
+(*  $Id: index.mli,v 1.4 2005-11-05 11:13:17 doligez Exp $  *)
 
 open Expr;;
 
@@ -11,6 +11,7 @@ val remove : expr -> unit;;
 
 val member : expr -> bool;;
 val get_goalness : expr -> int;;
+val get_all : unit -> expr list;;
 
 val find_pos : string -> expr list;;
 val find_neg : string -> expr list;;
@@ -19,21 +20,25 @@ val find_neg : string -> expr list;;
 
 type direction = Left | Right | Both;;
 
-val get_head : expr -> string;;
+type head = Sym of string | Tau of expr | Wild;;
+val get_head : expr -> head;;
 
 val add_trans : expr -> direction -> unit;;
-val find_trans_left : string -> string -> expr list;;
-val find_trans_right : string -> string -> expr list;;
+val find_trans_left : string -> head -> expr list;;
+val find_trans_right : string -> head -> expr list;;
 
-val find_trans_leftonly : string -> string -> expr list;;
-val find_trans_rightonly : string -> string -> expr list;;
+val find_trans_leftonly : string -> head -> expr list;;
+val find_trans_rightonly : string -> head -> expr list;;
+val find_all_trans_leftonly : head -> expr list;;
+val find_all_trans_rightonly : head -> expr list;;
 
 val add_negtrans : expr -> unit;;
-val find_negtrans_left : string -> string -> expr list;;
-val find_negtrans_right : string -> string -> expr list;;
+val find_negtrans_left : string -> head -> expr list;;
+val find_negtrans_right : string -> head -> expr list;;
 
-val find_all_negtrans_left : string -> expr list;;
-val find_all_negtrans_right : string -> expr list;;
+val find_all_negtrans_left : head -> expr list;;
+val find_all_negtrans_right : head -> expr list;;
+val find_all_negtrans : unit -> expr list;;
 
 (* ==== proof cache ==== *)
 
@@ -51,12 +56,6 @@ val get_def : string -> definition * expr list * expr;;
 val add_meta : expr -> int -> unit;;
 val remove_meta : expr -> unit;;
 val get_meta : expr -> int;;
-
-(* ==== number of nodes in the heap made redundant by a formula ==== *)
-
-val add_branches : expr list array -> unit;;
-val remove_branches : expr list array -> unit;;
-val get_branches : expr list -> int;;
 
 (* ==== numbering for formulas ==== *)
 

@@ -25,12 +25,14 @@
 #      [x: abst_T][y: abst_T](abst_lt  y x)
 #(* Qed *).
 
-$goal
-  (A. ((x) (A. ((y)
-    (/\ (=> (Is_true (abst_gt x y))
-            (/\ (Is_true (abst_geq x y)) (Is_true (abst_different x y))))
-        (=> (Is_true (abst_geq x y))
-            (\/ (Is_true (abst_gt x y)) (Is_true (abst_equal x y)))))))))
+$sig not_b ("bool") "bool"
+$sig abst_equal ("" "") "bool"
+$sig abst_leq ("" "") "bool"
+$sig abst_lt ("" "") "bool"
+
+$def (abst_different x y) (not_b (abst_equal x y))
+$def (abst_geq x y) (abst_leq y x)
+$def (abst_gt x y) (abst_lt y x)
 
 $1
   (A. ((x) (A. ((y)
@@ -44,10 +46,13 @@ $1
             (\/ (Is_true (abst_lt x y)) (Is_true (abst_equal x y)))))))))
 
 
-$def abst_different (x y) (not_b (abst_equal x y))
-$def abst_geq (x y) (abst_leq y x)
-$def abst_gt (x y) (abst_lt y x)
-
 
 # from Bool.v
-(A. ((x) (<=> (Is_true (not_b x)) (-. (Is_true x)))))
+(A. ((x "bool") (<=> (Is_true (not_b x)) (-. (Is_true x)))))
+
+$goal
+  (A. ((x) (A. ((y)
+    (/\ (=> (Is_true (abst_gt x y))
+            (/\ (Is_true (abst_geq x y)) (Is_true (abst_different x y))))
+        (=> (Is_true (abst_geq x y))
+            (\/ (Is_true (abst_gt x y)) (Is_true (abst_equal x y)))))))))

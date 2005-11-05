@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.3 2004-09-09 15:25:35 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.4 2005-11-05 11:13:17 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -11,3 +11,34 @@ let rec index n e = function
 ;;
 
 let ( @@ ) = List.rev_append;;
+
+exception False;;
+exception True;;
+
+let occurs sub str =
+  let lsub = String.length sub in
+  let lstr = String.length str in
+  try
+    for i = 0 to lstr - lsub do
+      try
+        for j = 0 to lsub - 1 do
+          if str.[i+j] <> sub.[j] then raise False;
+        done;
+        raise True;
+      with False -> ()
+    done;
+    false
+  with True -> true
+;;
+
+let rec xlist_init l f accu =
+  if l = 0 then accu else xlist_init (l-1) f (f() :: accu)
+;;
+
+let list_init l f = xlist_init l f [];;
+
+let isalnum c =
+  match c with
+  | 'A'..'Z' | 'a'..'z' | '0'..'9' -> true
+  | _ -> false
+;;

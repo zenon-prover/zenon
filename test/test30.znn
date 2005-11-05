@@ -13,11 +13,14 @@
 #      x))
 #(* Qed *).
 
-$goal
-  (A. ((x "abst_T") (Is_true (abst_equal x x))))
+$sig abst_T () "Type"
+$sig abst_leq ("abst_T" "abst_T") "bool"
+
+$def (abst_equal x y) (__g_and_b (abst_leq x y) (abst_leq y x))
 
 $1
   (A. ((x "abst_T") (A. ((y "abst_T")
     (\/ (Is_true (abst_leq x y)) (Is_true (abst_leq y x)))))))
 
-$def abst_equal (x y) (__g_and_b (abst_leq x y) (abst_leq y x))
+$goal
+  (A. ((x "abst_T") (Is_true (abst_equal x x))))

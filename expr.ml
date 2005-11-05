@@ -1,15 +1,14 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.14 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.15 2005-11-05 11:13:17 doligez Exp $";;
 
 open Misc;;
 
-let _equal = ( = );;
+let ( =%= ) = ( = );;
 let ( = ) = ();;
-let string_equal x y = String.compare x y == 0;;
 
 type expr =
   | Evar of string * private_info
-  | Emeta of expr * private_info
+  | Emeta of int * private_info
   | Eapp of string * expr list * private_info
 
   | Enot of expr * private_info
@@ -20,8 +19,8 @@ type expr =
   | Etrue
   | Efalse
 
-  | Eall of expr * string * expr * private_info
-  | Eex of expr * string * expr * private_info
+  | Eall of expr * string * expr * int * private_info
+  | Eex of expr * string * expr * int * private_info
   | Etau of expr * string * expr * private_info
 
 and private_info = {
@@ -29,7 +28,7 @@ and private_info = {
   skel_hash : int;
   free_vars : string list;
   size : int;
-  metas : expr list;
+  metas : int list;
 };;
 
 type definition =
@@ -61,22 +60,19 @@ let rec disjoint l1 l2 =
 
 (*******************)
 
-let k_true = 123000
-and k_false = 456
-and k_meta = 27182818
-and k_app = 14142135
-and k_not = 997
-and k_and = 11003
-and k_or = 100007
-and k_imply = 43011
-and k_equiv = 121013
-and k_all = 31415926
-and k_ex = 223017
-and k_tau = 323019
+let k_true  = 0xb063cd7
+and k_false = 0xd5ab9f0
+and k_meta  = 0x33d092c
+and k_app   = 0x33b9c25
+and k_not   = 0x7c3e7d2
+and k_and   = 0xccdc15b
+and k_or    = 0x49b55b9
+and k_imply = 0x7ebfa6f
+and k_equiv = 0xb0f18f7
+and k_all   = 0xfb437ff
+and k_ex    = 0x0716b52
+and k_tau   = 0x4ae7fad
 ;;
-
-let size_meta = 15;;
-let size_tau_inverse = 1000;;
 
 let mkpriv skel fv sz metas = {
   hash = Hashtbl.hash (skel, fv);
@@ -102,8 +98,8 @@ let get_priv = function
   | Etrue -> priv_true
   | Efalse -> priv_false
 
-  | Eall (_, _, _, h) -> h
-  | Eex (_, _, _, h) -> h
+  | Eall (_, _, _, _, h) -> h
+  | Eex (_, _, _, _, h) -> h
   | Etau (_, _, _, h) -> h
 ;;
 
@@ -117,25 +113,25 @@ let rec str_union l1 l2 =
   match l1, l2 with
   | [], _ -> l2
   | _, [] -> l1
-  | h::t, _ when List.exists (string_equal h) l2 -> str_union t l2
+  | h::t, _ when List.exists ((=%=) h) l2 -> str_union t l2
   | h::t, _ -> str_union t (h :: l2)
 ;;
 
 let rec remove x l =
   match x, l with
   | _, [] -> []
-  | Evar (v, _), h::t when string_equal v h -> t
+  | Evar (v, _), h::t when v =%= h -> t
   | _, h::t -> h :: (remove x t)
 ;;
 
-let combine x y = (x lsl 1) + (x lsr 30) + y;;
+let combine x y = x + y * 131 + 1;;
 
 let priv_var s = mkpriv 0 [s] 1 [];;
-let priv_meta e =
-  mkpriv (combine k_meta (get_skel e)) (get_fv e) size_meta [e]
+let priv_meta n =
+  mkpriv (combine k_meta n) [] 1 [n]
 ;;
 let priv_app s args =
-  let comb_skel sk e = combine sk (get_skel e) in
+  let comb_skel accu e = combine (get_skel e) accu in
   let skel = combine k_app (List.fold_left comb_skel (Hashtbl.hash s) args) in
   let sz = List.fold_left (fun a e -> a + get_size e) 1 args in
   let metas = List.fold_left (fun a e -> union (get_metas e) a) [] args in
@@ -168,17 +164,17 @@ let priv_equiv e1 e2 =
          (get_size e1 + get_size e2 + 1)
          (union (get_metas e1) (get_metas e2))
 ;;
-let priv_all v t e =
-  mkpriv (combine k_all (get_skel e)) (remove v (get_fv e))
-         (1 + get_size e) (get_metas e)
+let priv_all v t e m =
+  mkpriv (combine k_all (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) (1 + get_size e) (get_metas e)
 ;;
-let priv_ex v t e =
-  mkpriv (combine k_ex (get_skel e)) (remove v (get_fv e))
-         (1 + get_size e) (get_metas e)
+let priv_ex v t e m =
+  mkpriv (combine k_ex (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) (1 + get_size e) (get_metas e)
 ;;
 let priv_tau v t e =
-  mkpriv (combine k_tau (get_skel e)) (remove v (get_fv e))
-         (1 + get_size e / size_tau_inverse) (get_metas e)
+  mkpriv (combine k_tau (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) 1 (get_metas e)
 ;;
 
 
@@ -206,13 +202,18 @@ module HashedExpr = struct
     | _, _ -> false
   ;;
 
+  let var_name v =
+    match v with
+    | Evar (name, _) -> name
+    | _ -> assert false
+  ;;
+
   let rec equal_in_env env1 env2 e1 e2 =
     match e1, e2 with
-    (* FIXME TODO court-circuit si env1 et/ou env2 est irrelevant *)
     | Evar _, Evar _ -> same_binding env1 e1 env2 e2
-    | Emeta (f1, _), Emeta (f2, _) -> equal_in_env env1 env2 f1 f2
+    | Emeta (n1, _), Emeta (n2, _) -> n1 =%= n2
     | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
-        string_equal sym1 sym2
+        sym1 =%= sym2
         && List.for_all2 (equal_in_env env1 env2) args1 args2
     | Enot (f1, _), Enot (f2, _) -> equal_in_env env1 env2 f1 f2
     | Eand (f1, g1, _), Eand (f2, g2, _)
@@ -223,31 +224,43 @@ module HashedExpr = struct
     | Efalse, Efalse
     | Etrue, Etrue
       -> true
-    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
-    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
+    | Eall (v1, t1, f1, m1, _), Eall (v2, t2, f2, m2, _)
+    | Eex (v1, t1, f1, m1, _), Eex (v2, t2, f2, m2, _)
+      -> (List.mem (var_name v1) (get_fv f1))
+          =%= (List.mem (var_name v2) (get_fv f2))
+         && equal_in_env (v1::env1) (v2::env2) f1 f2
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
-      -> equal_in_env (v1::env1) (v2::env2) f1 f2
+      -> (List.mem (var_name v1) (get_fv f1))
+         =%= (List.mem (var_name v2) (get_fv f2))
+         && equal_in_env (v1::env1) (v2::env2) f1 f2
     | _, _ -> false
+  ;;
+
+  let equal_in_env1 v1 v2 f1 f2 =
+    (List.mem (var_name v1) (get_fv f1))
+    =%= (List.mem (var_name v2) (get_fv f2))
+    && equal_in_env [v1] [v2] f1 f2
   ;;
 
   let equal e1 e2 =
     match e1, e2 with
-    | Evar (v1, _), Evar (v2, _) -> string_equal v1 v2
-    | Emeta (f1, _), Emeta (f2, _) -> f1 == f2
+    | Evar (v1, _), Evar (v2, _) -> v1 =%= v2
+    | Emeta (f1, _), Emeta (f2, _) -> f1 =%= f2
     | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
-        string_equal sym1 sym2 && List.for_all2 (==) args1 args2
+        sym1 =%= sym2 && List.for_all2 (==) args1 args2
     | Enot (f1, _), Enot (f2, _) -> f1 == f2
     | Eand (f1, g1, _), Eand (f2, g2, _)
     | Eor (f1, g1, _), Eor (f2, g2, _)
     | Eimply (f1, g1, _), Eimply (f2, g2, _)
     | Eequiv (f1, g1, _), Eequiv (f2, g2, _)
       -> f1 == f2 && g1 == g2
-    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
-    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
+    | Eall (v1, t1, f1, m1, _), Eall (v2, t2, f2, m2, _)
+    | Eex (v1, t1, f1, m1, _), Eex (v2, t2, f2, m2, _)
+      -> t1 =%= t2
+         && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
-      -> string_equal t1 t2
-         && (v1 == v2 && f1 == f2
-             || equal_in_env [v1] [v2] f1 f2)
+      -> t1 =%= t2
+         && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
     | _, _ -> false
   ;;
 end;;
@@ -280,7 +293,7 @@ let he_merge k =
 *)
 
 let evar (s) = he_merge (Evar (s, priv_var s));;
-let emeta (e) = he_merge (Emeta (e, priv_meta e));;
+let emeta (n) = he_merge (Emeta (n, priv_meta n));;
 let eapp (s, args) = he_merge (Eapp (s, args, priv_app s args));;
 let enot (e) = he_merge (Enot (e, priv_not e));;
 let eand (e1, e2) = he_merge (Eand (e1, e2, priv_and e1 e2));;
@@ -289,16 +302,39 @@ let eimply (e1, e2) = he_merge (Eimply (e1, e2, priv_imply e1 e2));;
 let etrue = Etrue;;
 let efalse = Efalse;;
 let eequiv (e1, e2) = he_merge (Eequiv (e1, e2, priv_equiv e1 e2));;
-let eall (v, t, e) = he_merge (Eall (v, t, e, priv_all v t e));;
-let eex (v, t, e) = he_merge (Eex (v, t, e, priv_ex v t e));;
+let eall (v, t, e, m) = he_merge (Eall (v, t, e, m, priv_all v t e m));;
+let eex (v, t, e, m) = he_merge (Eex (v, t, e, m, priv_ex v t e m));;
 let etau (v, t, e) = he_merge (Etau (v, t, e, priv_tau v t e));;
+
+let cur_meta = ref 0;;
+
+let ealln (v, t, e) =
+  incr cur_meta;
+  eall (v, t, e, !cur_meta)
+;;
+let eexn (v, t, e) =
+  incr cur_meta;
+  eex (v, t, e, !cur_meta)
+;;
+
+let rec all_list vs body =
+  match vs with
+  | [] -> body
+  | h::t -> ealln (h, "?", all_list t body)
+;;
+
+let rec ex_list vs body =
+  match vs with
+  | [] -> body
+  | h::t -> eexn (h, "?", ex_list t body)
+;;
 
 type t = expr;;
 let hash = get_hash;;
 let equal = (==);;
-let cmp x y =
+let compare x y =
   match compare (hash x) (hash y) with
-  | 0 -> if equal x y then 0 else compare x y
+  | 0 -> if equal x y then 0 else Pervasives.compare x y
   | x when x < 0 -> -1
   | _ -> 1
 ;;
@@ -310,7 +346,7 @@ exception Mismatch;;
 let rec xpreunify accu e1 e2 =
   match e1, e2 with
   | _, _ when e1 == e2 -> accu
-  | Eapp (s1, a1, _), Eapp (s2, a2, _) when string_equal s1 s2 ->
+  | Eapp (s1, a1, _), Eapp (s2, a2, _) when s1 =%= s2 ->
       List.fold_left2 xpreunify accu a1 a2
   | Emeta (m1, _), _ -> (m1, e2) :: accu
   | _, Emeta (m2, _) -> (m2, e1) :: accu
@@ -333,7 +369,7 @@ let size = get_size;;
 let has_metas e = get_metas e <> [];;
 let count_metas e = List.length (get_metas e);;
 
-let cursym = ref "_Z";;
+let cursym = ref "V'";;
 
 let rec incr_sym n =
   if n >= String.length !cursym
@@ -365,7 +401,7 @@ let conflict v map =
 let disj vars map =
   let diff_var v e =
     match e with
-    | Evar (w, _), _ -> not (string_equal v w)
+    | Evar (w, _), _ -> not (v =%= w)
     | _ -> assert false
   in
   let irrelevant v = List.for_all (diff_var v) map in
@@ -376,7 +412,7 @@ let rec substitute map e =
   match e with
   | _ when disj (get_fv e) map -> e
   | Evar (v, _) -> (try List.assq e map with Not_found -> e)
-  | Emeta (f, _) -> emeta (substitute map f)
+  | Emeta _ -> e
   | Eapp (s, args, _) -> eapp (s, List.map (substitute map) args)
   | Enot (f, _) -> enot (substitute map f)
   | Eand (f, g, _) -> eand (substitute map f, substitute map g)
@@ -384,20 +420,20 @@ let rec substitute map e =
   | Eimply (f, g, _) -> eimply (substitute map f, substitute map g)
   | Eequiv (f, g, _) -> eequiv (substitute map f, substitute map g)
   | Etrue | Efalse -> e
-  | Eall (v, t, f, _) ->
+  | Eall (v, t, f, o, _) ->
       let map1 = rm_binding v map in
       if conflict v map1 then
         let nv = newvar () in
-        eall (nv, t, substitute ((v, nv) :: map1) f)
+        eall (nv, t, substitute ((v, nv) :: map1) f, o)
       else
-        eall (v, t, substitute map1 f)
-  | Eex (v, t, f, _) ->
+        eall (v, t, substitute map1 f, o)
+  | Eex (v, t, f, o, _) ->
       let map1 = rm_binding v map in
       if conflict v map1 then
         let nv = newvar () in
-        eex (nv, t, substitute ((v, nv) :: map1) f)
+        eex (nv, t, substitute ((v, nv) :: map1) f, o)
       else
-        eex (v, t, substitute map1 f)
+        eex (v, t, substitute map1 f, o)
   | Etau (v, t, f, _) ->
       let map1 = rm_binding v map in
       if conflict v map1 then
@@ -406,45 +442,3 @@ let rec substitute map e =
       else
         etau (v, t, substitute map1 f)
 ;;
-
-let rec fv_rec sort bvl fvl = function
-  | Evar (x, _) ->
-    if List.mem_assoc x fvl || List.mem x bvl then fvl
-    else (x, (sort, 0)) :: fvl
-  | Eapp (f, args, _) ->
-    let nfvl = if List.mem_assoc f fvl || List.mem f bvl then fvl
-               else (f, (sort, List.length args)) :: fvl in
-    List.fold_left (fv_rec false bvl) nfvl args
-  | Enot (e, _) -> fv_rec true bvl fvl e
-  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
-  | Eequiv (e1, e2, _) ->
-    let fvl1 = fv_rec true bvl fvl e1 in fv_rec true bvl fvl1 e2
-  | Eall (Evar (x, _), _, e, _)
-  | Eex (Evar (x, _), _, e, _)
-    -> fv_rec true (x :: bvl) fvl e
-  | _ -> fvl
-
-let free_var = fv_rec true [] []
-
-let rec type_list_rec l = function
-  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
-    let t = if string_equal t "" then "Any" else t in
-    if (List.mem t l) then type_list_rec l e
-    else type_list_rec (t :: l) e
-  | Enot (e, _) -> type_list_rec l e
-  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
-  | Eequiv (e1, e2, _) -> let l1 = type_list_rec l e1 in type_list_rec l1 e2
-  | _ -> l
-
-let type_list = type_list_rec []
-
-(*let rec type_list_rec l = function
-  | Eall (_, t, e, _) | Eex(_, t, e, _) | Etau (_, t, e, _) -> 
-    if t = "" || (List.mem t l) then type_list_rec l e
-    else type_list_rec (t::l) e
-  | Enot (e, _) -> type_list_rec l e
-  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
-  | Eequiv (e1, e2, _) -> let l1 = type_list_rec l e1 in type_list_rec l1 e2
-  | _ -> l
-
-let type_list = type_list_rec []*)

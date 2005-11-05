@@ -1,21 +1,35 @@
+(*
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
 ; property: sup_commutes / __goal_13
+*)
 
 %%begin-auto-proof
 %%location: []
 %%name: foo
+%%syntax:
 %%statement
 (Is_true ((abst_equal (abst_sup x y ) (abst_sup y x ) ))
 )
-By
-  abst_equal_symmetric: (x: abst_T) (y: abst_T)
+
+Parameter abst_T : Type.
+Parameter abst_equal : abst_T -> abst_T -> bool.
+Parameter abst_inf : abst_T -> abst_T -> abst_T.
+Parameter abst_sup : abst_T -> abst_T -> abst_T.
+Parameter abst_plus : abst_T -> abst_T -> abst_T.
+Parameter x : abst_T.
+Parameter y : abst_T.
+
+Parameter
+  abst_equal_symmetric: forall (x: abst_T) (y: abst_T),
   ((Is_true ((abst_equal  x y)) ))-> 
-    (Is_true ((abst_equal  y x)) ) abst_equal_transitive: (x: abst_T)
-  (y: abst_T) (z: abst_T)
+    (Is_true ((abst_equal  y x)) ).
+Parameter abst_equal_transitive: forall (x: abst_T)
+  (y: abst_T) (z: abst_T),
   ((Is_true ((abst_equal  x y)) ))-> 
     ((Is_true ((abst_equal  y z)) ))-> 
-      (Is_true ((abst_equal  x z)) )
+      (Is_true ((abst_equal  x z)) ).
+Parameter
   __lemma_1_3:
   ((Is_true
    ((abst_equal
@@ -24,13 +38,14 @@ By
     ))
    ))->
   
-    (Is_true ((abst_equal (abst_sup y x ) (abst_sup x y ) )) ) __lemma_1_2:
+    (Is_true ((abst_equal (abst_sup y x ) (abst_sup x y ) )) ).
+Parameter __lemma_1_2:
   (Is_true
   ((abst_equal (abst_plus (abst_inf y x ) (abst_sup y x ) ) (abst_plus x y )
    ))
-  ) __lemma_1_1: (Is_true
+  ).
+Parameter __lemma_1_1: (Is_true
   ((abst_equal (abst_plus x y ) (abst_plus (abst_inf y x ) (abst_sup x y ) )
    ))
-  )
-By def 
+  ).
 %%end-auto-proof

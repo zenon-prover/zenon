@@ -1,60 +1,59 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.5 2004-09-28 13:12:58 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.6 2005-11-05 11:13:17 doligez Exp $  *)
 
 open Expr;;
 
-type side = L | R;;
-
 type rule =
-  | Close of expr               (* p, -p  /  (.)        *)
-  | Close_refl of string * expr (* -R(e,e)/  (.)        *)
+  | Close of expr               (* p, -p  /  (.)                [p]*)
+  | Close_refl of string * expr (* -r(a,a)  /  (.)              [r a]*)
   | Close_sym of string * expr * expr
-                                (* R(e1,e2), -R(e2,e1)  /  (.)      *)
-  | False                       (* false  /  (.)        *)
-  | NotTrue                     (* -true  /  (.)        *)
-  | NotNot of expr              (* --p    /  p          *)
-  | And of expr * expr          (* p/\q   /  p, q       *)
-  | NotOr of expr * expr        (* -(p\/q)  /  -p, -q   *)
-  | NotImpl of expr * expr      (* -(p=>q)  /  p, -q    *)
-  | NotAll of expr              (* -A.p  /  -p(t(~p))   (expr = -A.p)  *)
-  | Ex of expr                  (* E.p  /  p(t(p))      (expr = E.p)   *)
-  | All of expr * expr          (* A.p  /  p(e)         (expr1 = A.p)  *)
-  | NotEx of expr * expr        (* -E.p  /  -p(e)       (expr1 = -E.p) *)
-  | Or of expr * expr           (* p\/q  /  p | q       *)
-  | Impl of expr * expr         (* p=>q  /  -p | q      *)
-  | NotAnd of expr * expr       (* -(p/\q)  /  -p | -q  *)
-  | Equiv of expr * expr        (* p<=>q  /  -p, -q | p, q    *)
-  | NotEquiv of expr * expr     (* -(p<=>q)  /  -p, q | p, -q *)
-  | P_NotP of expr * expr       (* P(a0, ..., an), -P(b0, ..., bn)
-                                      / a0!=b0 | ... | an!=bn     *)
+                                (* r(a,b), -r(b,a)  /  (.)      [r a b]*)
+  | False                       (* false  /  (.)                []*)
+  | NotTrue                     (* -true  /  (.)                []*)
+  | NotNot of expr              (* --p  /  p                    [p]*)
+  | And of expr * expr          (* p/\q  /  p, q                [p q]*)
+  | NotOr of expr * expr        (* -(p\/q)  /  -p, -q           [p q]*)
+  | NotImpl of expr * expr      (*-(p=>q)  /  p, -q             [p q]*)
+  | NotAll of expr              (*-A.p  /  -p(t(-p))            [-A.p]*)
+  | Ex of expr                  (* E.p  /  p(t(p))              [E.p]*)
+  | All of expr * expr          (* A.p  /  p(a)                 [A.p a]*)
+  | NotEx of expr * expr        (* -E.p  /  -p(a)               [-E.p a]*)
+  | Or of expr * expr           (* p\/q  /  p | q               [p q]*)
+  | Impl of expr * expr         (* p=>q  /  -p | q              [p q]*)
+  | NotAnd of expr * expr       (* -(p/\q)  /  -p | -q          [p q]*)
+  | Equiv of expr * expr        (* p<=>q  /  -p, -q | p, q      [p q]*)
+  | NotEquiv of expr * expr     (* -(p<=>q)  /  -p, q | p, -q   [p q]*)
+  | P_NotP of expr * expr
+      (* P(a0, .. an), -P(b0, .. bn)  /  a0!=b0 | .. an!=bn     [P(..) -P(..)]*)
   | P_NotP_sym of string * expr * expr
-                                (* P(a,b), -P(c,d)  /  b!=c  |  a!=d *)
-  | NotEqual of expr * expr     (* F(a0, ..., an)!=F(b0, ..., bn)
-                                      / a0!=b0 | ... | an!=bn     *)
-
+      (* r(a,b), -r(c,d)  /  b!=c  |  a!=d                      [r r(.) -r(.)]*)
+  | NotEqual of expr * expr
+      (* F(a0, .. an)!=F(b0, .. bn)  /  a0!=b0 | .. an!=bn      [F(a..) F(b.)]*)
   | Definition of definition * expr * expr
-                                (* folded / unfolded              *)
-
-  | ConjTree of expr            (* p1/\p2/\...  /  p1, p2, ...    *)
-  | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ...  *)
+      (* folded  /  unfolded                                    [def fld unf]*)
+  | ConjTree of expr            (* p1/\p2/\..  /  p1, p2, ..    [conj]*)
+  | DisjTree of expr            (* p1\/p2\/..  /  p1 | p2 | ..  [disj]*)
   | AllPartial of expr * string * int
-                                (* Ax.p(x)  /  Axyz.p(s(xyz)) *)
+                                (* Ax.p(x)  /  Axyz.p(s(xyz))   [Axpx s ar]*)
   | NotExPartial of expr * string * int
-                                (* -Ex.p(x)  /  -Exyz.p(s(xyz)) *)
-  | Refl of string * expr * expr (* -P(a,b)  /  a!=b *)
-  | Trans of side * bool * expr * expr
-    (* Trans (side, sym, e1, e2):
-        side = L, sym = false:    -P(a,b) p(c,d)  /  c!=a | -P(d,b)
-        side = R, sym = false:    -P(a,b) p(c,d)  /  d!=b | -P(a,c)
-        side = L, sym = true:     -P(a,b) p(c,d)  /  c!=b | -P(a,d)
-        side = R, sym = true:     -P(a,b) p(c,d)  /  d!=a | -P(c,b)
-      In all these, p may be either P or =
-    *)
+                                (* -Ex.p(x)  /  -Exyz.p(s(xyz)) [-Expx s ar]*)
+  | Refl of string * expr * expr
+                                (* -r(a,b)  /  a!=b             [r a b]*)
+  | Trans of expr * expr
+      (* r(a,b),-r(c,d)  /  c!=a,-r(c,a) | b!=d,-r(b,d)         [rab -rcd]*)
+  | Trans_sym of expr * expr
+      (* r(a,b),-r(c,d)  /  d!=a,-r(d,a) | b!=c,-r(b,c)         [rab -rcd]*)
+  | TransEq of expr * expr * expr
+      (* a=b,-r(c,d)  /  c!=a,-r(c,a) | -r(c,a),-r(b,d) | b!=d,-r(b,d)
+                                                                [a b -rcd]*)
+  | TransEq_sym of expr * expr * expr
+      (* a=b,-r(c,d)  /  d!=a,-r(d,a) | -r(d,a),-r(b,c) | b!=c,-r(b,c)
+                                                                [a b -rcd]*)
 
-  | Cut of expr                 (*   / p | -p  *)
+  | Cut of expr                 (*   / p | -p                   [p]*)
 
   | Ext of string * string * expr list
-                                (* extension, rule, arguments *)
+                                (* ... [extension, rule, arguments]*)
 ;;
 
 type proof = {
@@ -65,6 +64,54 @@ type proof = {
 };;
 
 val size : proof -> int;;
-val make_node :
-   Expr.expr list -> rule -> Expr.expr list list -> proof list -> proof
+
+val iter : (proof -> unit) -> proof -> unit;;
+
+val make_node : expr list -> rule -> expr list list -> proof list -> proof;;
+
+val make_cl : expr -> proof;;
+val make_clr : string -> expr -> proof;;
+val make_cls : string -> expr -> expr -> proof;;
+val make_f : proof;;
+val make_nt : proof;;
+val make_nn : expr -> proof -> proof;;
+val make_and : expr -> expr -> proof -> proof;;
+val make_nor : expr -> expr -> proof -> proof;;
+val make_nimpl : expr -> expr -> proof -> proof;;
+val make_nall : expr -> proof -> proof;;
+val make_ex : expr -> proof -> proof;;
+val make_all : expr -> expr -> proof -> proof;;
+val make_nex : expr -> expr -> proof -> proof;;
+val make_or : expr -> expr -> proof -> proof -> proof;;
+val make_impl : expr -> expr -> proof -> proof -> proof;;
+val make_nand : expr -> expr -> proof -> proof -> proof;;
+val make_eqv : expr -> expr -> proof -> proof -> proof;;
+val make_neqv : expr -> expr -> proof -> proof -> proof;;
+val make_pnp : expr -> expr -> proof list -> proof;;
+val make_pnps : string -> expr -> expr -> proof -> proof -> proof;;
+val make_neql : expr -> expr -> proof list -> proof;;
+val make_def : definition -> expr -> expr -> proof -> proof;;
+
+val make_cut : expr -> proof -> proof -> proof;;
+
+(*
+  These are not provided because they are derived rules
+
+val make_ctree : expr -> expr list -> proof -> proof;;
+val make_dtree : expr -> expr list -> proof list -> proof;;
+val make_allp : expr -> string -> int -> proof -> proof;;
+val make_nexp : expr -> string -> int -> proof -> proof;;
+val make_refl : string -> expr -> expr -> proof -> proof;;
+val make_trans :
+  string -> expr -> expr -> expr -> expr -> proof -> proof -> proof
 ;;
+val make_transs :
+   string -> expr -> expr -> expr -> expr -> proof -> proof -> proof
+;;
+val make_transeq :
+  string -> expr -> expr -> expr -> expr -> proof -> proof -> proof
+;;
+val make_transeqs :
+  string -> expr -> expr -> expr -> expr -> proof -> proof -> proof
+;;
+*)

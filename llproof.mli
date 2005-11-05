@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.7 2004-09-28 13:12:58 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.8 2005-11-05 11:13:17 doligez Exp $  *)
 
 open Expr;;
 
@@ -10,9 +10,9 @@ open Expr;;
   3. Le predicat "=" a toujours deux arguments.
 
   Types:
-   "" -> pas de type specifie par l'utilisateur -> "_U"
-   "?" -> wildcard -> "?" ou "_"
-   chaine -> type specifie par l'utilisateur
+   "" -> pas de type specifie par l'utilisateur -> "z'U"
+   "?" -> wildcard -> "_"
+   autre -> type specifie par l'utilisateur
 *)
 
 
@@ -169,10 +169,10 @@ type rule =
      *********************)
 
   | Rpnotp of expr * expr
-    (* 
+    (*
        Enot (t1 = u1)        ...        Enot (tn = un)
        ----------------------------------------------- Rx
-       Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un]))   
+       Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un]))
 
        Rx = Rpnotp (Eapp (p, [t1...tn]), Enot (Eapp (p, [u1...un])))
 
@@ -185,16 +185,6 @@ type rule =
        Enot ((Eapp (f, [t1...tn])) = (Eapp (f, [u1...un])))
 
        Rx = Rnotequal (Eapp (f, [t1...tn]), Eapp (f, [u1...un]))
-
-     ********************)
-
-  | Requalnotequal of expr * expr * expr * expr
-    (*
-       Enot(t1=t3),Enot(t2=t3)       Enot(t2=t4),Enot(t1=t4)
-       ----------------------------------------------------- Rx
-                        t1=t2, Enot(t3=t4)
-
-       Rx = Requalnotequal (t1, t2, t3, t4)
 
      ********************)
 
@@ -248,3 +238,6 @@ type lemma = {
 };;
 
 type proof = lemma list;;
+
+(* peephole optimiser for LL proofs *)
+val optimise : proof -> proof;;

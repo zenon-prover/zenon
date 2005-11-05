@@ -1,7 +1,7 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_coqbool.v,v 1.4 2005-10-03 13:22:22 doligez Exp $  *)
+(*  $Id: zenon_coqbool.v,v 1.5 2005-11-05 11:13:17 doligez Exp $  *)
 
-Require Import Bool.
+Require Export Bool.
 
 Definition __g_not_b := negb.
 Definition __g_and_b := andb.

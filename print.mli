@@ -1,18 +1,17 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: print.mli,v 1.3 2004-05-24 13:47:55 delahaye Exp $  *)
+(*  $Id: print.mli,v 1.4 2005-11-05 11:13:17 doligez Exp $  *)
 
-val set_outc : out_channel -> unit
-val get_outc : unit -> out_channel
+type output = Buff of Buffer.t | Chan of out_channel;;
 
-val expr : Expr.expr -> unit;;
-val expr_soft : Expr.expr -> unit;;
+val expr : output -> Expr.expr -> unit;;
+val expr_soft : output -> Expr.expr -> unit;;
 
-val phrase : Phrase.phrase -> unit;;
+val phrase : output -> Phrase.phrase -> unit;;
 
-val hlproof : int -> Mlproof.proof -> unit;;
+val hlproof : output -> int -> Mlproof.proof -> unit;;
 
-val mlproof : Mlproof.proof -> unit;;
-val mlproof_rule : Mlproof.rule -> unit;;
-val mlproof_rule_soft : Mlproof.rule -> unit;;
+val mlproof : output -> Mlproof.proof -> unit;;
+val mlproof_rule : output -> Mlproof.rule -> unit;;
+val mlproof_rule_soft : output -> Mlproof.rule -> unit;;
 
-val llproof : Llproof.proof -> unit;;
+val llproof : output -> Llproof.proof -> unit;;

@@ -1,11 +1,12 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.6 2005-06-23 07:07:59 prevosto Exp $";;
+Version.add "$Id: phrase.ml,v 1.7 2005-11-05 11:13:17 doligez Exp $";;
 
 open Expr;;
 
 type phrase =
   | Hyp of string * expr * int
   | Def of definition
+  | Sig of string * string list * string
 ;;
 
 exception Bad_arg;;
@@ -38,13 +39,13 @@ let rec check_body env s e =
     -> check_body env s f1 && check_body env s f2
   | Etrue | Efalse
     -> true
-  | Eall (v, _, f, _) | Eex (v, _, f, _) | Etau (v, _, f, _)
+  | Eall (v, _, f, _, _) | Eex (v, _, f, _, _) | Etau (v, _, f, _)
     -> check_body (v::env) s f
 ;;
 
 let rec is_def env e =
   match e with
-  | Eall (v, t, f, _) -> is_def (v::env) f
+  | Eall (v, t, f, _, _) -> is_def (v::env) f
   | Eequiv (Eapp ("=", _, _), _, _)
   | Eequiv (_, Eapp ("=", _, _), _)
     -> false
@@ -65,7 +66,7 @@ let rec is_def env e =
 
 let rec make_def orig env e =
   match e with
-  | Eall (v, t, f, _) -> make_def orig (v::env) f
+  | Eall (v, t, f, _, _) -> make_def orig (v::env) f
   | Eequiv (Eapp (s, args, _), body, _) when check_args env args ->
       DefPseudo (orig, s, extract_args args, body)
   | Eequiv (body, Eapp (s, args, _), _) when check_args env args ->
@@ -95,11 +96,11 @@ let rec free_syms env accu e =
   | Eor (f, g, _) -> free_syms env (free_syms env accu f) g
   | Eimply (f, g, _) -> free_syms env (free_syms env accu f) g
   | Eequiv (f, g, _) -> free_syms env (free_syms env accu f) g
-  | Etrue -> accu
-  | Efalse -> accu
-  | Eall (v, t, f, _) -> free_syms (v::env) accu f
-  | Eex (v, t, f, _) -> free_syms (v::env) accu f
-  | Etau (v, t, f, _) -> free_syms (v::env) accu f
+  | Etrue | Efalse -> accu
+  | Eall (v, t, f, _, _)
+  | Eex (v, t, f, _, _)
+  | Etau (v, t, f, _)
+    -> free_syms (v::env) accu f
 ;;
 
 let extract_dep = function
@@ -159,8 +160,9 @@ let rec xseparate deps multi defs hyps l =
         xseparate (List.remove_assoc sym deps) (sym::multi) ndefs
                   ((e, p) :: ep2 :: hyps) t
       else
-        xseparate (newdep :: deps) multi (d :: defs) hyps t 
+        xseparate (newdep :: deps) multi (d :: defs) hyps t
   | Hyp (_, e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
+  | Sig (sym, args, res) :: t -> xseparate deps multi defs hyps t
 ;;
 
 let separate l = xseparate [] [] [] [] l;;

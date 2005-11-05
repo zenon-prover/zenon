@@ -12,11 +12,13 @@
 ; By def abst_min:= abst_zero
 ; (* Qed *).
 
-$goal
-(A. ((x) (Is_true (abst_equal (abst_plus abst_min x) x))))
+$sig abst_equal ("" "") "bool"
 
-; abst_zero_is_neutral
+$def (abst_min) abst_zero
+
+"abst_zero_is_neutral"
 (A. ((x) (/\ (Is_true (abst_equal (abst_plus x abst_zero) x))
              (Is_true (abst_equal (abst_plus abst_zero x) x)))))
 
-$def abst_min () abst_zero
+$goal
+(A. ((x) (Is_true (abst_equal (abst_plus abst_min x) x))))

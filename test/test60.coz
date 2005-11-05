@@ -1,20 +1,32 @@
+(*
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
 ; property: order_inf_reverse_order_sup / __goal_20
-
+*)
 %%begin-auto-proof
 %%location: []
 %%name: foo
-%%statement
-(and
+%%syntax: x
+%%statement x.
+(
   ((Is_true ((abst_order_inf  x y)) ))-> 
     (Is_true ((abst_order_sup  y x)) )
+) /\ (
   ((Is_true ((abst_order_sup  x y)) ))-> 
-    (Is_true ((abst_order_inf  y x)) ))
-By
+    (Is_true ((abst_order_inf  y x)) )
+)
+
+Parameter abst_T : Type.
+Parameter abst_equal : abst_T -> abst_T -> bool.
+Parameter abst_order_inf : abst_T -> abst_T -> bool.
+Parameter abst_order_sup : abst_T -> abst_T -> bool.
+Parameter x : abst_T.
+Parameter y : abst_T.
+
+Parameter
   __lemma_2:
-  (xx: abst_T) (yy: abst_T) ((Is_true ((abst_order_sup xx yy )) ))-> 
-    (Is_true ((abst_order_inf yy xx )) ) __lemma_1: (Is_true
-  ((abst_order_sup y x )) )
-By def 
+  forall (xx: abst_T) (yy: abst_T), ((Is_true ((abst_order_sup xx yy )) ))-> 
+    (Is_true ((abst_order_inf yy xx )) ).
+Parameter __lemma_1: (Is_true
+  ((abst_order_sup y x )) ).
 %%end-auto-proof

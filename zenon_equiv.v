@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_equiv8.v,v 1.2 2004-10-28 13:51:38 doligez Exp $  *)
+(*  $Id: zenon_equiv.v,v 1.2 2005-11-05 11:13:17 doligez Exp $  *)
 
 Lemma zenon_equiv_init_0 : forall A : Prop,
   ((True <-> (A <-> True)) -> False) -> A -> False.

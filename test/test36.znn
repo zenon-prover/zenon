@@ -13,10 +13,12 @@
 ; By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
 ; (* Qed *).
 
-$goal (Is_true (abst_equal x (abst_inf x (abst_plus x abst_zero))))
+$sig abst_equal ("" "") "bool"
 
-# abst_add_keeps_inf
-$1 (A. ((x) (A. ((y)
+$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
+
+"abst_add_keeps_inf"
+(A. ((x) (A. ((y)
      (Is_true (abst_order_inf x (abst_plus x y)))))))
 
-$def abst_order_inf (x y) (abst_equal x (abst_inf x y))
+$goal (Is_true (abst_equal x (abst_inf x (abst_plus x abst_zero))))

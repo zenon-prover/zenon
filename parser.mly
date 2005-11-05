@@ -1,7 +1,7 @@
 /*  Copyright 2004 INRIA  */
 
 %{
-Version.add "$Id: parser.mly,v 1.22 2005-07-26 13:09:28 prevosto Exp $";;
+Version.add "$Id: parser.mly,v 1.23 2005-11-05 11:13:17 doligez Exp $";;
 
 open Printf;;
 
@@ -245,7 +245,7 @@ phrase:
   | DEF IDENT OPEN ident_list CLOSE expr { Def (DefReal ($2, $4, $6)) }
   | int_opt hyp_name expr                { Hyp ($2, $3, $1) }
   | GOAL expr                            { Globals.goal_found := true;
-                                           Hyp ("_Zgoal", enot $2, 0) }
+                                           Hyp ("z'goal", enot $2, 0) }
 ;
 
 expr:

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.2 2004-11-19 15:07:39 doligez Exp $";;
+Version.add "$Id: ext_equiv.ml,v 1.3 2005-11-05 11:13:17 doligez Exp $";;
 
 (* Extension for trees of equivalences and negations. *)
 
@@ -43,7 +43,7 @@ let newnodes depth e =
   match e with
   | Eequiv _ | Enot (Eequiv _, _) ->
       let (neg, leaves) = get_leaves e (false, []) in
-      let sorted = List.fast_sort Expr.cmp leaves in
+      let sorted = List.fast_sort Expr.compare leaves in
       let reduced = remove_pairs sorted in
       if List.length reduced < List.length leaves then
         let branches =
@@ -53,7 +53,7 @@ let newnodes depth e =
         [ Node {
           nconc = [e];
           nrule = Ext ("equiv", "pairs", [e]);
-          nprio = Prio.make depth Prio.Alpha1 branches;
+          nprio = Arity;
           nbranches = branches;
         }; Stop ]
       else
@@ -71,7 +71,7 @@ type node = {
 let chain_nodes tr_prop mlconc init l =
   let f n0 n1 =
     let conc = Expr.diff [n1.nconc] mlconc in
-    { 
+    {
       Llproof.conc = List.map tr_prop (conc @@ mlconc);
       Llproof.rule = Llproof.Rextension (n1.nrule, List.map tr_prop n1.nargs,
                                          [tr_prop n1.nconc],
@@ -140,7 +140,7 @@ let simplify (ee, nodes) =
   match ee with
   | Eequiv (l, Eequiv (m, Eequiv (Eequiv (n, a, _), b, _), _), _)
     when Expr.equal a b ->
-      assert false;   (* should not happen if merge_simplify is used *)
+      assert (not true);   (* should not happen if merge_simplify is used *)
       let res = eequiv (l, eequiv (m, n)) in
       let node = mknode ee "simplify" [a; l; m; n] res in
       (res, node :: nodes)
@@ -187,7 +187,7 @@ let rec sort (ee, nodes) =
   | Eequiv (Eequiv ((Eequiv (a, Eequiv (b, c, _), _) as x),
                     (Eequiv (d, e, _) as y), _),
             (Eequiv (f, g, _) as z), _)
-   -> begin match Expr.cmp c e with
+   -> begin match Expr.compare c e with
       | 0 ->
           let res = eequiv (eequiv (eequiv (a, b), d), z) in
           let node = mknode ee "merge_simplify" [a; b; c; d; z] res in
@@ -232,10 +232,18 @@ let to_llproof tr_prop tr_term mlp args =
   | _ -> assert false
 ;;
 
+let declare_context_coq oc =
+  Printf.fprintf oc "Require Import zenon_equiv.\n";
+  []
+;;
+
 Extension.register {
   Extension.name = "equiv";
-  Extension.newnodes = (fun depth e -> lazy (newnodes depth e));
+  Extension.newnodes = newnodes;
   Extension.add_formula = (fun _ -> ());
   Extension.remove_formula = (fun _ -> ());
+  Extension.preprocess = (fun x -> x);
+  Extension.postprocess = (fun x -> x);
   Extension.to_llproof = to_llproof;
+  Extension.declare_context_coq = declare_context_coq;
 };;

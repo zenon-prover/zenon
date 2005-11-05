@@ -1,11 +1,18 @@
 *.proof
 *.cm[iox]
+*.output
 *.annot
 *.png
 *.vo
-parser.ml
-parser.mli
-lexer.ml
+lexzen.ml
+parsezen.ml
+parsezen.mli
+lexcoq.ml
+parsecoq.ml
+parsecoq.mli
+lextptp.ml
+parsetptp.ml
+parsetptp.mli
 .config_var
 zenon
 zenon.opt
@@ -16,10 +23,6 @@ gmon.out
 .DS_Store
 parser.output
 
-zenon7.v
-zenon8.v
-zenon_coqbool7.v
-zenon_coqbool8.v
 dummy_coqc8
 
 tmp
