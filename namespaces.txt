@@ -1,0 +1,7 @@
+A'*     -> anonymous hypotheses
+H'*     -> local hypotheses
+V'*     -> gensym variables
+X'*     -> metavariables
+z'U     -> universe
+z'a     -> an arbitrary element of z'U
+z'g     -> the goal
