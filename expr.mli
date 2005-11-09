@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.10 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.11 2005-11-09 15:18:24 doligez Exp $  *)
 
 type private_info;;
 
@@ -21,6 +21,7 @@ type expr = private
   | Eex of expr * string * expr * int * private_info
       (* variable, type, body, metavariable *)
   | Etau of expr * string * expr * private_info
+  | Elam of expr * string * expr * private_info
       (* variable, type, body *)
 ;;
 
@@ -49,6 +50,7 @@ val efalse : expr;;
 val eall : expr * string * expr * int -> expr;;
 val eex : expr * string * expr * int -> expr;;
 val etau : expr * string * expr -> expr;;
+val elam : expr * string * expr -> expr;;
 
 val ealln : expr * string * expr -> expr;;
 val eexn : expr * string * expr -> expr;;

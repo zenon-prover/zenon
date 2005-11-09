@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.3 2005-11-09 15:18:24 doligez Exp $";;
 
 open Printf;;
 
@@ -182,6 +182,9 @@ expr:
   | LET IDENT COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $4 $6 }
 
+  | IF expr THEN expr ELSE expr
+      { eapp ("(__g_ifthenelse _)", [$2; $4; $6]) }
+
   | expr DASH_GT_ expr
       { eimply ($1, $3) }
 
@@ -261,8 +264,9 @@ id_or_expr:
 param_expr:
   | expr
       { ([], $1) }
-  | LPAREN_ FUN LPAREN_ IDENT COLON_ typ RPAREN_ EQ_GT_ param_expr
-      RPAREN_
+  | FUN LPAREN_ IDENT COLON_ typ RPAREN_ EQ_GT_ param_expr
+      { let (params, expr) = $8 in ((evar $3) :: params, expr) }
+  | LPAREN_ FUN LPAREN_ IDENT COLON_ typ RPAREN_ EQ_GT_ param_expr RPAREN_
       { let (params, expr) = $9 in ((evar $4) :: params, expr) }
 ;
 

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.24 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.25 2005-11-09 15:18:24 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -64,6 +64,20 @@ let int_arg r arg =
     with Failure "float_of_string" -> raise (Arg.Bad "bad numeric argument")
 ;;
 
+let parse_size_time s =
+  let l = String.length s in
+  let rec loop i =
+    if i >= l then raise (Arg.Bad "bad size/time specification");
+    if s.[i] = '/' then begin
+      int_arg size_limit (String.sub s 0 i);
+      int_arg time_limit (String.sub s (i+1) (l-i-1));
+    end else begin
+      loop (i+1);
+    end;
+  in
+  loop 0;
+;;
+
 let short_version () =
   printf "zenon version %s\n" Version.full;
   exit 0;
@@ -102,8 +116,10 @@ let rec argspec = [
           "            read input file in focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
          "             read input file in TPTP format";
+  "-max", Arg.String parse_size_time,
+       "<s>[kMGT]/<t>[smhd]   Set both size and time limit (see below)";
   "-max-size", Arg.String (int_arg size_limit),
-            "<s>[kMGT]  limit heap size to <s> kilo/mega/giga/tera word"
+            "<s>[kMGT] limit heap size to <s> kilo/mega/giga/tera word"
             ^ " (default 100M)";
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
@@ -117,7 +133,7 @@ let rec argspec = [
   "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
       "                print the proof in low-level format";
   "-olx", Arg.Unit (fun () -> proof_level := Proof_lx),
-       "               print the proof in low-level format with extensions";
+       "               print the proof in raw low-level format";
   "-om", Arg.Unit (fun () -> proof_level := Proof_m),
       "                print the proof in middle-level format";
   "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
@@ -265,29 +281,21 @@ let main () =
       printf "(* PROOF-FOUND *)\n";
       flush stdout;
     end;
-    Watch.warn strong_dep proof;
+    let llp = lazy (optim (Extension.postprocess
+                             (Mltoll.translate th_name ppphrases proof)))
+    in
+    Watch.warn strong_dep llp;
     begin match !proof_level with
     | Proof_none -> ()
     | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
     | Proof_m -> Print.mlproof (Print.Chan stdout) proof;
     | Proof_lx ->
-        let llp = optim (Mltoll.translate th_name ppphrases proof) in
-        Print.llproof (Print.Chan stdout) llp;
-    | Proof_l ->
-        let llp = optim (Extension.postprocess
-                           (Mltoll.translate th_name ppphrases proof))
-        in
-        Print.llproof (Print.Chan stdout) llp;
-    | Proof_coq ->
-        let llp = optim (Extension.postprocess
-                           (Mltoll.translate th_name ppphrases proof))
-        in
-        Lltocoq.produce_proof stdout phrases llp;
+        let lxp = Mltoll.translate th_name ppphrases proof in
+        Print.llproof (Print.Chan stdout) lxp;
+    | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
+    | Proof_coq -> Lltocoq.produce_proof stdout phrases (Lazy.force llp);
     | Proof_coqterm ->
-        let llp = optim (Extension.postprocess
-                           (Mltoll.translate th_name ppphrases proof))
-        in
-        let p = Coqterm.trproof phrases (optim llp) in
+        let p = Coqterm.trproof phrases (Lazy.force llp) in
         Coqterm.print stdout p;
     end;
   with Prove.NoProof ->
@@ -305,4 +313,6 @@ let main () =
   exit !retcode;
 ;;
 
-try main () with x -> flush stdout; flush stderr; raise x;;
+try main ()
+with Error.Abort -> exit 11
+;;

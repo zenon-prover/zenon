@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.23 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.24 2005-11-09 15:18:24 doligez Exp $";;
 
 open Printf
 
@@ -62,10 +62,17 @@ let rec constr_of_expr = function
   | Eall (Evar (x, _), t, e, _, _) ->
     parth [< str "forall "; str x; str ":"; constr_of_type t;
              str ","; constr_of_expr e >]
+  | Eall _ -> assert false
   | Eex (Evar (x, _), t, e, _, _) ->
     parth [< str "exists "; str x; str ":"; constr_of_type t;
              str ","; constr_of_expr e >]
-  | _ -> if !debug then [< str "..." >] else assert false
+  | Eex _ -> assert false
+  | Elam (Evar (x, _), t, e, _) ->
+    parth [< str "fun "; str x; str ":"; constr_of_type t; str " => ";
+             constr_of_expr e >]
+  | Elam _ -> assert false
+  | Emeta _ -> assert false
+  | Etau _ -> assert false
 ;;
 
 let parth_constr_of_expr e =
@@ -352,9 +359,11 @@ let proof_rule ppvernac = function
                 str "); ["; term_list_of make_intros hyps " | ";
                 list_of make_exact conc " | "; coqp "]" >];
     0
-  | Rdefinition (c, h) ->
+  | Rdefinition (s, c, h) ->
     if !debug then ppvernac [< '"(* definition *)\n" >];
-    ppvernac [< str "pose ("; gen_name h; str " := "; gen_name c; coqp ")" >];
+    let hname = gen_name h in
+    ppvernac [< str "pose ("; hname; str " := "; gen_name c; str "); unfold ";
+                str s; str " in "; hname >];
     0
   | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
     assert (f = g);

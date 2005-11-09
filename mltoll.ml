@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.15 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.16 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -31,7 +31,9 @@ let rec init_meta e =
   | Eall (_, t, e, m, _)
   | Eex (_, t, e, m, _)
     -> Hashtbl.add meta_types_table m t; init_meta e;
-  | Etau (_, _, e, _) -> init_meta e;
+  | Etau (_, _, e, _)
+  | Elam (_, _, e, _)
+    -> init_meta e;
 ;;
 
 let extract_meta_types phrases =
@@ -124,6 +126,7 @@ let rec xtr_term t =
   | Emeta (e, _) -> evar (make_meta_name e)
   | Eapp (s, es, _) -> eapp (s, List.map tr_term es)
   | Etau _ -> evar (make_tau_name t)
+  | Elam (v, ty, e1, _) -> elam (v, ty, tr_term e1)
   | _ -> assert false
 
 and tr_term t = memo term_tbl xtr_term t
@@ -148,6 +151,7 @@ let rec xtr_prop a =
   | Eex (v, t, e, o, _) -> eex (v, t, tr_prop e, o)
 
   | Etau _ -> assert false
+  | Elam _ -> assert false
 
 and tr_prop a = memo prop_tbl xtr_prop a
 ;;
@@ -179,8 +183,8 @@ let tr_rule r =
   | P_NotP (p, q) -> LL.Rpnotp (tr_prop p, tr_prop q)
   | NotEqual (e1, e2) -> LL.Rnotequal (tr_term e1, tr_term e2)
 
-  | Definition (DefReal _, folded, unfolded) ->
-      LL.Rdefinition (tr_prop folded, tr_prop unfolded)
+  | Definition (DefReal (sym, args, body), folded, unfolded) ->
+      LL.Rdefinition (sym, tr_prop folded, tr_prop unfolded)
 
   | Cut (p) -> LL.Rcut (tr_prop p)
 
@@ -228,6 +232,7 @@ let rec get_params accu p =
   | Eall (v, t, e, _, _) -> get_params accu e
   | Eex (v, t, e, _, _) -> get_params accu e
   | Etau (v, t, _, _) -> merge [(make_tau_name p, t)] accu
+  | Elam (v, t, e, _) -> get_params accu e
 ;;
 
 let lemma_tbl = (Hashtbl.create 997
@@ -427,7 +432,8 @@ let rec xfind_occ v e1 e2 =
   | Eex (v1, _, _, _, _), _ when Expr.equal v1 v -> ()
   | Eex (_, _, f1, _, _), Eex (_, _, f2, _, _) -> xfind_occ v f1 f2
   | Etau _, _ -> ()
-  | _ -> assert false
+  | Elam _, _ -> ()
+  | _, _ -> assert false
 ;;
 
 let find_occ v e1 e2 =

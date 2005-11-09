@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.7 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.8 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 
@@ -25,7 +25,7 @@ type rule =
   | Rnotall of expr * string
   | Rpnotp of expr * expr
   | Rnotequal of expr * expr
-  | Rdefinition of expr * expr
+  | Rdefinition of string * expr * expr
   | Rextension of string * expr list * expr list * expr list list
   | Rlemma of string * string list
 ;;
@@ -107,7 +107,7 @@ let reduce conc rule hyps =
     | Rnotall (ap, v) -> [enot (ap)]
     | Rpnotp (p, q) -> [p; q]
     | Rnotequal (a, b) -> [enot (eapp ("=", [a; b]))]
-    | Rdefinition (fld, unf) -> [fld]
+    | Rdefinition (sym, fld, unf) -> [fld]
     | Rextension (name, args, cons, hyps) -> cons
     | Rlemma (name, args) -> get_lemma_conc name
   in
@@ -130,3 +130,10 @@ let optimise p =
   init_lemmas p;
   List.map (fun x -> {x with proof = opt x.proof}) p
 ;;
+
+let rec iter_tree f pt =
+  f pt;
+  List.iter (iter_tree f) pt.hyps;
+;;
+
+let iter f p = List.iter (fun lem -> iter_tree f lem.proof) p;;

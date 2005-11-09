@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.7 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.8 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 
@@ -39,7 +39,8 @@ let rec check_body env s e =
     -> check_body env s f1 && check_body env s f2
   | Etrue | Efalse
     -> true
-  | Eall (v, _, f, _, _) | Eex (v, _, f, _, _) | Etau (v, _, f, _)
+  | Eall (v, _, f, _, _) | Eex (v, _, f, _, _)
+  | Etau (v, _, f, _) | Elam (v, _, f, _)
     -> check_body (v::env) s f
 ;;
 
@@ -100,6 +101,7 @@ let rec free_syms env accu e =
   | Eall (v, t, f, _, _)
   | Eex (v, t, f, _, _)
   | Etau (v, t, f, _)
+  | Elam (v, t, f, _)
     -> free_syms (v::env) accu f
 ;;
 

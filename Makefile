@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.24 2005-11-05 11:13:17 doligez Exp $
+#  $Id: Makefile,v 1.25 2005-11-09 15:18:24 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -53,8 +53,8 @@ install:
 	mkdir -p "${LIBDIR}"
 	cp ${COQSRC} ${COQOBJ} "${LIBDIR}"/
 
-.PHONY: logos
-logos: zenon-logo.png zenon-logo-small.png
+.PHONY: logo
+logo: zenon-logo.png zenon-logo-small.png
 
 # "gs" is ghostscript
 zenon-logo.png: zenon-logo.ps

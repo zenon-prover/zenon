@@ -1,10 +1,10 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.3 2005-11-09 15:18:24 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
-open Mlproof;;
+open Llproof;;
 
 type item =
   | Hyp of expr
@@ -33,9 +33,8 @@ let test i = HI.mem used i;;
 let add i = if test i then () else HI.add used i ();;
 
 let add_def p =
-  match p.mlrule with
-  | Definition (DefReal (s, _, _), _, _) -> add (Def s)
-  | Definition (DefPseudo ((e, _), _, _, _), _, _) -> add (Hyp e)
+  match p.rule with
+  | Rdefinition (s, _, _) -> add (Def s)
   | _ -> ()
 ;;
 
@@ -48,11 +47,12 @@ let check phr =
   | _ -> ()
 ;;
 
-let warn deps prf =
+let warn deps p =
   if !Globals.warnings_flag && deps <> [] then begin
+    let prf = Lazy.force p in
     HI.clear used;
-    List.iter (fun e -> add (Hyp e)) prf.mlconc;
-    Mlproof.iter add_def prf;
+    List.iter (fun e -> add (Hyp e)) (Misc.list_last prf).proof.conc;
+    Llproof.iter add_def prf;
     List.iter check deps;
   end
 ;;

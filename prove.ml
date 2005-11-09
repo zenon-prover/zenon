@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.13 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.14 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -81,6 +81,7 @@ let rec replace_meta m va e =
   | Eall (v, t, f, o, _) -> eall (v, t, replace_meta m va f, o)
   | Eex (v, t, f, o, _) -> eex (v, t, replace_meta m va f, o)
   | Etau (v, t, f, _) -> etau (v, t, replace_meta m va f)
+  | Elam (v, t, f, _) -> elam (v, t, replace_meta m va f)
 ;;
 
 let is_meta = function
@@ -858,9 +859,6 @@ let get_lhs e =
 let newnodes_match_trans st fm =
   match fm with
   | Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _) ->
-(*
-      (st, true)
-*)
       if m2 > m1 then begin
         Index.add_trans fm Index.Left;
         let matches_ll = Index.find_all_negtrans () in
@@ -893,9 +891,6 @@ let newnodes_match_trans st fm =
         (st2, true)
       end
   | Eapp (s, [Emeta (m1, _); Emeta (m2, _)], _) when Eqrel.trans s ->
-(*
-      (st, true)
-*)
       if m2 > m1 then begin
         Index.add_trans fm Index.Left;
         let matches_ll = Index.find_neg s in
@@ -1078,125 +1073,6 @@ let newnodes_match_trans st fm =
   | _ -> st, false
 ;;
 
-(***********************
-let newnodes_match_trans st fm =
-  match fm with
-  | Eapp (s, [Emeta (m1, _); Emeta (m2, _)], _)
-    when Eqrel.trans s ->
-      let stop = Eqrel.refl s in
-      if m1 < m2 then begin
-        Index.add_trans fm Index.Left;
-        let matches_ll = Index.find_neg s in
-        let matches_rl = if Eqrel.sym s then matches_ll else [] in
-        let crit_r = Index.find_trans_rightonly s Index.Wild in
-        let crit_l = if Eqrel.sym s
-                     then Index.find_trans_leftonly s Index.Wild
-                     else []
-        in
-        let pairs = (List.map get_lhs crit_l) @@ (List.map get_rhs crit_r) in
-        let nodes = List.map (mknode_negtrans L L fm) matches_ll
-                    @@ List.map (mknode_negtrans R L fm) matches_rl
-        in
-        let st1 = add_node_list st nodes in
-        let f (st, _) e = make_inst st m1 e in
-        let (st2, _) = List.fold_left f (st1, true) pairs in
-        (st2, stop)
-      end else begin
-        Index.add_trans fm Index.Right;
-        let matches_rr = Index.find_neg s in
-        let matches_lr = if Eqrel.sym s then matches_rr else [] in
-        let crit_l = Index.find_trans_leftonly s Index.Wild in
-        let crit_r = if Eqrel.sym s
-                     then Index.find_trans_rightonly s Index.Wild
-                     else []
-        in
-        let pairs = (List.map get_rhs crit_r) @@ (List.map get_lhs crit_l) in
-        let nodes = List.map (mknode_negtrans R R fm) matches_rr
-                    @@ List.map (mknode_negtrans L R fm) matches_lr
-        in
-        let st1 = add_node_list st nodes in
-        let f (st, _) e = make_inst st m2 e in
-        let (st2, _) = List.fold_left f (st1, true) pairs in
-        (st2, stop)
-      end
-
-  | Eapp (s, [Emeta _; e2], _) when Eqrel.trans s ->
-      let stop = Eqrel.refl s in
-      Index.add_trans fm Index.Right;
-      let h2 = Index.get_head e2 in
-      let matches_rr = find_negtrans_right s h2 in
-      let matches_lr = if Eqrel.sym s then find_negtrans_left s h2 else [] in
-      let crit_l = Index.find_trans_leftonly s h2 in
-      let crit_r = if Eqrel.sym s then Index.find_trans_rightonly s h2 else []
-      in
-      let pairs_l = List.map (fun e -> preunify e2 (get_lhs e)) crit_l in
-      let pairs_r = List.map (fun e -> preunify e2 (get_rhs e)) crit_r in
-      let pairs = List.flatten (pairs_r @@ pairs_l) in
-      let nodes = List.map (mknode_negtrans R R fm) matches_rr
-                  @@ List.map (mknode_negtrans L R fm) matches_lr
-      in
-      let st1 = add_node_list st nodes in
-      let f (st, _) (m, e) = make_inst st m e in
-      let (st2, _) = List.fold_left f (st1, true) pairs in
-      (st2, stop)
-
-  | Eapp (s, [e1; Emeta _], _) when Eqrel.trans s ->
-      let stop = Eqrel.refl s in
-      Index.add_trans fm Index.Left;
-      let h1 = Index.get_head e1 in
-      let matches_ll = find_negtrans_left s h1 in
-      let matches_rl = if Eqrel.sym s then find_negtrans_right s h1 else [] in
-      let crit_r = Index.find_trans_rightonly s h1 in
-      let crit_l = if Eqrel.sym s then Index.find_trans_leftonly s h1 else [] in
-      let pairs_r = List.map (fun e -> preunify e1 (get_rhs e)) crit_r in
-      let pairs_l = List.map (fun e -> preunify e1 (get_lhs e)) crit_l in
-      let pairs = List.flatten (pairs_l @@ pairs_r) in
-      let nodes = List.map (mknode_negtrans L L fm) matches_ll
-                  @@ List.map (mknode_negtrans R L fm) matches_rl
-      in
-      let st1 = add_node_list st nodes in
-      let f (st, _) (m, e) = make_inst st m e in
-      let (st2, _) = List.fold_left f (st1, true) pairs in
-      (st2, stop)
-
-  | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
-      let stop = Eqrel.refl s in
-      Index.add_trans fm Index.Both;
-      let h1 = Index.get_head e1 in
-      let h2 = Index.get_head e2 in
-      let matches_ll = find_negtrans_left s h1 in
-      let matches_rr = find_negtrans_right s h2 in
-      let matches_lr = if Eqrel.sym s then find_negtrans_left s h2 else [] in
-      let matches_rl = if Eqrel.sym s then find_negtrans_right s h1 else [] in
-      let nodes = List.flatten [
-        List.map (mknode_negtrans L L fm) matches_ll;
-        List.map (mknode_negtrans L R fm) matches_lr;
-        List.map (mknode_negtrans R L fm) matches_rl;
-        List.map (mknode_negtrans R R fm) matches_rr;
-      ] in
-      add_node_list st nodes, stop
-
-  | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
-      let stop = Eqrel.refl s in
-      Index.add_negtrans fm;
-      let h1 = Index.get_head e1 in
-      let h2 = Index.get_head e2 in
-      let matches_ll = find_trans_left s h1 e1 in
-      let matches_rr = find_trans_right s h2 e2 in
-      let matches_lr = if Eqrel.sym s then find_trans_right s h1 e1 else [] in
-      let matches_rl = if Eqrel.sym s then find_trans_left s h2 e2 else [] in
-      let nodes = List.flatten [
-        List.map (mknode_trans L L fm) matches_ll;
-        List.map (mknode_trans L R fm) matches_lr;
-        List.map (mknode_trans R L fm) matches_rl;
-        List.map (mknode_trans R R fm) matches_rr;
-      ] in
-      add_node_list st nodes, stop
-
-  | _ -> (st, false)
-;;
-***********************)
-
 let newnodes_match_sym st fm =
   match fm with
   | Enot (Eapp (s, [a1; a2], _), _) when Eqrel.sym s ->
@@ -1245,7 +1121,7 @@ let newnodes_useless st fm =
   | Etrue | Enot (Efalse, _)
     -> st, true
 
-  | Emeta _ | Etau _ | Enot ((Emeta _ | Etau _), _)
+  | Emeta _ | Etau _ | Elam _ | Enot ((Emeta _ | Etau _ | Elam _), _)
     ->
       if !Globals.warnings_flag then begin
         fprintf stderr "add_nodes: unexpected formula meta/tau";
@@ -1268,7 +1144,7 @@ let add_nodes st fm =
       newnodes_closure;
     ]
   in
-  let (newnodes2, stop2) = Node.relevant (Extension.newnodes !cur_depth fm) in
+  let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm) in
   let insert_node s n = {s with queue = insert s.queue n} in
   let st2 = List.fold_left insert_node st1 newnodes2 in
   let (st3, stop3) =

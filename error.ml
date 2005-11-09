@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: error.ml,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: error.ml,v 1.3 2005-11-09 15:18:24 doligez Exp $";;
 
 let warnings_flag = ref true;;
 let err_file = ref "";;
@@ -26,3 +26,4 @@ let warn msg =
 ;;
 
 exception Lex_error of string;;
+exception Abort;;

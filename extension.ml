@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.6 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.7 2005-11-09 15:18:24 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -11,7 +11,7 @@ type translator =
 ;;
 type t = {
   name : string;
-  newnodes : int -> Expr.expr -> Node.node_item list;
+  newnodes : Expr.expr -> Node.node_item list;
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   preprocess : Phrase.phrase list -> Phrase.phrase list;
@@ -48,8 +48,8 @@ let rec find_extension name l =
   | _::t -> find_extension name t
 ;;
 
-let newnodes depth e =
-  List.map (fun ext -> ext.newnodes depth e) (List.rev !active)
+let newnodes e =
+  List.map (fun ext -> ext.newnodes e) (List.rev !active)
 ;;
 
 let add_formula e =

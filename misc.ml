@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.4 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.5 2005-11-09 15:18:24 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -41,4 +41,11 @@ let isalnum c =
   match c with
   | 'A'..'Z' | 'a'..'z' | '0'..'9' -> true
   | _ -> false
+;;
+
+let rec list_last l =
+  match l with
+  | [] -> raise Not_found
+  | [x] -> x
+  | h::t -> list_last t
 ;;

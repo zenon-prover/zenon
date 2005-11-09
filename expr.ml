@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.15 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.16 2005-11-09 15:18:24 doligez Exp $";;
 
 open Misc;;
 
@@ -22,6 +22,7 @@ type expr =
   | Eall of expr * string * expr * int * private_info
   | Eex of expr * string * expr * int * private_info
   | Etau of expr * string * expr * private_info
+  | Elam of expr * string * expr * private_info
 
 and private_info = {
   hash : int;
@@ -72,6 +73,7 @@ and k_equiv = 0xb0f18f7
 and k_all   = 0xfb437ff
 and k_ex    = 0x0716b52
 and k_tau   = 0x4ae7fad
+and k_lam   = 0x24adcb3
 ;;
 
 let mkpriv skel fv sz metas = {
@@ -101,6 +103,7 @@ let get_priv = function
   | Eall (_, _, _, _, h) -> h
   | Eex (_, _, _, _, h) -> h
   | Etau (_, _, _, h) -> h
+  | Elam (_, _, _, h) -> h
 ;;
 
 let get_hash e = (get_priv e).hash;;
@@ -176,6 +179,10 @@ let priv_tau v t e =
   mkpriv (combine k_tau (combine (Hashtbl.hash t) (get_skel e)))
          (remove v (get_fv e)) 1 (get_metas e)
 ;;
+let priv_lam v t e =
+  mkpriv (combine k_lam (combine (Hashtbl.hash t) (get_skel e)))
+         (remove v (get_fv e)) 1 (get_metas e)
+;;
 
 
 module HashedExpr = struct
@@ -233,6 +240,10 @@ module HashedExpr = struct
       -> (List.mem (var_name v1) (get_fv f1))
          =%= (List.mem (var_name v2) (get_fv f2))
          && equal_in_env (v1::env1) (v2::env2) f1 f2
+    | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
+      -> (List.mem (var_name v1) (get_fv f1))
+         =%= (List.mem (var_name v2) (get_fv f2))
+         && equal_in_env (v1::env1) (v2::env2) f1 f2
     | _, _ -> false
   ;;
 
@@ -259,6 +270,9 @@ module HashedExpr = struct
       -> t1 =%= t2
          && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
+      -> t1 =%= t2
+         && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
+    | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
       -> t1 =%= t2
          && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
     | _, _ -> false
@@ -305,6 +319,7 @@ let eequiv (e1, e2) = he_merge (Eequiv (e1, e2, priv_equiv e1 e2));;
 let eall (v, t, e, m) = he_merge (Eall (v, t, e, m, priv_all v t e m));;
 let eex (v, t, e, m) = he_merge (Eex (v, t, e, m, priv_ex v t e m));;
 let etau (v, t, e) = he_merge (Etau (v, t, e, priv_tau v t e));;
+let elam (v, t, e) = he_merge (Elam (v, t, e, priv_lam v t e));;
 
 let cur_meta = ref 0;;
 
@@ -441,4 +456,11 @@ let rec substitute map e =
         etau (nv, t, substitute ((v, nv) :: map1) f)
       else
         etau (v, t, substitute map1 f)
+  | Elam (v, t, f, _) ->
+      let map1 = rm_binding v map in
+      if conflict v map1 then
+        let nv = newvar () in
+        elam (nv, t, substitute ((v, nv) :: map1) f)
+      else
+        elam (v, t, substitute map1 f)
 ;;

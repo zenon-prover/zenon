@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_coqbool.v,v 1.5 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: zenon_coqbool.v,v 1.6 2005-11-09 15:18:24 doligez Exp $  *)
 
 Require Export Bool.
 
@@ -7,6 +7,9 @@ Definition __g_not_b := negb.
 Definition __g_and_b := andb.
 Definition __g_or_b := orb.
 Definition __g_xor_b := xorb.
+Definition __g_ifthenelse :=
+  fun (A:Type) (cond:bool) (x y:A) => if cond then x else y
+.
 
 Lemma zenon_coqbool_false : Is_true false -> False.
 Proof.
@@ -113,6 +116,62 @@ Proof.
   unfold ifb.
   destruct a; destruct b; tauto.
 Qed.
+
+Lemma zenon_coqbool_ite_bool :
+  forall cond thn els : bool,
+  (Is_true cond -> Is_true thn -> False) ->
+  (~Is_true cond -> Is_true els -> False) ->
+  Is_true (__g_ifthenelse _ cond thn els) -> False.
+Proof.
+  intro cond; unfold Is_true; destruct cond; auto.
+Qed.
+
+Lemma zenon_coqbool_ite_bool_n :
+  forall cond thn els : bool,
+  (Is_true cond -> ~Is_true thn -> False) ->
+  (~Is_true cond -> ~Is_true els -> False) ->
+  ~Is_true (__g_ifthenelse _ cond thn els) -> False.
+Proof.
+  intro cond; unfold Is_true; destruct cond; auto.
+Qed.
+
+Lemma zenon_coqbool_ite_rel_l :
+  forall (A B : Type) (r: A -> B -> Prop) (cond : bool) (thn els : A) (e2 : B),
+  (Is_true cond -> (r thn e2) -> False) ->
+  (~Is_true cond -> (r els e2) -> False) ->
+  r (__g_ifthenelse _ cond thn els) e2 -> False.
+Proof.
+  intros A B r cond; unfold Is_true; destruct cond; auto.
+Qed.
+
+Lemma zenon_coqbool_ite_rel_r :
+  forall (A B : Type) (r: A -> B -> Prop) (e1 : A) (cond : bool) (thn els : B),
+  (Is_true cond -> (r e1 thn) -> False) ->
+  (~Is_true cond -> (r e1 els) -> False) ->
+  r e1 (__g_ifthenelse _ cond thn els) -> False.
+Proof.
+  intros A B r e1 cond; unfold Is_true; destruct cond; auto.
+Qed.
+
+Lemma zenon_coqbool_ite_rel_nl :
+  forall (A B : Type) (r: A -> B -> Prop) (cond : bool) (thn els : A) (e2 : B),
+  (Is_true cond -> ~(r thn e2) -> False) ->
+  (~Is_true cond -> ~(r els e2) -> False) ->
+  ~r (__g_ifthenelse _ cond thn els) e2 -> False.
+Proof.
+  intros A B r cond; unfold Is_true; destruct cond; auto.
+Qed.
+
+Lemma zenon_coqbool_ite_rel_nr :
+  forall (A B : Type) (r: A -> B -> Prop) (e1 : A) (cond : bool) (thn els : B),
+  (Is_true cond -> ~(r e1 thn) -> False) ->
+  (~Is_true cond -> ~(r e1 els) -> False) ->
+  ~r e1 (__g_ifthenelse _ cond thn els) -> False.
+Proof.
+  intros A B r e1 cond; unfold Is_true; destruct cond; auto.
+Qed.
+
+(* ************************************************ *)
 
 Definition zenon_coqbool_false_s := zenon_coqbool_false.
 Definition zenon_coqbool_nottrue_s := zenon_coqbool_nottrue.

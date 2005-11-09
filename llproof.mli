@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.8 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.9 2005-11-09 15:18:24 doligez Exp $  *)
 
 open Expr;;
 
@@ -188,14 +188,13 @@ type rule =
 
      ********************)
 
-  | Rdefinition of expr * expr
+  | Rdefinition of string * expr * expr
     (*
         H
-       --- Rdefinition (C, H)
+       --- Rdefinition (sym, C, H)
         C
 
-       Si H et C sont delta-beta convertibles avec les definitions
-       donnees en argument au prouveur.
+       Si on peut passer de C a H en depliant la definition de sym.
 
      ********************)
 
@@ -241,3 +240,5 @@ type proof = lemma list;;
 
 (* peephole optimiser for LL proofs *)
 val optimise : proof -> proof;;
+
+val iter : (prooftree -> unit) -> proof -> unit;;

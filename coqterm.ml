@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.18 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.19 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -80,6 +80,8 @@ let rec trexpr e =
   | Eex (Evar (v, _), t, e1, _, _) -> Cex (v, t, trexpr e1)
   | Eex _ -> assert false
   | Etau _ -> assert false
+  | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr e1)
+  | Elam _ -> assert false
 ;;
 
 let tropt e = if !Globals.short_flag then Cwild else trexpr e;;
@@ -183,6 +185,7 @@ let rec trtree node =
       let concl = getv (enot (exp)) in
       Capp (Cvar "zenon_notex", [Cty ty; p; trexpr t; lam; concl])
   | Rnotex _ -> assert false
+(*
   | Rpnotp ((Eapp ("=", [a; b], _) as e),
             (Enot (Eapp ("=", [c; d], _), _) as ne)) ->
       let (subac, subbd) = tr_subtree_2 hyps in
@@ -193,6 +196,7 @@ let rec trtree node =
       Capp (Cvar "zenon_eqnoteq", [Cwild; tropt a; tropt b; tropt c; tropt d;
                                    lamac; lambd; concle; conclne])
   | Rpnotp (Eapp ("=", _, _), _) -> assert false
+*)
   | Rpnotp ((Eapp (p, args1, _) as pp),
             (Enot (Eapp (q, args2, _) as qq, _) as nqq)) ->
       assert (p = q);
@@ -215,7 +219,7 @@ let rec trtree node =
       let optg = tropt gg in
       Capp (Cvar "zenon_notequal", [Cwild; optf; optg; ffegg; fdg])
   | Rnotequal _ -> assert false
-  | Rdefinition (folded, unfolded) ->
+  | Rdefinition (sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
   | Rextension (name, args, c, hs) ->
@@ -329,7 +333,7 @@ let trproof phrases l =
       begin
         eprintf "Error: there is an unused variable of type %s.\n" ty;
         flush stderr;
-        raise (Failure "unused variable");
+        raise Error.Abort
       end
 ;;
 
@@ -417,7 +421,7 @@ let pr_oc oc prefix t =
         let (lams, body) = get_lams [] t in
         bprintf b "(fun%a=>%a)" pr_lams lams pr body;
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
-    | Capp (Cvar "=", []) -> bprintf b "eq";
+    | Capp (Cvar "=", []) -> bprintf b "(eq(A:=_))";
     | Capp (Cvar "=", [t1]) -> bprintf b "(eq %a)" pr t1;
     | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
     | Capp (Cvar "=", _) -> assert false
@@ -510,9 +514,9 @@ let get_signatures ps ext_decl =
          get_sig Prop env e2;
     | Enot (e1, _) -> get_sig Prop env e1;
     | Eall (Evar (v, _), _, e1, _, _) | Eex (Evar (v, _), _, e1, _, _)
-    | Etau (Evar (v, _), _, e1, _)
+    | Etau (Evar (v, _), _, e1, _) | Elam (Evar (v, _), _, e1, _)
       -> get_sig Prop (v::env) e1;
-    | Eall _ | Eex _ | Etau _ -> assert false
+    | Eall _ | Eex _ | Etau _ | Elam _ -> assert false
   in
   let do_phrase p =
     match p with

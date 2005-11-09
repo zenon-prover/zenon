@@ -1,4 +1,4 @@
 (*  Copyright 2005 INRIA  *)
-(*  $Id: watch.mli,v 1.2 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: watch.mli,v 1.3 2005-11-09 15:18:24 doligez Exp $  *)
 
-val warn : Phrase.phrase list -> Mlproof.proof -> unit;;
+val warn : Phrase.phrase list -> Llproof.proof Lazy.t -> unit;;

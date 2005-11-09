@@ -1,8 +1,10 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.11 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.12 2005-11-09 15:18:24 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
-(* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b *)
+(* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
+   false, true, (__g_ifthenelse _)
+ *)
 
 (* FIXME TODO:
    warning s'il y a une definition de Is_true, __g_and_b, etc.
@@ -36,8 +38,9 @@ let wrong_arity s =
 ;;
 
 let istrue e = eapp ("Is_true", [e]);;
+let isfalse e = enot (eapp ("Is_true", [e]));;
 
-let newnodes depth e =
+let newnodes_istrue e =
   match e with
   | Eapp ("Is_true**__g_and_b", [e1; e2], _) ->
       let branches = [| [eand (istrue e1, istrue e2)] |] in
@@ -64,7 +67,7 @@ let newnodes depth e =
         nbranches = branches;
       }; Stop ]
   | Eapp ("Is_true**__g_not_b", [e1], _) ->
-      let branches = [| [enot (istrue e1)] |] in
+      let branches = [| [isfalse e1] |] in
       [ Node {
         nconc = [e];
         nrule = Ext ("coqbool", "not", [e1]);
@@ -209,6 +212,73 @@ let newnodes depth e =
   | _ -> []
 ;;
 
+let ite_branches pat cond thn els =
+  [| [istrue cond; pat thn]; [isfalse cond; pat els] |]
+;;
+
+let newnodes_ifthenelse e =
+  match e with
+  | Eapp ("Is_true**(__g_ifthenelse _)", [cond; thn; els], _) ->
+      let branches = ite_branches istrue cond thn els in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "ite_bool", [cond; thn; els]);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Enot (Eapp ("Is_true**(__g_ifthenelse _)", [cond; thn; els], _), _) ->
+      let branches = ite_branches isfalse cond thn els in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "ite_bool_n", [cond; thn; els]);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Eapp (r, [Eapp ("(__g_ifthenelse _)", [cond; thn; els], _); e2], _)
+    when Eqrel.any r ->
+      let pat x = eapp (r, [x; e2]) in
+      let branches = ite_branches pat cond thn els in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "ite_rel_l", [e]);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [cond; thn; els], _)], _)
+    when Eqrel.any r ->
+      let pat x = eapp (r, [e1; x]) in
+      let branches = ite_branches pat cond thn els in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "ite_rel_r", [e]);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)", [cond; thn; els], _); e2], _),_)
+    when Eqrel.any r ->
+      let pat x = enot (eapp (r, [x; e2])) in
+      let branches = ite_branches pat cond thn els in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "ite_rel_nl", [e]);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [cond; thn; els], _)], _),_)
+    when Eqrel.any r ->
+      let pat x = enot (eapp (r, [e1; x])) in
+      let branches = ite_branches pat cond thn els in
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("coqbool", "ite_rel_nr", [e]);
+          nprio = Arity;
+          nbranches = branches;
+      }; Stop ]
+  | _ -> []
+;;
+
+let newnodes e = newnodes_istrue e @ newnodes_ifthenelse e;;
+
 let to_llargs tr_prop tr_term r =
   match r with
   | Ext (_, "and", [e1; e2]) ->
@@ -257,6 +327,75 @@ let to_llargs tr_prop tr_term r =
       ("zenon_coqbool_truefalse", [], [c], []);
   | Ext (_, "merge", _) -> ("zenon_coqbool_merge", [], [], [])
   | Ext (_, "split", _) -> ("zenon_coqbool_split", [], [], [])
+
+  | Ext (_, "ite_bool", ([cond; thn; els] as args)) ->
+      let ht1 = tr_prop (istrue cond) in
+      let ht2 = tr_prop (istrue thn) in
+      let he1 = tr_prop (isfalse cond) in
+      let he2 = tr_prop (istrue els) in
+      let c = tr_prop (istrue (eapp ("(__g_ifthenelse _)", [cond; thn; els])))
+      in
+      ("zenon_coqbool_ite_bool", List.map tr_term args, [c],
+       [ [ht1; ht2]; [he1; he2] ])
+  | Ext (_, "ite_bool_n", ([cond; thn; els] as args)) ->
+      let ht1 = tr_prop (istrue cond) in
+      let ht2 = tr_prop (isfalse thn) in
+      let he1 = tr_prop (isfalse cond) in
+      let he2 = tr_prop (isfalse els) in
+      let c = tr_prop (isfalse (eapp ("(__g_ifthenelse _)", [cond; thn; els])))
+      in
+      ("zenon_coqbool_ite_bool_n", List.map tr_term args, [c],
+       [ [ht1; ht2]; [he1; he2] ])
+  | Ext (_, "ite_rel_l",
+         [Eapp (r, [Eapp ("(__g_ifthenelse _)", [c; t; e], _); e2], _) as a])
+    ->
+      let ht1 = tr_prop (istrue c) in
+      let ht2 = tr_prop (eapp (r, [t; e2])) in
+      let he1 = tr_prop (isfalse c) in
+      let he2 = tr_prop (eapp (r, [e; e2])) in
+      let concl = tr_prop a in
+      let v1 = newvar () and v2 = newvar () in
+      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      ("(zenon_coqbool_ite_rel_l _ _)", List.map tr_term [rf; c; t; e; e2],
+       [concl], [ [ht1; ht2]; [he1; he2] ])
+  | Ext (_, "ite_rel_r",
+         [Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [c; t; e], _)], _) as a])
+    ->
+      let ht1 = tr_prop (istrue c) in
+      let ht2 = tr_prop (eapp (r, [e1; t])) in
+      let he1 = tr_prop (isfalse c) in
+      let he2 = tr_prop (eapp (r, [e1; e])) in
+      let concl = tr_prop a in
+      let v1 = newvar () and v2 = newvar () in
+      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      ("(zenon_coqbool_ite_rel_r _ _)", List.map tr_term [rf; e1; c; t; e],
+       [concl], [ [ht1; ht2]; [he1; he2] ])
+  | Ext (_, "ite_rel_nl",
+         [Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)",
+                                [c; t; e], _); e2], _), _) as a])
+    ->
+      let ht1 = tr_prop (istrue c) in
+      let ht2 = tr_prop (enot (eapp (r, [t; e2]))) in
+      let he1 = tr_prop (isfalse c) in
+      let he2 = tr_prop (enot (eapp (r, [e; e2]))) in
+      let concl = tr_prop a in
+      let v1 = newvar () and v2 = newvar () in
+      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      ("(zenon_coqbool_ite_rel_nl _ _)", List.map tr_term [rf; c; t; e; e2],
+       [concl], [ [ht1; ht2]; [he1; he2] ])
+  | Ext (_, "ite_rel_nr",
+         [Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)",
+                                    [c; t; e], _)], _), _) as a])
+    ->
+      let ht1 = tr_prop (istrue c) in
+      let ht2 = tr_prop (enot (eapp (r, [e1; t]))) in
+      let he1 = tr_prop (isfalse c) in
+      let he2 = tr_prop (enot (eapp (r, [e1; e]))) in
+      let concl = tr_prop a in
+      let v1 = newvar () and v2 = newvar () in
+      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      ("(zenon_coqbool_ite_rel_nr _ _)", List.map tr_term [rf; e1; c; t; e],
+       [concl], [ [ht1; ht2]; [he1; he2] ])
   | _ -> assert false
 ;;
 
@@ -290,6 +429,7 @@ let rec fold_istrue e =
   | Eall (v, t, e, o, _) -> eall (v, t, fold_istrue e, o)
   | Eex (v, t, e, o, _) -> eex (v, t, fold_istrue e, o)
   | Etau (v, t, e, _) -> etau (v, t, fold_istrue e)
+  | Elam (v, t, e, _) -> elam (v, t, fold_istrue e)
 ;;
 
 let preprocess l =
@@ -322,6 +462,7 @@ let rec process_expr e =
   | Eall (e1, t, e2, o, _) -> eall (process_expr e1, t, process_expr e2, o)
   | Eex (e1, t, e2, o, _) -> eex (process_expr e1, t, process_expr e2, o)
   | Etau (e1, t, e2, _) -> etau (process_expr e1, t, process_expr e2)
+  | Elam (e1, t, e2, _) -> elam (process_expr e1, t, process_expr e2)
 ;;
 
 let rec process_expr_set accu l =
@@ -378,7 +519,7 @@ and process_rule r =
   | Rnotall (e1, v) -> Rnotall (process_expr e1, v)
   | Rpnotp (e1, e2) -> Rpnotp (process_expr e1, process_expr e2)
   | Rnotequal (e1, e2) -> Rnotequal (process_expr e1, process_expr e2)
-  | Rdefinition (e1, e2) -> Rdefinition (process_expr e1, process_expr e2);
+  | Rdefinition (s, e1, e2) -> Rdefinition (s, process_expr e1, process_expr e2)
   | Rextension (s, el1, el2, ell) ->
       Rextension (s, List.map process_expr el1, List.map process_expr el2,
                   List.map (List.map process_expr) ell)
@@ -390,7 +531,8 @@ let postprocess p = List.map process_lemma p;;
 
 let declare_context_coq oc =
   Printf.fprintf oc "Require Import zenon_coqbool.\n";
-  ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b"]
+  ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b";
+   "true"; "false"; "(__g_ifthenelse _)"]
 ;;
 
 Extension.register {

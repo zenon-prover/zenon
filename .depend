@@ -18,10 +18,10 @@ llproof.cmo: version.cmi expr.cmi llproof.cmi
 llproof.cmx: version.cmx expr.cmx llproof.cmi 
 mlproof.cmo: version.cmi expr.cmi mlproof.cmi 
 mlproof.cmx: version.cmx expr.cmx mlproof.cmi 
-watch.cmo: version.cmi phrase.cmi mlproof.cmi globals.cmi expr.cmi error.cmi \
-    watch.cmi 
-watch.cmx: version.cmx phrase.cmx mlproof.cmx globals.cmx expr.cmx error.cmx \
-    watch.cmi 
+watch.cmo: version.cmi phrase.cmi misc.cmi llproof.cmi globals.cmi expr.cmi \
+    error.cmi watch.cmi 
+watch.cmx: version.cmx phrase.cmx misc.cmx llproof.cmx globals.cmx expr.cmx \
+    error.cmx watch.cmi 
 eqrel.cmo: version.cmi mlproof.cmi expr.cmi eqrel.cmi 
 eqrel.cmx: version.cmx mlproof.cmx expr.cmx eqrel.cmi 
 index.cmo: version.cmi mlproof.cmi misc.cmi globals.cmi expr.cmi index.cmi 
@@ -65,9 +65,11 @@ tptp.cmo: version.cmi phrase.cmi parsetptp.cmi lextptp.cmi globals.cmi \
 tptp.cmx: version.cmx phrase.cmx parsetptp.cmx lextptp.cmx globals.cmx \
     extension.cmx expr.cmx error.cmx tptp.cmi 
 ext_coqbool.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
-    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi ext_coqbool.cmi 
+    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
+    ext_coqbool.cmi 
 ext_coqbool.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
-    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx ext_coqbool.cmi 
+    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
+    ext_coqbool.cmi 
 ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     extension.cmi expr.cmi ext_equiv.cmi 
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
@@ -76,10 +78,10 @@ coqterm.cmo: version.cmi phrase.cmi mltoll.cmi llproof.cmi index.cmi \
     globals.cmi extension.cmi expr.cmi coqterm.cmi 
 coqterm.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \
     globals.cmx extension.cmx expr.cmx coqterm.cmi 
-lltocoq.cmo: version.cmi phrase.cmi llproof.cmi index.cmi globals.cmi \
-    expr.cmi coqterm.cmi lltocoq.cmi 
-lltocoq.cmx: version.cmx phrase.cmx llproof.cmx index.cmx globals.cmx \
-    expr.cmx coqterm.cmx lltocoq.cmi 
+lltocoq.cmo: version.cmi phrase.cmi mltoll.cmi llproof.cmi index.cmi \
+    globals.cmi expr.cmi coqterm.cmi lltocoq.cmi 
+lltocoq.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \
+    globals.cmx expr.cmx coqterm.cmx lltocoq.cmi 
 main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
     phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi lltocoq.cmi \
     llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi extension.cmi \
@@ -91,7 +93,7 @@ main.cmx: watch.cmx version.cmx tptp.cmx prove.cmx progress.cmx print.cmx \
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 
-watch.cmi: phrase.cmi mlproof.cmi 
+watch.cmi: phrase.cmi llproof.cmi 
 eqrel.cmi: mlproof.cmi expr.cmi 
 index.cmi: mlproof.cmi expr.cmi 
 print.cmi: phrase.cmi mlproof.cmi llproof.cmi expr.cmi 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.9 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.10 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 open Phrase;;
@@ -64,6 +64,7 @@ let rec make_annot_expr e =
   | Eall (x,s,e,o,_) -> eall (x, s, make_annot_expr e, o)
   | Eex (x,s,e,o,_) -> eex (x, s, make_annot_expr e, o)
   | Etau (x,s,e,_) -> etau (x, s, make_annot_expr e)
+  | Elam (x,s,e,_) -> elam (x, s, make_annot_expr e)
 ;;
 
 (* transform a fof into a real definition. *)

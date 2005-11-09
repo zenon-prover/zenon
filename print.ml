@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.12 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.13 2005-11-09 15:18:24 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -77,6 +77,10 @@ let rec expr o ex =
       printf "(t. ((%a) " print_var v; expr o e; printf "))";
   | Etau (v, t, e, _) ->
       printf "(t. ((%a \"%s\") " print_var v t; expr o e; printf "))";
+  | Elam (v, "", e, _) ->
+      printf "((%a) " print_var v; expr o e; printf ")";
+  | Elam (v, t, e, _) ->
+      printf "((%a \"%s\") " print_var v t; expr o e; printf ")";
 ;;
 
 let expr o e =
@@ -112,13 +116,18 @@ let rec expr_soft o ex =
       printf "(All %s, " v; expr_soft o e; printf ")";
   | Eall (Evar (v, _), t, e, _, _) ->
       printf "(All %s:%s, " v t; expr_soft o e; printf ")";
+  | Eall _ -> assert false
   | Eex (Evar (v, _), "", e, _, _) ->
       printf "(Ex %s, " v; expr_soft o e; printf ")";
   | Eex (Evar (v, _), t, e, _, _) ->
       printf "(Ex %s:%s, " v t; expr_soft o e; printf ")";
-  | Eall _ | Eex _ -> assert false
-  | Etau _ as e ->
-      printf "T_%d" (Index.get_number e);
+  | Eex _ -> assert false
+  | Etau _ as e -> printf "T_%d" (Index.get_number e);
+  | Elam (Evar (v, _), "", e, _) ->
+      printf "(lambda %s, " v; expr_soft o e; printf ")";
+  | Elam (Evar (v, _), t, e, _) ->
+      printf "(lambda %s:%s, " v t; expr_soft o e; printf ")";
+  | Elam _ -> assert false
 ;;
 
 let expr_soft o e =
@@ -404,6 +413,8 @@ let rec llproof_prop o pr =
       printf "All %a, " print_vartype (v, t); llproof_prop o p;
   | Eex (v, t, p, _, _) ->
       printf "Ex %a, " print_vartype (v, t); llproof_prop o p;
+  | Elam (v, t, p, _) ->
+      printf "lambda %a, " print_vartype (v, t); llproof_prop o p;
   | Eapp ("=", [t1; t2], _) ->
       printf "(";
       llproof_term o t1;
@@ -470,8 +481,8 @@ let llproof_rule o r =
       printf ", ";
       llproof_term o u;
       printf ")";
-  | Rdefinition (folded, unfolded) ->
-      printf "---definition";
+  | Rdefinition (sym, folded, unfolded) ->
+      printf "---definition (%s)" sym;
   | Rextension (name, args, c, hyps) ->
       printf "---extension (%s" name;
       List.iter (fun x -> printf " "; llproof_prop o x) args;
