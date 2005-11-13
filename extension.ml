@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.7 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.8 2005-11-13 22:49:11 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -11,7 +11,7 @@ type translator =
 ;;
 type t = {
   name : string;
-  newnodes : Expr.expr -> Node.node_item list;
+  newnodes : Expr.expr -> int -> Node.node_item list;
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   preprocess : Phrase.phrase list -> Phrase.phrase list;
@@ -30,10 +30,9 @@ let activate name =
     let t = List.find (fun t -> t.name = name) !theories in
     active := t :: !active;
   with Not_found ->
-    eprintf "Error: extension %s does not exist.\n" name;
-    eprintf "Available extensions are:";
-    List.iter (fun e -> eprintf " %s" e.name) !theories;
-    eprintf ".\n";
+    Error.err (sprintf "no extension named %s" name);
+    Error.err "The following extensions are available";
+    List.iter (fun e -> Error.err e.name) !theories;
     raise Not_found;
 ;;
 
@@ -48,8 +47,8 @@ let rec find_extension name l =
   | _::t -> find_extension name t
 ;;
 
-let newnodes e =
-  List.map (fun ext -> ext.newnodes e) (List.rev !active)
+let newnodes e g =
+  List.map (fun ext -> ext.newnodes e g) (List.rev !active)
 ;;
 
 let add_formula e =

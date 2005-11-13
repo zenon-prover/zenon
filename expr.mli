@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.11 2005-11-09 15:18:24 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.12 2005-11-13 22:49:11 doligez Exp $  *)
 
 type private_info;;
 
@@ -95,3 +95,6 @@ val size : expr -> int;;
 val has_metas : expr -> bool;;
 val count_metas : expr -> int;;
 val get_metas : expr -> int list;;
+val get_fv : expr -> string list;;
+
+type goalness = int;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.4 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: ext_equiv.ml,v 1.5 2005-11-13 22:49:11 doligez Exp $";;
 
 (* Extension for trees of equivalences and negations. *)
 
@@ -39,7 +39,7 @@ let rec make_list l =
   | h::t -> eequiv (make_list t, h)
 ;;
 
-let newnodes e =
+let newnodes e g =
   match e with
   | Eequiv _ | Enot (Eequiv _, _) ->
       let (neg, leaves) = get_leaves e (false, []) in
@@ -54,6 +54,7 @@ let newnodes e =
           nconc = [e];
           nrule = Ext ("equiv", "pairs", [e]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
         }; Stop ]
       else

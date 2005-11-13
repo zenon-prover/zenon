@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: progress.ml,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: progress.ml,v 1.3 2005-11-13 22:49:11 doligez Exp $";;
 
 open Printf;;
 
@@ -46,10 +46,6 @@ let do_progress f =
 let end_progress msg =
   match !level with
   | No -> ()
-  | Bar ->
-     Printf.eprintf "\r";
-     flush stderr;
-  | Msg ->
-     if msg <> "" then Printf.eprintf "%s\n" msg;
-     flush stderr;
+  | Bar -> eprintf "\r"; flush stderr;
+  | Msg -> if msg <> "" then (eprintf "%s\n" msg; flush stderr)
 ;;

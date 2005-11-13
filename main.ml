@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.25 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.26 2005-11-13 22:49:11 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -177,10 +177,7 @@ with Not_found -> exit 2
 
 let report_error lexbuf msg =
   let p = Lexing.lexeme_start_p lexbuf in
-  Printf.eprintf "File \"%s\", line %d, character %d: %s\n"
-                 p.Lexing.pos_fname p.Lexing.pos_lnum
-                 (p.Lexing.pos_cnum - p.Lexing.pos_bol)
-                 msg;
+  Error.errpos p msg;
   exit 2;
 ;;
 
@@ -227,7 +224,7 @@ let parse_file f =
     with
     | Parsing.Parse_error -> report_error lexbuf "syntax error."
     | Error.Lex_error msg -> report_error lexbuf msg
-  with Sys_error (msg) -> eprintf "%s\n" msg; exit 2
+  with Sys_error (msg) -> Error.err msg; exit 2
 ;;
 
 Gc.set {(Gc.get ()) with
@@ -256,6 +253,10 @@ let main () =
              | _ -> Arg.usage argspec umsg; exit 2
   in
   let (th_name, phrases_dep) = parse_file file in
+  begin match !proof_level with
+  | Proof_coq | Proof_coqterm -> Watch.warn_unused_var phrases_dep;
+  | _ -> ()
+  end;
   let retcode = ref 0 in
   begin try
     let strong_dep = extract_strong [] phrases_dep in

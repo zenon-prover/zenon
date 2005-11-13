@@ -1,5 +1,7 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.10 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.11 2005-11-13 22:49:11 doligez Exp $";;
+
+open Printf;;
 
 open Expr;;
 open Phrase;;
@@ -75,9 +77,8 @@ let make_definition name form body p =
         | DefPseudo (_,s,args,def) -> Def (DefReal(s,args,def))
         | DefReal _ -> Def def
   end else begin
-    if !Globals.warnings_flag then
-      Printf.eprintf "Warning: formula %s is not a definition, \
-                      although annotated as one." name;
+    let msg = sprintf "annotated formula %s is not a definition" name in
+    Error.warn msg;
     form
   end
 ;;
@@ -115,7 +116,10 @@ let rec translate dirs ps =
 
 and try_incl dirs f =
   let rec loop = function
-    | [] -> failwith (Printf.sprintf "file %s not found in include path" f)
+    | [] ->
+        let msg = sprintf "file %s not found in include path" f in
+        Error.err msg;
+        raise Error.Abort;
     | h::t -> begin
         try incl dirs (Filename.concat h f)
         with Sys_error _ -> loop t

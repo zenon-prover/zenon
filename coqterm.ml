@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.19 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.20 2005-11-13 22:49:11 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -330,11 +330,11 @@ let trproof phrases l =
     | None -> (phrases, lemmas, th_name, raw)
   with
   | Unused_variable ty ->
-      begin
-        eprintf "Error: there is an unused variable of type %s.\n" ty;
-        flush stderr;
-        raise Error.Abort
-      end
+      let msg = sprintf "cannot infer a value for an unused variable of type %s"
+                        ty
+      in
+      Error.err msg;
+      raise Error.Abort
 ;;
 
 (* ******************************************* *)

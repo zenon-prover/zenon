@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: step.ml,v 1.5 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: step.ml,v 1.6 2005-11-13 22:49:11 doligez Exp $";;
 
 open Printf;;
 
@@ -14,18 +14,18 @@ let str_tail s =
   String.sub s 1 (String.length s - 1)
 ;;
 
-let cmp_forms f1 f2 =
+let cmp_forms (f1, g1) (f2, g2) =
   compare (Index.get_number f1) (Index.get_number f2)
 ;;
 
-let print_forms b fs =
-  let f init e =
-    bprintf b "%s[%d]" init (Index.get_number e);
+let print_forms b fgs =
+  let f init (e, g) =
+    bprintf b "%s[%d/%d]" init (Index.get_number e) g;
     Print.expr_soft (Print.Buff b) e;
   in
-  match fs with
-  | [] | [_] -> List.iter (f "") fs;
-  | _ -> List.iter (f "\n    ") fs;
+  match fgs with
+  | [] | [_] -> List.iter (f "") fgs;
+  | _ -> List.iter (f "\n    ") fgs;
 ;;
 
 let rec pause () =

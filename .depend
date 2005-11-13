@@ -35,9 +35,9 @@ step.cmx: version.cmx print.cmx misc.cmx index.cmx globals.cmx step.cmi
 node.cmo: version.cmi mlproof.cmi heap.cmi expr.cmi node.cmi 
 node.cmx: version.cmx mlproof.cmx heap.cmx expr.cmx node.cmi 
 extension.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi llproof.cmi \
-    expr.cmi extension.cmi 
+    expr.cmi error.cmi extension.cmi 
 extension.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx llproof.cmx \
-    expr.cmx extension.cmi 
+    expr.cmx error.cmx extension.cmi 
 mltoll.cmo: version.cmi phrase.cmi mlproof.cmi misc.cmi llproof.cmi index.cmi \
     extension.cmi expr.cmi eqrel.cmi mltoll.cmi 
 mltoll.cmx: version.cmx phrase.cmx mlproof.cmx misc.cmx llproof.cmx index.cmx \
@@ -60,10 +60,10 @@ parsecoq.cmo: version.cmi phrase.cmi expr.cmi parsecoq.cmi
 parsecoq.cmx: version.cmx phrase.cmx expr.cmx parsecoq.cmi 
 lexcoq.cmo: version.cmi parsecoq.cmi error.cmi lexcoq.cmi 
 lexcoq.cmx: version.cmx parsecoq.cmx error.cmx lexcoq.cmi 
-tptp.cmo: version.cmi phrase.cmi parsetptp.cmi lextptp.cmi globals.cmi \
-    extension.cmi expr.cmi error.cmi tptp.cmi 
-tptp.cmx: version.cmx phrase.cmx parsetptp.cmx lextptp.cmx globals.cmx \
-    extension.cmx expr.cmx error.cmx tptp.cmi 
+tptp.cmo: version.cmi phrase.cmi parsetptp.cmi lextptp.cmi extension.cmi \
+    expr.cmi error.cmi tptp.cmi 
+tptp.cmx: version.cmx phrase.cmx parsetptp.cmx lextptp.cmx extension.cmx \
+    expr.cmx error.cmx tptp.cmi 
 ext_coqbool.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
     llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
     ext_coqbool.cmi 
@@ -75,9 +75,9 @@ ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
     extension.cmx expr.cmx ext_equiv.cmi 
 coqterm.cmo: version.cmi phrase.cmi mltoll.cmi llproof.cmi index.cmi \
-    globals.cmi extension.cmi expr.cmi coqterm.cmi 
+    globals.cmi extension.cmi expr.cmi error.cmi coqterm.cmi 
 coqterm.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \
-    globals.cmx extension.cmx expr.cmx coqterm.cmi 
+    globals.cmx extension.cmx expr.cmx error.cmx coqterm.cmi 
 lltocoq.cmo: version.cmi phrase.cmi mltoll.cmi llproof.cmi index.cmi \
     globals.cmi expr.cmi coqterm.cmi lltocoq.cmi 
 lltocoq.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \

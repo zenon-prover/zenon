@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.25 2005-11-09 15:18:24 doligez Exp $
+#  $Id: Makefile,v 1.26 2005-11-13 22:49:11 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -66,7 +66,7 @@ zenon-logo-small.png: zenon-logo.png
 	convert zenon-logo.png -resize 10% zenon-logo-small.png
 
 .PHONY: all
-all: zenon zenon.opt zenon.byt ${COQSRC} ${COQOBJ}
+all: zenon zenon.opt zenon.byt ${COQOBJ}
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 

@@ -1,5 +1,7 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: error.ml,v 1.3 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: error.ml,v 1.4 2005-11-13 22:49:11 doligez Exp $";;
+
+open Printf;;
 
 let warnings_flag = ref true;;
 let err_file = ref "";;
@@ -12,17 +14,30 @@ let set_header msg =
   header := msg;
 ;;
 
-let warn msg =
-  let oc = if !err_file <> "" then open_out !err_file else stderr in
-  if !warnings_flag then begin
-    if !print_header then begin
-      Printf.fprintf oc "%s\n" !header;
-      print_header := false;
-    end;
-    Printf.fprintf oc "Warning: %s.\n" msg;
-    flush stderr;
+let err_oc = ref stderr;;
+let err_inited = ref false;;
+
+let print kind msg =
+  if not !err_inited then begin
+    if !err_file <> "" then err_oc := open_out !err_file;
+    if !print_header then fprintf !err_oc "%s\n" !header;
+    err_inited := true;
   end;
-  if !err_file <> "" then close_out oc;
+  fprintf !err_oc "%s: %s\n" kind msg;
+  flush !err_oc;
+;;
+
+let warn msg = if !warnings_flag then print "Warning" msg;;
+
+let err msg = print "Error" msg;;
+
+let errpos pos msg =
+  let s = sprintf "File \"%s\", line %d, character %d:"
+                  pos.Lexing.pos_fname pos.Lexing.pos_lnum
+                  (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
+  in
+  print "" s;
+  print "Error" msg;
 ;;
 
 exception Lex_error of string;;

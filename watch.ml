@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.3 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.4 2005-11-13 22:49:11 doligez Exp $";;
 
 open Printf;;
 
@@ -55,4 +55,34 @@ let warn deps p =
     Llproof.iter add_def prf;
     List.iter check deps;
   end
+;;
+
+
+let rec check_unused name e =
+  match e with
+  | Evar _ | Emeta _ | Etrue | Efalse
+    -> ()
+  | Eapp (f, args, _) -> List.iter (check_unused name) args;
+  | Enot (e1, _) -> check_unused name e1;
+  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
+    -> check_unused name e1; check_unused name e2;
+  | Eall (Evar (v, _), t, e1, _, _) | Eex (Evar (v, _), t, e1, _, _)
+  | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
+    ->
+       if t <> "" && not (List.mem v (get_fv e1)) then begin
+         Error.warn (sprintf "unused variable (%s : %s) in %s" v t name);
+       end;
+       check_unused name e1;
+  | Eall _ | Eex _ | Etau _ | Elam _ -> assert false
+;;
+
+let warn_unused_var phr_dep =
+  let f (p, _) =
+    match p with
+    | Phrase.Hyp (name, e, _) -> check_unused name e
+    | Phrase.Def (DefReal (name, _, body)) -> check_unused name body
+    | Phrase.Def (DefPseudo _) -> assert false
+    | Phrase.Sig _ -> ()
+  in
+  List.iter f phr_dep
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.4 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.5 2005-11-13 22:49:11 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -13,6 +13,7 @@ type node = {
   nconc : expr list;
   nrule : Mlproof.rule;
   nprio : priority;
+  ngoal : int;
   nbranches : expr list array;
 };;
 
@@ -94,12 +95,6 @@ let insert q n =
 ;;
 
 let rec remove q =
-(*
-eprintf "queue: %d %d %d %d %d xx %d %d\n" (List.length q.nullary)
-  (List.length q.unary) (List.length q.binary) (List.length q.nary)
-  q.inst_state (List.length q.inst_front) (List.length q.inst_back);
-flush stderr;
-*)
   match q with
   | { nullary = h::t } -> Some (h, {q with nullary = t})
   | { unary = h::t } -> Some (h, {q with unary = t})
@@ -136,8 +131,8 @@ let head q =
 ;;
 
 let size q =
-  Printf.sprintf "%d/%d/%d/%d/%d-%d" (List.length q.nullary)
-                 (List.length q.unary) (List.length q.binary)
-                 (List.length q.unary) (List.length q.inst_front)
-                 (List.length q.inst_back)
+  sprintf "%d/%d/%d/%d/%d-%d" (List.length q.nullary)
+          (List.length q.unary) (List.length q.binary)
+          (List.length q.unary) (List.length q.inst_front)
+          (List.length q.inst_back)
 ;;

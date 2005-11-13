@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.4 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: index.mli,v 1.5 2005-11-13 22:49:11 doligez Exp $  *)
 
 open Expr;;
 
@@ -11,10 +11,10 @@ val remove : expr -> unit;;
 
 val member : expr -> bool;;
 val get_goalness : expr -> int;;
-val get_all : unit -> expr list;;
+val get_all : unit -> (expr * goalness) list;;
 
-val find_pos : string -> expr list;;
-val find_neg : string -> expr list;;
+val find_pos : string -> (expr * goalness) list;;
+val find_neg : string -> (expr * goalness) list;;
 
 (* ==== transitive relations ==== *)
 
@@ -24,21 +24,21 @@ type head = Sym of string | Tau of expr | Wild;;
 val get_head : expr -> head;;
 
 val add_trans : expr -> direction -> unit;;
-val find_trans_left : string -> head -> expr list;;
-val find_trans_right : string -> head -> expr list;;
+val find_trans_left : string -> head -> (expr * goalness) list;;
+val find_trans_right : string -> head -> (expr * goalness) list;;
 
-val find_trans_leftonly : string -> head -> expr list;;
-val find_trans_rightonly : string -> head -> expr list;;
-val find_all_trans_leftonly : head -> expr list;;
-val find_all_trans_rightonly : head -> expr list;;
+val find_trans_leftonly : string -> head -> (expr * goalness) list;;
+val find_trans_rightonly : string -> head -> (expr * goalness) list;;
+val find_all_trans_leftonly : head -> (expr * goalness) list;;
+val find_all_trans_rightonly : head -> (expr * goalness) list;;
 
 val add_negtrans : expr -> unit;;
-val find_negtrans_left : string -> head -> expr list;;
-val find_negtrans_right : string -> head -> expr list;;
+val find_negtrans_left : string -> head -> (expr * goalness) list;;
+val find_negtrans_right : string -> head -> (expr * goalness) list;;
 
-val find_all_negtrans_left : head -> expr list;;
-val find_all_negtrans_right : head -> expr list;;
-val find_all_negtrans : unit -> expr list;;
+val find_all_negtrans_left : head -> (expr * goalness) list;;
+val find_all_negtrans_right : head -> (expr * goalness) list;;
+val find_all_negtrans : unit -> (expr * goalness) list;;
 
 (* ==== proof cache ==== *)
 

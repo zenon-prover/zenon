@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.12 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.13 2005-11-13 22:49:11 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
@@ -9,6 +9,8 @@ Version.add "$Id: ext_coqbool.ml,v 1.12 2005-11-09 15:18:24 doligez Exp $";;
 (* FIXME TODO:
    warning s'il y a une definition de Is_true, __g_and_b, etc.
 *)
+
+open Printf;;
 
 open Expr;;
 open Misc;;
@@ -34,13 +36,13 @@ let add_formula e = ();;
 let remove_formula e = ();;
 
 let wrong_arity s =
-  Error.warn (Printf.sprintf "defined symbol %s is used with wrong arity" s);
+  Error.warn (sprintf "defined symbol %s is used with wrong arity" s)
 ;;
 
 let istrue e = eapp ("Is_true", [e]);;
 let isfalse e = enot (eapp ("Is_true", [e]));;
 
-let newnodes_istrue e =
+let newnodes_istrue e g =
   match e with
   | Eapp ("Is_true**__g_and_b", [e1; e2], _) ->
       let branches = [| [eand (istrue e1, istrue e2)] |] in
@@ -48,6 +50,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "and", [e1; e2]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Eapp ("Is_true**__g_or_b", [e1; e2], _) ->
@@ -56,6 +59,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "or", [e1; e2]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Eapp ("Is_true**__g_xor_b", [e1; e2], _) ->
@@ -64,6 +68,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "xor", [e1; e2]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Eapp ("Is_true**__g_not_b", [e1], _) ->
@@ -72,6 +77,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "not", [e1]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Enot (Eapp ("Is_true**__g_and_b", [e1; e2], _), _) ->
@@ -80,6 +86,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "notand", [e1; e2]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Enot (Eapp ("Is_true**__g_or_b", [e1; e2], _), _) ->
@@ -88,6 +95,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "notor", [e1; e2]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Enot (Eapp ("Is_true**__g_xor_b", [e1; e2], _), _) ->
@@ -96,6 +104,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "notxor", [e1; e2]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Enot (Eapp ("Is_true**__g_not_b", [e1], _), _) ->
@@ -104,6 +113,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "notnot", [e1]);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }; Stop ]
   | Eapp ("Is_true", [Evar ("true", _)], _) -> [Stop]
@@ -114,6 +124,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "false", []);
         nprio = Arity;
+        ngoal = g;
         nbranches = [| |];
       }; Stop ]
   | Enot (Eapp ("Is_true", [Evar ("true", _)], _), _) ->
@@ -121,6 +132,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "nottrue", []);
         nprio = Arity;
+        ngoal = g;
         nbranches = [| |];
       }; Stop ]
   | Enot (Eapp ("=", [Evar ("true", _); Evar ("false", _)], _), _) -> [Stop]
@@ -130,6 +142,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "truefalse", []);
         nprio = Arity;
+        ngoal = g;
         nbranches = [| |];
       }; Stop ]
   | Eapp ("=", [Evar ("false", _); Evar ("true", _)], _) ->
@@ -137,6 +150,7 @@ let newnodes_istrue e =
         nconc = [e];
         nrule = Ext ("coqbool", "falsetrue", []);
         nprio = Arity;
+        ngoal = g;
         nbranches = [| |];
       }; Stop ]
 (*
@@ -153,6 +167,7 @@ let newnodes_istrue e =
           nconc = [e];
           nrule = Definition (d, e, unfolded);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
         }; Stop ]
       with
@@ -169,6 +184,7 @@ let newnodes_istrue e =
             nconc = [e];
             nrule = Definition (d, e, unfolded);
             nprio = Arity;
+            ngoal = g;
             nbranches = branches;
         }; Stop ]
       with
@@ -181,6 +197,7 @@ let newnodes_istrue e =
           nconc = [e];
           nrule = Ext ("coqbool", "merge", []);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Eapp (s, args, _) when is_prefix 0 "Is_true**" s ->
@@ -190,6 +207,7 @@ let newnodes_istrue e =
           nconc = [e];
           nrule = Ext ("coqbool", "split", []);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       } ]
   | Enot (Eapp ("Is_true", [Eapp (s, args, _)], _), _) ->
@@ -198,6 +216,7 @@ let newnodes_istrue e =
           nconc = [e];
           nrule = Ext ("coqbool", "merge", []);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Enot (Eapp (s, args, _), _) when is_prefix 0 "Is_true**" s ->
@@ -207,6 +226,7 @@ let newnodes_istrue e =
           nconc = [e];
           nrule = Ext ("coqbool", "split", []);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       } ]
   | _ -> []
@@ -216,7 +236,7 @@ let ite_branches pat cond thn els =
   [| [istrue cond; pat thn]; [isfalse cond; pat els] |]
 ;;
 
-let newnodes_ifthenelse e =
+let newnodes_ifthenelse e g =
   match e with
   | Eapp ("Is_true**(__g_ifthenelse _)", [cond; thn; els], _) ->
       let branches = ite_branches istrue cond thn els in
@@ -224,6 +244,7 @@ let newnodes_ifthenelse e =
           nconc = [e];
           nrule = Ext ("coqbool", "ite_bool", [cond; thn; els]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Enot (Eapp ("Is_true**(__g_ifthenelse _)", [cond; thn; els], _), _) ->
@@ -232,6 +253,7 @@ let newnodes_ifthenelse e =
           nconc = [e];
           nrule = Ext ("coqbool", "ite_bool_n", [cond; thn; els]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Eapp (r, [Eapp ("(__g_ifthenelse _)", [cond; thn; els], _); e2], _)
@@ -242,6 +264,7 @@ let newnodes_ifthenelse e =
           nconc = [e];
           nrule = Ext ("coqbool", "ite_rel_l", [e]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [cond; thn; els], _)], _)
@@ -252,6 +275,7 @@ let newnodes_ifthenelse e =
           nconc = [e];
           nrule = Ext ("coqbool", "ite_rel_r", [e]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)", [cond; thn; els], _); e2], _),_)
@@ -262,6 +286,7 @@ let newnodes_ifthenelse e =
           nconc = [e];
           nrule = Ext ("coqbool", "ite_rel_nl", [e]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [cond; thn; els], _)], _),_)
@@ -272,12 +297,13 @@ let newnodes_ifthenelse e =
           nconc = [e];
           nrule = Ext ("coqbool", "ite_rel_nr", [e]);
           nprio = Arity;
+          ngoal = g;
           nbranches = branches;
       }; Stop ]
   | _ -> []
 ;;
 
-let newnodes e = newnodes_istrue e @ newnodes_ifthenelse e;;
+let newnodes e g = newnodes_istrue e g @ newnodes_ifthenelse e g;;
 
 let to_llargs tr_prop tr_term r =
   match r with
@@ -530,7 +556,7 @@ let process_lemma l = { l with proof = process_prooftree l.proof };;
 let postprocess p = List.map process_lemma p;;
 
 let declare_context_coq oc =
-  Printf.fprintf oc "Require Import zenon_coqbool.\n";
+  fprintf oc "Require Import zenon_coqbool.\n";
   ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b";
    "true"; "false"; "(__g_ifthenelse _)"]
 ;;

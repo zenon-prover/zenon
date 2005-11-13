@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.6 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.7 2005-11-13 22:49:11 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -61,6 +61,42 @@ let remove_element tbl k v =
 
 (* ==== *)
 
+let act_head action tbl key v =
+  try
+    match get_head key with
+    | Sym s -> action tbl s v
+    | Tau e -> action tbl "t." v
+    | Wild -> action tbl "" v
+  with No_head -> ()
+;;
+
+let negpos action e =
+  match e with
+  | Enot (f, _) -> act_head action negforms f e;
+  | f -> act_head action posforms f e;
+;;
+
+let cur_num_forms = ref 0;;
+
+let get_all () = HE.fold (fun e g l -> (e, g) :: l) allforms [];;
+
+let member e = HE.mem allforms e;;
+
+let get_goalness e = HE.find allforms e;;
+let add_g e = (e, get_goalness e);;
+
+let find_pos s =
+  try List.map add_g !(Hashtbl.find posforms s)
+  with Not_found -> []
+;;
+
+let find_neg s =
+  try List.map add_g !(Hashtbl.find negforms s)
+  with Not_found -> []
+;;
+
+(* ==== *)
+
 type direction = Left | Right | Both;;
 
 type trans_table = (string * head, expr list ref) Hashtbl.t;;
@@ -99,27 +135,33 @@ let find_all_rel tbl rel =
 ;;
 
 let find_trans_left rel head =
-  if head === Wild
-  then find_all_rel pos_trans_left rel
-  else try_find pos_trans_left (rel, head)
-       @@ (try_find pos_trans_left (rel, Wild))
+  let l =
+    if head === Wild
+    then find_all_rel pos_trans_left rel
+    else try_find pos_trans_left (rel, head)
+         @@ (try_find pos_trans_left (rel, Wild))
+  in
+  List.map add_g l
 ;;
 
 let find_trans_right rel head =
-  if head === Wild
-  then find_all_rel pos_trans_right rel
-  else try_find pos_trans_right (rel, head)
-       @@ (try_find pos_trans_right (rel, Wild))
+  let l =
+    if head === Wild
+    then find_all_rel pos_trans_right rel
+    else try_find pos_trans_right (rel, head)
+         @@ (try_find pos_trans_right (rel, Wild))
+  in
+  List.map add_g l
 ;;
 
 let find_trans_leftonly rel head =
-  let l = find_trans_left rel head in
-  List.filter (fun e -> (HE.find pos_trans_key e) === Left) l
+  let l1 = find_trans_left rel head in
+  List.filter (fun (e, _) -> (HE.find pos_trans_key e) === Left) l1
 ;;
 
 let find_trans_rightonly rel head =
-  let l = find_trans_right rel head in
-  List.filter (fun e -> (HE.find pos_trans_key e) === Right) l
+  let l1 = find_trans_right rel head in
+  List.filter (fun (e, _) -> (HE.find pos_trans_key e) === Right) l1
 ;;
 
 let find_all_head tbl head =
@@ -133,13 +175,15 @@ let find_all_head tbl head =
 ;;
 
 let find_all_trans_leftonly head =
-  let l = find_all_head pos_trans_left head in
-  List.filter (fun e -> (HE.find pos_trans_key e) === Left) l
+  let l1 = find_all_head pos_trans_left head in
+  let l2 = List.filter (fun e -> (HE.find pos_trans_key e) === Left) l1 in
+  List.map add_g l2
 ;;
 
 let find_all_trans_rightonly head =
-  let l = find_all_head pos_trans_right head in
-  List.filter (fun e -> (HE.find pos_trans_key e) === Right) l
+  let l1 = find_all_head pos_trans_right head in
+  let l2 = List.filter (fun e -> (HE.find pos_trans_key e) === Right) l1 in
+  List.map add_g l2
 ;;
 
 let remove_trans e =
@@ -197,47 +241,30 @@ let remove_negtrans e =
 
 let find_negtrans_left rel head =
   assert (head <> Wild);
-  try_find neg_trans_left (rel, head)
+  List.map add_g (try_find neg_trans_left (rel, head))
 ;;
 
 let find_negtrans_right rel head =
   assert (head <> Wild);
-  try_find neg_trans_right (rel, head)
+  List.map add_g (try_find neg_trans_right (rel, head))
 ;;
 
 let find_all_negtrans_left head =
   assert (head <> Wild);
-  try_find all_neg_trans_left head
+  List.map add_g (try_find all_neg_trans_left head)
 ;;
 
 let find_all_negtrans_right head =
   assert (head <> Wild);
-  try_find all_neg_trans_right head
+  List.map add_g (try_find all_neg_trans_right head)
 ;;
 
 let find_all_negtrans () =
-  let f k _ l = k::l in
+  let f k _ l = (add_g k) :: l in
   HE.fold f neg_trans_key []
 ;;
 
 (* ==== *)
-
-let act_head action tbl key v =
-  try
-    match get_head key with
-    | Sym s -> action tbl s v
-    | Tau e -> action tbl "t." v
-    | Wild -> action tbl "" v
-  with No_head -> ()
-;;
-
-let negpos action e =
-  match e with
-  | Enot (f, _) -> act_head action negforms f e;
-  | f -> act_head action posforms f e;
-;;
-
-let cur_num_forms = ref 0;;
 
 let add e g =
   HE.add allforms e g;
@@ -256,22 +283,6 @@ let remove e =
   negpos remove_element e;
   HE.remove allforms e;
   begin try (HE.find proofs e).present <- false with Not_found -> (); end;
-;;
-
-let get_all () = HE.fold (fun e _ l -> e::l) allforms [];;
-
-let member e = HE.mem allforms e;;
-
-let get_goalness e = HE.find allforms e;;
-
-let find_pos s =
-  try !(Hashtbl.find posforms s)
-  with Not_found -> []
-;;
-
-let find_neg s =
-  try !(Hashtbl.find negforms s)
-  with Not_found -> []
 ;;
 
 (* ==== *)

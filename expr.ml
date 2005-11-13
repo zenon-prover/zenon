@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.16 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.17 2005-11-13 22:49:11 doligez Exp $";;
 
 open Misc;;
 
@@ -464,3 +464,5 @@ let rec substitute map e =
       else
         elam (v, t, substitute map1 f)
 ;;
+
+type goalness = int;;

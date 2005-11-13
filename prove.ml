@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.14 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.15 2005-11-13 22:49:11 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -23,13 +23,13 @@ type merge_status =
 ;;
 
 type inst =
-  | Ground of expr
-  | Partial of string * int
+  | Ground of expr * goalness
+  | Partial of string * int * goalness
 ;;
 
 type inst_info = {
   merge : merge_status;
-  formulas : expr list;
+  formulas : (expr * goalness) list;
   terms : inst list;
 };;
 
@@ -139,51 +139,51 @@ let add_inst_form st m form =
 let get_formulas st m = (get_info st m).formulas;;
 let get_terms st m = (get_info st m).terms;;
 
-let make_one_inst inst fm =
+let make_one_inst inst (fm, g2) =
   match inst with
-  | Partial (sym, arity) ->
+  | Partial (sym, arity, g1) ->
       let vars = list_init arity newvar in
       let term = eapp (sym, vars) in
       begin match fm with
       | Eall (v, t, p, m, _) ->
           let n = all_list vars (Expr.substitute [(v, term)] p) in
-          let branches = [| [n] |] in
           {
             nconc = [fm];
             nrule = AllPartial (fm, sym, arity);
             nprio = Inst m;
-            nbranches = branches;
+            ngoal = min g1 g2;
+            nbranches = [| [n] |];
           }
       | Enot (Eex (v, t, p, m, _), _) ->
           let n = enot (ex_list vars (Expr.substitute [(v, term)] p)) in
-          let branches = [| [n] |] in
           {
             nconc = [fm];
             nrule = NotExPartial (fm, sym, arity);
             nprio = Inst m;
-            nbranches = branches;
+            ngoal = min g1 g2;
+            nbranches = [| [n] |];
           }
       | _ -> assert false
       end
-  | Ground (term) ->
+  | Ground (term, g1) ->
       begin match fm with
       | Eall (v, t, p, m, _) ->
           let n = Expr.substitute [(v, term)] p in
-          let branches = [| [n] |] in
           {
             nconc = [fm];
             nrule = All (fm, term);
             nprio = Inst m;
-            nbranches = branches;
+            ngoal = min g1 g2;
+            nbranches = [| [n] |];
           }
       | Enot (Eex (v, t, p, m, _), _) ->
           let n = enot (Expr.substitute [(v, term)] p) in
-          let branches = [| [n] |] in
           {
             nconc = [fm];
             nrule = NotEx (fm, term);
             nprio = Inst m;
-            nbranches = branches;
+            ngoal = min g1 g2;
+            nbranches = [| [n] |];
           }
       | _ -> assert false
       end
@@ -191,8 +191,8 @@ let make_one_inst inst fm =
 
 let inst_equal i1 i2 =
   match i1, i2 with
-  | Ground e1, Ground e2 -> e1 = e2
-  | Partial (s1, a1), Partial (s2, a2) -> s1 =%= s2 && a1 =%= a2
+  | Ground (e1, _), Ground (e2, _) -> e1 = e2
+  | Partial (s1, a1, _), Partial (s2, a2, _) -> s1 =%= s2 && a1 =%= a2
   | _, _ -> false
 ;;
 
@@ -207,41 +207,42 @@ let add_inst st mm i =
   end
 ;;
 
-(* [make_inst st m e]
-   update the state st with the instantiation m <- e
+(* [make_inst st m e g]
+   update the state st with the instantiation m <- e with goalness g
    return the new state and a flag:
      true if the instantiation is full, false if partial
 *)
 
-let make_inst st m e =
+let make_inst st m e g =
   let mm = get_ref st m in
   (* FIXME TODO: canoniser les metavariables de e *)
   if Expr.occurs_as_meta mm e then begin
     match e with
     | Eapp (sym, args, _) ->
-        (add_inst st mm (Partial (sym, List.length args)), false)
+        (add_inst st mm (Partial (sym, List.length args, g)), false)
     | Etau _ ->
-        (add_inst st mm (Ground e), true)
+        (add_inst st mm (Ground (e, g)), true)
     | Emeta _ ->
         (st, false)
     | _ -> assert false
   end else begin
-    (add_inst st mm (Ground e), true)
+    (add_inst st mm (Ground (e, g)), true)
   end
 ;;
 
-(* [make_inst_fm st m fm]
+(* [make_inst_fm st m fm g]
    update the state st with the instantiations of fm by the insts of m
-   and add fm to the forms of m
+   and add fm to the forms of m, where the goalness of fm is g
 *)
-let make_inst_fm st m fm =
+let make_inst_fm st m fm g =
   let mm = get_ref st m in
   let info = get_info st mm in
-  if List.exists (fun x -> x = fm) info.formulas then
+  if List.exists (fun (x, _) -> x = fm) info.formulas then
     st
   else begin
-    let nodes = List.map (fun i -> make_one_inst i fm) info.terms in
-    let st1 = add_inst_form st mm fm in
+    let fmg = (fm, g) in
+    let nodes = List.map (fun i -> make_one_inst i fmg) info.terms in
+    let st1 = add_inst_form st mm fmg in
     add_node_list st1 nodes
   end
 ;;
@@ -251,10 +252,7 @@ let make_cross_inst is fs =
   List.flatten (List.map (f fs) is)
 ;;
 
-let merge_metas st m1 m2 =
-(*
-eprintf "merge %d with %d\n" m1 m2; flush stderr;
-*)
+let merge_metas st m1 m2 g =
   let mm1 = get_ref st m1 in
   let mm2 = get_ref st m2 in
   let info1 = get_info st mm1 in
@@ -268,7 +266,7 @@ eprintf "merge %d with %d\n" m1 m2; flush stderr;
       then (mm1, l1, info1, mm2, l2, info2)
       else (mm2, l2, info2, mm1, l1, info1)
     in
-    let i = Ground (emeta (mmx)) in
+    let i = Ground (emeta (mmx), g) in
     let nodes_m = List.map (make_one_inst i) infoy.formulas in
     let f x = not (List.exists (inst_equal x) infox.terms) in
     let termy = List.filter f infoy.terms in
@@ -309,7 +307,7 @@ let arity_warning s =
   Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
 ;;
 
-let make_notequiv st sym p np =
+let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
   | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _) ->
       assert (s1 =%= s2);
@@ -319,12 +317,12 @@ let make_notequiv st sym p np =
       else
         let myrule = if sym then P_NotP_sym (s1, p, np) else P_NotP (p, np) in
         let myargs1 = if sym then List.rev args1 else args1 in
-        let branches = make_inequals myargs1 args2 in
         add_node st {
           nconc = [p; np];
           nrule = myrule;
           nprio = Arity;
-          nbranches = branches;
+          ngoal = min g ng;
+          nbranches = make_inequals myargs1 args2;
         }
   | _ -> assert false
 ;;
@@ -365,35 +363,39 @@ and decomp_disj neg accu f =
   | _ -> f :: accu
 ;;
 
-let newnodes_absurd st fm =
+let newnodes_absurd st fm g =
   match fm with
   | Enot (p, _) when Index.member p -> add_node st {
       nconc = [fm; p];
       nrule = Close (p);
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | p when Index.member (enot p) -> add_node st {
       nconc = [p; enot p];
       nrule = Close (p);
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | _ -> st, false
 ;;
 
-let newnodes_closure st fm =
+let newnodes_closure st fm g =
   match fm with
   | Efalse -> add_node st {
       nconc = [fm];
       nrule = False;
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | Enot (Etrue, _) -> add_node st {
       nconc = [fm];
       nrule = NotTrue;
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | Enot (Eapp (s, [a; b], _), _) when Eqrel.refl s && Expr.equal a b ->
@@ -401,6 +403,7 @@ let newnodes_closure st fm =
       nconc = [fm];
       nrule = Close_refl (s, a);
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | Eapp (s, [e1; e2], _)
@@ -409,6 +412,7 @@ let newnodes_closure st fm =
       nconc = [fm; (enot (eapp (s, [e2; e1])))];
       nrule = Close_sym (s, e1, e2);
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | Enot (Eapp (s, [e1; e2], _), _)
@@ -417,21 +421,22 @@ let newnodes_closure st fm =
       nconc = [fm; (eapp (s, [e2; e1]))];
       nrule = Close_sym (s, e2, e1);
       nprio = Arity;
+      ngoal = g;
       nbranches = [| |];
     }, true
   | _ -> st, false
 ;;
 
-let newnodes_jtree st fm =
+let newnodes_jtree st fm g =
   match fm with
   | Eand _ | Enot (Eor _, _) | Enot (Eimply _, _)
     when is_conj fm 3 == 0 ->
-      let branches = [| decomp_conj false [] fm |] in
       add_node st {
         nconc = [fm];
         nrule = ConjTree fm;
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| decomp_conj false [] fm |];
       }, true
   | Eor _ | Enot (Eand _, _) | Eimply _
     when is_disj fm 3 == 0 ->
@@ -441,155 +446,158 @@ let newnodes_jtree st fm =
         nconc = [fm];
         nrule = DisjTree fm;
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }, true
   | _ -> st, false
 ;;
 
-let newnodes_alpha st fm =
+let newnodes_alpha st fm g =
   match fm with
   | Enot (Enot (a, _), _) ->
-      let branches = [| [a] |] in
       add_node st {
         nconc = [fm];
         nrule = NotNot (a);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [a] |];
       }, true
   | Eand (a, b, _) ->
-      let branches = [| [a; b] |] in
       add_node st {
         nconc = [fm];
         nrule = And (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [a; b] |];
       }, true
   | Enot (Eor (a, b, _), _) ->
-      let branches = [| [enot (a); enot (b)] |] in
       add_node st {
         nconc = [fm];
         nrule = NotOr (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [enot (a); enot (b)] |];
       }, true
   | Enot (Eimply (a, b, _), _) ->
-      let branches = [| [a; enot (b)] |] in
       add_node st {
         nconc = [fm];
         nrule = NotImpl (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [a; enot (b)] |];
       }, true
   | _ -> st, false
 ;;
 
-let newnodes_beta st fm =
+let newnodes_beta st fm g =
   match fm with
   | Eor (a, b, _) ->
-      let branches = [| [a]; [b] |] in
       add_node st {
         nconc = [fm];
         nrule = Or (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [a]; [b] |];
       }, true
   | Eimply (a, b, _) ->
-      let branches = [| [enot (a)]; [b] |] in
       add_node st {
         nconc = [fm];
         nrule = Impl (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [enot (a)]; [b] |];
       }, true
   | Enot (Eand (a, b, _), _) ->
-      let branches = [| [enot (a)]; [enot (b)] |] in
       add_node st {
         nconc = [fm];
         nrule = NotAnd (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [enot (a)]; [enot (b)] |];
       }, true
   | Eequiv (a, b, _) ->
-      let branches = [| [enot (a); enot (b)]; [a; b] |] in
       add_node st {
         nconc = [fm];
         nrule = Equiv (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [enot (a); enot (b)]; [a; b] |];
       }, true
   | Enot (Eequiv (a, b, _), _) ->
-      let branches = [| [enot (a); b]; [a; enot (b)] |] in
       add_node st {
         nconc = [fm];
         nrule = NotEquiv (a, b);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [enot (a); b]; [a; enot (b)] |];
       }, true
   | _ -> st, false
 ;;
 
-let newnodes_delta st fm =
+let newnodes_delta st fm g =
   match fm with
   | Eex (v, t, p, _, _) ->
-      let branches = [| [Expr.substitute [(v, etau (v, t, p))] p] |] in
       add_node st {
         nconc = [fm];
         nrule = Ex (fm);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [Expr.substitute [(v, etau (v, t, p))] p] |];
       }, true
   | Enot (Eall (v, t, p, _, _), _) ->
       let np = enot (p) in
-      let branches = [| [Expr.substitute [(v, etau (v, t, np))] np] |] in
       add_node st {
         nconc = [fm];
         nrule = NotAll (fm);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [Expr.substitute [(v, etau (v, t, np))] np] |];
       }, true
   | _ -> st, false
 ;;
 
-let newnodes_gamma st fm =
+let newnodes_gamma st fm g =
   match fm with
   | Eall (v, t, p, m, _) ->
       let mm = get_ref st m in
       let w = emeta (mm) in
       let branches = [| [Expr.substitute [(v, w)] p] |] in
-      let st1 = make_inst_fm st mm fm in
+      let st1 = make_inst_fm st mm fm g in
       add_node st1 {
         nconc = [fm];
         nrule = All (fm, w);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }, true
   | Enot (Eex (v, t, p, m, _), _) ->
       let mm = get_ref st m in
       let w = emeta (mm) in
       let branches = [| [enot (Expr.substitute [(v, w)] p)] |] in
-      let st1 = make_inst_fm st mm fm in
+      let st1 = make_inst_fm st mm fm g in
       add_node st1 {
         nconc = [fm];
         nrule = NotEx (fm, w);
         nprio = Arity;
+        ngoal = g;
         nbranches = branches;
       }, true
   | _ -> st, false
 ;;
 
-let newnodes_unfold st fm =
+let newnodes_unfold st fm g =
   match fm with
   | Eapp (p, args, _) when Index.has_def p ->
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = substitute subst body in
-        let branches = [| [unfolded] |] in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
             nprio = Arity;
-            nbranches = branches;
+            ngoal = g;
+            nbranches = [| [unfolded] |];
         }, true
       with
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
@@ -600,12 +608,12 @@ let newnodes_unfold st fm =
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = enot (substitute subst body) in
-        let branches = [| [unfolded] |] in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
             nprio = Arity;
-            nbranches = branches;
+            ngoal = g;
+            nbranches = [| [unfolded] |];
         }, true
       with
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
@@ -616,12 +624,12 @@ let newnodes_unfold st fm =
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = eapp (s, [substitute subst body; e]) in
-        let branches = [| [unfolded] |] in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
             nprio = Arity;
-            nbranches = branches;
+            ngoal = g;
+            nbranches = [| [unfolded] |];
         }, true
       with
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
@@ -632,12 +640,12 @@ let newnodes_unfold st fm =
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = eapp (s, [e; substitute subst body]) in
-        let branches = [| [unfolded] |] in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
             nprio = Arity;
-            nbranches = branches;
+            ngoal = g;
+            nbranches = [| [unfolded] |];
         }, true
       with
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
@@ -649,12 +657,12 @@ let newnodes_unfold st fm =
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = enot (eapp (s, [substitute subst body; e])) in
-        let branches = [| [unfolded] |] in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
             nprio = Arity;
-            nbranches = branches;
+            ngoal = g;
+            nbranches = [| [unfolded] |];
         }, true
       with
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
@@ -666,12 +674,12 @@ let newnodes_unfold st fm =
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
         let unfolded = enot (eapp (s, [e; substitute subst body])) in
-        let branches = [| [unfolded] |] in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
             nprio = Arity;
-            nbranches = branches;
+            ngoal = g;
+            nbranches = [| [unfolded] |];
         }, true
       with
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
@@ -680,112 +688,112 @@ let newnodes_unfold st fm =
 
   | Evar (v, _) when Index.has_def v ->
       let (d, params, body) = Index.get_def v in
-      let branches = [| [body] |] in
       if params <> [] then (arity_warning v; (st, false))
       else
         add_node st {
           nconc = [fm];
           nrule = Definition (d, fm, body);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = [| [body] |];
         }, true
   | Enot (Evar (v, _), _) when Index.has_def v ->
       let (d, params, body) = Index.get_def v in
       let unfolded = enot body in
-      let branches = [| [unfolded] |] in
       if params <> [] then (arity_warning v; (st, false))
       else
         add_node st {
           nconc = [fm];
           nrule = Definition (d, fm, unfolded);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = [| [unfolded] |];
         }, true
   | Eapp (s, [Evar (v, _); e], _) when Eqrel.any s && Index.has_def v ->
       let (d, params, body) = Index.get_def v in
       let unfolded = eapp (s, [body; e]) in
-      let branches = [| [unfolded] |] in
       if params <> [] then (arity_warning v; (st, false))
       else
         add_node st {
           nconc = [fm];
           nrule = Definition (d, fm, unfolded);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = [| [unfolded] |];
         }, true
   | Eapp (s, [e; Evar (v, _)], _) when Eqrel.any s && Index.has_def v ->
       let (d, params, body) = Index.get_def v in
       let unfolded = eapp (s, [e; body]) in
-      let branches = [| [unfolded] |] in
       if params <> [] then (arity_warning v; (st, false))
       else
         add_node st {
           nconc = [fm];
           nrule = Definition (d, fm, unfolded);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = [| [unfolded] |];
         }, true
   | Enot (Eapp (s, [Evar (v, _); e], _), _)
     when Eqrel.any s && Index.has_def v ->
       let (d, params, body) = Index.get_def v in
       let unfolded = enot (eapp (s, [body; e])) in
-      let branches = [| [unfolded] |] in
       if params <> [] then (arity_warning v; (st, false))
       else
         add_node st {
           nconc = [fm];
           nrule = Definition (d, fm, unfolded);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = [| [unfolded] |];
         }, true
   | Enot (Eapp (s, [e; Evar (v, _)], _), _)
     when Eqrel.any s && Index.has_def v ->
       let (d, params, body) = Index.get_def v in
       let unfolded = enot (eapp (s, [e; body])) in
-      let branches = [| [unfolded] |] in
       if params <> [] then (arity_warning v; (st, false))
       else
         add_node st {
           nconc = [fm];
           nrule = Definition (d, fm, unfolded);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = [| [unfolded] |];
         }, true
   | _ -> st, false
 ;;
 
-let newnodes_refl st fm =
+let newnodes_refl st fm g =
   match fm with
   | Enot (Eapp (s, [e1; e2], _), _) when s <> "=" && Eqrel.refl s ->
-      let branches = [| [enot (eapp ("=", [e1; e2]))] |] in
       add_node st {
         nconc = [fm];
         nrule = Refl (s, e1, e2);
         nprio = Arity;
-        nbranches = branches;
+        ngoal = g;
+        nbranches = [| [enot (eapp ("=", [e1; e2]))] |];
       }, false
 
   | Enot (Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _), _) ->
-      merge_metas st m1 m2, true
+      merge_metas st m1 m2 g, true
 
-  | Enot (Eapp ("=", [Emeta (m, _); e], _), _) -> make_inst st m e
-  | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) -> make_inst st m e
+  | Enot (Eapp ("=", [Emeta (m, _); e], _), _) -> make_inst st m e g
+  | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) -> make_inst st m e g
 
   | _ -> st, false
 ;;
 
-let newnodes_match_congruence st fm =
+let newnodes_match_congruence st fm g =
   match fm with
   | Enot (Eapp ("=", [(Eapp (f1, a1, _) as e1);
                       (Eapp (f2, a2, _) as e2)], _), _)
     when f1 =%= f2 ->
       if List.length a1 == List.length a2 then begin
-        let branches = make_inequals a1 a2 in
         add_node st {
           nconc = [fm];
           nrule = NotEqual (e1, e2);
           nprio = Arity;
-          nbranches = branches;
+          ngoal = g;
+          nbranches = make_inequals a1 a2;
         }, false
       end else (arity_warning f1; (st, false))
 (*
@@ -799,7 +807,7 @@ let newnodes_match_congruence st fm =
   | _ -> st, false
 ;;
 
-let mknode_trans sym e1 e2 =
+let mknode_trans sym (e1, g1) (e2, g2) =
   let (r, a, b, c, d) =
     match e1, e2 with
     | Eapp (r, [a; b], _), Enot (Eapp (rr, [c; d], _), _) ->
@@ -816,13 +824,14 @@ let mknode_trans sym e1 e2 =
     nconc = [e1; e2];
     nrule = if sym then Trans_sym (e1, e2) else Trans (e1, e2);
     nprio = Arity;
+    ngoal = min g1 g2;
     nbranches = branches;
   }
 ;;
 
-let mknode_negtrans sym e2 e1 = mknode_trans sym e1 e2;;
+let mknode_negtrans sym eg2 eg1 = mknode_trans sym eg1 eg2;;
 
-let mknode_transeq sym e1 e2 =
+let mknode_transeq sym (e1, g1) (e2, g2) =
   let (r, a, b, c, d) =
     match e1, e2 with
     | Eapp ("=", [a; b], _), Enot (Eapp (r, [c; d], _), _) -> (r, a, b, c, d)
@@ -838,25 +847,31 @@ let mknode_transeq sym e1 e2 =
     nconc = [e1; e2];
     nrule = if sym then TransEq_sym (a, b, e2) else TransEq (a, b, e2);
     nprio = Arity;
+    ngoal = min g1 g2;
     nbranches = branches;
   }
 ;;
 
-let mknode_negtranseq sym e2 e1 = mknode_transeq sym e1 e2;;
+let mknode_negtranseq sym eg2 eg1 = mknode_transeq sym eg1 eg2;;
 
-let get_rhs e =
+let get_rhs (e, g) =
   match e with
-  | Eapp (_, [f1; f2], _) -> f2
+  | Eapp (_, [f1; f2], _) -> (f2, g)
   | _ -> assert false
 ;;
 
-let get_lhs e =
+let get_lhs (e, g) =
   match e with
-  | Eapp (_, [f1; f2], _) -> f1
+  | Eapp (_, [f1; f2], _) -> (f1, g)
   | _ -> assert false
 ;;
 
-let newnodes_match_trans st fm =
+let preunif_g e1 (e2, g2) =
+  List.map (fun (m, e) -> (m, e, g2)) (preunify e1 e2)
+;;
+
+let newnodes_match_trans st fm g =
+  let fmg = (fm, g) in
   match fm with
   | Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _) ->
       if m2 > m1 then begin
@@ -864,14 +879,14 @@ let newnodes_match_trans st fm =
         let matches_ll = Index.find_all_negtrans () in
         let matches_rl = matches_ll in
         let nodes = List.flatten [
-          List.map (mknode_transeq false fm) matches_ll;
-          List.map (mknode_transeq true fm) matches_rl;
+          List.map (mknode_transeq false fmg) matches_ll;
+          List.map (mknode_transeq true fmg) matches_rl;
         ] in
         let st1 = add_node_list st nodes in
         let crit_r = Index.find_all_trans_rightonly Index.Wild in
         let crit_l = Index.find_all_trans_leftonly Index.Wild in
         let pairs = (List.map get_lhs crit_l) @@ (List.map get_rhs crit_r) in
-        let f (st, _) e = make_inst st m1 e in
+        let f (st, _) (e, g2) = make_inst st m1 e (min g g2) in
         let (st2, _) = List.fold_left f (st1, true) pairs in
         (st2, true)
       end else begin
@@ -879,14 +894,14 @@ let newnodes_match_trans st fm =
         let matches_rr = Index.find_all_negtrans () in
         let matches_lr = matches_rr in
         let nodes = List.flatten [
-          List.map (mknode_trans false fm) matches_rr;
-          List.map (mknode_trans true fm) matches_lr;
+          List.map (mknode_trans false fmg) matches_rr;
+          List.map (mknode_trans true fmg) matches_lr;
         ] in
         let st1 = add_node_list st nodes in
         let crit_l = Index.find_all_trans_leftonly Index.Wild in
         let crit_r = Index.find_all_trans_rightonly Index.Wild in
         let pairs = (List.map get_rhs crit_r) @@ (List.map get_lhs crit_l) in
-        let f (st, _) e = make_inst st m2 e in
+        let f (st, _) (e, g2) = make_inst st m2 e (min g g2) in
         let (st2, _) = List.fold_left f (st1, true) pairs in
         (st2, true)
       end
@@ -896,8 +911,8 @@ let newnodes_match_trans st fm =
         let matches_ll = Index.find_neg s in
         let matches_rl = if Eqrel.sym s then matches_ll else [] in
         let nodes = List.flatten [
-          List.map (mknode_trans false fm) matches_ll;
-          List.map (mknode_trans true fm) matches_rl;
+          List.map (mknode_trans false fmg) matches_ll;
+          List.map (mknode_trans true fmg) matches_rl;
         ] in
         let st1 = add_node_list st nodes in
         let crit_r = Index.find_trans_rightonly s Index.Wild in
@@ -905,7 +920,7 @@ let newnodes_match_trans st fm =
           if Eqrel.sym s then Index.find_trans_leftonly s Index.Wild else []
         in
         let pairs = (List.map get_lhs crit_l) @@ (List.map get_rhs crit_r) in
-        let f (st, _) e = make_inst st m1 e in
+        let f (st, _) (e, g2) = make_inst st m1 e (min g g2) in
         let (st2, _) = List.fold_left f (st1, true) pairs in
         (st2, true)
       end else begin
@@ -913,8 +928,8 @@ let newnodes_match_trans st fm =
         let matches_rr = Index.find_neg s in
         let matches_lr = if Eqrel.sym s then matches_rr else [] in
         let nodes = List.flatten [
-          List.map (mknode_trans false fm) matches_rr;
-          List.map (mknode_trans true fm) matches_lr;
+          List.map (mknode_trans false fmg) matches_rr;
+          List.map (mknode_trans true fmg) matches_lr;
         ] in
         let st1 = add_node_list st nodes in
         let crit_l = Index.find_trans_leftonly s Index.Wild in
@@ -922,7 +937,7 @@ let newnodes_match_trans st fm =
           if Eqrel.sym s then Index.find_trans_rightonly s Index.Wild else []
         in
         let pairs = (List.map get_rhs crit_r) @@ (List.map get_lhs crit_l) in
-        let f (st, _) e = make_inst st m2 e in
+        let f (st, _) (e, g2) = make_inst st m2 e (min g g2) in
         let (st2, _) = List.fold_left f (st1, true) pairs in
         (st2, true)
       end
@@ -932,16 +947,16 @@ let newnodes_match_trans st fm =
       let matches_rr = Index.find_all_negtrans_right h2 in
       let matches_lr = Index.find_all_negtrans_left h2 in
       let nodes = List.flatten [
-        List.map (mknode_transeq false fm) matches_rr;
-        List.map (mknode_transeq true fm) matches_lr;
+        List.map (mknode_transeq false fmg) matches_rr;
+        List.map (mknode_transeq true fmg) matches_lr;
       ] in
       let st1 = add_node_list st nodes in
       let crit_l = Index.find_all_trans_leftonly h2 in
       let crit_r = Index.find_all_trans_rightonly h2 in
-      let pairs_l = List.map (fun e -> preunify e2 (get_lhs e)) crit_l in
-      let pairs_r = List.map (fun e -> preunify e2 (get_rhs e)) crit_r in
+      let pairs_l = List.map (fun e -> preunif_g e2 (get_lhs e)) crit_l in
+      let pairs_r = List.map (fun e -> preunif_g e2 (get_rhs e)) crit_r in
       let pairs = List.flatten (pairs_r @@ pairs_l) in
-      let f (st, _) (m, e) = make_inst st m e in
+      let f (st, _) (m, e, g2) = make_inst st m e (min g g2) in
       let (st2, _) = List.fold_left f (st1, true) pairs in
       (st2, true)
   | Eapp (s, [Emeta _; e2], _) when Eqrel.trans s ->
@@ -952,17 +967,17 @@ let newnodes_match_trans st fm =
         if Eqrel.sym s then Index.find_negtrans_left s h2 else []
       in
       let nodes = List.flatten [
-        List.map (mknode_trans false fm) matches_rr;
-        List.map (mknode_trans true fm) matches_lr;
+        List.map (mknode_trans false fmg) matches_rr;
+        List.map (mknode_trans true fmg) matches_lr;
       ] in
       let st1 = add_node_list st nodes in
       let crit_l = Index.find_trans_leftonly s h2 in
       let crit_r = if Eqrel.sym s then Index.find_trans_rightonly s h2 else []
       in
-      let pairs_l = List.map (fun e -> preunify e2 (get_lhs e)) crit_l in
-      let pairs_r = List.map (fun e -> preunify e2 (get_rhs e)) crit_r in
+      let pairs_l = List.map (fun e -> preunif_g e2 (get_lhs e)) crit_l in
+      let pairs_r = List.map (fun e -> preunif_g e2 (get_rhs e)) crit_r in
       let pairs = List.flatten (pairs_r @@ pairs_l) in
-      let f (st, _) (m, e) = make_inst st m e in
+      let f (st, _) (m, e, g2) = make_inst st m e (min g g2) in
       let (st2, _) = List.fold_left f (st1, true) pairs in
       (st2, true)
   | Eapp ("=", [e1; Emeta _], _) ->
@@ -971,16 +986,16 @@ let newnodes_match_trans st fm =
       let matches_ll = Index.find_all_negtrans_left h1 in
       let matches_rl = Index.find_all_negtrans_right h1 in
       let nodes = List.flatten [
-        List.map (mknode_transeq false fm) matches_ll;
-        List.map (mknode_transeq true fm) matches_rl;
+        List.map (mknode_transeq false fmg) matches_ll;
+        List.map (mknode_transeq true fmg) matches_rl;
       ] in
       let st1 = add_node_list st nodes in
       let crit_r = Index.find_all_trans_rightonly h1 in
       let crit_l = Index.find_all_trans_leftonly h1 in
-      let pairs_r = List.map (fun e -> preunify e1 (get_rhs e)) crit_r in
-      let pairs_l = List.map (fun e -> preunify e1 (get_lhs e)) crit_l in
+      let pairs_r = List.map (fun e -> preunif_g e1 (get_rhs e)) crit_r in
+      let pairs_l = List.map (fun e -> preunif_g e1 (get_lhs e)) crit_l in
       let pairs = List.flatten (pairs_l @@ pairs_r) in
-      let f (st, _) (m, e) = make_inst st m e in
+      let f (st, _) (m, e, g2) = make_inst st m e (min g g2) in
       let (st2, _) = List.fold_left f (st1, true) pairs in
       (st2, true)
   | Eapp (s, [e1; Emeta _], _) when Eqrel.trans s ->
@@ -991,16 +1006,16 @@ let newnodes_match_trans st fm =
         if Eqrel.sym s then Index.find_negtrans_right s h1 else []
       in
       let nodes = List.flatten [
-        List.map (mknode_trans false fm) matches_ll;
-        List.map (mknode_trans true fm) matches_rl;
+        List.map (mknode_trans false fmg) matches_ll;
+        List.map (mknode_trans true fmg) matches_rl;
       ] in
       let st1 = add_node_list st nodes in
       let crit_r = Index.find_trans_rightonly s h1 in
       let crit_l = if Eqrel.sym s then Index.find_trans_leftonly s h1 else [] in
-      let pairs_r = List.map (fun e -> preunify e1 (get_rhs e)) crit_r in
-      let pairs_l = List.map (fun e -> preunify e1 (get_lhs e)) crit_l in
+      let pairs_r = List.map (fun e -> preunif_g e1 (get_rhs e)) crit_r in
+      let pairs_l = List.map (fun e -> preunif_g e1 (get_lhs e)) crit_l in
       let pairs = List.flatten (pairs_l @@ pairs_r) in
-      let f (st, _) (m, e) = make_inst st m e in
+      let f (st, _) (m, e, g2) = make_inst st m e (min g g2) in
       let (st2, _) = List.fold_left f (st1, true) pairs in
       (st2, true)
   | Eapp ("=", [e1; e2], _) ->
@@ -1012,10 +1027,10 @@ let newnodes_match_trans st fm =
       let matches_lr = Index.find_all_negtrans_left h2 in
       let matches_rl = Index.find_all_negtrans_right h1 in
       let nodes = List.flatten [
-        List.map (mknode_transeq false fm) matches_ll;
-        List.map (mknode_transeq true fm) matches_lr;
-        List.map (mknode_transeq true fm) matches_rl;
-        List.map (mknode_transeq false fm) matches_rr;
+        List.map (mknode_transeq false fmg) matches_ll;
+        List.map (mknode_transeq true fmg) matches_lr;
+        List.map (mknode_transeq true fmg) matches_rl;
+        List.map (mknode_transeq false fmg) matches_rr;
       ] in
       add_node_list st nodes, true
   | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
@@ -1030,10 +1045,10 @@ let newnodes_match_trans st fm =
         if Eqrel.sym s then Index.find_negtrans_right s h1 else []
       in
       let nodes = List.flatten [
-        List.map (mknode_trans false fm) matches_ll;
-        List.map (mknode_trans true fm) matches_lr;
-        List.map (mknode_trans true fm) matches_rl;
-        List.map (mknode_trans false fm) matches_rr;
+        List.map (mknode_trans false fmg) matches_ll;
+        List.map (mknode_trans true fmg) matches_lr;
+        List.map (mknode_trans true fmg) matches_rl;
+        List.map (mknode_trans false fmg) matches_rr;
       ] in
       add_node_list st nodes, true
   | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
@@ -1047,10 +1062,10 @@ let newnodes_match_trans st fm =
       let matches_rl = if Eqrel.sym s then Index.find_trans_left s h2 else []
       in
       let nodes = List.flatten [
-        List.map (mknode_negtrans false fm) matches_ll;
-        List.map (mknode_negtrans true fm) matches_lr;
-        List.map (mknode_negtrans true fm) matches_rl;
-        List.map (mknode_negtrans false fm) matches_rr;
+        List.map (mknode_negtrans false fmg) matches_ll;
+        List.map (mknode_negtrans true fmg) matches_lr;
+        List.map (mknode_negtrans true fmg) matches_rl;
+        List.map (mknode_negtrans false fmg) matches_rr;
       ] in
       let eqnodes =
         if s =%= "=" then [] else
@@ -1063,56 +1078,58 @@ let newnodes_match_trans st fm =
           if Eqrel.sym s then Index.find_trans_left "=" h2 else []
         in
         List.flatten [
-          List.map (mknode_negtranseq false fm) eqmatches_ll;
-          List.map (mknode_negtranseq true fm) eqmatches_lr;
-          List.map (mknode_negtranseq true fm) eqmatches_rl;
-          List.map (mknode_negtranseq false fm) eqmatches_rr;
+          List.map (mknode_negtranseq false fmg) eqmatches_ll;
+          List.map (mknode_negtranseq true fmg) eqmatches_lr;
+          List.map (mknode_negtranseq true fmg) eqmatches_rl;
+          List.map (mknode_negtranseq false fmg) eqmatches_rr;
         ]
       in
       add_node_list st (eqnodes @@ nodes), true
   | _ -> st, false
 ;;
 
-let newnodes_match_sym st fm =
+let newnodes_match_sym st fm g =
+  let fmg = (fm, g) in
   match fm with
   | Enot (Eapp (s, [a1; a2], _), _) when Eqrel.sym s ->
-      let do_match st p = make_notequiv st true p fm in
+      let do_match st pg = make_notequiv st true pg fmg in
       List.fold_left do_match st (Index.find_pos s), false
   | Eapp (s, [a1; a2], _) when Eqrel.sym s ->
-      let do_match st p = make_notequiv st true fm p in
+      let do_match st pg = make_notequiv st true fmg pg in
       List.fold_left do_match st (Index.find_neg s), false
   | _ -> (st, false)
 ;;
 
-let newnodes_match st fm =
+let newnodes_match st fm g =
+  let fmg = (fm, g) in
   match fm with
   | Enot (Eapp (s, _, _), _) ->
-      let do_match st p = make_notequiv st false p fm in
+      let do_match st pg = make_notequiv st false pg fmg in
       List.fold_left do_match st (Index.find_pos s), true
   | Eapp (s, _, _) ->
-      let do_match st p = make_notequiv st false fm p in
+      let do_match st pg = make_notequiv st false fmg pg in
       List.fold_left do_match st (Index.find_neg s), true
   | _ -> (st, false)
 ;;
 
-let newnodes_preunif st fm =
+let newnodes_preunif st fm g =
   match fm with
   | Enot (Eapp (s, _, _), _) ->
-      let do_match st p =
-        let f st1 (m, e) = fst (make_inst st1 m e) in
+      let do_match st (p, g2) =
+        let f st1 (m, e) = fst (make_inst st1 m e (min g g2)) in
         List.fold_left f st (preunify p fm)
       in
       List.fold_left do_match st (Index.find_pos s), false
   | Eapp (s, _, _) ->
-      let do_match st p =
-        let f st1 (m, e) = fst (make_inst st1 m e) in
+      let do_match st (p, g2) =
+        let f st1 (m, e) = fst (make_inst st1 m e (min g g2)) in
         List.fold_left f st (preunify p fm)
       in
       List.fold_left do_match st (Index.find_neg s), false
   | _ -> (st, false)
 ;;
 
-let newnodes_useless st fm =
+let newnodes_useless st fm g =
   match fm with
   | Evar (v, _)
   | Enot (Evar (v, _), _)
@@ -1124,7 +1141,7 @@ let newnodes_useless st fm =
   | Emeta _ | Etau _ | Elam _ | Enot ((Emeta _ | Etau _ | Elam _), _)
     ->
       if !Globals.warnings_flag then begin
-        fprintf stderr "add_nodes: unexpected formula meta/tau";
+        fprintf stderr "add_nodes: unexpected formula meta/tau/lambda";
         Print.expr (Print.Chan stderr) fm;
         printf "\n";
       end;
@@ -1134,9 +1151,9 @@ let newnodes_useless st fm =
 
 (* TODO permettre aux extensions de modifier l'etat ? *)
 
-let add_nodes st fm =
+let add_nodes st fm g =
   let combine (state, stop) f =
-    if stop then (state, true) else f state fm
+    if stop then (state, true) else f state fm g
   in
   let (st1, stop1) =
     List.fold_left combine (st, false) [
@@ -1144,7 +1161,7 @@ let add_nodes st fm =
       newnodes_closure;
     ]
   in
-  let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm) in
+  let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm g) in
   let insert_node s n = {s with queue = insert s.queue n} in
   let st2 = List.fold_left insert_node st1 newnodes2 in
   let (st3, stop3) =
@@ -1356,12 +1373,12 @@ let check_limits () =
   if !progress_period < 1 then progress_period := 1;
   progress_last := tm;
   if tm > !Globals.time_limit then begin
-    eprintf " time out\n";
+    Error.err "time out";
     flush stderr;
     raise NoProof;
   end;
   if float heap_size > !Globals.size_limit then begin
-    eprintf " size out\n";
+    Error.err "size out";
     flush stderr;
     raise NoProof;
   end;
@@ -1370,9 +1387,6 @@ let check_limits () =
 let rec refute_aux stk st forms =
   match forms with
   | [] ->
-(*
-eprintf "queue sizes = %s\n" (Node.size st.queue); flush stderr;
-*)
       if good_head st.queue then begin
         match Index.search_proof () with
         | Some p -> p.mlrefc <- p.mlrefc + 1; unwind stk (Closed p)
@@ -1380,12 +1394,12 @@ eprintf "queue sizes = %s\n" (Node.size st.queue); flush stderr;
       end else begin
         next_node stk st
       end
-  | Eapp (s, [e1; e2], _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
+  | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
       refute_aux stk st fms
-  | fm :: fms ->
-      Index.add fm 0;
+  | (fm, g) :: fms ->
+      Index.add fm g;
       Extension.add_formula fm;
-      refute_aux stk (add_nodes st fm) fms
+      refute_aux stk (add_nodes st fm g) fms
 
 and refute stk st forms =
   Step.forms "refute" forms;
@@ -1418,7 +1432,7 @@ and next_branch stk n st brstate =
       let fr = {node = n; state = st; brst = brstate; curbr = i} in
       incr cur_depth;
       if !cur_depth > !top_depth then top_depth := !cur_depth;
-      refute (fr :: stk) st n.nbranches.(i)
+      refute (fr :: stk) st (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
   | None ->
       let (n1, brstate1) = remove_virtual_branch n brstate in
       let result = make_result n1 brstate1 in
@@ -1475,12 +1489,11 @@ let prove defs l =
     List.iter Index.add_def defs;
     let al = Gc.create_alarm (ticker false) in
     let rl = reduce_initial_list [] l in
-    let wl = rm_goalness rl in
     Globals.inferences := 0;
     Globals.proof_nodes := 0;
     cur_depth := 0;
     top_depth := 0;
-    let result = refute [] {queue = empty; inst = IntMap.empty} wl in
+    let result = refute [] {queue = empty; inst = IntMap.empty} rl in
     Gc.delete_alarm al;
     ticker true ();
     Progress.end_progress "";
