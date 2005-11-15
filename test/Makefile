@@ -1,5 +1,5 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.5 2005-11-15 17:17:06 doligez Exp $
+#  $Id: Makefile,v 1.6 2005-11-15 18:14:14 doligez Exp $
 
 ZOPT = -q -x coqbool -max-time 10m -max-size 500M
 
@@ -10,9 +10,9 @@ COQTEST = 00 01 02    04 05 06 07 08 09 \
              21 22 23 24 25 26 27 28 29 \
 	  30 31 32 33 34 35 36 37 38 39 \
              41 42 43 44 45 46 47 48 49 \
-          50 51 52 53 54 55 56 57 58 59 \
+             51 52 53 54 55 56 57 58 59 \
           60 61 62 63 64 65 66 67 68 69 \
-          70 71 72       75
+          70 71 72    74 75
 
 COQTESTTERM = ${COQTEST}
 COQTESTSCRIPT = ${COQTEST}
