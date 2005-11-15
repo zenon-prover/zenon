@@ -1,6 +1,2 @@
-$sig R ("nat") "Prop"
-$sig f ("nat") "nat"
-
-(A. ((x "nat") (\/ (R x) (R (f x)))))
-# (A. ((x "nat") (\/ (-. (R x)) (-. (R (f (f x)))))))
-$goal (E. ((x "nat") (/\ (R x) (R (f (f x))))))
+(A. ((x) (\/ (R x) (R (f x)))))
+$goal (E. ((x) (/\ (R x) (R (f (f x))))))

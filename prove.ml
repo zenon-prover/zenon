@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.15 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.16 2005-11-15 17:17:06 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -894,8 +894,8 @@ let newnodes_match_trans st fm g =
         let matches_rr = Index.find_all_negtrans () in
         let matches_lr = matches_rr in
         let nodes = List.flatten [
-          List.map (mknode_trans false fmg) matches_rr;
-          List.map (mknode_trans true fmg) matches_lr;
+          List.map (mknode_transeq false fmg) matches_rr;
+          List.map (mknode_transeq true fmg) matches_lr;
         ] in
         let st1 = add_node_list st nodes in
         let crit_l = Index.find_all_trans_leftonly Index.Wild in

@@ -1,9 +1,9 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: version.ml,v 1.23 2005-11-15 15:02:26 doligez Exp $  *)
+(*  $Id: version.ml,v 1.24 2005-11-15 17:17:06 doligez Exp $  *)
 
 open Printf;;
 
-let number = 29;;      (* strictly increasing *)
+let number = 31;;      (* strictly increasing *)
 let date = "2005-11-15";;
 
 let major = 0;;
@@ -17,7 +17,7 @@ let full = sprintf "%d.%d.%d [%d] %s" major minor bugfix number date;;
 (* CVS version strings *)
 
 let version_list =
-   ref ["$Id: version.ml,v 1.23 2005-11-15 15:02:26 doligez Exp $"]
+   ref ["$Id: version.ml,v 1.24 2005-11-15 17:17:06 doligez Exp $"]
 ;;
 
 let add x = (version_list := x :: !version_list);;

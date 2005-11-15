@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.16 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.17 2005-11-15 17:17:06 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -49,7 +49,7 @@ let extract_meta_types phrases =
 
 let get_type m =
   try Hashtbl.find meta_types_table m
-  with Not_found -> assert false
+  with Not_found -> "?"
 ;;
 
 let type_to_ident s =

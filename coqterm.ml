@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.20 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.21 2005-11-15 17:17:06 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -27,7 +27,7 @@ type coqproof =
   Phrase.phrase list * (string * coqterm) list * string * coqterm
 ;;
 
-let lemma_env = (Hashtbl.create 97 : (string, coqterm) Hashtbl.t);;
+let lemma_env = (Hashtbl.create 97 : (string, string list) Hashtbl.t);;
 
 let mapping = ref [];;
 
@@ -56,39 +56,40 @@ exception Unused_variable of string;;
 let synthesize s =
   let ty = Mltoll.get_meta_type s in
   match ty with
-  | "?" -> assert false (* FIXME infer the type from context? *)
+  | "?" -> "z'any" (* FIXME all_list should get the types from context *)
   | "" | "z'U" -> "z'any"
   | "nat" -> "(0)"
   | _ -> raise (Unused_variable ty)
 ;;
 
-let rec trexpr e =
+let rec trexpr env e =
   match e with
-  | Evar (v, _) when Mltoll.is_meta v -> Cvar (synthesize v)
+  | Evar (v, _) when Mltoll.is_meta v && not (List.mem v env) ->
+      Cvar (synthesize v)
   | Evar (v, _) -> Cvar v
   | Emeta _ -> assert false
-  | Eapp (f, args, _) -> Capp (Cvar f, List.map trexpr args)
-  | Enot (e1, _) -> Cnot (trexpr e1)
-  | Eand (e1, e2, _) -> Cand (trexpr e1, trexpr e2)
-  | Eor (e1, e2, _) -> Cor (trexpr e1, trexpr e2)
-  | Eimply (e1, e2, _) -> Cimply (trexpr e1, trexpr e2)
-  | Eequiv (e1, e2, _) -> Cequiv (trexpr e1, trexpr e2)
+  | Eapp (f, args, _) -> Capp (Cvar f, List.map (trexpr env) args)
+  | Enot (e1, _) -> Cnot (trexpr env e1)
+  | Eand (e1, e2, _) -> Cand (trexpr env e1, trexpr env e2)
+  | Eor (e1, e2, _) -> Cor (trexpr env e1, trexpr env e2)
+  | Eimply (e1, e2, _) -> Cimply (trexpr env e1, trexpr env e2)
+  | Eequiv (e1, e2, _) -> Cequiv (trexpr env e1, trexpr env e2)
   | Etrue -> Cvar "True"
   | Efalse -> Cvar "False"
-  | Eall (Evar (v, _), t, e1, _, _) -> Call (v, t, trexpr e1)
+  | Eall (Evar (v, _), t, e1, _, _) -> Call (v, t, trexpr (v::env) e1)
   | Eall _ -> assert false
-  | Eex (Evar (v, _), t, e1, _, _) -> Cex (v, t, trexpr e1)
+  | Eex (Evar (v, _), t, e1, _, _) -> Cex (v, t, trexpr (v::env) e1)
   | Eex _ -> assert false
   | Etau _ -> assert false
-  | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr e1)
+  | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr (v::env) e1)
   | Elam _ -> assert false
 ;;
 
-let tropt e = if !Globals.short_flag then Cwild else trexpr e;;
-let trpred v ty p = Clam (v, Cty ty, trexpr p);;
+let tropt env e = if !Globals.short_flag then Cwild else trexpr env e;;
+let trpred env v ty p = Clam (v, Cty ty, trexpr env p);;
 
-let mklam v t = Clam (getname v, tropt v, t);;
-let mklams args t = List.fold_right mklam args t;;
+let mklam env v t = Clam (getname v, tropt env v, t);;
+let mklams env args t = List.fold_right (mklam env) args t;;
 
 let rec common_prefix accu l1 l2 l3 =
   match l1, l2, l3 with
@@ -97,8 +98,14 @@ let rec common_prefix accu l1 l2 l3 =
   | _, _, _ -> (List.rev accu, l1, l2, l3)
 ;;
 
-let rec trtree node =
+let rec trtree env node =
   let {conc = conc; rule = rule; hyps = hyps} = node in
+  let trexpr = trexpr env in
+  let tropt = tropt env in
+  let trpred = trpred env in
+  let mklam = mklam env in
+  let tr_subtree_1 = tr_subtree_1 env in
+  let tr_subtree_2 = tr_subtree_2 env in
   match rule with
   | Rfalse -> getv (efalse)
   | Rnottrue -> Capp (Cvar "zenon_nottrue", [getv (enot (etrue))])
@@ -203,7 +210,7 @@ let rec trtree node =
       let (common, args1, args2, hyps) = common_prefix [] args1 args2 hyps in
       let pref = Capp (Cvar p, List.map trexpr common) in
       let peq = Capp (Cvar "zenon_equal_base", [Cwild; pref]) in
-      let ppeqq = make_equals peq pref args1 pref args2 hyps in
+      let ppeqq = make_equals env peq pref args1 pref args2 hyps in
       let vp = getv pp in
       let vnq = getv nqq in
       Capp (Cvar "zenon_pnotp", [tropt pp; tropt qq; ppeqq; vp; vnq])
@@ -213,7 +220,7 @@ let rec trtree node =
       let (common, args1, args2, hyps) = common_prefix [] args1 args2 hyps in
       let pref = Capp (Cvar f, List.map trexpr common) in
       let feg = Capp (Cvar "zenon_equal_base", [Cwild; pref]) in
-      let ffegg = make_equals feg pref args1 pref args2 hyps in
+      let ffegg = make_equals env feg pref args1 pref args2 hyps in
       let fdg = getv (enot (eapp ("=", [ff; gg]))) in
       let optf = tropt ff in
       let optg = tropt gg in
@@ -224,35 +231,36 @@ let rec trtree node =
       Clet (getname unfolded, getv folded, sub)
   | Rextension (name, args, c, hs) ->
       let metargs = List.map trexpr args in
-      let hypargs = List.map2 mklams hs (List.map trtree hyps) in
+      let hypargs = List.map2 (mklams env) hs (List.map (trtree env) hyps) in
       let conargs = List.map getv c in
       Capp (Cvar name, metargs @ hypargs @ conargs)
   | Rlemma (name, args) ->
-      Hashtbl.find lemma_env name
+      let args = Hashtbl.find lemma_env name in
+      Capp (Cvar name, List.map (fun x -> trexpr (evar x)) args)
 
-and tr_subtree_1 l =
+and tr_subtree_1 env l =
   match l with
-  | [t] -> trtree t
+  | [t] -> trtree env t
   | _ -> assert false
 
-and tr_subtree_2 l =
+and tr_subtree_2 env l =
   match l with
-  | [t1; t2] -> (trtree t1, trtree t2)
+  | [t1; t2] -> (trtree env t1, trtree env t2)
   | _ -> assert false
 
-and make_equals peq p argsp q argsq hyps =
+and make_equals env peq p argsp q argsq hyps =
   match argsp, argsq, hyps with
   | [], [], [] -> peq
   | hp::tp, hq::tq, hh::th ->
-      let thp = trexpr hp in
-      let thq = trexpr hq in
-      let lam = mklam (enot (eapp ("=", [hp; hq]))) (trtree hh) in
+      let thp = trexpr env hp in
+      let thq = trexpr env hq in
+      let lam = mklam env (enot (eapp ("=", [hp; hq]))) (trtree env hh) in
       let neweq = Capp (Cvar "zenon_equal_step",
                         [Cwild; Cwild; p; q; thp; thq; peq; lam])
       in
       let newp = Capp (p, [thp]) in
       let newq = Capp (q, [thq]) in
-      make_equals neweq newp tp newq tq th
+      make_equals env neweq newp tp newq tq th
   | _, _, _ -> assert false
 ;;
 
@@ -272,14 +280,15 @@ let rec rm_lambdas l term =
 let compare_hyps (name1, _) (name2, _) = Pervasives.compare name1 name2;;
 
 let make_lemma { name = name; params = params; proof = proof } =
+  let pars = List.map (fun (x, y) -> (x, Cty y)) params in
+  let parenv = List.map fst params in
   let f x = not (is_mapped x) || is_goal x in
   let hyps = List.filter f proof.conc in
-  let hyps0 = List.map (fun x -> (getname x, trexpr x)) hyps in
+  let hyps0 = List.map (fun x -> (getname x, trexpr parenv x)) hyps in
   let hyps1 = List.sort compare_hyps hyps0 in
-  let pars = List.map (fun (x, y) -> (x, Cty y)) params in
   let formals = pars @ hyps1 in
-  let actuals = List.map (fun (x, _) -> trexpr (evar x)) formals in
-  (make_lambdas formals (trtree proof), name, actuals)
+  let actuals = List.map fst formals in
+  (make_lambdas formals (trtree parenv proof), name, actuals)
 ;;
 
 let rec trp l =
@@ -289,7 +298,7 @@ let rec trp l =
       in ([], rm_lambdas thargs thproof, thname, thargs)
   | h::t ->
       let (lem, name, args) = make_lemma h in
-      Hashtbl.add lemma_env name (Capp (Cvar name, args));
+      Hashtbl.add lemma_env name args;
       let (lemmas, thproof, thname, thargs) = trp t in
       ((name, lem) :: lemmas, thproof, thname, thargs)
   | [] -> assert false
@@ -324,7 +333,7 @@ let trproof phrases l =
     let (lemmas, raw, th_name, formals) = trp l in
     match get_goal phrases with
     | Some goal ->
-        let trg = tropt goal in
+        let trg = tropt [] goal in
         let term = Capp (Cvar "NNPP", [Cwild; Clam ("z'goal", trg, raw)]) in
         (phrases, lemmas, th_name, term)
     | None -> (phrases, lemmas, th_name, raw)
@@ -471,8 +480,8 @@ let print_lemma oc (name, t) =
 let print_theorem oc (name, t) phrases =
   let prefix = sprintf "Definition %s:" name in
   begin match get_goal phrases with
-  | Some (Enot (g, _)) -> pr_oc oc prefix (trexpr g);
-  | None -> pr_oc oc prefix (trexpr efalse);
+  | Some (Enot (g, _)) -> pr_oc oc prefix (trexpr [] g);
+  | None -> pr_oc oc prefix (trexpr [] efalse);
   | _ -> assert false
   end;
   fprintf oc ":=\n";
@@ -591,17 +600,17 @@ let declare_hyp oc h =
   match h with
   | Phrase.Hyp ("z'goal", _, _) -> ()
   | Phrase.Hyp (name, stmt, _) ->
-      pr_oc oc (sprintf "Parameter %s : " name) (trexpr stmt);
+      pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] stmt);
       fprintf oc ".\n";
   | Phrase.Def (DefReal (sym, [], body)) ->
       let prefix = sprintf "Definition %s := " sym in
-      pr_oc oc prefix (trexpr body);
+      pr_oc oc prefix (trexpr [] body);
       fprintf oc ".\n";
   | Phrase.Def (DefReal (sym, params, body)) ->
       fprintf oc "Definition %s := fun" sym;
       List.iter (print_var oc) params;
       fprintf oc " =>\n";
-      pr_oc oc "" (trexpr body);
+      pr_oc oc "" (trexpr [] body);
       fprintf oc ".\n";
   | Phrase.Def _ -> assert false
   | Phrase.Sig (sym, args, res) ->

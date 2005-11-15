@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.6 2005-11-15 15:02:26 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.7 2005-11-15 17:17:06 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -60,8 +60,7 @@ let compare_nodes n1 n2 =
 ;;
 
 let use_goalness = true;;
-(* ist_small and ist_old must both be even *)
-let ist_small = 16;;
+let ist_small = 16;;         (* ist_small must be even *)
 let ist_old = 2;;
 let ist_max = ist_small + ist_old;;
 

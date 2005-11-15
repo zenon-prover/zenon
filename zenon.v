@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.4 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.5 2005-11-15 17:17:06 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -85,6 +85,7 @@ Lemma zenon_pnotp : forall P Q : Prop,
   (P = Q) -> (P -> ~Q -> False).
   intros P Q Ha. rewrite Ha. auto. Qed.
 
+(*
 Lemma zenon_eqnoteq : forall (T : Type) (a b c d : T),
   (a <> c -> False) -> (b <> d -> False) -> (a = b -> c <> d -> False).
   intros T a b c d Hac Hbd e ne.
@@ -93,6 +94,7 @@ Lemma zenon_eqnoteq : forall (T : Type) (a b c d : T),
   apply ne.
   congruence.
   Qed.
+*)
 
 Lemma zenon_notequal : forall (T : Type) (a b : T),
   (a = b) -> (a <> b -> False).
@@ -107,7 +109,9 @@ Definition zenon_notor_s := fun P Q a b => zenon_notor P Q b a.
 Definition zenon_notimply_s := fun P Q a b => zenon_notimply P Q b a.
 Definition zenon_notequiv_s := fun P Q a b c => zenon_notequiv P Q b c a.
 Definition zenon_pnotp_s := fun P Q a b c => zenon_pnotp P Q c a b.
+(*
 Definition zenon_eqnoteq_s :=
    fun T a b c d x y z t => zenon_eqnoteq T a b c d z t x y
 .
+*)
 Definition zenon_notequal_s := fun T a b x y => zenon_notequal T a b y x.
