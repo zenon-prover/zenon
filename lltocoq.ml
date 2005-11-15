@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.24 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.25 2005-11-15 18:13:45 doligez Exp $";;
 
 open Printf
 
@@ -363,7 +363,7 @@ let proof_rule ppvernac = function
     if !debug then ppvernac [< '"(* definition *)\n" >];
     let hname = gen_name h in
     ppvernac [< str "pose ("; hname; str " := "; gen_name c; str "); unfold ";
-                str s; str " in "; hname >];
+                str s; str " in "; hname; coqend >];
     0
   | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
     assert (f = g);
