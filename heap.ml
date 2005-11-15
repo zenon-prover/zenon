@@ -1,5 +1,5 @@
 (*  Copyright 2001 INRIA  *)
-Version.add "$Id: heap.ml,v 1.4 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: heap.ml,v 1.5 2005-11-15 15:02:26 doligez Exp $";;
 
 type 'a tree =
   | Node of 'a * 'a tree * 'a tree
@@ -59,12 +59,19 @@ let head hp =
   | Node (y, _, _) -> Some y
 ;;
 
-let rec length_aux = function
+let rec length_aux t =
+  match t with
   | Leaf -> 0
   | Node (_, b1, b2) -> 1 + length_aux b1 + length_aux b2
 ;;
 
 let length hp = length_aux hp.tree;;
+
+let is_empty hp =
+  match hp.tree with
+  | Leaf -> true
+  | Node _ -> false
+;;
 
 let rec iter_aux f = function
   | Leaf -> ()

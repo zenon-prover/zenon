@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.3 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.4 2005-11-15 15:02:26 doligez Exp $";;
 
 open Printf;;
 
@@ -278,15 +278,13 @@ hyp_def:
 ;
 
 dep_hyp_def:
-  | DEPENDS ON hyp_def
-      { ($3, true) }
-  | hyp_def
-      { ($1, false) }
+  | DEPENDS ON hyp_def         { ($3, true) }
+  | hyp_def                    { ($1, false) }
 ;
 
 hyp_def_list:
   | dep_hyp_def hyp_def_list   { $1 :: $2 }
-  | /* empty */                        { [] }
+  | /* empty */                { [] }
 ;
 
 %%

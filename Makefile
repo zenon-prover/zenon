@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.26 2005-11-13 22:49:11 doligez Exp $
+#  $Id: Makefile,v 1.27 2005-11-15 15:02:26 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -10,7 +10,7 @@ CAMLOPTFLAGS = ${CAMLFLAGS} ${OPTDEBUGFLAGS}
 CAMLC = ocamlc
 CAMLCFLAGS = ${CAMLFLAGS} ${BYTDEBUGFLAGS}
 
-CAMLLEX = ocamllex -q
+CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
 MODULES = version misc heap globals error progress expr \

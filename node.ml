@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.5 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.6 2005-11-15 15:02:26 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -44,7 +44,7 @@ type queue = {
   binary : node list;
   nary : node list;
   inst_state : int;
-  inst_size : node Heap.t;
+  inst_size : (int * node Heap.t) list;
   inst_front : node list;
   inst_back : node list;
 };;
@@ -59,8 +59,10 @@ let compare_nodes n1 n2 =
   get_size n1 - get_size n2
 ;;
 
-let ist_small = 4;;
-let ist_old = 1;;
+let use_goalness = true;;
+(* ist_small and ist_old must both be even *)
+let ist_small = 16;;
+let ist_old = 2;;
 let ist_max = ist_small + ist_old;;
 
 let empty = {
@@ -69,10 +71,24 @@ let empty = {
   binary = [];
   nary = [];
   inst_state = 0;
-  inst_size = Heap.empty compare_nodes;
+  inst_size = [];
   inst_front = [];
   inst_back = [];
 };;
+
+let insert_by_goalness l n =
+  let gness = if use_goalness then n.ngoal else 0 in
+  let h = try List.assoc gness l with Not_found -> Heap.empty compare_nodes in
+  let nh = Heap.insert h n in
+  let rec list_insert i e l =
+    match l with
+    | [] -> [(i, e)]
+    | (j, _) :: t when j = i -> (i, e) :: t
+    | (j, _) :: _ when j > i -> (i, e) :: l
+    | h::t -> h :: (list_insert i e t)
+  in
+  list_insert gness nh l
+;;
 
 let insert q n =
   match n.nprio with
@@ -88,10 +104,53 @@ let insert q n =
       | Mlproof.All _ | Mlproof.NotEx _ ->
           { q with
             inst_back = n::q.inst_back;
-            inst_size = Heap.insert q.inst_size n;
+            inst_size = insert_by_goalness q.inst_size n;
           }
       | _ -> {q with inst_back = n::q.inst_back}
       end
+;;
+
+let remove_by_goalness ist l =
+  let rec remove_at i l =
+    match l with
+    | [] -> None
+    | (j, h) :: t when j < i ->
+        begin match remove_at i t with
+        | None -> None
+        | Some (x, nl) -> Some (x, (j,h)::nl)
+        end
+    | (j, h) :: t ->
+        begin match Heap.remove h with
+        | None -> remove_at i t
+        | Some (x, nh) -> Some (x, (j,nh)::t)
+        end
+  in
+  if ist mod 2 = 0 then begin
+    remove_at 0 l
+  end else begin
+    let better r1 r2 =
+      match r1, r2 with
+      | None, _ -> false
+      | _, None -> true
+      | Some n1, Some n2 -> compare_nodes n1 n2 < 0
+    in
+    let rec find_best i hd l =
+      match l with
+      | [] -> i
+      | (j, h) :: t ->
+          let hd2 = Heap.head h in
+          if better hd2 hd
+          then find_best j hd2 t
+          else find_best i hd t
+    in
+    remove_at (find_best 0 None l) l
+  end
+;;
+
+let rec is_empty l =
+  match l with
+  | [] -> true
+  | (i, h) :: t -> Heap.is_empty h && is_empty t
 ;;
 
 let rec remove q =
@@ -100,15 +159,15 @@ let rec remove q =
   | { unary = h::t } -> Some (h, {q with unary = t})
   | { binary = h::t } -> Some (h, {q with binary = t})
   | { nary = h::t } -> Some (h, {q with nary = t})
-  | { inst_state = ist; inst_size = hp } when ist < ist_small ->
-      begin match Heap.remove hp with
-      | Some (h, hp) -> Some (h, {q with inst_state = ist + 1; inst_size = hp})
+  | { inst_state = ist; inst_size = hpl } when ist < ist_small ->
+      begin match remove_by_goalness ist hpl with
+      | Some (x, l) -> Some (x, {q with inst_state = ist + 1; inst_size = l})
       | None -> remove {q with inst_state = ist_small}
       end
   | { inst_state = ist; inst_front = h::t } ->
       Some (h, {q with inst_front = t; inst_state = (ist + 1) mod ist_max})
-  | { inst_back = []; inst_size = hp } ->
-      if Heap.length hp = 0 then None
+  | { inst_back = []; inst_size = hpl } ->
+      if is_empty hpl then None
       else remove {q with inst_state = 0}
   | { inst_back = l } -> remove {q with inst_front = List.rev l; inst_back = []}
 ;;
