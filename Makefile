@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.27 2005-11-15 15:02:26 doligez Exp $
+#  $Id: Makefile,v 1.28 2005-11-16 14:51:42 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -34,8 +34,9 @@ COQOBJ = ${COQMODULES:%=%.vo}
 
 include .config_var
 
-.PHONY: default
-default: all
+.PHONY: all
+all: zenon zenon.opt zenon.byt ${COQOBJ}
+
 
 zenon.opt: ${OBJOPT}
 	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${ADDOPT} ${OBJOPT}
@@ -53,6 +54,11 @@ install:
 	mkdir -p "${LIBDIR}"
 	cp ${COQSRC} ${COQOBJ} "${LIBDIR}"/
 
+.PHONY: uninstall
+uninstall:
+	rm -f "${BINDIR}"/zenon
+	cd "${LIBDIR}"; rm -f ${COQSRC} ${COQOBJ}
+
 .PHONY: logo
 logo: zenon-logo.png zenon-logo-small.png
 
@@ -64,9 +70,6 @@ zenon-logo.png: zenon-logo.ps
 # "convert" is part of ImageMagick
 zenon-logo-small.png: zenon-logo.png
 	convert zenon-logo.png -resize 10% zenon-logo-small.png
-
-.PHONY: all
-all: zenon zenon.opt zenon.byt ${COQOBJ}
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
@@ -136,6 +139,10 @@ clean:
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml
 	rm -f zenon zenon.opt zenon.byt dummy_coqc8
 	rm -f zenon-logo.png zenon-logo-small.png
+
+.PHONY: archclean
+archclean: clean
+	rm -f .config_var
 
 .PHONY: depend
 depend: ${IMPL} ${INTF}
