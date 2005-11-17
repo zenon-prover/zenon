@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.7 2005-11-15 17:17:06 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.8 2005-11-17 12:39:07 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -49,20 +49,23 @@ type queue = {
   inst_back : node list;
 };;
 
-let compare_nodes n1 n2 =
-  let get_size n =
-    match n.nrule with
-    | Mlproof.All (_, e) | Mlproof.NotEx (_, e) ->
-        size e + 5 * count_metas e
-    | _ -> assert false
-  in
-  get_size n1 - get_size n2
-;;
+let k_meta_mul = 5;;
+let k_tau_div = 5;;
 
 let use_goalness = true;;
 let ist_small = 16;;         (* ist_small must be even *)
 let ist_old = 2;;
 let ist_max = ist_small + ist_old;;
+
+let compare_nodes n1 n2 =
+  let get_size n =
+    match n.nrule with
+    | Mlproof.All (_, e) | Mlproof.NotEx (_, e) ->
+        size e + count_metas e * k_meta_mul + get_taus e / k_tau_div
+    | _ -> assert false
+  in
+  get_size n1 - get_size n2
+;;
 
 let empty = {
   nullary = [];
