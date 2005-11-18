@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.3 2005-11-18 13:09:59 doligez Exp $";;
 
 open Printf;;
 
@@ -22,6 +22,8 @@ let rec mk_quant q vs body =
 %token AND
 %token OR
 %token NOT
+%token TRUE
+%token FALSE
 %token ALL
 %token EX
 %token EQUAL
@@ -50,7 +52,6 @@ let rec mk_quant q vs body =
 %token XOR
 %token NOR
 %token NAND
-%token NEQUAL
 %token <string> TPANNOT
 
 %nonassoc OPEN
@@ -112,6 +113,8 @@ atom:
                                    { mk_quant eexn $3 $6 }
   | NOT atom                       { enot ($2) }
   | OPEN formula CLOSE             { $2 }
+  | TRUE                           { etrue }
+  | FALSE                          { efalse }
   | expr                           { $1 }
 ;
 var_list:

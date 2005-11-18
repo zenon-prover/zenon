@@ -1,5 +1,5 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.6 2005-11-15 18:14:14 doligez Exp $
+#  $Id: Makefile,v 1.7 2005-11-18 13:09:59 doligez Exp $
 
 ZOPT = -q -x coqbool -max-time 10m -max-size 500M
 
@@ -53,7 +53,7 @@ coq:
 	  echo -n $$i' '; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoqterm -context >tmp_test.v \
-	     && (echo -n $$i coq; coqc tmp_test.v); then \
+	     && (echo -n $$i '-> coqc'; coqc tmp_test.v); then \
 	    echo -n '' ; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \
@@ -67,7 +67,7 @@ coq:
 	  echo -n $$i' '; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoq -context >tmp_test.v \
-	     && (echo -n $$i coq; coqc tmp_test.v); then \
+	     && (echo -n $$i '-> coqc'; coqc tmp_test.v); then \
 	    echo -n '' ; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \

@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lextptp.mll,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: lextptp.mll,v 1.3 2005-11-18 13:09:59 doligez Exp $";;
 
 open Parsetptp;;
 open Lexing;;
@@ -54,6 +54,8 @@ rule token = parse
   | "input_formula"  { INPUT_FORMULA }
   | "fof"            { INPUT_FORMULA }
   | "equal"          { EQUAL }
+  | "$true"          { TRUE }
+  | "$false"         { FALSE }
   | "\'" stringchar + "\'" {
       let s = Lexing.lexeme lexbuf in
       STRING (String.sub s 1 (String.length s - 2))
