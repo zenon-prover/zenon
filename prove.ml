@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.16 2005-11-15 17:17:06 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.17 2005-11-21 18:48:28 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -44,6 +44,7 @@ type state = {
 type branch_state =
   | Open
   | Closed of proof
+  | Backtrack
 ;;
 
 type frame = {
@@ -57,6 +58,7 @@ type frame = {
 
 let cur_depth = ref 0;;
 let top_depth = ref 0;;
+let max_depth = ref 1_000_000_000;;
 
 (****************)
 
@@ -1235,6 +1237,8 @@ let count_meta_list l =
   List.length (sort_uniq (List.flatten (List.map get_metas l)))
 ;;
 
+let rndstate = ref (Random.State.make [| 0 |]);;
+
 let find_open_branch node brstate =
   let last = Array.length brstate - 1 in
   if brstate =%= [| |] then None
@@ -1265,9 +1269,14 @@ let find_open_branch node brstate =
           else len2 - len1
         in
         let l2 = List.sort cmp l1 in
-        begin match l2 with
-        | (_, _, i) :: _ -> Some i
-        | _ -> assert false
+        if !Globals.random_flag then begin
+          let l = List.length l2 in
+          let n = Random.State.int !rndstate l in
+          match List.nth l2 n with (_, _, i) -> Some i
+        end else begin
+          match l2 with
+          | (_, _, i) :: _ -> Some i
+          | _ -> assert false
         end
   end
 ;;
@@ -1330,7 +1339,7 @@ let make_result n nbranches =
   in
   for i = 0 to Array.length nbranches - 1 do
     match nbranches.(i) with
-    | Open -> assert false
+    | Open | Backtrack -> assert false
     | Closed p ->
         proofs := p :: !proofs;
         concs := union (diff p.mlconc n.nbranches.(i)) !concs;
@@ -1432,13 +1441,18 @@ and next_branch stk n st brstate =
       let fr = {node = n; state = st; brst = brstate; curbr = i} in
       incr cur_depth;
       if !cur_depth > !top_depth then top_depth := !cur_depth;
-      refute (fr :: stk) st (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
+      if !cur_depth > !max_depth then begin
+        unwind stk Backtrack
+      end else begin
+        refute (fr :: stk) st (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
+      end
   | None ->
       let (n1, brstate1) = remove_virtual_branch n brstate in
       let result = make_result n1 brstate1 in
       unwind stk result
 
 and unwind stk res =
+  decr cur_depth;
   match stk with
   | [] -> res
   | fr :: stk1 ->
@@ -1450,10 +1464,10 @@ and unwind stk res =
         end;
       in
       List.iter f (List.rev fr.node.nbranches.(fr.curbr));
-      decr cur_depth;
       begin match res with
       | Closed p when disjoint fr.node.nbranches.(fr.curbr) p.mlconc ->
           unwind stk1 res
+      | Backtrack -> unwind stk1 res
       | Closed _ ->
           fr.brst.(fr.curbr) <- res;
           next_branch stk1 fr.node fr.state fr.brst
@@ -1482,24 +1496,37 @@ let ticker finished () =
   if not finished then check_limits ();
 ;;
 
-let rm_goalness l = List.map fst l;;
+let rec iter_refute rl =
+  match refute [] {queue = empty; inst = IntMap.empty} rl with
+  | Backtrack ->
+      max_depth := 2 * !max_depth;
+      Progress.do_progress begin fun () ->
+        eprintf "increase max_depth to %d\n" !max_depth;
+      end;
+      iter_refute rl;
+  | x -> x
+;;
 
 let prove defs l =
+  if !Globals.random_flag then begin
+    rndstate := Random.State.make [| !Globals.random_seed |];
+    max_depth := 100;
+  end;
+  List.iter Index.add_def defs;
+  let al = Gc.create_alarm (ticker false) in
+  let rl = reduce_initial_list [] l in
+  Globals.inferences := 0;
+  Globals.proof_nodes := 0;
+  cur_depth := 0;
+  top_depth := 0;
   try
-    List.iter Index.add_def defs;
-    let al = Gc.create_alarm (ticker false) in
-    let rl = reduce_initial_list [] l in
-    Globals.inferences := 0;
-    Globals.proof_nodes := 0;
-    cur_depth := 0;
-    top_depth := 0;
-    let result = refute [] {queue = empty; inst = IntMap.empty} rl in
-    Gc.delete_alarm al;
-    ticker true ();
-    Progress.end_progress "";
-    match result with
-    | Closed p -> p
-    | Open -> assert false
+    match iter_refute rl with
+    | Closed p ->
+        Gc.delete_alarm al;
+        ticker true ();
+        Progress.end_progress "";
+        p
+    | Open | Backtrack -> assert false
   with NoProof ->
     Progress.end_progress " search failed";
     raise NoProof

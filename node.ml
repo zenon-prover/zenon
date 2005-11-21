@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.8 2005-11-17 12:39:07 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.9 2005-11-21 18:48:28 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -50,7 +50,7 @@ type queue = {
 };;
 
 let k_meta_mul = 5;;
-let k_tau_div = 5;;
+let k_tau_div = 8;;
 
 let use_goalness = true;;
 let ist_small = 16;;         (* ist_small must be even *)

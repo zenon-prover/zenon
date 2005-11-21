@@ -1,7 +1,7 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.7 2005-11-18 13:09:59 doligez Exp $
+#  $Id: Makefile,v 1.8 2005-11-21 18:48:28 doligez Exp $
 
-ZOPT = -q -x coqbool -max-time 10m -max-size 500M
+ZOPT = -q -x coqbool -max-time 10m -max-size 500M ${RND}
 
 BENCH = test13.znn test16.znn test38.znn test41.znn test48.znn
 

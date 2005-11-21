@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.26 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.27 2005-11-21 18:48:28 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -92,6 +92,11 @@ let cvs_version () =
 let files = ref [];;
 let add_file s = files := s :: !files;;
 
+let set_random seed =
+  random_flag := true;
+  random_seed := seed;
+;;
+
 let umsg = "Usage: zenon [options] <file>";;
 
 let rec argspec = [
@@ -150,6 +155,8 @@ let rec argspec = [
       "                display progress messages";
   "-q", Arg.Set quiet_flag,
      "                 suppress proof-found/no-proof/begin-proof/end-proof";
+  "-rnd", Arg.Int set_random,
+       "<seed>         randomize proof search";
   "-stats", Arg.Set stats_flag,
          "             print statistics";
   "-short", Arg.Set short_flag,
