@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.28 2005-11-16 14:51:42 doligez Exp $
+#  $Id: Makefile,v 1.29 2005-12-13 18:19:39 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -25,8 +25,6 @@ IMPL = ${MODULES:%=%.ml}
 INTF = ${MODULES:%=%.mli}
 OBJBYT = ${MODULES:%=%.cmo}
 OBJOPT = ${MODULES:%=%.cmx}
-ADDBYT = unix.cma
-ADDOPT = unix.cmxa
 
 COQMODULES = zenon zenon_coqbool zenon_equiv
 COQSRC = ${COQMODULES:%=%.v}
@@ -39,10 +37,10 @@ all: zenon zenon.opt zenon.byt ${COQOBJ}
 
 
 zenon.opt: ${OBJOPT}
-	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${ADDOPT} ${OBJOPT}
+	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${OBJOPT}
 
 zenon.byt: ${OBJBYT}
-	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${ADDBYT} ${OBJBYT}
+	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${OBJBYT}
 
 zenon: zenon.opt
 	cp zenon.opt zenon
