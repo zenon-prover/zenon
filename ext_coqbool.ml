@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.13 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.14 2005-12-13 18:20:13 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
@@ -382,7 +382,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("(zenon_coqbool_ite_rel_l _ _)", List.map tr_term [rf; c; t; e; e2],
+      ("zenon_coqbool_ite_rel_l", List.map tr_term [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_r",
          [Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [c; t; e], _)], _) as a])
@@ -394,7 +394,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("(zenon_coqbool_ite_rel_r _ _)", List.map tr_term [rf; e1; c; t; e],
+      ("zenon_coqbool_ite_rel_r", List.map tr_term [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nl",
          [Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)",
@@ -407,7 +407,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("(zenon_coqbool_ite_rel_nl _ _)", List.map tr_term [rf; c; t; e; e2],
+      ("zenon_coqbool_ite_rel_nl", List.map tr_term [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nr",
          [Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)",
@@ -420,7 +420,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("(zenon_coqbool_ite_rel_nr _ _)", List.map tr_term [rf; e1; c; t; e],
+      ("zenon_coqbool_ite_rel_nr", List.map tr_term [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | _ -> assert false
 ;;
