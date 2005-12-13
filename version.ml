@@ -1,10 +1,10 @@
 (*  Copyright 2004 INRIA  *)
-let myvers = "$Id: version.ml,v 1.28 2005-11-21 18:48:28 doligez Exp $";;
+let myvers = "$Id: version.ml,v 1.29 2005-12-13 18:20:45 doligez Exp $";;
 
 open Printf;;
 
-let number = 35;;      (* strictly increasing *)
-let date = "2005-11-21";;
+let number = 36;;      (* strictly increasing *)
+let date = "2005-12-13";;
 
 let major = 0;;
 let minor = 4;;

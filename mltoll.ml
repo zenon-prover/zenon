@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.17 2005-11-15 17:17:06 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.18 2005-12-13 18:20:33 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -900,9 +900,9 @@ and translate_pseudo_def_base p def_hyp s body folded unfolded =
       in
       let n2 = make_node [q; nq] (Close q) [] [] in
       if cross then
-        make_node [def_hyp] (Equiv (q, unf)) [[nunf]; [q]] [n1; n2]
+        make_node [def_hyp] (Equiv (a, b)) [[nunf]; [q]] [n1; n2]
       else
-        make_node [def_hyp] (Equiv (q, unf)) [[nq]; [unf]] [n2; n1]
+        make_node [def_hyp] (Equiv (a, b)) [[nq]; [unf]] [n2; n1]
   | Eapp ("=", [_; _], _) when Expr.equal folded (enot def_hyp) ->
       make_node [folded; def_hyp] (Close def_hyp) [] []
   | Eapp ("=", [_; _], _) ->
