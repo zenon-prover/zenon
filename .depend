@@ -82,6 +82,8 @@ lltocoq.cmo: version.cmi phrase.cmi mltoll.cmi llproof.cmi index.cmi \
     globals.cmi expr.cmi coqterm.cmi lltocoq.cmi 
 lltocoq.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \
     globals.cmx expr.cmx coqterm.cmx lltocoq.cmi 
+stamp.cmo: stamp.cmi 
+stamp.cmx: stamp.cmi 
 main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
     phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi lltocoq.cmi \
     llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi extension.cmi \

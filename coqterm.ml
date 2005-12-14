@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.21 2005-11-15 17:17:06 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.22 2005-12-14 16:23:49 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -129,7 +129,7 @@ let rec trtree env node =
       let lamq = mklam q subq in
       let concl = getv (eor (p, q)) in
       Capp (Cvar "zenon_or", [tropt p; tropt q; lamp; lamq; concl])
-  | Rconnect (Imply, p , q) ->
+  | Rconnect (Imply, p, q) ->
       let (subp, subq) = tr_subtree_2 hyps in
       let lamp = mklam (enot p) subp in
       let lamq = mklam q subq in
@@ -430,10 +430,7 @@ let pr_oc oc prefix t =
         let (lams, body) = get_lams [] t in
         bprintf b "(fun%a=>%a)" pr_lams lams pr body;
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
-    | Capp (Cvar "=", []) -> bprintf b "(eq(A:=_))";
-    | Capp (Cvar "=", [t1]) -> bprintf b "(eq %a)" pr t1;
-    | Capp (Cvar "=", [t1; t2]) -> bprintf b "(%a=%a)" pr t1 pr t2;
-    | Capp (Cvar "=", _) -> assert false
+    | Capp (Cvar "=", args) -> bprintf b "(@eq _ %a)" pr_list args;
     | Capp (t1, []) -> pr b t1;
     | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
     | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;

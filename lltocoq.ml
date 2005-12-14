@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.25 2005-11-15 18:13:45 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.26 2005-12-14 16:23:49 doligez Exp $";;
 
 open Printf
 
@@ -43,8 +43,7 @@ let rec constr_of_expr = function
   | Evar (v, _) -> [< 'v >]
   | Eapp ("=", [e1; e2], _) ->
     parth [< constr_of_expr e1; str " = "; constr_of_expr e2 >]
-  | Eapp ("=", [], _) -> [< str "(eq (A:=_))" >]
-  | Eapp ("=", l, _) -> constr_of_expr (eapp ("eq", l))
+  | Eapp ("=", l, _) -> constr_of_expr (eapp ("@eq _", l))
   | Eapp (f, l, _) ->
     parth [< 'f; List.fold_left
                  (fun s e -> [< s; str " "; (constr_of_expr e) >]) [< >] l >]
@@ -361,9 +360,8 @@ let proof_rule ppvernac = function
     0
   | Rdefinition (s, c, h) ->
     if !debug then ppvernac [< '"(* definition *)\n" >];
-    let hname = gen_name h in
-    ppvernac [< str "pose ("; hname; str " := "; gen_name c; str "); unfold ";
-                str s; str " in "; hname; coqend >];
+    ppvernac [< str "assert ("; gen_name h; str " : "; constr_of_expr h;
+                str "); [exact "; gen_name c; str " | idtac]"; coqend >];
     0
   | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
     assert (f = g);
@@ -375,7 +373,7 @@ let proof_rule ppvernac = function
   | Rnotequal _ -> assert false
   | Rpnotp ((Eapp (f, l0, _) as h0), (Enot (Eapp (g, l1, _), _) as h1)) ->
     assert (f = g);
-    let fg = if f = "=" then "eq (A:=_)" else f in
+    let fg = if f = "=" then "@eq _" else f in
     let hyp0 = gen_name h0 in
     let hyp1 = gen_name h1 in
     let (steps, useless) = apply_equal_steps fg (List.rev l0) (List.rev l1) in
@@ -450,9 +448,9 @@ let proof_rule_short ppvernac = function
                 str "; cintro"; hyp4; coqp " ]" >];
     0
   | Rextension (name, args, conc, hyps) ->
-      let wildcard = function _ -> [< str "_" >] in
       ppvernac [< str "apply ("; str name; str "_s";
-                  init_list_of wildcard args " "; list_of gen_name conc "";
+                  init_list_of parth_constr_of_expr args " ";
+                  list_of gen_name conc "";
                   str "); ["; list_of make_intros hyps " | "; coqp "]" >];
       0
   | x -> proof_rule ppvernac x

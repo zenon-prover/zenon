@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.29 2005-12-13 18:19:39 doligez Exp $
+#  $Id: Makefile,v 1.30 2005-12-14 16:23:49 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -19,7 +19,7 @@ MODULES = version misc heap globals error progress expr \
           parsezen lexzen parsetptp lextptp parsecoq lexcoq \
           tptp \
           ext_coqbool ext_equiv coqterm lltocoq \
-          main
+          stamp main
 
 IMPL = ${MODULES:%=%.ml}
 INTF = ${MODULES:%=%.mli}
@@ -36,14 +36,18 @@ include .config_var
 all: zenon zenon.opt zenon.byt ${COQOBJ}
 
 
-zenon.opt: ${OBJOPT}
+zenon.opt: stamp ${OBJOPT}
 	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${OBJOPT}
 
-zenon.byt: ${OBJBYT}
+zenon.byt: stamp ${OBJBYT}
 	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${OBJBYT}
 
 zenon: zenon.opt
 	cp zenon.opt zenon
+
+.PHONY: stamp
+stamp:
+	echo "let stamp = \"`date -u +%Y%m%d%H%M%S`\";;" >stamp.ml
 
 .PHONY: install
 install:

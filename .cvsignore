@@ -22,8 +22,4 @@ header.mli
 gmon.out
 .DS_Store
 parser.output
-
-dummy_coqc8
-
-tmp
- zenon.v zenon_coqbool.v
+stamp.ml

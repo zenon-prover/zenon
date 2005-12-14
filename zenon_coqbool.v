@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_coqbool.v,v 1.7 2005-12-13 18:21:08 doligez Exp $  *)
+(*  $Id: zenon_coqbool.v,v 1.8 2005-12-14 16:23:49 doligez Exp $  *)
 
 Require Export Bool.
 
@@ -215,21 +215,21 @@ Definition zenon_coqbool_ite_bool_n_s :=
 .
 Definition zenon_coqbool_ite_rel_l_s :=
   fun A B r i t e e2 c h1 h2
-  => zenon_coqbool_ite_rel_l (A:=A) (B:=B) r i t e e2 h1 h2 c
+  => @zenon_coqbool_ite_rel_l A B r i t e e2 h1 h2 c
 .
 Implicit Arguments zenon_coqbool_ite_rel_l_s [A B].
 Definition zenon_coqbool_ite_rel_r_s :=
   fun A B r e1 i t e c h1 h2
-  => zenon_coqbool_ite_rel_r (A:=A) (B:=B) r e1 i t e h1 h2 c
+  => @zenon_coqbool_ite_rel_r A B r e1 i t e h1 h2 c
 .
 Implicit Arguments zenon_coqbool_ite_rel_r_s [A B].
 Definition zenon_coqbool_ite_rel_nl_s :=
   fun A B r i t e e2 c h1 h2
-  => zenon_coqbool_ite_rel_nl (A:=A) (B:=B) r i t e e2 h1 h2 c
+  => @zenon_coqbool_ite_rel_nl A B r i t e e2 h1 h2 c
 .
 Implicit Arguments zenon_coqbool_ite_rel_nl_s [A B].
 Definition zenon_coqbool_ite_rel_nr_s :=
   fun A B r e1 i t e c h1 h2
-  => zenon_coqbool_ite_rel_nr (A:=A) (B:=B) r e1 i t e h1 h2 c
+  => @zenon_coqbool_ite_rel_nr A B r e1 i t e h1 h2 c
 .
 Implicit Arguments zenon_coqbool_ite_rel_nr_s [A B].
