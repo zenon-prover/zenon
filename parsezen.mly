@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.3 2006-02-02 22:13:54 doligez Exp $";;
 
 open Printf;;
 
@@ -79,7 +79,7 @@ file:
 phrase:
   | DEF OPEN IDENT ident_list CLOSE expr { Def (DefReal ($3, $4, $6)) }
   | int_opt hyp_name expr                { Hyp ($2, $3, $1) }
-  | GOAL expr                            { Hyp ("z'goal", enot $2, 0) }
+  | GOAL expr                            { Hyp ("z'g", enot $2, 0) }
   | SIG IDENT OPEN string_list CLOSE STRING { Sig ($2, $4, $6) }
 ;
 

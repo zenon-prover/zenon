@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.27 2006-02-02 13:30:03 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.28 2006-02-02 22:13:54 doligez Exp $";;
 
 open Printf
 
@@ -99,12 +99,13 @@ let rec make_params = function
                         str ", "; make_params l >]
 
 let get_goals concl =
-  let not_global_hyp e = not (Coqterm.is_mapped e) in
+  let not_global_hyp e = Coqterm.is_goal e || not (Coqterm.is_mapped e) in
   List.filter not_global_hyp concl
 ;;
 
 let declare_lemma ppvernac name params concl =
-  ppvernac [< str "Lemma "; str name; str " : "; make_params params;
+  ppvernac [< str "Lemma "; str name; str " : ";
+              make_params params;
               make_prod (get_goals concl); coqend >]
 ;;
 

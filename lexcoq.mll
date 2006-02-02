@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.3 2006-02-02 13:30:03 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.4 2006-02-02 22:13:54 doligez Exp $";;
 
 open Parsecoq;;
 open Lexing;;
@@ -110,10 +110,6 @@ rule token = parse
       { BEGINNAME name }
   | "%%" idchar* ":" inline*
       { BEGINHEADER }
-  | "%%statement" inline*
-      { BEGINSTATEMENT }
-  | "%%hypotheses" inline*
-      { BEGINHYPOTHESES }
   | "%%end-auto-proof" inline*
       { ENDPROOF }
 

@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.30 2005-12-14 16:23:49 doligez Exp $
+#  $Id: Makefile,v 1.31 2006-02-02 22:13:54 doligez Exp $
 
 CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
@@ -115,15 +115,6 @@ parsecoq.ml: parsecoq.mly
 	${CAMLYACC} -v parsecoq.mly
 
 parsecoq.mli: parsecoq.ml
-	:
-
-lexer.ml: lexer.mll
-	${CAMLLEX} lexer.mll
-
-parser.ml: parser.mly
-	${CAMLYACC} -v parser.mly
-
-parser.mli: parser.ml
 	:
 
 .v.vo:

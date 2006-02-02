@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.5 2006-02-02 13:30:03 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.6 2006-02-02 22:13:54 doligez Exp $";;
 
 open Printf;;
 
@@ -124,8 +124,6 @@ let mk_let id expr body =
 %token BEGINPROOF
 %token <string> BEGINNAME
 %token BEGINHEADER
-%token BEGINSTATEMENT
-%token BEGINHYPOTHESES
 %token ENDPROOF
 
 %token EOF
@@ -146,14 +144,14 @@ let mk_let id expr body =
 %%
 
 file:
-  | proof_head expr opt_BEGINHYPOTHESES hyp_def_list ENDPROOF EOF
-      { ($1, (Hyp ("z'goal", enot $2, 0), false) :: $4) }
+  | proof_head expr hyp_def_list ENDPROOF EOF
+      { ($1, (Hyp ("z'g", enot $2, 0), false) :: $3) }
   | expr hyp_def_list EOF
-      { ("theorem", (Hyp ("z'goal", enot $1, 0), false) :: $2) }
+      { ("theorem", (Hyp ("z'g", enot $1, 0), false) :: $2) }
 ;
 
 proof_head:
-  | BEGINPROOF proofheaders BEGINNAME proofheaders BEGINSTATEMENT
+  | BEGINPROOF proofheaders BEGINNAME proofheaders
       { $3 }
 ;
 
@@ -161,13 +159,6 @@ proofheaders:
   | /* empty */
       { () }
   | BEGINHEADER proofheaders
-      { () }
-;
-
-opt_BEGINHYPOTHESES:
-  | /* empty */
-      { () }
-  | BEGINHYPOTHESES
       { () }
 ;
 
