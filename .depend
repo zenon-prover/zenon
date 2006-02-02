@@ -56,8 +56,8 @@ parsetptp.cmo: version.cmi phrase.cmi expr.cmi parsetptp.cmi
 parsetptp.cmx: version.cmx phrase.cmx expr.cmx parsetptp.cmi 
 lextptp.cmo: version.cmi parsetptp.cmi error.cmi lextptp.cmi 
 lextptp.cmx: version.cmx parsetptp.cmx error.cmx lextptp.cmi 
-parsecoq.cmo: version.cmi phrase.cmi expr.cmi parsecoq.cmi 
-parsecoq.cmx: version.cmx phrase.cmx expr.cmx parsecoq.cmi 
+parsecoq.cmo: version.cmi phrase.cmi expr.cmi error.cmi parsecoq.cmi 
+parsecoq.cmx: version.cmx phrase.cmx expr.cmx error.cmx parsecoq.cmi 
 lexcoq.cmo: version.cmi parsecoq.cmi error.cmi lexcoq.cmi 
 lexcoq.cmx: version.cmx parsecoq.cmx error.cmx lexcoq.cmi 
 tptp.cmo: version.cmi phrase.cmi parsetptp.cmi lextptp.cmi extension.cmi \
@@ -84,14 +84,14 @@ lltocoq.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \
     globals.cmx expr.cmx coqterm.cmx lltocoq.cmi 
 stamp.cmo: stamp.cmi 
 stamp.cmx: stamp.cmi 
-main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
-    phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi lltocoq.cmi \
-    llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi extension.cmi \
-    error.cmi eqrel.cmi coqterm.cmi main.cmi 
-main.cmx: watch.cmx version.cmx tptp.cmx prove.cmx progress.cmx print.cmx \
-    phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx mltoll.cmx lltocoq.cmx \
-    llproof.cmx lexzen.cmx lextptp.cmx lexcoq.cmx globals.cmx extension.cmx \
-    error.cmx eqrel.cmx coqterm.cmx main.cmi 
+main.cmo: watch.cmi version.cmi tptp.cmi stamp.cmi prove.cmi progress.cmi \
+    print.cmi phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi \
+    lltocoq.cmi llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi \
+    extension.cmi error.cmi eqrel.cmi coqterm.cmi main.cmi 
+main.cmx: watch.cmx version.cmx tptp.cmx stamp.cmx prove.cmx progress.cmx \
+    print.cmx phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx mltoll.cmx \
+    lltocoq.cmx llproof.cmx lexzen.cmx lextptp.cmx lexcoq.cmx globals.cmx \
+    extension.cmx error.cmx eqrel.cmx coqterm.cmx main.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 

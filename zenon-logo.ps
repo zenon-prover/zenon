@@ -1,7 +1,7 @@
 %!
 
 %  Copyright 2004 INRIA
-% $Id: zenon-logo.ps,v 1.5 2005-11-09 15:18:24 doligez Exp $
+% $Id: zenon-logo.ps,v 1.6 2006-02-02 13:30:03 doligez Exp $
 
 % Use ghostscript to translate to png format:
 (
@@ -11,11 +11,23 @@
 
 %%%% background
 
-1.0 0.95 0.67 setrgbcolor
+/frametop    1 def
+/frameleft   1 def
+/frameright  2 def
+/framebottom 2 def
+
+0 0 0 setrgbcolor
 0 0 moveto
 240 0 lineto
 240 80 lineto
 0 80 lineto
+closepath fill
+
+1.0 0.95 0.67 setrgbcolor
+frameleft           framebottom      moveto
+240 frameright sub  framebottom      lineto
+240 frameright sub  80 frametop sub  lineto
+frameleft           80 frametop sub  lineto
 closepath fill
 
 %%%% arrow
@@ -103,13 +115,14 @@ fill
 /kern2 -1 def
 /kern3 -3.5 def
 /kern4 -3.5 def
+/kern5 10 def
 
 0 0 0 setrgbcolor
 x y moveto
 
 /Symbol findfont 48 scalefont setfont
 
-4.7 1 scale
+4.55 1 scale
 (Z) show
 kern1 0 rmoveto
 ratio 1 scale
@@ -123,5 +136,25 @@ ratio 1 scale
 kern4 0 rmoveto
 ratio 1 scale
 (n) show
+kern5 0 rmoveto
+ratio 1 scale
+(e) show
+kern1 0 rmoveto
+ratio 1 scale
+(l) show
+kern2 0 rmoveto
+ratio 1 scale
+
+% whatever... it's unreadable anyway
+
+(e) show
+kern3 0 rmoveto
+ratio 1 scale
+(a) show
+kern4 0 rmoveto
+ratio 1 scale
+(s) show
+kern5 0 rmoveto
+ratio 1 scale
 
 showpage

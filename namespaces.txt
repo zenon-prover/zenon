@@ -1,7 +1,10 @@
 A'*     -> anonymous hypotheses
 H'*     -> local hypotheses
+L'*     -> lemmas
+T'*     -> skolem constants
 V'*     -> gensym variables
 X'*     -> metavariables
-z'U     -> universe
-z'a     -> an arbitrary element of z'U
+
+z'U     -> non-empty universe
+z'a     -> an element of z'U
 z'g     -> the goal

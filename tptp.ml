@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.11 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.12 2006-02-02 13:30:03 doligez Exp $";;
 
 open Printf;;
 
@@ -107,9 +107,9 @@ let rec translate dirs ps =
   | Formula (name, "hypothesis", body) :: t ->
       Hyp (name, body, 1) :: (translate dirs t)
   | Formula (name, "conjecture", body) :: t ->
-      Hyp ("z'goal", enot (body), 0) :: (translate dirs t)
+      Hyp ("z'g", enot (body), 0) :: (translate dirs t)
   | Formula (name, "negated_conjecture", body) :: t ->
-      Hyp ("z'goal", body, 0) :: (translate dirs t)
+      Hyp ("z'g", body, 0) :: (translate dirs t)
   | Formula (name, k, body) :: t ->
       Error.warn ("unknown formula kind: " ^ k);
       Hyp (name, body, 1) :: (translate dirs t)

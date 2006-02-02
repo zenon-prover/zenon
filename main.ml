@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.28 2005-12-14 16:23:49 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.29 2006-02-02 13:30:03 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -119,7 +119,7 @@ let rec argspec = [
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in zenon format (default)";
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
-          "            read input file in focal format";
+          "            read input file in Focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
          "             read input file in TPTP format";
   "-max", Arg.String parse_size_time,
@@ -223,7 +223,7 @@ let parse_file f =
           close chan;
           let result = List.map (fun x -> (x, false)) phrases in
           let is_goal = function
-            | (Phrase.Hyp ("z'goal", _, _), _) -> true
+            | (Phrase.Hyp ("z'g", _, _), _) -> true
             | _ -> false
           in
           let goal_found = List.exists is_goal result in

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.22 2005-12-14 16:23:49 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.23 2006-02-02 13:30:03 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -29,37 +29,50 @@ type coqproof =
 
 let lemma_env = (Hashtbl.create 97 : (string, string list) Hashtbl.t);;
 
+
 let mapping = ref [];;
 
+let rawname e = sprintf "H'%x" (Index.get_number e);;
+
+let rec make_mapping phrases =
+  match phrases with
+  | [] -> []
+  | Phrase.Hyp (n, e, _) :: t -> (rawname e, n) :: (make_mapping t)
+  | Phrase.Def _ :: t -> make_mapping t
+  | Phrase.Sig _ :: t -> make_mapping t
+;;
+
+let init_mapping phrases = mapping := make_mapping phrases;;
+
 let getname e =
-  let result = sprintf "H'%x" (Index.get_number e) in
+  let result = rawname e in
   try List.assoc result !mapping
   with Not_found -> result
 ;;
 
-let is_mapped e =
-  let rawname = sprintf "H'%x" (Index.get_number e) in
-  List.mem_assoc rawname !mapping
-;;
+let is_mapped e = List.mem_assoc (rawname e) !mapping;;
 
 let is_goal e =
-  let rawname = sprintf "H'%x" (Index.get_number e) in
-  try List.assoc rawname !mapping = "z'goal"
+  try List.assoc (rawname e) !mapping = "z'g"
   with Not_found -> false
 ;;
 
+
 let getv e = Cvar (getname e);;
 
-exception Unused_variable of string;;
+exception Cannot_infer of string;;
 
 (* For now, [synthesize] is very simple-minded. *)
 let synthesize s =
   let ty = Mltoll.get_meta_type s in
   match ty with
-  | "?" -> "z'any" (* FIXME all_list should get the types from context *)
-  | "" | "z'U" -> "z'any"
-  | "nat" -> "(0)"
-  | _ -> raise (Unused_variable ty)
+  | "?" -> "z'a" (* FIXME all_list should get the types from context *)
+  | "" | "z'U" -> "z'a"
+  | "nat" -> "O"
+  | "bool" -> "true"
+  | "Z" -> "Z0"
+  | t when is_mapped (evar t) -> getname (evar t)
+  | _ -> raise (Cannot_infer ty)
 ;;
 
 let rec trexpr env e =
@@ -304,18 +317,10 @@ let rec trp l =
   | [] -> assert false
 ;;
 
-let rec make_mapping phrases =
-  match phrases with
-  | [] -> []
-  | Phrase.Hyp (n, e, _) :: t -> (getname e, n) :: (make_mapping t)
-  | Phrase.Def _ :: t -> make_mapping t
-  | Phrase.Sig _ :: t -> make_mapping t
-;;
-
 let rec get_goal phrases =
   match phrases with
   | [] -> None
-  | Phrase.Hyp ("z'goal", e, _) :: _ -> Some e
+  | Phrase.Hyp ("z'g", e, _) :: _ -> Some e
   | _ :: t -> get_goal t
 ;;
 
@@ -329,19 +334,17 @@ let rec get_th_name lemmas =
 let trproof phrases l =
   try
     Hashtbl.clear lemma_env;
-    mapping := make_mapping phrases;
+    init_mapping phrases;
     let (lemmas, raw, th_name, formals) = trp l in
     match get_goal phrases with
     | Some goal ->
         let trg = tropt [] goal in
-        let term = Capp (Cvar "NNPP", [Cwild; Clam ("z'goal", trg, raw)]) in
+        let term = Capp (Cvar "NNPP", [Cwild; Clam ("z'g", trg, raw)]) in
         (phrases, lemmas, th_name, term)
     | None -> (phrases, lemmas, th_name, raw)
   with
-  | Unused_variable ty ->
-      let msg = sprintf "cannot infer a value for an unused variable of type %s"
-                        ty
-      in
+  | Cannot_infer ty ->
+      let msg = sprintf "cannot infer a value for a variable of type %s" ty in
       Error.err msg;
       raise Error.Abort
 ;;
@@ -595,7 +598,7 @@ let print_var oc e =
 
 let declare_hyp oc h =
   match h with
-  | Phrase.Hyp ("z'goal", _, _) -> ()
+  | Phrase.Hyp ("z'g", _, _) -> ()
   | Phrase.Hyp (name, stmt, _) ->
       pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] stmt);
       fprintf oc ".\n";
@@ -621,7 +624,7 @@ let declare_context oc phrases =
   fprintf oc "Require Import zenon.\n";
   let ext_decl = Extension.declare_context_coq oc in
   fprintf oc "Parameter z'U : Set.\n";
-  fprintf oc "Parameter z'any : z'U.\n";
+  fprintf oc "Parameter z'a : z'U.\n";
   let sigs = get_signatures phrases ext_decl in
   List.iter (print_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;

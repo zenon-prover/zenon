@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.4 2005-11-15 15:02:26 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.5 2006-02-02 13:30:03 doligez Exp $";;
 
 open Printf;;
 
@@ -101,40 +101,31 @@ let mk_let id expr body =
 %token RBRACE_
 %token TILDE_
 
-%token AS
-%token AT
-%token COFIX
+%token MUSTUSE
+
 %token DEFINITION
 %token DEPENDS
 %token ELSE
 %token END
 %token EXISTS
-%token EXISTS2
 %token FALSE
-%token FIX
-%token FOR
 %token FORALL
 %token FUN
 %token IF
-%token UC_IF
 %token IN
 %token LET
 %token MATCH
-%token MOD
 %token ON
 %token PARAMETER
-%token RETURN
-%token SET
 %token THEN
 %token TRUE
-%token USING
-%token WHERE
 %token WITH
 
 %token BEGINPROOF
 %token <string> BEGINNAME
 %token BEGINHEADER
 %token BEGINSTATEMENT
+%token BEGINHYPOTHESES
 %token ENDPROOF
 
 %token EOF
@@ -155,8 +146,8 @@ let mk_let id expr body =
 %%
 
 file:
-  | proof_head expr hyp_def_list ENDPROOF EOF
-      { ($1, (Hyp ("z'goal", enot $2, 0), false) :: $3) }
+  | proof_head expr opt_BEGINHYPOTHESES hyp_def_list ENDPROOF EOF
+      { ($1, (Hyp ("z'goal", enot $2, 0), false) :: $4) }
   | expr hyp_def_list EOF
       { ("theorem", (Hyp ("z'goal", enot $1, 0), false) :: $2) }
 ;
@@ -170,6 +161,13 @@ proofheaders:
   | /* empty */
       { () }
   | BEGINHEADER proofheaders
+      { () }
+;
+
+opt_BEGINHYPOTHESES:
+  | /* empty */
+      { () }
+  | BEGINHYPOTHESES
       { () }
 ;
 
@@ -278,7 +276,13 @@ hyp_def:
 ;
 
 dep_hyp_def:
-  | DEPENDS ON hyp_def         { ($3, true) }
+  | DEPENDS ON hyp_def         {
+      (* FIXME activate this warning at some point.
+      Error.warn "use of obsolete \"Depends on\" syntax";
+      *)
+      ($3, true)
+    }
+  | MUSTUSE hyp_def            { ($2, true) }
   | hyp_def                    { ($1, false) }
 ;
 

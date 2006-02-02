@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.26 2005-12-14 16:23:49 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.27 2006-02-02 13:30:03 doligez Exp $";;
 
 open Printf
 
@@ -93,26 +93,13 @@ let rec make_prod = function
 (* Coq proof generation *)
 (************************)
 
-let mapping = (Hashtbl.create 97 : (int, string) Hashtbl.t);;
-
-let rec make_mapping phrases =
-  let f phr =
-    match phr with
-    | Phrase.Hyp ("z'goal", _, _) -> ()
-    | Phrase.Hyp (n, e, _) -> Hashtbl.add mapping (Index.get_number e) n
-    | Phrase.Def _ -> ()
-    | Phrase.Sig _ -> ()
-  in
-  List.iter f phrases;
-;;
-
 let rec make_params = function
   | [] -> [< >]
   | (x, typ) :: l -> [< str "forall "; str x; str " : "; constr_of_type typ;
                         str ", "; make_params l >]
 
 let get_goals concl =
-  let not_global_hyp e = not (Hashtbl.mem mapping (Index.get_number e)) in
+  let not_global_hyp e = not (Coqterm.is_mapped e) in
   List.filter not_global_hyp concl
 ;;
 
@@ -131,13 +118,7 @@ let declare_theorem ppvernac name params concl =
   ppvernac [< str "Lemma "; str name; str " : "; make_params params;
               prod_concl; coqend >]
 
-let rec gen_name e =
-  let n = Index.get_number e in
-  try
-    let name = Hashtbl.find mapping n in
-    [< str " "; str name >]
-  with Not_found -> [< str " ZH"; ints n >]
-;;
+let gen_name e = [< str " "; str (Coqterm.getname e) >];;
 
 let proof_init ppvernac nfv conc is_lemma =
   let lnam = List.fold_left (fun s e -> [< s; gen_name e >]) [< >] conc in
@@ -504,10 +485,16 @@ let rec proof_lem ppvernac lems =
 (***************)
 
 let produce_proof oc phrases llp =
-  make_mapping phrases;
-  let ppvernac = ppvernac_dir oc in
-  if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
-  if not !Globals.quiet_flag then ppvernac [< '"(* BEGIN-PROOF *)\n" >];
-  proof_lem ppvernac llp;
-  if not !Globals.quiet_flag then ppvernac [< '"(* END-PROOF *)\n" >];
+  try
+    Coqterm.init_mapping phrases;
+    let ppvernac = ppvernac_dir oc in
+    if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
+    if not !Globals.quiet_flag then ppvernac [< '"(* BEGIN-PROOF *)\n" >];
+    proof_lem ppvernac llp;
+    if not !Globals.quiet_flag then ppvernac [< '"(* END-PROOF *)\n" >];
+  with
+  | Coqterm.Cannot_infer ty ->
+      let msg = sprintf "cannot infer a value for a variable of type %s" ty in
+      Error.err msg;
+      raise Error.Abort
 ;;

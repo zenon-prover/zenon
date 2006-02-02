@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.3 2006-02-02 13:30:03 doligez Exp $";;
 
 open Parsecoq;;
 open Lexing;;
@@ -80,34 +80,25 @@ rule token = parse
   | "}"                     { RBRACE_ }
   | "~"                     { TILDE_ }
 
-  | "as"                    { AS }
-  | "at"                    { AT }
-  | "cofix"                 { COFIX }
+  | "(*_MUST_USE_*)"        { MUSTUSE }
+
   | "Depends"               { DEPENDS }
+  | "on"                    { ON }
+
   | "Definition"            { DEFINITION }
   | "else"                  { ELSE }
   | "end"                   { END }
   | "exists"                { EXISTS }
-  | "exists2"               { EXISTS2 }
   | "False"                 { FALSE }
-  | "fix"                   { FIX }
-  | "for"                   { FOR }
   | "forall"                { FORALL }
   | "fun"                   { FUN }
   | "if"                    { IF }
-  | "IF"                    { UC_IF }
   | "in"                    { IN }
   | "let"                   { LET }
   | "match"                 { MATCH }
-  | "mod"                   { MOD }
-  | "on"                    { ON }
   | "Parameter"             { PARAMETER }
-  | "return"                { RETURN }
-  | "Set"                   { SET }
   | "then"                  { THEN }
   | "True"                  { TRUE }
-  | "using"                 { USING }
-  | "where"                 { WHERE }
   | "with"                  { WITH }
 
   | idstart idchar * ('.' idstart idchar *) *
@@ -121,6 +112,8 @@ rule token = parse
       { BEGINHEADER }
   | "%%statement" inline*
       { BEGINSTATEMENT }
+  | "%%hypotheses" inline*
+      { BEGINHYPOTHESES }
   | "%%end-auto-proof" inline*
       { ENDPROOF }
 
