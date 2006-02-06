@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.14 2005-12-13 18:20:13 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.15 2006-02-06 17:56:06 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
@@ -466,6 +466,7 @@ let preprocess l =
         Def (DefReal (sym, formals, fold_istrue body))
     | Def (DefPseudo _) -> assert false
     | Sig _ -> x
+    | Inductive _ -> x
   in
   List.map f l
 ;;

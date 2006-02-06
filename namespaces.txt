@@ -1,5 +1,6 @@
 A'*     -> anonymous hypotheses
 H'*     -> local hypotheses
+K'match -> pattern-matching keyword
 L'*     -> lemmas
 T'*     -> skolem constants
 V'*     -> gensym variables

@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.6 2006-02-02 22:13:54 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.7 2006-02-06 17:56:06 doligez Exp $";;
 
 open Printf;;
 
@@ -46,10 +46,18 @@ let mk_let id expr body =
   substitute [(evar id, expr)] body
 ;;
 
+let rec mk_pattern accu l =
+  match l with
+  | [] -> assert false
+  | [c] -> eapp (c, accu)
+  | h::t -> mk_pattern (evar h :: accu) t
+;;
+
 %}
 
 %token <string> IDENT
 %token <string> STRING
+%token <string> NUM
 
 %token BANG_
 %token PERCENT_
@@ -113,10 +121,12 @@ let mk_let id expr body =
 %token FUN
 %token IF
 %token IN
+%token INDUCTIVE
 %token LET
 %token MATCH
 %token ON
 %token PARAMETER
+%token SET
 %token THEN
 %token TRUE
 %token WITH
@@ -171,6 +181,9 @@ expr:
   | LET IDENT COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $4 $6 }
 
+  | MATCH expr WITH pat_expr_list END
+      { eapp ("K'match", $2 :: $4) }
+
   | IF expr THEN expr ELSE expr
       { eapp ("(__g_ifthenelse _)", [$2; $4; $6]) }
 
@@ -204,6 +217,8 @@ expr:
 expr1:
   | IDENT
       { evar ($1) }
+  | NUM
+      { eapp ($1, []) }
   | LPAREN_ expr RPAREN_
       { $2 }
   | TRUE
@@ -214,7 +229,23 @@ expr1:
 
 expr1_list:
   | expr1                  { [$1] }
-  | expr1 expr1_list    { $1 :: $2 }
+  | expr1 expr1_list       { $1 :: $2 }
+;
+
+pat_expr_list:
+  | /* empty */
+      { [] }
+  | BAR_ pattern EQ_GT_ expr pat_expr_list
+      { (mk_pattern [] $2) :: $4 :: $5 }
+;
+
+pattern:
+  | LPAREN_ pattern RPAREN_
+      { $2 }
+  | pattern IDENT
+      { $2 :: $1 }
+  | IDENT
+      { [$1] }
 ;
 
 bindings:
@@ -227,7 +258,7 @@ simplebinding:
 ;
 
 idlist:
-  | /* empty */               { [] }
+  | /* empty */            { [] }
   | IDENT idlist           { $1 :: $2 }
 ;
 
@@ -241,7 +272,7 @@ binding_list:
 ;
 
 typ:
-  | expr               { mk_type_string $1 }
+  | expr                   { mk_type_string $1 }
 ;
 
 /* normal identifier or unparsed  expression */
@@ -264,6 +295,8 @@ hyp_def:
       { Hyp ($2, $4, 1) }
   | DEFINITION id_or_expr COLON_EQ_ param_expr PERIOD_
       { let (params, expr) = $4 in Def (DefReal ($2, params, expr)) }
+  | INDUCTIVE IDENT COLON_ SET COLON_EQ_ constr_list PERIOD_
+      { Inductive ($2, $6) }
 ;
 
 dep_hyp_def:
@@ -280,6 +313,23 @@ dep_hyp_def:
 hyp_def_list:
   | dep_hyp_def hyp_def_list   { $1 :: $2 }
   | /* empty */                { [] }
+;
+
+constr_list:
+  | BAR_ IDENT COLON_ constr_type constr_list
+      { $2 :: $5 }
+  | /* empty */
+      { [] }
+;
+
+constr_type:
+  | arg_type                          { () }
+  | arg_type DASH_GT_ constr_type     { () }
+;
+
+arg_type:
+  | LPAREN_ arg_type RPAREN_          { () }
+  | IDENT                             { () }
 ;
 
 %%

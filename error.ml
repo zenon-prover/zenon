@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: error.ml,v 1.4 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: error.ml,v 1.5 2006-02-06 17:56:06 doligez Exp $";;
 
 open Printf;;
 
@@ -23,7 +23,7 @@ let print kind msg =
     if !print_header then fprintf !err_oc "%s\n" !header;
     err_inited := true;
   end;
-  fprintf !err_oc "%s: %s\n" kind msg;
+  fprintf !err_oc "%s%s%s\n" kind (if kind = "" then "" else ": ") msg;
   flush !err_oc;
 ;;
 

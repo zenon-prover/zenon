@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.2 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.3 2006-02-06 17:56:06 doligez Exp $";;
 
 open Parsezen;;
 open Lexing;;
@@ -32,6 +32,7 @@ rule token = parse
       INT i
     }
   | "$def"      { DEF }
+  | "$inductive"{ INDUCTIVE }
   | "$sig"      { SIG }
   | "$goal"     { GOAL }
   | "-."        { NOT }
@@ -46,6 +47,8 @@ rule token = parse
   | "E."        { EX }
   | "t."        { TAU }
   | "="         { EQUAL }
+
+(* FIXME ajouter lambda et match *)
 
   | "\"" stringchar* "\"" {
       let s = Lexing.lexeme lexbuf in

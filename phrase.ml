@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.8 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.9 2006-02-06 17:56:06 doligez Exp $";;
 
 open Expr;;
 
@@ -7,6 +7,7 @@ type phrase =
   | Hyp of string * expr * int
   | Def of definition
   | Sig of string * string list * string
+  | Inductive of string * string list
 ;;
 
 exception Bad_arg;;
@@ -165,6 +166,7 @@ let rec xseparate deps multi defs hyps l =
         xseparate (newdep :: deps) multi (d :: defs) hyps t
   | Hyp (_, e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
   | Sig (sym, args, res) :: t -> xseparate deps multi defs hyps t
+  | Inductive _ :: _ -> assert false (* FIXME *)
 ;;
 
 let separate l = xseparate [] [] [] [] l;;

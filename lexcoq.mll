@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.4 2006-02-02 22:13:54 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.5 2006-02-06 17:56:06 doligez Exp $";;
 
 open Parsecoq;;
 open Lexing;;
@@ -97,6 +97,7 @@ rule token = parse
   | "let"                   { LET }
   | "match"                 { MATCH }
   | "Parameter"             { PARAMETER }
+  | "Set"                   { SET }
   | "then"                  { THEN }
   | "True"                  { TRUE }
   | "with"                  { WITH }
@@ -119,6 +120,9 @@ rule token = parse
       let s = Lexing.lexeme lexbuf in
       STRING (String.sub s 1 (String.length s - 2))
     }
+
+  | [ '0'-'9' ]+
+      { NUM (Lexing.lexeme lexbuf) }
 
   | _                       {
       let msg = "bad character " ^ Lexing.lexeme lexbuf in

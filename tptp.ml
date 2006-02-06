@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.12 2006-02-02 13:30:03 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.13 2006-02-06 17:56:06 doligez Exp $";;
 
 open Printf;;
 
@@ -28,6 +28,8 @@ let keep form =
     | Hyp(name, _, _) -> not (List.mem name !to_ignore)
     | Def def -> assert false
     | Sig _ -> assert false
+    | Inductive _ -> assert false
+;;
 
 let add_annotation s =
   try
@@ -94,6 +96,7 @@ let process_annotations forms =
       | Def def -> assert false
           (* for now, TPTP does not directly support definitions. *)
       | Sig _ -> assert false
+      | Inductive _ -> assert false
   in
   List.map process_one (List.filter keep forms)
 

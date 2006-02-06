@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.13 2005-11-09 15:18:24 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.14 2006-02-06 17:56:06 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -48,39 +48,39 @@ let print_vartype b (v, t) =
 ;;
 
 let rec expr o ex =
-  let printf f = oprintf o f in
+  let pr f = oprintf o f in
   match ex with
-  | Evar (v, _) -> printf "%s" v;
-  | Emeta (m, _) -> printf "X'%d" m;
+  | Evar (v, _) -> pr "%s" v;
+  | Emeta (m, _) -> pr "X'%d" m;
   | Eapp (s, es, _) ->
-      printf "(%s" s; List.iter (fun x -> printf " "; expr o x) es; printf ")";
-  | Enot (e, _) -> printf "(-. "; expr o e; printf ")";
+      pr "(%s" s; List.iter (fun x -> pr " "; expr o x) es; pr ")";
+  | Enot (e, _) -> pr "(-. "; expr o e; pr ")";
   | Eand (e1, e2, _) ->
-      printf "(/\\ "; expr o e1; printf " "; expr o e2; printf ")";
+      pr "(/\\ "; expr o e1; pr " "; expr o e2; pr ")";
   | Eor (e1, e2, _) ->
-      printf "(\\/ "; expr o e1; printf " "; expr o e2; printf ")";
+      pr "(\\/ "; expr o e1; pr " "; expr o e2; pr ")";
   | Eimply (e1, e2, _) ->
-      printf "(=> "; expr o e1; printf " "; expr o e2; printf ")";
+      pr "(=> "; expr o e1; pr " "; expr o e2; pr ")";
   | Eequiv (e1, e2, _) ->
-      printf "(<=> "; expr o e1; printf " "; expr o e2; printf ")";
-  | Etrue -> printf "(True)";
-  | Efalse -> printf "(False)";
+      pr "(<=> "; expr o e1; pr " "; expr o e2; pr ")";
+  | Etrue -> pr "(True)";
+  | Efalse -> pr "(False)";
   | Eall (v, "", e, _, _) ->
-      printf "(A. ((%a) " print_var v; expr o e; printf "))";
+      pr "(A. ((%a) " print_var v; expr o e; pr "))";
   | Eall (v, t, e, _, _) ->
-      printf "(A. ((%a \"%s\") " print_var v t; expr o e; printf "))";
+      pr "(A. ((%a \"%s\") " print_var v t; expr o e; pr "))";
   | Eex (v, "", e, _, _) ->
-      printf "(E. ((%a) " print_var v; expr o e; printf "))";
+      pr "(E. ((%a) " print_var v; expr o e; pr "))";
   | Eex (v, t, e, _, _) ->
-      printf "(E. ((%a \"%s\") " print_var v t; expr o e; printf "))";
+      pr "(E. ((%a \"%s\") " print_var v t; expr o e; pr "))";
   | Etau (v, "", e, _) ->
-      printf "(t. ((%a) " print_var v; expr o e; printf "))";
+      pr "(t. ((%a) " print_var v; expr o e; pr "))";
   | Etau (v, t, e, _) ->
-      printf "(t. ((%a \"%s\") " print_var v t; expr o e; printf "))";
+      pr "(t. ((%a \"%s\") " print_var v t; expr o e; pr "))";
   | Elam (v, "", e, _) ->
-      printf "((%a) " print_var v; expr o e; printf ")";
+      pr "((%a) " print_var v; expr o e; pr ")";
   | Elam (v, t, e, _) ->
-      printf "((%a \"%s\") " print_var v t; expr o e; printf ")";
+      pr "((%a \"%s\") " print_var v t; expr o e; pr ")";
 ;;
 
 let expr o e =
@@ -89,44 +89,44 @@ let expr o e =
 ;;
 
 let rec expr_soft o ex =
-  let printf f = oprintf o f in
+  let pr f = oprintf o f in
   match ex with
-  | Evar (v, _) -> printf "%s" v;
-  | Emeta (m, _) -> printf "X'%d" m;
+  | Evar (v, _) -> pr "%s" v;
+  | Emeta (m, _) -> pr "X'%d" m;
   | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) ->
-      printf "("; expr_soft o e1; printf " %s " s; expr_soft o e2; printf ")";
+      pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
   | Eapp (s, es, _) ->
-      printf "(%s" s;
-      List.iter (fun x -> printf " "; expr_soft o x) es;
-      printf ")";
+      pr "(%s" s;
+      List.iter (fun x -> pr " "; expr_soft o x) es;
+      pr ")";
   | Enot (Eapp ("=", [e1; e2], _), _) ->
-      printf "("; expr_soft o e1; printf " != "; expr_soft o e2; printf ")";
-  | Enot (e, _) -> printf "(-. "; expr_soft o e; printf ")";
+      pr "("; expr_soft o e1; pr " != "; expr_soft o e2; pr ")";
+  | Enot (e, _) -> pr "(-. "; expr_soft o e; pr ")";
   | Eand (e1, e2, _) ->
-      printf "("; expr_soft o e1; printf " /\\ "; expr_soft o e2; printf ")";
+      pr "("; expr_soft o e1; pr " /\\ "; expr_soft o e2; pr ")";
   | Eor (e1, e2, _) ->
-      printf "("; expr_soft o e1; printf " \\/ "; expr_soft o e2; printf ")";
+      pr "("; expr_soft o e1; pr " \\/ "; expr_soft o e2; pr ")";
   | Eimply (e1, e2, _) ->
-      printf "("; expr_soft o e1; printf " => "; expr_soft o e2; printf ")";
+      pr "("; expr_soft o e1; pr " => "; expr_soft o e2; pr ")";
   | Eequiv (e1, e2, _) ->
-      printf "("; expr_soft o e1; printf " <=> "; expr_soft o e2; printf ")";
-  | Etrue -> printf "True";
-  | Efalse -> printf "False";
+      pr "("; expr_soft o e1; pr " <=> "; expr_soft o e2; pr ")";
+  | Etrue -> pr "True";
+  | Efalse -> pr "False";
   | Eall (Evar (v, _), "", e, _, _) ->
-      printf "(All %s, " v; expr_soft o e; printf ")";
+      pr "(All %s, " v; expr_soft o e; pr ")";
   | Eall (Evar (v, _), t, e, _, _) ->
-      printf "(All %s:%s, " v t; expr_soft o e; printf ")";
+      pr "(All %s:%s, " v t; expr_soft o e; pr ")";
   | Eall _ -> assert false
   | Eex (Evar (v, _), "", e, _, _) ->
-      printf "(Ex %s, " v; expr_soft o e; printf ")";
+      pr "(Ex %s, " v; expr_soft o e; pr ")";
   | Eex (Evar (v, _), t, e, _, _) ->
-      printf "(Ex %s:%s, " v t; expr_soft o e; printf ")";
+      pr "(Ex %s:%s, " v t; expr_soft o e; pr ")";
   | Eex _ -> assert false
-  | Etau _ as e -> printf "T_%d" (Index.get_number e);
+  | Etau _ as e -> pr "T_%d" (Index.get_number e);
   | Elam (Evar (v, _), "", e, _) ->
-      printf "(lambda %s, " v; expr_soft o e; printf ")";
+      pr "(lambda %s, " v; expr_soft o e; pr ")";
   | Elam (Evar (v, _), t, e, _) ->
-      printf "(lambda %s:%s, " v t; expr_soft o e; printf ")";
+      pr "(lambda %s:%s, " v t; expr_soft o e; pr ")";
   | Elam _ -> assert false
 ;;
 
@@ -164,6 +164,7 @@ let phrase o ph =
       pro "$sig %s (" sym;
       List.iter (fun x -> pro " %s" x) args;
       pro ") %s\n" res;
+  | Phrase.Inductive _ -> assert false (* FIXME *)
   end;
   flush ();
 ;;
@@ -318,10 +319,10 @@ let rec vertical_sequent o ctx fms =
 
 
 let rec hlproof o chaining depth ctx n p =
-  let printf f = oprintf o f in
+  let pr f = oprintf o f in
   if p.mlrefc < 1 then begin
-    if (not chaining) then printf "\n";
-    printf "%4d. see %d\n" n (- p.mlrefc);
+    if (not chaining) then pr "\n";
+    pr "%4d. see %d\n" n (- p.mlrefc);
   end else if depth >= 0 then begin
     match p.mlrule with
     | And _ | NotOr _ | NotImpl _ | NotAll _ | Ex _ | ConjTree _
@@ -329,19 +330,19 @@ let rec hlproof o chaining depth ctx n p =
         assert (Array.length p.mlhyps = 1);
         hlproof o chaining depth ctx n p.mlhyps.(0)
     | _ ->
-        if (not chaining) then printf "\n";
-        printf "%4d. " n;
+        if (not chaining) then pr "\n";
+        pr "%4d. " n;
         vertical_sequent o ctx p.mlconc;
         let subs = Array.map (fun _ -> new_step ()) p.mlhyps in
-        printf "### ";
+        pr "### ";
         if depth = 0 && subs <> [| |] then begin
-          printf "...proof-omitted...\n";
+          pr "...proof-omitted...\n";
           Array.iter (hlproof o true (depth-1) ctx n) p.mlhyps;
         end else begin
           hlrule o p.mlrule;
-          if subs <> [| |] then printf " -->";
-          Array.iter (fun x -> printf " %d" x) subs;
-          printf "\n";
+          if subs <> [| |] then pr " -->";
+          Array.iter (fun x -> pr " %d" x) subs;
+          pr "\n";
           for i = 0 to Array.length p.mlhyps - 1 do
             hlproof o (i = 0) (depth-1) p.mlconc subs.(i) p.mlhyps.(i);
           done;
@@ -360,16 +361,16 @@ open Llproof;;
 let indent o i = for j = 0 to i do oprintf o "  "; done;;
 
 let rec llproof_term o t =
-  let printf f = oprintf o f in
+  let pr f = oprintf o f in
   match t with
-  | Evar (v, _) -> printf "%s" v;
+  | Evar (v, _) -> pr "%s" v;
   | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) ->
-      printf "(";
+      pr "(";
       llproof_term o e1;
-      printf " %s " s;
+      pr " %s " s;
       llproof_term o e2;
-      printf ")";
-  | Eapp (s, args, _) -> printf "%s(" s; llproof_term_list o args; printf ")";
+      pr ")";
+  | Eapp (s, args, _) -> pr "%s(" s; llproof_term_list o args; pr ")";
   | _ -> assert false
 
 and llproof_term_list o l =
@@ -380,50 +381,50 @@ and llproof_term_list o l =
 ;;
 
 let rec llproof_prop o pr =
-  let printf f = oprintf o f in
+  let pro f = oprintf o f in
   match pr with
-  | Efalse -> printf "false";
-  | Etrue -> printf "true";
-  | Enot (p, _) -> printf "~"; llproof_prop o p;
+  | Efalse -> pro "false";
+  | Etrue -> pro "true";
+  | Enot (p, _) -> pro "~"; llproof_prop o p;
   | Eand (p1, p2, _) ->
-      printf "(";
+      pro "(";
       llproof_prop o p1;
-      printf " /\\ ";
+      pro " /\\ ";
       llproof_prop o p2;
-      printf ")";
+      pro ")";
   | Eor (p1, p2, _) ->
-      printf "(";
+      pro "(";
       llproof_prop o p1;
-      printf " \\/ ";
+      pro " \\/ ";
       llproof_prop o p2;
-      printf ")";
+      pro ")";
   | Eimply (p1, p2, _) ->
-      printf "(";
+      pro "(";
       llproof_prop o p1;
-      printf " => ";
+      pro " => ";
       llproof_prop o p2;
-      printf ")";
+      pro ")";
   | Eequiv (p1, p2, _) ->
-      printf "(";
+      pro "(";
       llproof_prop o p1;
-      printf " <=> ";
+      pro " <=> ";
       llproof_prop o p2;
-      printf ")";
+      pro ")";
   | Eall (v, t, p, _, _) ->
-      printf "All %a, " print_vartype (v, t); llproof_prop o p;
+      pro "All %a, " print_vartype (v, t); llproof_prop o p;
   | Eex (v, t, p, _, _) ->
-      printf "Ex %a, " print_vartype (v, t); llproof_prop o p;
+      pro "Ex %a, " print_vartype (v, t); llproof_prop o p;
   | Elam (v, t, p, _) ->
-      printf "lambda %a, " print_vartype (v, t); llproof_prop o p;
+      pro "lambda %a, " print_vartype (v, t); llproof_prop o p;
   | Eapp ("=", [t1; t2], _) ->
-      printf "(";
+      pro "(";
       llproof_term o t1;
-      printf " = ";
+      pro " = ";
       llproof_term o t2;
-      printf ")";
-  | Eapp (s, [], _) -> printf "%s" s;
-  | Eapp (s, args, _) -> printf "%s(" s; llproof_term_list o args; printf ")";
-  | Evar (s, _) -> printf "%s" s;
+      pro ")";
+  | Eapp (s, [], _) -> pro "%s" s;
+  | Eapp (s, args, _) -> pro "%s(" s; llproof_term_list o args; pro ")";
+  | Evar (s, _) -> pro "%s" s;
   | Emeta _ | Etau _ -> assert false;
 ;;
 
@@ -435,71 +436,71 @@ let binop_name = function
 ;;
 
 let llproof_rule o r =
-  let printf f = oprintf o f in
+  let pr f = oprintf o f in
   match r with
-  | Rfalse -> printf "---false";
-  | Rnottrue -> printf "---nottrue";
-  | Raxiom (p) -> printf "---axiom "; llproof_prop o p;
-  | Rcut (p) -> printf "---cut "; llproof_prop o p;
-  | Rnoteq (t) -> printf "---noteq "; llproof_term o t;
-  | Rnotnot (p) -> printf "---notnot "; llproof_prop o p;
+  | Rfalse -> pr "---false";
+  | Rnottrue -> pr "---nottrue";
+  | Raxiom (p) -> pr "---axiom "; llproof_prop o p;
+  | Rcut (p) -> pr "---cut "; llproof_prop o p;
+  | Rnoteq (t) -> pr "---noteq "; llproof_term o t;
+  | Rnotnot (p) -> pr "---notnot "; llproof_prop o p;
   | Rconnect (op, p, q) ->
-      printf "---connect (%s, " (binop_name op);
+      pr "---connect (%s, " (binop_name op);
       llproof_prop o p;
-      printf ", ";
+      pr ", ";
       llproof_prop o q;
-      printf ")";
+      pr ")";
   | Rnotconnect (op, p, q) ->
-      printf "---notconnect (%s, " (binop_name op);
+      pr "---notconnect (%s, " (binop_name op);
       llproof_prop o p;
-      printf ", ";
+      pr ", ";
       llproof_prop o q;
-      printf ")";
-  | Rex (p, v) -> printf "---ex ("; llproof_prop o p; printf ", %s)" v;
+      pr ")";
+  | Rex (p, v) -> pr "---ex ("; llproof_prop o p; pr ", %s)" v;
   | Rall (p, t) ->
-      printf "---all (";
+      pr "---all (";
       llproof_prop o p;
-      printf ", ";
+      pr ", ";
       llproof_term o t;
-      printf ")";
+      pr ")";
   | Rnotex (p, t) ->
-      printf "---notex (";
+      pr "---notex (";
       llproof_prop o p;
-      printf ", ";
+      pr ", ";
       llproof_term o t;
-      printf ")";
-  | Rnotall (p, v) -> printf "---notall ("; llproof_prop o p; printf ", %s)" v;
+      pr ")";
+  | Rnotall (p, v) -> pr "---notall ("; llproof_prop o p; pr ", %s)" v;
   | Rpnotp (p, q) ->
-      printf "---pnotp (";
+      pr "---pnotp (";
       llproof_prop o p;
-      printf ", ";
+      pr ", ";
       llproof_prop o q;
-      printf ")";
+      pr ")";
   | Rnotequal (t, u) ->
-      printf "---notequal (";
+      pr "---notequal (";
       llproof_term o t;
-      printf ", ";
+      pr ", ";
       llproof_term o u;
-      printf ")";
+      pr ")";
   | Rdefinition (sym, folded, unfolded) ->
-      printf "---definition (%s)" sym;
+      pr "---definition (%s)" sym;
   | Rextension (name, args, c, hyps) ->
-      printf "---extension (%s" name;
-      List.iter (fun x -> printf " "; llproof_prop o x) args;
-      printf ")";
+      pr "---extension (%s" name;
+      List.iter (fun x -> pr " "; llproof_prop o x) args;
+      pr ")";
   | Rlemma (name, args) ->
-      printf "---lemma %s [ " name;
-      List.iter (fun x -> printf "%s " x) args;
-      printf "]";
+      pr "---lemma %s [ " name;
+      List.iter (fun x -> pr "%s " x) args;
+      pr "]";
 ;;
 
 let nodes = ref 0;;
 
 let rec llproof_tree o i t =
-  let printf = oprintf o in
-  let prop_space p = llproof_prop o p; printf "   "; in
-  indent o i; List.iter prop_space t.conc; printf "\n";
-  indent o i; llproof_rule o t.rule; printf "\n";
+  let pr = oprintf o in
+  let prop_space p = llproof_prop o p; pr "   "; in
+  indent o i; List.iter prop_space t.conc; pr "\n";
+  indent o i; llproof_rule o t.rule; pr "\n";
   List.iter (llproof_tree o (i+1)) t.hyps;
   incr nodes;
 ;;
@@ -511,16 +512,16 @@ let print_idtype o (v, t) =
 ;;
 
 let llproof_lemma o {name=name; params=params; proof=tree} =
-  let printf f = oprintf o f in
-  printf "%s" name;
+  let pr f = oprintf o f in
+  pr "%s" name;
   if params <> [] then begin
-    printf " [";
+    pr " [";
     List.iter (print_idtype o) params;
-    printf "]";
+    pr "]";
   end;
-  printf "\n";
+  pr "\n";
   llproof_tree o 1 tree;
-  printf "\n";
+  pr "\n";
 ;;
 
 let llproof o p =

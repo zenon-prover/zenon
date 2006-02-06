@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.4 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.5 2006-02-06 17:56:06 doligez Exp $";;
 
 open Printf;;
 
@@ -83,6 +83,7 @@ let warn_unused_var phr_dep =
     | Phrase.Def (DefReal (name, _, body)) -> check_unused name body
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig _ -> ()
+    | Phrase.Inductive _ -> ()
   in
   List.iter f phr_dep
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.23 2006-02-02 13:30:03 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.24 2006-02-06 17:56:06 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -40,6 +40,7 @@ let rec make_mapping phrases =
   | Phrase.Hyp (n, e, _) :: t -> (rawname e, n) :: (make_mapping t)
   | Phrase.Def _ :: t -> make_mapping t
   | Phrase.Sig _ :: t -> make_mapping t
+  | Phrase.Inductive _ :: t -> make_mapping t
 ;;
 
 let init_mapping phrases = mapping := make_mapping phrases;;
@@ -497,7 +498,7 @@ type result =
 ;;
 type signature =
   | Default of int * result
-  | Declared of string list * string
+  | Declared of string
   | Hyp_name
 ;;
 
@@ -527,20 +528,23 @@ let get_signatures ps ext_decl =
       -> get_sig Prop (v::env) e1;
     | Eall _ | Eex _ | Etau _ | Elam _ -> assert false
   in
+  let set_type sym typ =
+    Hashtbl.remove symtbl sym;
+    Hashtbl.add symtbl sym typ;
+  in
   let do_phrase p =
     match p with
     | Phrase.Hyp (name, e, _) ->
         get_sig Prop [] e;
-        Hashtbl.remove symtbl name;
-        Hashtbl.add symtbl name Hyp_name;
+        set_type name Hyp_name;
     | Phrase.Def (DefReal (s, _, e)) ->
         defined := s :: !defined;
         get_sig (Indirect s) [] e;
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig (sym, args, res) ->
-        let sign = Declared (args, res) in
-        Hashtbl.remove symtbl sym;
-        Hashtbl.add symtbl sym sign;
+        set_type sym (Declared res);
+    | Phrase.Inductive (ty, constrs) ->
+        List.iter (fun x -> set_type x (Declared ty)) constrs;
   in
   List.iter do_phrase ps;
   let rec follow_indirect path s =
@@ -549,7 +553,7 @@ let get_signatures ps ext_decl =
         match Hashtbl.find symtbl s with
         | Default (_, ((Prop|Term|Type _) as kind)) -> kind
         | Default (_, Indirect s1) -> follow_indirect (s::path) s1
-        | Declared (_, res) -> Type res
+        | Declared (res) -> Type res
         | Hyp_name -> assert false
       with Not_found -> Prop
       end
@@ -561,7 +565,7 @@ let get_signatures ps ext_decl =
       | Default (arity, (Prop|Term|Type _)) -> (sym, sign) :: l
       | Default (arity, Indirect s) ->
           (sym, Default (arity, follow_indirect [] s)) :: l
-      | Declared (args, res) -> l
+      | Declared (res) -> l
       | Hyp_name -> l
     end
   in
@@ -586,7 +590,7 @@ let print_signature oc (sym, sign) =
         | Type s -> fprintf oc "%s.\n" s;
         | Indirect _ -> assert false;
       end;
-  | Declared (args, res) -> assert false
+  | Declared (res) -> assert false
   | Hyp_name -> assert false
 ;;
 
@@ -617,6 +621,7 @@ let declare_hyp oc h =
       fprintf oc "Parameter %s : " sym;
       List.iter (fun x -> fprintf oc "%s -> " (tr_ty x)) args;
       fprintf oc "%s.\n" (tr_ty res);
+  | Phrase.Inductive _ -> assert false (* FIXME *)
 ;;
 
 let declare_context oc phrases =

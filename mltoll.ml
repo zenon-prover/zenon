@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.20 2006-02-02 22:13:54 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.21 2006-02-06 17:56:06 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -43,6 +43,7 @@ let extract_meta_types phrases =
     | Phrase.Def (DefReal (_, _, e)) -> init_meta e;
     | Phrase.Def (DefPseudo ((e, _), _, _, _)) -> init_meta e;
     | Phrase.Sig _ -> ()
+    | Phrase.Inductive _ -> ()
   in
   List.iter f phrases
 ;;

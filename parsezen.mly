@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.3 2006-02-02 22:13:54 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.4 2006-02-06 17:56:06 doligez Exp $";;
 
 open Printf;;
 
@@ -27,12 +27,12 @@ let mkequiv e el = myfold eequiv e el;;
 let mkrimply e el = myfold (fun (a, b) -> eimply (b, a)) e el;;
 
 let mk_ealln (vars, typ, body) =
-  let f v b = ealln (v, typ, b) in
+  let f v b = ealln (evar v, typ, b) in
   List.fold_right f vars body
 ;;
 
 let mk_eexn (vars, typ, body) =
-  let f v b = eexn (v, typ, b) in
+  let f v b = eexn (evar v, typ, b) in
   List.fold_right f vars body
 ;;
 
@@ -52,6 +52,7 @@ let gen_hyp_name () =
 %token DEF
 %token GOAL
 %token SIG
+%token INDUCTIVE
 %token NOT
 %token AND
 %token OR
@@ -64,6 +65,8 @@ let gen_hyp_name () =
 %token EX
 %token TAU
 %token EQUAL
+%token LAMBDA
+%token MATCH
 %token EOF
 
 %start file
@@ -77,10 +80,16 @@ file:
 ;
 
 phrase:
-  | DEF OPEN IDENT ident_list CLOSE expr { Def (DefReal ($3, $4, $6)) }
-  | int_opt hyp_name expr                { Hyp ($2, $3, $1) }
-  | GOAL expr                            { Hyp ("z'g", enot $2, 0) }
-  | SIG IDENT OPEN string_list CLOSE STRING { Sig ($2, $4, $6) }
+  | DEF OPEN IDENT ident_list CLOSE expr
+      { let idl = List.map evar $4 in Def (DefReal ($3, idl, $6)) }
+  | int_opt hyp_name expr
+      { Hyp ($2, $3, $1) }
+  | GOAL expr
+      { Hyp ("z'g", enot $2, 0) }
+  | SIG IDENT OPEN string_list CLOSE STRING
+      { Sig ($2, $4, $6) }
+  | INDUCTIVE IDENT OPEN ident_list CLOSE
+      { Inductive ($2, $4) }
 ;
 
 expr:
@@ -100,6 +109,7 @@ expr:
   | OPEN EX mlambda CLOSE                { mk_eexn $3 }
   | OPEN TAU lambda CLOSE                { etau $3 }
   | OPEN EQUAL expr expr CLOSE           { eapp ("=", [$3; $4]) }
+/* FIXME ajouter lambda et match */
 ;
 
 expr_list:
@@ -119,7 +129,7 @@ mlambda:
 
 ident_list:
   | /* empty */       { [] }
-  | IDENT ident_list  { evar $1 :: $2 }
+  | IDENT ident_list  { $1 :: $2 }
 ;
 
 int_opt:
