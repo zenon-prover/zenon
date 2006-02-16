@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.24 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.25 2006-02-16 16:28:33 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -248,7 +248,7 @@ let rec trtree env node =
       let hypargs = List.map2 (mklams env) hs (List.map (trtree env) hyps) in
       let conargs = List.map getv c in
       Capp (Cvar name, metargs @ hypargs @ conargs)
-  | Rlemma (name, args) ->
+  | Rlemma (name, _) ->
       let args = Hashtbl.find lemma_env name in
       Capp (Cvar name, List.map (fun x -> trexpr (evar x)) args)
 
@@ -296,7 +296,7 @@ let compare_hyps (name1, _) (name2, _) = Pervasives.compare name1 name2;;
 let make_lemma { name = name; params = params; proof = proof } =
   let pars = List.map (fun (x, y) -> (x, Cty y)) params in
   let parenv = List.map fst params in
-  let f x = not (is_mapped x) || is_goal x in
+  let f x = is_goal x || not (is_mapped x) in
   let hyps = List.filter f proof.conc in
   let hyps0 = List.map (fun x -> (getname x, trexpr parenv x)) hyps in
   let hyps1 = List.sort compare_hyps hyps0 in

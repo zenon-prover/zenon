@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.9 2006-02-16 13:52:55 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.10 2006-02-16 16:28:33 doligez Exp $";;
 
 open Printf;;
 
@@ -139,7 +139,6 @@ let rec mk_pattern accu l =
 %token MATCH
 %token ON
 %token PARAMETER
-%token SET
 %token THEN
 %token THEOREM
 %token TRUE
@@ -154,7 +153,7 @@ let rec mk_pattern accu l =
 
 %nonassoc let_in
 %nonassoc IDENT FQN
-%nonassoc FORALL EXISTS COMMA_ IF THEN ELSE
+%nonassoc FORALL EXISTS COMMA_ FUN EQ_GT_ IF THEN ELSE
 %right DASH_GT_ LT_DASH_GT_
 %right BACKSL_SLASH_
 %right SLASH_BACKSL_
@@ -310,8 +309,9 @@ hyp_def:
       { Hyp ($2, $4, 1) }
   | DEFINITION id_or_expr COLON_EQ_ expr PERIOD_
       { let (params, expr) = get_params $4 in Def (DefReal ($2, params, expr)) }
-  | INDUCTIVE IDENT COLON_ SET COLON_EQ_ constr_list PERIOD_
-      { Inductive ($2, $6) }
+  | INDUCTIVE IDENT COLON_ IDENT COLON_EQ_ constr_list PERIOD_
+      { (* FIXME should check that $4 = "Set" *)
+        Inductive ($2, $6) }
 ;
 
 dep_hyp_def:
