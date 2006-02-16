@@ -75,9 +75,9 @@ ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
     extension.cmx expr.cmx ext_equiv.cmi 
 ext_inductive.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
-    llproof.cmi extension.cmi expr.cmi ext_inductive.cmi 
+    extension.cmi expr.cmi error.cmi ext_inductive.cmi 
 ext_inductive.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
-    llproof.cmx extension.cmx expr.cmx ext_inductive.cmi 
+    extension.cmx expr.cmx error.cmx ext_inductive.cmi 
 coqterm.cmo: version.cmi phrase.cmi mltoll.cmi llproof.cmi index.cmi \
     globals.cmi extension.cmi expr.cmi error.cmi coqterm.cmi 
 coqterm.cmx: version.cmx phrase.cmx mltoll.cmx llproof.cmx index.cmx \
@@ -86,16 +86,14 @@ lltocoq.cmo: version.cmi mltoll.cmi llproof.cmi globals.cmi expr.cmi \
     error.cmi coqterm.cmi lltocoq.cmi 
 lltocoq.cmx: version.cmx mltoll.cmx llproof.cmx globals.cmx expr.cmx \
     error.cmx coqterm.cmx lltocoq.cmi 
-stamp.cmo: stamp.cmi 
-stamp.cmx: stamp.cmi 
-main.cmo: watch.cmi version.cmi tptp.cmi stamp.cmi prove.cmi progress.cmi \
-    print.cmi phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi \
-    lltocoq.cmi llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi \
-    extension.cmi error.cmi eqrel.cmi coqterm.cmi main.cmi 
-main.cmx: watch.cmx version.cmx tptp.cmx stamp.cmx prove.cmx progress.cmx \
-    print.cmx phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx mltoll.cmx \
-    lltocoq.cmx llproof.cmx lexzen.cmx lextptp.cmx lexcoq.cmx globals.cmx \
-    extension.cmx error.cmx eqrel.cmx coqterm.cmx main.cmi 
+main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
+    phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi lltocoq.cmi \
+    llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi extension.cmi \
+    error.cmi eqrel.cmi coqterm.cmi main.cmi 
+main.cmx: watch.cmx version.cmx tptp.cmx prove.cmx progress.cmx print.cmx \
+    phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx mltoll.cmx lltocoq.cmx \
+    llproof.cmx lexzen.cmx lextptp.cmx lexcoq.cmx globals.cmx extension.cmx \
+    error.cmx eqrel.cmx coqterm.cmx main.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.30 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.31 2006-02-16 13:52:33 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -70,7 +70,6 @@ let short_version () =
 
 let cvs_version () =
   printf "zenon version %s\n" Version.full;
-  printf "build stamp: %s\n" Stamp.stamp;
   Version.print_cvs stdout;
   exit 0;
 ;;

@@ -1,7 +1,6 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.32 2006-02-16 09:22:45 doligez Exp $
+#  $Id: Makefile,v 1.33 2006-02-16 13:52:33 doligez Exp $
 
-#CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
 
 CAMLOPT = ocamlopt
@@ -19,7 +18,7 @@ MODULES = version misc heap globals error progress expr \
           parsezen lexzen parsetptp lextptp parsecoq lexcoq \
           tptp \
           ext_coqbool ext_equiv ext_inductive coqterm lltocoq \
-          stamp main
+          main
 
 IMPL = ${MODULES:%=%.ml}
 INTF = ${MODULES:%=%.mli}
@@ -36,18 +35,14 @@ include .config_var
 all: zenon zenon.opt zenon.byt ${COQOBJ}
 
 
-zenon.opt: stamp ${OBJOPT}
+zenon.opt: ${OBJOPT}
 	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${OBJOPT}
 
-zenon.byt: stamp ${OBJBYT}
+zenon.byt: ${OBJBYT}
 	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${OBJBYT}
 
 zenon: zenon.opt
 	cp zenon.opt zenon
-
-.PHONY: stamp
-stamp:
-	echo "let stamp = \"`date -u +%Y%m%d%H%M%S`\";;" >stamp.ml
 
 .PHONY: install
 install:
@@ -78,14 +73,8 @@ zenon-logo-small.png: zenon-logo.png
 .ml.cmo:
 	${CAMLC} ${CAMLCFLAGS} -c $*.ml
 
-#lltocoq.cmo: lltocoq.ml
-#	${CAMLC} ${CAMLP4} ${CAMLCFLAGS} -c lltocoq.ml
-
 .ml.cmx:
 	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.ml
-
-#lltocoq.cmx: lltocoq.ml
-#	${CAMLOPT} ${CAMLP4} ${CAMLOPTFLAGS} -c lltocoq.ml
 
 .mli.cmi:
 	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.mli
