@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.8 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.9 2006-02-16 13:52:55 doligez Exp $";;
 
 open Printf;;
 
@@ -40,6 +40,19 @@ let mk_all bindings body =
 let mk_ex bindings body =
   let f (var, ty) e = eexn (evar var, ty, e) in
   List.fold_right f bindings body
+;;
+
+let mk_lam bindings body =
+  let f (var, ty) e = elam (evar var, ty, e) in
+  List.fold_right f bindings body
+;;
+
+let rec get_params e =
+  match e with
+  | Elam (v, _, body, _) ->
+      let (p, e1) = get_params body in
+      (v :: p, e1)
+  | _ -> ([], e)
 ;;
 
 let mk_let id expr body =
@@ -186,6 +199,9 @@ expr:
   | EXISTS bindings COMMA_ expr
       { mk_ex $2 $4 }
 
+  | FUN bindings EQ_GT_ expr
+      { mk_lam $2 $4 }
+
   | LET IDENT COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $4 $6 }
 
@@ -289,20 +305,11 @@ id_or_expr:
   | STRING { $1 }
 ;
 
-param_expr:
-  | expr
-      { ([], $1) }
-  | FUN LPAREN_ IDENT COLON_ typ RPAREN_ EQ_GT_ param_expr
-      { let (params, expr) = $8 in ((evar $3) :: params, expr) }
-  | LPAREN_ FUN LPAREN_ IDENT COLON_ typ RPAREN_ EQ_GT_ param_expr RPAREN_
-      { let (params, expr) = $9 in ((evar $4) :: params, expr) }
-;
-
 hyp_def:
   | PARAMETER id_or_expr COLON_ expr PERIOD_
       { Hyp ($2, $4, 1) }
-  | DEFINITION id_or_expr COLON_EQ_ param_expr PERIOD_
-      { let (params, expr) = $4 in Def (DefReal ($2, params, expr)) }
+  | DEFINITION id_or_expr COLON_EQ_ expr PERIOD_
+      { let (params, expr) = get_params $4 in Def (DefReal ($2, params, expr)) }
   | INDUCTIVE IDENT COLON_ SET COLON_EQ_ constr_list PERIOD_
       { Inductive ($2, $6) }
 ;
