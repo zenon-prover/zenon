@@ -6,10 +6,7 @@
 ; Attention, ce fichier a ete modifie a la main
 *)
 %%begin-auto-proof
-%%location: []
-%%name: bar
-%%syntax:
-%%statement
+
 (Is_true (((setoid_equal  self_s2 ) (scnd x ) (scnd x ) ))
 )
 

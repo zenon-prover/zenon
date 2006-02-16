@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.29 2006-02-02 13:30:03 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.30 2006-02-16 09:22:46 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -25,21 +25,6 @@ let input_format = ref I_zenon;;
 let include_path = ref [];;
 
 let opt_level = ref 1;;
-
-(* Output file, script checking and validation *)
-let outf = ref None
-
-let set_out () =
-  match !outf with
-  | Some f -> open_out f
-  | _ -> stdout
-;;
-
-let close_out oc =
-  match !outf with
-  | Some _ -> close_out oc
-  | _ -> ()
-;;
 
 let int_arg r arg =
   let l = String.length arg in
@@ -116,12 +101,16 @@ let rec argspec = [
          "             print this option list and exit";
   "-I", Arg.String (fun x -> include_path := x :: !include_path),
      " <dir>           add <dir> to the include path (for TPTP input format)";
-  "-iz", Arg.Unit (fun () -> input_format := I_zenon),
-      "                read input file in zenon format (default)";
+(*
+  "-icoq", Arg.Unit (fun () -> input_format := I_focal),
+        "              read input file in Coq format";
+*)
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
           "            read input file in Focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
          "             read input file in TPTP format";
+  "-iz", Arg.Unit (fun () -> input_format := I_zenon),
+      "                read input file in Zenon format (default)";
   "-max", Arg.String parse_size_time,
        "<s>[kMGT]/<t>[smhd]   Set both size and time limit (see below)";
   "-max-size", Arg.String (int_arg size_limit),
@@ -210,10 +199,8 @@ let parse_file f =
           let pp = Filename.parent_dir_name in
           let upup = Filename.concat (Filename.concat d pp) pp in
           let incpath = List.rev (upup :: d :: !include_path) in
-          let forms = Tptp.translate incpath tpphrases in
-          let annotated = Tptp.process_annotations forms in
-          let f x = (x, false) in
-          (Tptp.get_thm_name (), List.map f annotated)
+          let (forms, name) = Tptp.translate incpath tpphrases in
+          (name, List.map (fun x -> (x, false)) forms)
       | I_focal ->
           let (name, result) = Parsecoq.file Lexcoq.token lexbuf in
           close chan;
@@ -302,7 +289,7 @@ let main () =
         let lxp = Mltoll.translate th_name ppphrases proof in
         Print.llproof (Print.Chan stdout) lxp;
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
-    | Proof_coq -> Lltocoq.produce_proof stdout phrases (Lazy.force llp);
+    | Proof_coq -> Lltocoq.output stdout phrases (Lazy.force llp);
     | Proof_coqterm ->
         let p = Coqterm.trproof phrases (Lazy.force llp) in
         Coqterm.print stdout p;

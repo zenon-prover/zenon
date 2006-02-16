@@ -5,10 +5,7 @@
 *)
 
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax: x
-%%statement x.
+
 (Is_true ((abst_order_inf yy xx ))
 )
 

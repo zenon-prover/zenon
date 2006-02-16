@@ -4,10 +4,7 @@
 ; property: sup_idempotent / __goal_11
 *)
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax: x
-%%statement x.
+
 (Is_true ((abst_equal (abst_plus y x ) (abst_plus y (abst_sup x y ) ) ))
 )
 
@@ -35,4 +32,5 @@ Parameter __lemma_1_1_1:
   ((abst_equal (abst_plus y x ) (abst_plus (abst_inf x y ) (abst_sup x y ) )
    ))
   ).
+
 %%end-auto-proof

@@ -3,11 +3,9 @@
 *)
 
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax: coq
-%%statement theorem.
+
 forall (x: nat), A -> forall (y: nat), B -> A
 Parameter A : Prop.
 Parameter B : Prop.
+
 %%end-auto-proof

@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lextptp.mll,v 1.3 2005-11-18 13:09:59 doligez Exp $";;
+Version.add "$Id: lextptp.mll,v 1.4 2006-02-16 09:22:45 doligez Exp $";;
 
 open Parsetptp;;
 open Lexing;;
@@ -16,7 +16,7 @@ let idchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' ]
 
 rule token = parse
   | "%@" ([^ '\010' '\013'] * as annot)
-                     { TPANNOT annot }
+                     { ANNOT annot }
   | "%" [^ '\010' '\013'] *
                      { token lexbuf }
   | newline          {

@@ -1,0 +1,12 @@
+(* Testing inductive types. *)
+
+Inductive foo : Set :=
+  | A : foo
+  | B : foo
+.
+
+(*
+Theorem foo : 1 = match A with | A => 1 | B => 0 end.
+*)
+
+Theorem foo : A <> B.

@@ -7,10 +7,7 @@
 *)
 
 %%begin-auto-proof
-%%location: []
-%%name: bar
-%%syntax:
-%%statement
+
 (Is_true (((setoid_equal  self_s1 ) (first x ) (first x ) ))
 )
 

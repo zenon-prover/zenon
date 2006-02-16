@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.6 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.7 2006-02-16 09:22:46 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -49,5 +49,13 @@ let rec list_last l =
   | [x] -> x
   | h::t -> list_last t
 ;;
+
+let rec xlist_iteri f l i =
+  match l with
+  | [] -> ()
+  | h::t -> f i h; xlist_iteri f t (i+1);
+;;
+
+let list_iteri f l = xlist_iteri f l 0;;
 
 let debug = Printf.eprintf;;

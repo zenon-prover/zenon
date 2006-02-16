@@ -1,7 +1,7 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.31 2006-02-02 22:13:54 doligez Exp $
+#  $Id: Makefile,v 1.32 2006-02-16 09:22:45 doligez Exp $
 
-CAMLP4 = -pp 'camlp4o'
+#CAMLP4 = -pp 'camlp4o'
 CAMLFLAGS = -warn-error A
 
 CAMLOPT = ocamlopt
@@ -18,7 +18,7 @@ MODULES = version misc heap globals error progress expr \
           print step node extension mltoll prove \
           parsezen lexzen parsetptp lextptp parsecoq lexcoq \
           tptp \
-          ext_coqbool ext_equiv coqterm lltocoq \
+          ext_coqbool ext_equiv ext_inductive coqterm lltocoq \
           stamp main
 
 IMPL = ${MODULES:%=%.ml}
@@ -78,14 +78,14 @@ zenon-logo-small.png: zenon-logo.png
 .ml.cmo:
 	${CAMLC} ${CAMLCFLAGS} -c $*.ml
 
-lltocoq.cmo: lltocoq.ml
-	${CAMLC} ${CAMLP4} ${CAMLCFLAGS} -c lltocoq.ml
+#lltocoq.cmo: lltocoq.ml
+#	${CAMLC} ${CAMLP4} ${CAMLCFLAGS} -c lltocoq.ml
 
 .ml.cmx:
 	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.ml
 
-lltocoq.cmx: lltocoq.ml
-	${CAMLOPT} ${CAMLP4} ${CAMLOPTFLAGS} -c lltocoq.ml
+#lltocoq.cmx: lltocoq.ml
+#	${CAMLOPT} ${CAMLP4} ${CAMLOPTFLAGS} -c lltocoq.ml
 
 .mli.cmi:
 	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.mli

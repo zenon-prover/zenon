@@ -5,10 +5,7 @@
 *)
 
 %%begin-auto-proof
-%%location: []
-%%name: __lemma_1_1_2
-%%syntax: x
-%%statement x.
+
 (Is_true ((abst_equal (abst_inf x y ) y ))
 )
 
@@ -33,4 +30,5 @@ Parameter abst_inf_idempotent: forall (x: abst_T)
     (Is_true ((abst_equal  x (abst_inf  x y))) ).
 Parameter H_1_1: (Is_true
   ((abst_equal x y )) ).
+
 %%end-auto-proof

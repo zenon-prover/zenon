@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.9 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.10 2006-02-16 09:22:46 doligez Exp $";;
 
 open Expr;;
 
@@ -165,8 +165,18 @@ let rec xseparate deps multi defs hyps l =
       else
         xseparate (newdep :: deps) multi (d :: defs) hyps t
   | Hyp (_, e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
-  | Sig (sym, args, res) :: t -> xseparate deps multi defs hyps t
-  | Inductive _ :: _ -> assert false (* FIXME *)
+  | Sig _ :: t -> xseparate deps multi defs hyps t
+  | Inductive _ :: t -> xseparate deps multi defs hyps t
+;;
+
+let change_to_def body =
+  if is_def [] body then begin
+    match make_def (body, 0) [] body with
+    | DefPseudo (_, s, args, def) -> DefReal (s, args, def)
+    | _ -> assert false
+  end else begin
+    raise (Invalid_argument "change_to_def")
+  end
 ;;
 
 let separate l = xseparate [] [] [] [] l;;

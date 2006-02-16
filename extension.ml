@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.8 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.9 2006-02-16 09:22:45 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -36,9 +36,7 @@ let activate name =
     raise Not_found;
 ;;
 
-let is_active name =
-  name = "core" || List.exists (fun x -> x.name = name) !active
-;;
+let is_active name = List.exists (fun x -> x.name = name) !active;;
 
 let rec find_extension name l =
   match l with

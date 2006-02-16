@@ -4,10 +4,7 @@
 ; property: add_absorbes_sup / __goal_11
 *)
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax: coq
-%%statement theorem.
+
 (Is_true ((abst_order_sup (abst_plus x y ) x ))
 )
 

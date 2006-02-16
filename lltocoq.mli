@@ -1,6 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(* $Id: lltocoq.mli,v 1.4 2005-11-05 11:13:17 doligez Exp $ *)
+(* $Id: lltocoq.mli,v 1.5 2006-02-16 09:22:46 doligez Exp $ *)
 
-val produce_proof :
-  out_channel -> Phrase.phrase list -> Llproof.proof -> unit
-;;
+val output : out_channel -> Phrase.phrase list -> Llproof.proof -> unit;;

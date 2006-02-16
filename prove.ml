@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.17 2005-11-21 18:48:28 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.18 2006-02-16 09:22:46 doligez Exp $";;
 
 open Expr;;
 open Misc;;

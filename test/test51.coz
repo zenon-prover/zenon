@@ -4,9 +4,7 @@
 ; property: sup_idempotent / __lemma_1_1_1
 *)
 %%begin-auto-proof
-%%location: []
-%%name: __lemma_1_1_1
-%%statement x.
+
 (Is_true
 ((abst_equal (abst_plus y x ) (abst_plus (abst_inf x y ) (abst_sup x y ) ) ))
 )
@@ -32,4 +30,5 @@ Parameter
   ((abst_equal  (abst_plus  x y) (abst_plus  (abst_inf  x y) (abst_sup  x
    y))))
   ).
+
 %%end-auto-proof

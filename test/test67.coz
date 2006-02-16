@@ -5,10 +5,7 @@
 *)
 
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax:
-%%statement
+
 (Is_true ((abst_equal (abst_sup x y ) (abst_sup y x ) ))
 )
 

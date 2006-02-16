@@ -7,10 +7,7 @@
 *)
 
 %%begin-auto-proof
-%%location: []
-%%name: bar
-%%syntax:
-%%statement
+
 (Is_true ((abst_equal x x ))
 )
 

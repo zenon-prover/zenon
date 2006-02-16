@@ -1,5 +1,5 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.8 2005-11-21 18:48:28 doligez Exp $
+#  $Id: Makefile,v 1.9 2006-02-16 09:22:46 doligez Exp $
 
 ZOPT = -q -x coqbool -max-time 10m -max-size 500M ${RND}
 
@@ -45,29 +45,15 @@ test:
 	done; \
 	echo
 
-.PHONY: coq
-coq:
-	: testing term output
-	@for n in ${COQTESTTERM}; do \
-	  i=`echo test$$n.*`; \
-	  echo -n $$i' '; \
-	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
-	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoqterm -context >tmp_test.v \
-	     && (echo -n $$i '-> coqc'; coqc tmp_test.v); then \
-	    echo -n '' ; \
-	  else \
-	    echo $$i '>>> TEST FAILED <<<' ; \
-	    exit 3 ; \
-	  fi ; \
-	done; \
-	echo
+.PHONY: coqscript coqterm coq
+coqscript:
 	: testing script output
 	@for n in ${COQTESTSCRIPT}; do \
 	  i=`echo test$$n.*`; \
 	  echo -n $$i' '; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoq -context >tmp_test.v \
-	     && (echo -n $$i '-> coqc'; coqc tmp_test.v); then \
+	     && (echo -n $$i '-> coqc'; coqc -I .. tmp_test.v); then \
 	    echo -n '' ; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \
@@ -76,6 +62,25 @@ coq:
 	done; \
 	echo
 	rm -f tmp_test.v
+
+coqterm:
+	: testing term output
+	@for n in ${COQTESTTERM}; do \
+	  i=`echo test$$n.*`; \
+	  echo -n $$i' '; \
+	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
+	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoqterm -context >tmp_test.v \
+	     && (echo -n $$i '-> coqc'; coqc -I .. tmp_test.v); then \
+	    echo -n '' ; \
+	  else \
+	    echo $$i '>>> TEST FAILED <<<' ; \
+	    exit 3 ; \
+	  fi ; \
+	done; \
+	echo
+	rm -f tmp_test.v
+
+coq: coqterm coqscript
 
 clean:
 	rm -f tmp_test.v

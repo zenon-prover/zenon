@@ -4,10 +4,7 @@
 ; property: order_inf_reverse_order_sup / __goal_20
 *)
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax: x
-%%statement x.
+
 (
   ((Is_true ((abst_order_inf  x y)) ))-> 
     (Is_true ((abst_order_sup  y x)) )

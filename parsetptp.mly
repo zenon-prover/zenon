@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.3 2005-11-18 13:09:59 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.4 2006-02-16 09:22:46 doligez Exp $";;
 
 open Printf;;
 
@@ -52,7 +52,7 @@ let rec mk_quant q vs body =
 %token XOR
 %token NOR
 %token NAND
-%token <string> TPANNOT
+%token <string> ANNOT
 
 %nonassoc OPEN
 %nonassoc ALL EXISTS
@@ -78,7 +78,7 @@ phrase:
   | INCLUDE OPEN STRING CLOSE DOT  { Phrase.Include $3 }
   | INPUT_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
                                    { Phrase.Formula ($3, $5, $7) }
-  | TPANNOT                        { Phrase.Annotation $1 }
+  | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:
   | UIDENT                             { evar ($1) }

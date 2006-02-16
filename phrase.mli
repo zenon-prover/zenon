@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: phrase.mli,v 1.7 2006-02-06 17:56:06 doligez Exp $  *)
+(*  $Id: phrase.mli,v 1.8 2006-02-16 09:22:46 doligez Exp $  *)
 
 open Expr;;
 
@@ -10,9 +10,6 @@ type phrase =
   | Inductive of string * string list
 ;;
 
-val is_def: expr list -> expr -> bool
-val make_def: expr * int -> expr list -> expr -> definition
-
 val separate : phrase list -> definition list * (expr * int) list;;
 
 type tpphrase =
@@ -20,3 +17,7 @@ type tpphrase =
   | Formula of string * string * expr
   | Annotation of string
 ;;
+
+val change_to_def : expr -> definition;;
+(** Turn a def-shaped formula into a (real) definition.
+    Raise [Invalid_argument] if the argument is not def-shaped. *)

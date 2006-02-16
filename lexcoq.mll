@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.5 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.6 2006-02-16 09:22:45 doligez Exp $";;
 
 open Parsecoq;;
 open Lexing;;
@@ -94,11 +94,13 @@ rule token = parse
   | "fun"                   { FUN }
   | "if"                    { IF }
   | "in"                    { IN }
+  | "Inductive"             { INDUCTIVE }
   | "let"                   { LET }
   | "match"                 { MATCH }
   | "Parameter"             { PARAMETER }
   | "Set"                   { SET }
   | "then"                  { THEN }
+  | "Theorem"               { THEOREM }
   | "True"                  { TRUE }
   | "with"                  { WITH }
 

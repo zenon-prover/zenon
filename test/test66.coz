@@ -4,10 +4,7 @@
 ; property: sup_commutes / __lemma_1_3
 *)
 %%begin-auto-proof
-%%location: []
-%%name: foo
-%%syntax:
-%%statement
+
 ((Is_true
  ((abst_equal
    (abst_plus (abst_inf y x ) (abst_sup y x ) )

@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.4 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.5 2006-02-16 09:22:46 doligez Exp $";;
 
 open Printf;;
 
@@ -33,6 +33,11 @@ let mk_ealln (vars, typ, body) =
 
 let mk_eexn (vars, typ, body) =
   let f v b = eexn (evar v, typ, b) in
+  List.fold_right f vars body
+;;
+
+let mk_elam (vars, typ, body) =
+  let f v b = elam (evar v, typ, b) in
   List.fold_right f vars body
 ;;
 
@@ -107,9 +112,10 @@ expr:
   | FALSE                                { efalse }
   | OPEN ALL mlambda CLOSE               { mk_ealln $3 }
   | OPEN EX mlambda CLOSE                { mk_eexn $3 }
+  | mlambda                              { mk_elam $1 }
   | OPEN TAU lambda CLOSE                { etau $3 }
   | OPEN EQUAL expr expr CLOSE           { eapp ("=", [$3; $4]) }
-/* FIXME ajouter lambda et match */
+  | OPEN MATCH expr case_list CLOSE      { eapp ("K'match", $3 :: $4) }
 ;
 
 expr_list:
@@ -146,4 +152,12 @@ string_list:
   | /* empty */         { [] }
   | STRING string_list  { $1 :: $2 }
 ;
+
+case_list:
+  | /* empty */
+      { [] }
+  | OPEN IDENT ident_list CLOSE expr case_list
+      { eapp ($2, List.map evar $3) :: $5 :: $6 }
+;
+
 %%

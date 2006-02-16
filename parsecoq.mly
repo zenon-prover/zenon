@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.7 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.8 2006-02-16 09:22:46 doligez Exp $";;
 
 open Printf;;
 
@@ -128,6 +128,7 @@ let rec mk_pattern accu l =
 %token PARAMETER
 %token SET
 %token THEN
+%token THEOREM
 %token TRUE
 %token WITH
 
@@ -154,15 +155,22 @@ let rec mk_pattern accu l =
 %%
 
 file:
-  | proof_head expr hyp_def_list ENDPROOF EOF
-      { ($1, (Hyp ("z'g", enot $2, 0), false) :: $3) }
+  | hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ EOF
+      { ($3, (Hyp ("z'g", enot $5, 0), false) :: $1) }
+
+/* deprecated "Focal" format -- kept for compatibility */
+
   | expr hyp_def_list EOF
       { ("theorem", (Hyp ("z'g", enot $1, 0), false) :: $2) }
+  | proof_head expr hyp_def_list ENDPROOF EOF
+      { ($1, (Hyp ("z'g", enot $2, 0), false) :: $3) }
 ;
 
 proof_head:
   | BEGINPROOF proofheaders BEGINNAME proofheaders
       { $3 }
+  | BEGINPROOF proofheaders
+      { "theorem" }
 ;
 
 proofheaders:

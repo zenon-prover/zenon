@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: prove.mli,v 1.1 2004-04-01 11:37:44 doligez Exp $  *)
+(*  $Id: prove.mli,v 1.2 2006-02-16 09:22:46 doligez Exp $  *)
 
 exception NoProof;;
 

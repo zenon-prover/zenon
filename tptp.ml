@@ -1,55 +1,60 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.13 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.14 2006-02-16 09:22:46 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Phrase;;
 
-(* translation from TPTP identifier to coq expressions, following annotations
-   produced by focal. *)
+(* Mapping from TPTP identifiers to coq expressions. *)
 let trans_table = Hashtbl.create 35;;
 
-(* names of formula that have to be treated as (real) definitions. *)
-let eq_defs = ref []
+(* Names of formula that have to be treated as (real) definitions. *)
+let eq_defs = ref [];;
 
-(* name of the coq theorem. *)
-let thm_name = ref "theorem"
-let get_thm_name () = !thm_name
+(* Theorem name according to annotations. *)
+let annot_thm_name = ref "";;
 
-let to_ignore = ref []
+(* Theorem name according to TPTP syntax. *)
+let tptp_thm_name = ref "";;
+
+(* Names of formulas that should be omitted. *)
+let to_ignore = ref [];;
 
 let add_ignore_directive ext fname =
-  if Extension.is_active ext then
-    to_ignore := fname :: !to_ignore
+  if ext = "core" || Extension.is_active ext
+  then to_ignore := fname :: !to_ignore;
+;;
 
 let keep form =
   match form with
-    | Hyp(name, _, _) -> not (List.mem name !to_ignore)
-    | Def def -> assert false
-    | Sig _ -> assert false
-    | Inductive _ -> assert false
+    | Hyp (name, _, _) -> not (List.mem name !to_ignore)
+    | Def _
+    | Sig _
+    | Inductive _
+      -> assert false
 ;;
 
 let add_annotation s =
   try
-    let annot_kind = String.sub s 0 (String.index s ' ') in
-    match annot_kind with
+    let annot_key = String.sub s 0 (String.index s ' ') in
+    match annot_key with
       | "coq_binding" ->
           Scanf.sscanf s "coq_binding %s is %s" (Hashtbl.add trans_table)
       | "eq_def" ->
-          Scanf.sscanf s "eq_def %s" (fun x -> eq_defs:= x :: !eq_defs)
+          Scanf.sscanf s "eq_def %s" (fun x -> eq_defs := x :: !eq_defs)
       | "thm_name" ->
-          Scanf.sscanf s "thm_name %s" (fun x -> thm_name:=x)
+          Scanf.sscanf s "thm_name %s" (fun x -> annot_thm_name := x)
       | "zenon_ignore" ->
-          Scanf.sscanf s "thm_name %s %s" add_ignore_directive
-      | _ -> () (* other annotations are irrelevant for zenon. *)
-  with (* unknown annotations. *)
+          Scanf.sscanf s "zenon_ignore %s %s" add_ignore_directive
+      | _ -> ()
+  with
     | Scanf.Scan_failure _ -> ()
     | End_of_file -> ()
     | Not_found -> ()
+;;
 
-let tptp_to_coq s = try Hashtbl.find trans_table s with Not_found -> s
+let tptp_to_coq s = try Hashtbl.find trans_table s with Not_found -> s;;
 
 let rec make_annot_expr e =
   match e with
@@ -71,18 +76,12 @@ let rec make_annot_expr e =
   | Elam (x,s,e,_) -> elam (x, s, make_annot_expr e)
 ;;
 
-(* transform a fof into a real definition. *)
 let make_definition name form body p =
-  if Phrase.is_def [] body then begin
-    let def = Phrase.make_def (body, p) [] body in
-      match def with
-        | DefPseudo (_,s,args,def) -> Def (DefReal(s,args,def))
-        | DefReal _ -> Def def
-  end else begin
+  try Def (Phrase.change_to_def body)
+  with Invalid_argument _ ->
     let msg = sprintf "annotated formula %s is not a definition" name in
     Error.warn msg;
     form
-  end
 ;;
 
 let process_annotations forms =
@@ -93,29 +92,32 @@ let process_annotations forms =
             make_definition name form (make_annot_expr body) kind
           else
             Hyp (tptp_to_coq name, make_annot_expr body, kind)
-      | Def def -> assert false
-          (* for now, TPTP does not directly support definitions. *)
-      | Sig _ -> assert false
-      | Inductive _ -> assert false
+      | Def _
+      | Sig _
+      | Inductive _
+        -> assert false
   in
   List.map process_one (List.filter keep forms)
+;;
 
-let rec translate dirs ps =
+let rec xtranslate dirs ps =
   match ps with
   | [] -> []
-  | Include f :: t -> (try_incl dirs f) @ (translate dirs t)
-  | Annotation s :: t -> add_annotation s; translate dirs t
+  | Include f :: t -> (try_incl dirs f) @ (xtranslate dirs t)
+  | Annotation s :: t -> add_annotation s; xtranslate dirs t
   | Formula (name, "axiom", body) :: t ->
-      Hyp (name, body, 2) :: (translate dirs t)
+      Hyp (name, body, 2) :: (xtranslate dirs t)
   | Formula (name, "hypothesis", body) :: t ->
-      Hyp (name, body, 1) :: (translate dirs t)
+      Hyp (name, body, 1) :: (xtranslate dirs t)
   | Formula (name, "conjecture", body) :: t ->
-      Hyp ("z'g", enot (body), 0) :: (translate dirs t)
+      tptp_thm_name := name;
+      Hyp ("z'g", enot (body), 0) :: (xtranslate dirs t)
   | Formula (name, "negated_conjecture", body) :: t ->
-      Hyp ("z'g", body, 0) :: (translate dirs t)
+      tptp_thm_name := name;
+      Hyp ("z'g", body, 0) :: (xtranslate dirs t)
   | Formula (name, k, body) :: t ->
       Error.warn ("unknown formula kind: " ^ k);
-      Hyp (name, body, 1) :: (translate dirs t)
+      Hyp (name, body, 1) :: (xtranslate dirs t)
 
 and try_incl dirs f =
   let rec loop = function
@@ -135,5 +137,15 @@ and incl dir name =
   let lexbuf = Lexing.from_channel chan in
   let tpphrases = Parsetptp.file Lextptp.token lexbuf in
   close_in chan;
-  translate dir tpphrases
+  xtranslate dir tpphrases
+;;
+
+let translate dirs ps =
+  let raw = xtranslate dirs ps in
+  let cooked = process_annotations raw in
+  let name = if !annot_thm_name <> "" then !annot_thm_name
+             else if !tptp_thm_name <> "" then !tptp_thm_name
+             else "theorem"
+  in
+  (cooked, name)
 ;;

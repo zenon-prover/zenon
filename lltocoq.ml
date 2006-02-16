@@ -1,441 +1,268 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.28 2006-02-02 22:13:54 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.29 2006-02-16 09:22:46 doligez Exp $";;
 
-open Printf
+open Printf;;
 
-open Expr
-open Llproof
+open Expr;;
+open Llproof;;
 
-let debug = ref false
-
-(********************)
-(* Stream utilities *)
-(********************)
-
-let str s = [< 's >]
-let ints s = [< '(string_of_int s) >]
-let coqend = [< '".\n" >]
-let coqp s = [< 's; coqend >]
-let parth s = [< '"("; s; '")" >]
-
-let flush_strm stm outc =
-  try
-    while true do
-      output_string outc (Stream.next stm)
-    done
-  with Stream.Failure -> flush outc
-
-let ppvernac_dir outc s = flush_strm s outc
-
-(******************************)
-(* Translation expr to constr *)
-(******************************)
-
-let constr_of_type t =
-  match t with
-  | "" -> [< '"z'U" >]
-  | "?" -> [< '"_" >]
-  | s -> [< 's >]
+let rec p_list init printer sep oc l =
+  match l with
+  | [] -> ()
+  | [x] -> fprintf oc "%s%a" init printer x;
+  | h::t ->
+      fprintf oc "%s%a%s" init printer h sep;
+      p_list init printer sep oc t;
 ;;
 
-let rec constr_of_expr = function
-  | Evar (v, _) when Mltoll.is_meta v -> [< 'Coqterm.synthesize v >]
-  | Evar (v, _) -> [< 'v >]
+let p_type oc t =
+  match t with
+  | "" -> fprintf oc "z'U";
+  | "?" -> fprintf oc "_";
+  | s -> fprintf oc "%s" s;
+;;
+
+let rec p_expr oc e =
+  let poc fmt = fprintf oc fmt in
+  match e with
+  | Evar (v, _) when Mltoll.is_meta v ->
+      poc "%s" (Coqterm.synthesize v);
+  | Evar (v, _) ->
+      poc "%s" v;
   | Eapp ("=", [e1; e2], _) ->
-    parth [< constr_of_expr e1; str " = "; constr_of_expr e2 >]
-  | Eapp ("=", l, _) -> constr_of_expr (eapp ("@eq _", l))
+      poc "(%a = %a)" p_expr e1 p_expr e2;
+  | Eapp ("=", l, _) ->
+      p_expr oc (eapp ("@eq _", l));
   | Eapp (f, l, _) ->
-    parth [< 'f; List.fold_left
-                 (fun s e -> [< s; str " "; (constr_of_expr e) >]) [< >] l >]
-  | Enot (e, _) -> [< str "~"; constr_of_expr e >]
+      poc "(%s%a)" f p_expr_list l;
+  | Enot (e, _) ->
+      poc "(~%a)" p_expr e;
   | Eand (e1, e2, _) ->
-    parth [< constr_of_expr e1; str "/\\"; constr_of_expr e2 >]
+      poc "(%a/\\%a)" p_expr e1 p_expr e2;
   | Eor (e1, e2, _) ->
-    parth [< constr_of_expr e1; str "\\/"; constr_of_expr e2 >]
+      poc "(%a\\/%a)" p_expr e1 p_expr e2;
   | Eimply (e1, e2, _) ->
-    parth [< constr_of_expr e1; str "->"; constr_of_expr e2 >]
+      poc "(%a->%a)" p_expr e1 p_expr e2;
   | Eequiv (e1, e2, _) ->
-    parth [< constr_of_expr e1; str "<->"; constr_of_expr e2 >]
-  | Etrue -> [< str "True" >]
-  | Efalse -> [< str "False" >]
+      poc "(%a<->%a)" p_expr e1 p_expr e2;
+  | Etrue ->
+      poc "True";
+  | Efalse ->
+      poc "False";
   | Eall (Evar (x, _), t, e, _, _) ->
-    parth [< str "forall "; str x; str ":"; constr_of_type t;
-             str ","; constr_of_expr e >]
+      poc "(forall %s : %a, %a)" x p_type t p_expr e;
   | Eall _ -> assert false
   | Eex (Evar (x, _), t, e, _, _) ->
-    parth [< str "exists "; str x; str ":"; constr_of_type t;
-             str ","; constr_of_expr e >]
+      poc "(exists %s : %a, %a)" x p_type t p_expr e;
   | Eex _ -> assert false
   | Elam (Evar (x, _), t, e, _) ->
-    parth [< str "fun "; str x; str ":"; constr_of_type t; str " => ";
-             constr_of_expr e >]
+      poc "(fun %s : %a => %a)" x p_type t p_expr e;
   | Elam _ -> assert false
   | Emeta _ -> assert false
   | Etau _ -> assert false
+
+and p_expr_list oc l = p_list " " p_expr "" oc l;
 ;;
 
-let parth_constr_of_expr e =
-  match e with
-  | Enot _ -> parth (constr_of_expr e)
-  | _ -> constr_of_expr e
+let p_id_list oc l = p_list " " (fun oc x -> fprintf oc "%s" x) "" oc l;;
+
+let rec p_nand oc l =
+  match l with
+  | e :: t -> fprintf oc "%a -> " p_expr e; p_nand oc t;
+  | [] -> fprintf oc "False";
 ;;
 
-(*********************)
-(* Type declarations *)
-(*********************)
-
-let rec make_prod = function
-  | [] -> [< str " False" >]
-  | e :: l -> [< constr_of_expr e; str " -> "; make_prod l >]
+let rec p_bound_vars oc l =
+  match l with
+  | (v, ty) :: t -> fprintf oc " (%s : %a)" v p_type ty; p_bound_vars oc t;
+  | [] -> ()
 ;;
 
-(************************)
-(* Coq proof generation *)
-(************************)
-
-let rec make_params = function
-  | [] -> [< >]
-  | (x, typ) :: l -> [< str "forall "; str x; str " : "; constr_of_type typ;
-                        str ", "; make_params l >]
+let rec p_forall oc l =
+  match l with
+  | _ :: _ -> fprintf oc "forall%a, " p_bound_vars l;
+  | [] -> ()
+;;
 
 let get_goals concl =
-  let not_global_hyp e = Coqterm.is_goal e || not (Coqterm.is_mapped e) in
-  List.filter not_global_hyp concl
+  List.filter (fun x -> Coqterm.is_goal x || not (Coqterm.is_mapped x)) concl
 ;;
 
-let declare_lemma ppvernac name params concl =
-  ppvernac [< str "Lemma "; str name; str " : ";
-              make_params params;
-              make_prod (get_goals concl); coqend >]
+let declare_lemma oc name params concl =
+  fprintf oc "Lemma %s : %a%a.\n" name p_forall params p_nand (get_goals concl);
 ;;
 
-let declare_theorem ppvernac name params concl =
-  let prod_concl =
+let declare_theorem oc name params concl =
+  let nconcl =
     match get_goals concl with
-    | [ Enot (e, _) ] -> [< constr_of_expr e >]
-    | [] -> [< str " False " >]
+    | [ Enot (e, _) ] -> e
+    | [] -> efalse
     | _ -> assert false
   in
-  ppvernac [< str "Lemma "; str name; str " : "; make_params params;
-              prod_concl; coqend >]
-
-let gen_name e = [< str " "; str (Coqterm.getname e) >];;
-
-let proof_init ppvernac nfv conc is_lemma =
-  let lnam = List.fold_left (fun s e -> [< s; gen_name e >]) [< >] conc in
-  if is_lemma then
-    ppvernac [< str "do "; ints nfv; str " intro; intros"; lnam; coqend >]
-  else
-    let intros =
-      match get_goals conc with
-      | [ e ] -> [< str " apply NNPP; intros"; gen_name e; coqend >]
-      | [] -> [< >]
-      | _ -> assert false
-    in
-    ppvernac [< intros >]
+  fprintf oc "Lemma %s : %a%a.\n" name p_forall params p_expr nconcl;
 ;;
 
-let proof_end ppvernac =
-  ppvernac [< coqp "Qed" >];
+let getname = Coqterm.getname;;
+
+let p_name_list oc l =
+  p_list " " (fun oc e -> fprintf oc "%s" (getname e)) "" oc l;
 ;;
 
-let inst_name t = function
-  | Eex (x, _, e, _, _) -> let ti = enot (substitute [ x, t ] e) in gen_name ti
-  | Eall (x, _, e, _, _) -> let ti = substitute [ x, t ] e in gen_name ti
+let p_start_lemma oc nvars conc =
+  fprintf oc "do %d intro. intros %a.\n" nvars p_name_list conc
+;;
+
+let p_start_thm oc conc =
+  match get_goals conc with
+  | [] -> ()
+  | [e] -> fprintf oc "apply NNPP. intro %s.\n" (getname e);
   | _ -> assert false
 ;;
 
-let rec list_of f l sep =
+let p_end oc = fprintf oc "Qed.\n";;
+
+let p_intros oc l =
   match l with
-  | [] -> [< >]
-  | [h] -> [< f h >]
-  | h::t -> [< f h; str sep; list_of f t sep >]
+  | [] -> fprintf oc "idtac"
+  | _ -> fprintf oc "intros %a" p_name_list l;
 ;;
 
-let rec init_list_of f l sep =
-  match l with
-  | [] -> [< >]
-  | h::t -> [< str sep; f h; init_list_of f t sep >]
+let p_rev_app oc (f, args) =
+  fprintf oc "(%s%a)" f p_expr_list (List.rev args)
 ;;
 
-let rec term_list_of f l sep =
-  match l with
-  | [] -> [< >]
-  | h::t -> [< f h; str sep; term_list_of f t sep >]
-;;
-
-let make_intros l =
-  match l with
-  | [] -> [< str "idtac" >]
-  | _ -> [< str "intros"; list_of (fun e -> gen_name e) l "" >]
-;;
-
-let make_exact e = [< str "exact"; gen_name e >];;
-
-let rec make_app f l =
-  match l with
-  | [] -> [< str f >]
-  | h::t -> [< make_app f t; str " "; constr_of_expr h >]
-;;
-
-let rec apply_equal_steps f l0 l1 =
+let rec p_equal_steps oc f l0 l1 =
   match l0, l1 with
-  | _, _ when List.for_all2 Expr.equal l0 l1 -> [< str "auto" >], List.length l0
-  | h0 :: t0 , h1 :: t1 ->
-      let (steps, useless) = apply_equal_steps f t0 t1 in
-      [< str "apply (zenon_equal_step _ _ (";
-         make_app f t0; str ") (";
-         make_app f t1; str ") "; constr_of_expr h0; str " ";
-         constr_of_expr h1; str "); [ "; steps;
-         str " | cintro"; gen_name (enot (eapp ("=", [h0; h1]))); str " ]" >],
+  | _, _ when List.for_all2 Expr.equal l0 l1 ->
+      fprintf oc "auto";
+      List.length l0
+  | e0 :: t0 , e1 :: t1 ->
+      let e0nee1 = enot (eapp ("=", [e0; e1])) in
+      fprintf oc "apply (zenon_equal_step _ _ %a %a %a %a); [ "
+              p_rev_app (f, t0) p_rev_app (f, t1) p_expr e0 p_expr e1;
+      let useless = p_equal_steps oc f t0 t1 in
+      fprintf oc " | zenon_intro %s ]" (getname e0nee1);
       useless
   | _, _ -> assert false
 ;;
 
-let proof_rule ppvernac = function
-  | Rconnect (And, e1, e2) ->
-    let hyp0 = gen_name (eand (e1, e2))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name e2 in
-    if !debug then ppvernac [< '"(* connect(And) *)\n" >];
-    ppvernac [< str "elim"; hyp0; str "; cintro"; hyp1;
-                str "; cintro"; hyp2; coqend >];
-    0
-  | Rconnect (Or, e1, e2) ->
-    let hyp0 = gen_name (eor (e1, e2))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name e2 in
-    if !debug then ppvernac [< '"(* connect(Or) *)\n" >];
-    ppvernac [< str "elim"; hyp0; str ";[ cintro"; hyp1; str " | cintro"; hyp2;
-                coqp " ]" >];
-    0
-  | Rconnect (Imply, e1, e2) ->
-    let hyp0 = gen_name (eimply (e1, e2))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name e2
-    and hyp3 = gen_name (enot e1) in
-    if !debug then ppvernac [< '"(* connect(Imply) *)\n" >];
-    ppvernac [< str "cut "; parth (constr_of_expr (enot e1)); str "; [ cintro";
-                hyp3; str " | red; cintro"; hyp1; str "; generalize (";
-                hyp0; hyp1; str "); cintro"; hyp2; coqp " ]" >];
-    0
-  | Rconnect (Equiv, e1, e2) ->
-    let hyp0 = gen_name (eequiv (e1, e2))
-    and hyp1 = gen_name (eimply (e1, e2))
-    and hyp2 = gen_name (eimply (e2, e1))
-    and hyp3 = gen_name e1
-    and hyp4 = gen_name e2
-    and hyp5 = gen_name (enot e1)
-    and hyp6 = gen_name (enot e2) in
-    if !debug then ppvernac [< '"(* connect(Equiv) *)\n" >];
-    ppvernac [< str "unfold iff at 1 in"; hyp0; str "; elim"; hyp0;
-                str "; cintro"; hyp1; str "; cintro"; hyp2; str "; cut ";
-                parth (constr_of_expr (enot e1)); str "; [ cintro";
-                hyp5; str "; cut "; parth (constr_of_expr e2);
-                str "; [ auto | apply NNPP; red; cintro"; hyp6;
-                str "; clear"; hyp1; hyp2; str " ] | red; cintro"; hyp3;
-                str "; generalize ("; hyp1; hyp3; str "); cintro"; hyp4;
-                str "; clear"; hyp1; hyp2; coqp " ]" >];
-    0
-  | Rnotconnect (And, e1, e2) ->
-    let hyp0 = gen_name (enot (eand (e1, e2)))
-    and hyp1 = gen_name (enot e1)
-    and hyp2 = gen_name (enot e2) in
-    if !debug then ppvernac [< '"(* notconnect(And) *)\n" >];
-    ppvernac [< str "apply"; hyp0; str "; split; apply NNPP; [ cintro";
-                hyp1; str " | cintro"; hyp2; coqp " ]" >];
-    0
-  | Rnotconnect (Or, e1, e2) ->
-    let hyp0 = gen_name (enot (eor (e1, e2)))
-    and hyp1 = gen_name (enot e1)
-    and hyp2 = gen_name (enot e2) in
-    if !debug then ppvernac [< '"(* notconnect(Or) *)\n" >];
-    ppvernac [< str "apply"; hyp0; str "; left; apply NNPP; red; cintro";
-                hyp1; str "; apply"; hyp0;
-                str "; right; apply NNPP; red; cintro"; hyp2; coqend >];
-    0
-  | Rnotconnect (Imply, e1, e2) ->
-    let hyp0 = gen_name (enot (eimply (e1, e2)))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name (enot e2) in
-    if !debug then ppvernac [< '"(* notconnect(Imply) *)\n" >];
-    ppvernac [< str "apply"; hyp0; str "; cintro"; hyp1;
-                str "; apply NNPP; red; cintro"; hyp2; coqend >];
-    0
-  | Rnotconnect (Equiv, e1, e2) ->
-    let hyp0 = gen_name (enot (eequiv (e1, e2)))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name e2
-    and hyp3 = gen_name (enot e1)
-    and hyp4 = gen_name (enot e2) in
-    if !debug then ppvernac [< '"(* notconnect(Equiv) *)\n" >];
-    ppvernac [< str "apply"; hyp0; str "; apply iff_sym; split; [ cintro";
-                hyp2; str "; apply NNPP; red; cintro"; hyp3;
-                str " | cintro"; hyp1; str "; apply NNPP; red; cintro";
-                hyp4; coqp " ] " >];
-    0
-  | Rnotnot (p as e) ->
-    let hyp0 = gen_name (enot (enot e))
-    and hyp1 = gen_name p in
-    if !debug then ppvernac [< '"(* not(not) *)\n" >];
-    ppvernac [< str "apply"; hyp0; str "; clear"; hyp0;
-                str "; cintro"; hyp1; coqend >];
-    0
-  | Rnotall (Eall (x, _, e, _, _) as t, z) ->
-    let hyp0 = gen_name (enot t)
-    and hyp1 = gen_name (enot (substitute [(x, evar z)] e)) in
-    if !debug then ppvernac [< '"(* not(all) *)\n" >];
-    ppvernac [< str "apply"; hyp0; str "; cintro "; str z;
-                str "; apply NNPP; red; cintro"; hyp1; coqend >];
-    0
-  | Rnotall _ -> assert false
-  | Rnotex (p, t) ->
-    let hyp = gen_name (enot p) in
-    begin
-      if !debug then ppvernac [< '"(* not(ex) *)\n" >];
-      ppvernac [< str "apply"; hyp; coqend >];
-      ppvernac [< str "exists "; constr_of_expr t;
-                  str "; apply NNPP; red; cintro"; inst_name t p; coqend >]
-    end;
-    0
-  | Rall (p, t) ->
-    let hyp = gen_name p in
-    begin
-      if !debug then ppvernac [< '"(* all *)\n" >];
-      ppvernac [< str "generalize ("; hyp; str " "; constr_of_expr t;
-                  str "); cintro"; inst_name t p; coqend >]
-    end;
-    0
-  | Rex (Eex (x, _, e, _, _) as t, z) ->
-    let hyp0 = gen_name t
-    and hyp1 = gen_name (substitute [(x, evar z)] e) in
-    if !debug then ppvernac [< '"(* ex *)\n" >];
-    ppvernac [< str "elim"; hyp0;
-                str "; cintro "; str z; str "; cintro"; hyp1; coqend >];
-    0
-  | Rex _ -> assert false
-  | Rlemma (n, args) ->
-    if !debug then ppvernac [< '"(* lemma *)\n" >];
-    let newargs = List.filter (fun x -> not (Mltoll.is_meta x)) args in
-    let f s e = [< s; str " "; str e >] in
-    ppvernac [< str "intros; apply ("; str n;
-                List.fold_left f [< >] newargs;
-                str ")"; coqp "; trivial" >];
-    0
-  | Rcut (e) ->
-    if !debug then ppvernac [< '"(* cut *)\n" >];
-    ppvernac [< str "cut "; parth (constr_of_expr e);
-                str "; [ cintro "; gen_name e;
-                str " | apply NNPP; cintro "; gen_name (enot e);
-                coqp " ]" >];
-    0
-  | Raxiom (e) ->
-    if !debug then ppvernac [< '"(* axiom *)\n" >];
-    ppvernac [< str "exact ("; gen_name (enot e); str " "; gen_name e;
-                coqp ")" >];
-    0
-  | Rextension (name, args, conc, hyps) ->
-    ppvernac [< str "apply ("; str name;
-                init_list_of parth_constr_of_expr args " ";
-                str "); ["; term_list_of make_intros hyps " | ";
-                list_of make_exact conc " | "; coqp "]" >];
-    0
-  | Rdefinition (s, c, h) ->
-    if !debug then ppvernac [< '"(* definition *)\n" >];
-    ppvernac [< str "assert ("; gen_name h; str " : "; constr_of_expr h;
-                str "); [exact "; gen_name c; str " | idtac]"; coqend >];
-    0
-  | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
-    assert (f = g);
-    let hyp0 = gen_name (enot (eapp ("=", [e0; e1]))) in
-    let (steps, useless) = apply_equal_steps f (List.rev l0) (List.rev l1) in
-    ppvernac [< str "apply (zenon_notequal_s _ _ _"; hyp0; str "); ";
-                steps; coqend >];
-    useless
-  | Rnotequal _ -> assert false
-  | Rpnotp ((Eapp (f, l0, _) as h0), (Enot (Eapp (g, l1, _), _) as h1)) ->
-    assert (f = g);
-    let fg = if f = "=" then "@eq _" else f in
-    let hyp0 = gen_name h0 in
-    let hyp1 = gen_name h1 in
-    let (steps, useless) = apply_equal_steps fg (List.rev l0) (List.rev l1) in
-    ppvernac [< str "apply (zenon_pnotp_s _ _"; hyp0; hyp1; str "); ";
-                steps; coqend >];
-    useless
-  | Rpnotp _ -> assert false
-
-  | Rnoteq e ->
-      let hyp0 = gen_name (enot (eapp ("=", [e; e]))) in
-      ppvernac [< str "apply"; hyp0; str "; auto"; coqend >];
-      0
-  | Rnottrue ->
-      let hyp0 = gen_name (enot (etrue)) in
-      ppvernac [< str "apply"; hyp0; str "; auto"; coqend >];
-      0
-  | Rfalse ->
-      let hyp0 = gen_name (efalse) in
-      ppvernac [< str "apply"; hyp0; coqend >];
-      0
+let apply_alpha oc lem h0 h1 h2 =
+  fprintf oc "apply (zenon_%s_s _ _ %s). zenon_intro %s. zenon_intro %s.\n"
+             lem (getname h0) (getname h1) (getname h2);
+  0
 ;;
 
-(* experimental version *)
-let proof_rule_short ppvernac = function
+let apply_beta oc lem h0 h1 h2 =
+  fprintf oc "apply (zenon_%s_s _ _ %s); [ zenon_intro %s | zenon_intro %s ].\n"
+             lem (getname h0) (getname h1) (getname h2);
+  0
+;;
+
+let apply_beta2 oc lem h0 h1a h1b h2a h2b =
+  fprintf oc "apply (zenon_%s_s _ _ %s); \
+              [ zenon_intro %s; zenon_intro %s \
+                | zenon_intro %s; zenon_intro %s ].\n"
+             lem (getname h0) (getname h1a) (getname h1b)
+             (getname h2a) (getname h2b);
+  0
+;;
+
+let p_rule oc r =
+  let poc fmt = fprintf oc fmt in
+  match r with
+  | Rconnect (And, e1, e2) ->
+      apply_alpha oc "and" (eand (e1, e2)) e1 e2
+  | Rconnect (Or, e1, e2) ->
+      apply_beta oc "or" (eor (e1, e2)) e1 e2
   | Rconnect (Imply, e1, e2) ->
-    let hyp0 = gen_name (eimply (e1, e2))
-    and hyp2 = gen_name e2
-    and hyp3 = gen_name (enot e1) in
-    ppvernac [< str "apply (zenon_imply_s _ _"; hyp0; str "); [ cintro"; hyp3;
-                str " | cintro"; hyp2; coqp " ]" >];
-    0
+      apply_beta oc "imply" (eimply (e1, e2)) (enot e1) e2
   | Rconnect (Equiv, e1, e2) ->
-    let hyp0 = gen_name (eequiv (e1, e2))
-    and hyp3 = gen_name e1
-    and hyp4 = gen_name e2
-    and hyp5 = gen_name (enot e1)
-    and hyp6 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenon_equiv_s _ _"; hyp0; str "); [ cintro"; hyp5;
-                str "; cintro"; hyp6; str " | cintro"; hyp3; str "; cintro";
-                hyp4; coqp " ]" >];
-    0
+      apply_beta2 oc "equiv" (eequiv (e1, e2)) (enot e1) (enot e2) e1 e2
   | Rnotconnect (And, e1, e2) ->
-    let hyp0 = gen_name (enot (eand (e1, e2)))
-    and hyp1 = gen_name (enot e1)
-    and hyp2 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenon_notand_s _ _"; hyp0; str "); [ cintro"; hyp1;
-                 str " | cintro "; hyp2; coqp " ]" >];
-    0
+      apply_beta oc "notand" (enot (eand (e1, e2))) (enot e1) (enot e2)
   | Rnotconnect (Or, e1, e2) ->
-    let hyp0 = gen_name (enot (eor (e1, e2)))
-    and hyp1 = gen_name (enot e1)
-    and hyp2 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenon_notor_s _ _"; hyp0; str "); cintro"; hyp1;
-                str "; cintro"; hyp2; coqend >];
-    0
+      apply_alpha oc "notor" (enot (eor (e1, e2))) (enot e1) (enot e2)
   | Rnotconnect (Imply, e1, e2) ->
-    let hyp0 = gen_name (enot (eimply (e1, e2)))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenon_notimply_s _ _"; hyp0; str "); cintro"; hyp1;
-                str "; cintro"; hyp2; coqend >];
-    0
+      apply_alpha oc "notimply" (enot (eimply (e1, e2))) e1 (enot e2)
   | Rnotconnect (Equiv, e1, e2) ->
-    let hyp0 = gen_name (enot (eequiv (e1, e2)))
-    and hyp1 = gen_name e1
-    and hyp2 = gen_name e2
-    and hyp3 = gen_name (enot e1)
-    and hyp4 = gen_name (enot e2) in
-    ppvernac [< str "apply (zenon_notequiv_s _ _"; hyp0;
-                str "); [ cintro"; hyp3;
-                str "; cintro"; hyp2; str " | cintro"; hyp1;
-                str "; cintro"; hyp4; coqp " ]" >];
-    0
+      apply_beta2 oc "notequiv" (enot (eequiv (e1, e2)))
+                  (enot e1) e2 e1 (enot e2)
   | Rextension (name, args, conc, hyps) ->
-      ppvernac [< str "apply ("; str name; str "_s";
-                  init_list_of parth_constr_of_expr args " ";
-                  list_of gen_name conc "";
-                  str "); ["; list_of make_intros hyps " | "; coqp "]" >];
+      poc "apply (%s_s%a%a); [ %a ].\n" name p_expr_list args p_name_list conc
+          (p_list "" p_intros " | ") hyps;
       0
-  | x -> proof_rule ppvernac x
+  | Rnotnot (p as e) ->
+      poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
+      0
+  | Rex (Eex (x, _, e, _, _) as p, v) ->
+      let h0 = getname p in
+      let h1 = getname (substitute [(x, evar v)] e) in
+      poc "elim %s. zenon_intro %s. zenon_intro %s.\n" h0 v h1;
+      0
+  | Rex _ -> assert false
+  | Rnotall (Eall (x, _, e, _, _) as p, v) ->
+      let h0 = getname (enot p) in
+      let h1 = getname (enot (substitute [(x, evar v)] e)) in
+      poc "apply %s. zenon_intro %s. apply NNPP. zenon_intro %s.\n" h0 v h1;
+      0
+  | Rnotall _ -> assert false
+  | Rall (Eall (x, _, e, _, _) as p, t) ->
+      let h0 = getname p in
+      let h1 = getname (substitute [(x, t)] e) in
+      poc "generalize (%s %a). zenon_intro %s.\n" h0 p_expr t h1;
+      0
+  | Rall _ -> assert false
+  | Rnotex (Eex (x, _, e, _, _) as p, t) ->
+      let h0 = getname (enot p) in
+      let h1 = getname (enot (substitute [(x, t)] e)) in
+      poc "apply %s. exists %a. apply NNPP. zenon_intro %s.\n" h0 p_expr t h1;
+      0
+  | Rnotex _ -> assert false
+  | Rlemma (name, args) ->
+      let args1 = List.filter (fun x -> not (Mltoll.is_meta x)) args in
+      poc "apply (%s%a); trivial.\n" name p_id_list args1;
+      0
+  | Rcut (e) ->
+      let h0 = getname e in
+      let h1 = getname (enot e) in
+      poc "elim (classic %a); [ zenon_intro %s | zenon_intro %s ].\n"
+          p_expr e h0 h1;
+      0
+  | Raxiom (e) ->
+      let h0 = getname e in
+      let h1 = getname (enot e) in
+      poc "exact (%s %s).\n" h1 h0;
+      0
+  | Rdefinition (s, c, h) ->
+      poc "assert (%s : %a). exact %s.\n" (getname h) p_expr h (getname c);
+      0
+  | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
+      assert (f = g);
+      let h0 = getname (enot (eapp ("=", [e0; e1]))) in
+      poc "apply (zenon_notequal_s _ _ _ %s); " h0;
+      let useless = p_equal_steps oc f (List.rev l0) (List.rev l1) in
+      poc ".\n";
+      useless
+  | Rnotequal _ -> assert false
+  | Rpnotp ((Eapp (f, l0, _) as e0), (Enot (Eapp (g, l1, _), _) as e1)) ->
+      assert (f = g);
+      let f1 = if f = "=" then "@eq _" else f in
+      let h0 = getname e0 in
+      let h1 = getname e1 in
+      poc "apply (zenon_pnotp_s _ _ %s %s); " h0 h1;
+      let useless = p_equal_steps oc f1 (List.rev l0) (List.rev l1) in
+      poc ".\n";
+      useless
+  | Rpnotp _ -> assert false
+  | Rnoteq e ->
+      poc "apply %s. apply refl_equal.\n" (getname (enot (eapp ("=", [e; e]))));
+      0
+  | Rnottrue ->
+      poc "exact (%s I).\n" (getname (enot (etrue)));
+      0
+  | Rfalse ->
+      poc "exact %s.\n" (getname efalse);
+      0
 ;;
 
 let rec drop n l =
@@ -445,54 +272,46 @@ let rec drop n l =
   | _, _ -> assert false
 ;;
 
-let rec proof_build ppvernac pft =
-  let useless_hyps =
-    if !Globals.short_flag then
-      proof_rule_short ppvernac pft.rule
-    else
-      proof_rule ppvernac pft.rule
-  in
-  List.iter (proof_build ppvernac) (drop useless_hyps pft.hyps);
+let rec p_tree oc proof =
+  let useless = p_rule oc proof.rule in
+  List.iter (p_tree oc) (drop useless proof.hyps);
 ;;
 
-let proof_script ppvernac n pft is_lemma =
-  begin
-    proof_init ppvernac n (get_goals pft.conc) is_lemma;
-    proof_build ppvernac pft;
-    proof_end ppvernac
-  end
-
-let rec proof_lem ppvernac lems =
-  match lems with
-  | [] -> ()
-  | lem :: rest ->
-  let name = lem.name in
-  let concl = lem.proof.conc in
-  let nometa (v, t) = not (Mltoll.is_meta v) in
-  let params = List.filter nometa lem.params in
-  let pft = lem.proof in
-  if rest = [] then begin
-    declare_theorem ppvernac name params concl;
-    proof_script ppvernac (List.length params) pft false;
-  end else begin
-    declare_lemma ppvernac name params concl;
-    proof_script ppvernac (List.length params) pft true;
-  end;
-  proof_lem ppvernac rest
+let p_script_lemma oc nvars proof =
+  p_start_lemma oc nvars (get_goals proof.conc);
+  p_tree oc proof;
+  p_end oc;
 ;;
 
-(***************)
-(* Translation *)
-(***************)
+let p_script_thm oc proof =
+  p_start_thm oc (get_goals proof.conc);
+  p_tree oc proof;
+  p_end oc;
+;;
 
-let produce_proof oc phrases llp =
+let notmeta (v, _) = not (Mltoll.is_meta v);;
+
+let rec p_lemmas oc l =
+  match l with
+  | [] -> assert false
+  | [thm] ->
+      let params = List.filter notmeta thm.params in
+      declare_theorem oc thm.name params thm.proof.conc;
+      p_script_thm oc thm.proof;
+  | lem :: t ->
+      let params = List.filter notmeta lem.params in
+      declare_lemma oc lem.name params lem.proof.conc;
+      p_script_lemma oc (List.length params) lem.proof;
+      p_lemmas oc t;
+;;
+
+let output oc phrases llp =
   try
     Coqterm.init_mapping phrases;
-    let ppvernac = ppvernac_dir oc in
     if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
-    if not !Globals.quiet_flag then ppvernac [< '"(* BEGIN-PROOF *)\n" >];
-    proof_lem ppvernac llp;
-    if not !Globals.quiet_flag then ppvernac [< '"(* END-PROOF *)\n" >];
+    if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
+    p_lemmas oc llp;
+    if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
   with
   | Coqterm.Cannot_infer ty ->
       let msg = sprintf "cannot infer a value for a variable of type %s" ty in
