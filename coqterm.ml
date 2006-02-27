@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.25 2006-02-16 16:28:33 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.26 2006-02-27 16:56:52 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -21,6 +21,7 @@ type coqterm =
   | Cex of string * string * coqterm
   | Clet of string * coqterm * coqterm
   | Cwild
+  | Cmatch of coqterm * (string * string list * coqterm) list
 ;;
 
 type coqproof =
@@ -31,6 +32,7 @@ let lemma_env = (Hashtbl.create 97 : (string, string list) Hashtbl.t);;
 
 
 let mapping = ref [];;
+let constants_used = ref [];;
 
 let rawname e = sprintf "H'%x" (Index.get_number e);;
 
@@ -43,7 +45,10 @@ let rec make_mapping phrases =
   | Phrase.Inductive _ :: t -> make_mapping t
 ;;
 
-let init_mapping phrases = mapping := make_mapping phrases;;
+let init_mapping phrases =
+  mapping := make_mapping phrases;
+  constants_used := [];
+;;
 
 let getname e =
   let result = rawname e in
@@ -72,7 +77,10 @@ let synthesize s =
   | "nat" -> "O"
   | "bool" -> "true"
   | "Z" -> "Z0"
-  | t when is_mapped (evar t) -> getname (evar t)
+  | t when is_mapped (evar t) ->
+      let result = getname (evar t) in
+      constants_used := result :: !constants_used;
+      result
   | _ -> raise (Cannot_infer ty)
 ;;
 
@@ -206,18 +214,6 @@ let rec trtree env node =
       let concl = getv (enot (exp)) in
       Capp (Cvar "zenon_notex", [Cty ty; p; trexpr t; lam; concl])
   | Rnotex _ -> assert false
-(*
-  | Rpnotp ((Eapp ("=", [a; b], _) as e),
-            (Enot (Eapp ("=", [c; d], _), _) as ne)) ->
-      let (subac, subbd) = tr_subtree_2 hyps in
-      let lamac = mklam (enot (eapp ("=", [a; c]))) subac in
-      let lambd = mklam (enot (eapp ("=", [b; d]))) subbd in
-      let concle = getv e in
-      let conclne = getv ne in
-      Capp (Cvar "zenon_eqnoteq", [Cwild; tropt a; tropt b; tropt c; tropt d;
-                                   lamac; lambd; concle; conclne])
-  | Rpnotp (Eapp ("=", _, _), _) -> assert false
-*)
   | Rpnotp ((Eapp (p, args1, _) as pp),
             (Enot (Eapp (q, args2, _) as qq, _) as nqq)) ->
       assert (p = q);
@@ -243,6 +239,19 @@ let rec trtree env node =
   | Rdefinition (sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
+  | Rextension ("zenon_inductive_discriminate",
+                [], [Eapp ("=", [a; b], _) as e], []) ->
+      let (sym, unders) =
+        match a with
+        | Evar (s, _) -> (s, [])
+        | Eapp (s, args, _) -> (s, List.map (fun x -> "_") args)
+        | _ -> assert false
+      in
+      let x = newname () in
+      let cas1 = (sym, unders, Cvar "True") in
+      let cas2 = ("_", [], Cvar "False") in
+      let caract = Clam (x, Cwild, Cmatch (Cvar x, [cas1; cas2])) in
+      Capp (Cvar "eq_ind", [trexpr a; caract; Cvar "I"; trexpr b; getv e])
   | Rextension (name, args, c, hs) ->
       let metargs = List.map trexpr args in
       let hypargs = List.map2 (mklams env) hs (List.map (trtree env) hyps) in
@@ -341,8 +350,8 @@ let trproof phrases l =
     | Some goal ->
         let trg = tropt [] goal in
         let term = Capp (Cvar "NNPP", [Cwild; Clam ("z'g", trg, raw)]) in
-        (phrases, lemmas, th_name, term)
-    | None -> (phrases, lemmas, th_name, raw)
+        ((phrases, lemmas, th_name, term), !constants_used)
+    | None -> ((phrases, lemmas, th_name, raw), !constants_used)
   with
   | Cannot_infer ty ->
       let msg = sprintf "cannot infer a value for a variable of type %s" ty in
@@ -361,8 +370,9 @@ exception Cut_at of int;;
 
 let test_cut j c =
   match c with
-  | '('|')'|'~'|'>'|','|'['|']'|'?' -> raise (Cut_before (j+1))
-  | ':'|'<' -> raise (Cut_before j)
+  | '(' | ')' | '~' | '>' | ',' | '[' | ']' | '?' | '|' ->
+      raise (Cut_before (j+1))
+  | ':' | '<' -> raise (Cut_before j)
   | ' ' -> raise (Cut_at j)
   | _ -> ()
 ;;
@@ -447,6 +457,7 @@ let pr_oc oc prefix t =
     | Cex (v, ty, t1) -> bprintf b "(exists %s:%a,%a)" v pr_ty ty pr t1;
     | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
     | Cwild -> bprintf b "_";
+    | Cmatch (e, cl) -> bprintf b "match %a with %a end" pr e pr_cases cl;
 
   and pr_list b l =
     let f t = bprintf b " %a" pr t; in
@@ -461,6 +472,14 @@ let pr_oc oc prefix t =
     List.iter f l;
 
   and pr_ty b t = bprintf b "%s" (tr_ty t);
+
+  and pr_cases b l =
+    let f (constr, args, rhs) =
+      bprintf b "|%s%a=>%a" constr pr_ids args pr rhs;
+    in
+    List.iter f l;
+
+  and pr_ids b l = List.iter (fun x -> bprintf b " %s" x) l;
 
   in
 

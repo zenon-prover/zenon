@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.33 2006-02-16 13:52:33 doligez Exp $
+#  $Id: Makefile,v 1.34 2006-02-27 16:56:52 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -18,7 +18,7 @@ MODULES = version misc heap globals error progress expr \
           parsezen lexzen parsetptp lextptp parsecoq lexcoq \
           tptp \
           ext_coqbool ext_equiv ext_inductive coqterm lltocoq \
-          main
+          checksum main
 
 IMPL = ${MODULES:%=%.ml}
 INTF = ${MODULES:%=%.mli}
@@ -106,6 +106,10 @@ parsecoq.ml: parsecoq.mly
 parsecoq.mli: parsecoq.ml
 	:
 
+SUMIMPL = ${IMPL:checksum.ml=}
+checksum.ml: ${INTF} ${SUMIMPL}
+	echo 'let v = "'`${SUM} ${SUMIMPL} ${INTF} | ${SUM}`'";;' >checksum.ml
+
 .v.vo:
 	${COQC} $*.v
 
@@ -119,7 +123,8 @@ clean:
 	rm -f parsezen.ml parsezen.mli lexzen.ml
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml
-	rm -f zenon zenon.opt zenon.byt dummy_coqc8
+	rm -f checksum.ml
+	rm -f zenon zenon.opt zenon.byt
 	rm -f zenon-logo.png zenon-logo-small.png
 
 .PHONY: archclean

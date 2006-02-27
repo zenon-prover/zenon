@@ -22,4 +22,4 @@ header.mli
 gmon.out
 .DS_Store
 parser.output
-stamp.ml
+checksum.ml

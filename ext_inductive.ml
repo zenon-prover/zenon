@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.1 2006-02-16 09:22:45 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.2 2006-02-27 16:56:52 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -149,11 +149,17 @@ let newnodes e g =
   @ (try newnodes_induction e g with Empty -> [])
 ;;
 
+open Llproof;;
+
 let to_llproof tr_prop tr_term mlp args =
-  match mlp.mlrule, args with
-  | Ext ("inductive", "discriminate", [e]), [| (subproof, extras) |] ->
-      let node = assert false (* FIXME TODO *) in
-      (node, extras)
+  match mlp.mlrule with
+  | Ext ("inductive", "discriminate", [e]) ->
+      let node = {
+        conc = List.map tr_prop mlp.mlconc;
+        rule = Rextension ("zenon_inductive_discriminate", [], [tr_prop e], []);
+        hyps = [];
+      } in
+      (node, [])
   | _ -> assert false (* FIXME TODO *)
 ;;
 

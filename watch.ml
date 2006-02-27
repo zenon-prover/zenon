@@ -1,59 +1,62 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.5 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.6 2006-02-27 16:56:52 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Llproof;;
 
-type item =
-  | Hyp of expr
-  | Def of string
-;;
+module HE = Hashtbl.Make (Expr);;
+let hyp_names = (HE.create 37 : string HE.t);;
 
-module HashedItem = struct
-  type t = item;;
-  let equal i1 i2 =
-    match i1, i2 with
-    | Hyp h1, Hyp h2 -> Expr.equal h1 h2
-    | Def s1, Def s2 -> s1 = s2
-    | _, _ -> false
-  ;;
-  let hash i =
-    match i with
-    | Hyp h -> Expr.hash h
-    | Def s -> Hashtbl.hash s
-  ;;
-end;;
+let used = (Hashtbl.create 37 : (string, unit) Hashtbl.t);;
 
-module HI = Hashtbl.Make (HashedItem);;
-
-let used = (HI.create 97 : unit HI.t);;
-let test i = HI.mem used i;;
-let add i = if test i then () else HI.add used i ();;
+let test n = Hashtbl.mem used n;;
+let add n = if not (test n) then Hashtbl.add used n ();;
 
 let add_def p =
   match p.rule with
-  | Rdefinition (s, _, _) -> add (Def s)
+  | Rdefinition (s, _, _) -> add s
   | _ -> ()
 ;;
 
-let check phr =
-  match phr with
-  | Phrase.Hyp (name, e, _) when not (test (Hyp e)) ->
-      Error.warn (sprintf "unused hypothesis %s" name);
-  | Phrase.Def (DefReal (s, _, _)) when not (test (Def s)) ->
-      Error.warn (sprintf "unused definition %s" s);
+let add_expr e =
+  try
+    let name = HE.find hyp_names e in
+    add name
+  with Not_found -> ()
+;;
+
+let extract_name (p, dep) =
+  match p with
+  | Phrase.Hyp (name, e, _) -> HE.add hyp_names e name
   | _ -> ()
 ;;
 
-let warn deps p =
-  if !Globals.warnings_flag && deps <> [] then begin
+let dowarn kind name =
+  let msg = sprintf "unused %s: %s" kind name in
+  Error.warn msg;
+;;
+
+let check (p, dep) =
+  match p with
+  | Phrase.Hyp (name, _, _) when not (test name) -> dowarn "hypothesis" name
+  | Phrase.Def (DefReal (s, _, _)) when not (test s) -> dowarn "definition" s
+  | _ -> ()
+;;
+
+let has_deps pds = List.exists snd pds;;
+
+let warn phrases_dep p moreused =
+  if !Globals.warnings_flag && has_deps phrases_dep then begin
     let prf = Lazy.force p in
-    HI.clear used;
-    List.iter (fun e -> add (Hyp e)) (Misc.list_last prf).proof.conc;
+    Hashtbl.clear used;
+    HE.clear hyp_names;
+    List.iter extract_name phrases_dep;
+    List.iter add_expr (Misc.list_last prf).proof.conc;
     Llproof.iter add_def prf;
-    List.iter check deps;
+    List.iter add moreused;
+    List.iter check phrases_dep;
   end
 ;;
 

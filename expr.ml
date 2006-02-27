@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.19 2005-11-17 12:39:07 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.20 2006-02-27 16:56:52 doligez Exp $";;
 
 open Misc;;
 
@@ -404,10 +404,12 @@ let rec incr_sym n =
   | c -> !cursym.[n] <- Char.chr (1 + Char.code c)
 ;;
 
-let newvar () =
+let newname () =
   incr_sym 2;
-  evar (String.copy !cursym)
+  String.copy !cursym
 ;;
+
+let newvar () = evar (newname ());;
 
 let rec rm_binding v map =
   match map with

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.13 2005-11-17 12:39:07 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.14 2006-02-27 16:56:52 doligez Exp $  *)
 
 type private_info;;
 
@@ -90,6 +90,7 @@ val occurs_as_meta : int -> expr -> bool;;
 val substitute : (expr * expr) list -> expr -> expr;;
 
 val newvar : unit -> expr;;
+val newname : unit -> string;;
 
 val size : expr -> int;;
 val get_taus : expr -> int;;   (* tau nesting level *)

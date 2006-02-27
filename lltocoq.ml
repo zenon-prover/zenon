@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.29 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.30 2006-02-27 16:56:52 doligez Exp $";;
 
 open Printf;;
 
@@ -187,9 +187,15 @@ let p_rule oc r =
   | Rnotconnect (Equiv, e1, e2) ->
       apply_beta2 oc "notequiv" (enot (eequiv (e1, e2)))
                   (enot e1) e2 e1 (enot e2)
+  | Rextension ("zenon_inductive_discriminate", [], [conc], []) ->
+      poc "discriminate %s.\n" (getname conc);
+      0
   | Rextension (name, args, conc, hyps) ->
-      poc "apply (%s_s%a%a); [ %a ].\n" name p_expr_list args p_name_list conc
-          (p_list "" p_intros " | ") hyps;
+      poc "apply (%s_s%a%a)" name p_expr_list args p_name_list conc;
+      begin match hyps with
+      | [] -> poc ".\n";
+      | _ -> poc "; [ %a ].\n" (p_list "" p_intros " | ") hyps;
+      end;
       0
   | Rnotnot (p as e) ->
       poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
@@ -312,6 +318,7 @@ let output oc phrases llp =
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
     p_lemmas oc llp;
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
+    !Coqterm.constants_used
   with
   | Coqterm.Cannot_infer ty ->
       let msg = sprintf "cannot infer a value for a variable of type %s" ty in

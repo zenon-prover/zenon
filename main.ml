@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.31 2006-02-16 13:52:33 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.32 2006-02-27 16:56:52 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -71,6 +71,7 @@ let short_version () =
 let cvs_version () =
   printf "zenon version %s\n" Version.full;
   Version.print_cvs stdout;
+  printf "source checksum: %s\n" Checksum.v;
   exit 0;
 ;;
 
@@ -100,10 +101,8 @@ let rec argspec = [
          "             print this option list and exit";
   "-I", Arg.String (fun x -> include_path := x :: !include_path),
      " <dir>           add <dir> to the include path (for TPTP input format)";
-(*
   "-icoq", Arg.Unit (fun () -> input_format := I_focal),
         "              read input file in Coq format";
-*)
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
           "            read input file in Focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
@@ -253,7 +252,6 @@ let main () =
   end;
   let retcode = ref 0 in
   begin try
-    let strong_dep = extract_strong [] phrases_dep in
     let phrases = List.map fst phrases_dep in
     let ppphrases = Extension.preprocess phrases in
     let (defs, hyps) = Phrase.separate ppphrases in
@@ -279,7 +277,7 @@ let main () =
     let llp = lazy (optim (Extension.postprocess
                              (Mltoll.translate th_name ppphrases proof)))
     in
-    Watch.warn strong_dep llp;
+    let used = ref [] in
     begin match !proof_level with
     | Proof_none -> ()
     | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
@@ -288,11 +286,15 @@ let main () =
         let lxp = Mltoll.translate th_name ppphrases proof in
         Print.llproof (Print.Chan stdout) lxp;
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
-    | Proof_coq -> Lltocoq.output stdout phrases (Lazy.force llp);
+    | Proof_coq ->
+        let u = Lltocoq.output stdout phrases (Lazy.force llp) in
+        used := u;
     | Proof_coqterm ->
-        let p = Coqterm.trproof phrases (Lazy.force llp) in
+        let (p, u) = Coqterm.trproof phrases (Lazy.force llp) in
+        used := u;
         Coqterm.print stdout p;
     end;
+    Watch.warn phrases_dep llp !used;
   with Prove.NoProof ->
     retcode := 10;
     if not !quiet_flag then printf "(* NO-PROOF *)\n";
