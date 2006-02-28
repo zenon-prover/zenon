@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 ;(A. ((y) (<=> (= y (f (g y))) (= x0 y))))
 ;$goal (E. ((x1) (A. ((y1) (=> (= y1 (g (f y1))) (= x1 y1))))))
 

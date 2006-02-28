@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 $sig P ("nat") "Prop"
 $sig Q ("nat") "Prop"
 

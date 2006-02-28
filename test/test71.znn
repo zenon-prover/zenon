@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 $sig p ("") "Prop"
 $sig f ("") ""
 $goal

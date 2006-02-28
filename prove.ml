@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.18 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.19 2006-02-28 14:33:28 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1133,19 +1133,19 @@ let newnodes_preunif st fm g =
 
 let newnodes_useless st fm g =
   match fm with
-  | Evar (v, _)
-  | Enot (Evar (v, _), _)
+  | Evar _ | Enot (Evar _, _)
+  | Etau _ | Enot (Etau _, _)
     -> st, true
 
   | Etrue | Enot (Efalse, _)
     -> st, true
 
-  | Emeta _ | Etau _ | Elam _ | Enot ((Emeta _ | Etau _ | Elam _), _)
+  | Emeta _ | Elam _ | Enot ((Emeta _ | Elam _), _)
     ->
-      if !Globals.warnings_flag then begin
-        fprintf stderr "add_nodes: unexpected formula meta/tau/lambda";
+      if !Error.warnings_flag then begin
+        eprintf "add_nodes: unexpected formula meta or lambda";
         Print.expr (Print.Chan stderr) fm;
-        printf "\n";
+        eprintf "\n";
       end;
       st, true
   | _ -> (st, false)

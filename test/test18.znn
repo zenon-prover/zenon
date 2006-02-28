@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 # buveurs
 
 $goal (E. ((x) (=> (P x) (A. ((y) (P y))))))

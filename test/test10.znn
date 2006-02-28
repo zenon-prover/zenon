@@ -1,2 +1,4 @@
+;  Copyright 2006 INRIA
+
 (A. ((x) (\/ (R x) (R (f x)))))
 $goal (E. ((x) (/\ (R x) (R (f (f x))))))

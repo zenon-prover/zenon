@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 ; file: species_general_set.foc
 ; species: lattice
 ; property: order_inf_is_transitive / __lemma_1_2

@@ -1,9 +1,8 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: globals.mli,v 1.8 2005-11-21 18:48:28 doligez Exp $  *)
+(*  $Id: globals.mli,v 1.9 2006-02-28 14:33:28 doligez Exp $  *)
 
 val debug_flag : bool ref;;
 
-val warnings_flag : bool ref;;
 val stats_flag : bool ref;;
 val quiet_flag : bool ref;;
 val size_limit : float ref;;

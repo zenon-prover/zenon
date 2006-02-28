@@ -1,0 +1,17 @@
+;  Copyright 2006 INRIA
+
+(A. ((X) (= X X)))
+(A. ((X Y) (=> (= X Y) (= Y X))))
+(A. ((X Y Z) (=> (/\ (= X Y) (= Y Z)) (= X Z))))
+
+(A. ((A B C) (=> (/\ (= A B) (big_f A C)) (big_f B C))))
+(A. ((A B C) (=> (/\ (= A B) (big_f C A)) (big_f C B))))
+
+(E. ((Z W) (A. ((X Y)
+  (<=> (big_f X Y)
+       (/\ (= X Z)
+           (= Y W)))))))
+$goal
+(E. ((W) (A. ((Y)
+  (<=> (E. ((Z) (A. ((X) (<=> (big_f X Y) (= X Z))))))
+       (= Y W))))))

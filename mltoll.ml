@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.21 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.22 2006-02-28 14:33:28 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -151,7 +151,7 @@ let rec xtr_prop a =
   | Eall (v, t, e, o, _) -> eall (v, t, tr_prop e, o)
   | Eex (v, t, e, o, _) -> eex (v, t, tr_prop e, o)
 
-  | Etau _ -> assert false
+  | Etau _ -> evar (make_tau_name a)
   | Elam _ -> assert false
 
 and tr_prop a = memo prop_tbl xtr_prop a

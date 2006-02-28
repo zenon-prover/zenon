@@ -1,0 +1,7 @@
+;  Copyright 2006 INRIA
+
+(E. ((Z W) (A. ((X Y) (<=> (big_f X Y) (/\ (= X Z) (= Y W)))))))
+
+$goal
+(E. ((W) (A. ((Y) (<=> (E. ((Z) (A. ((X) (<=> (big_f X Y) (= X Z))))))
+                       (= Y W))))))

@@ -2,7 +2,6 @@
 *.cm[iox]
 *.output
 *.annot
-*.png
 *.vo
 lexzen.ml
 parsezen.ml

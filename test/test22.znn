@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 $1 (A. ((x) (= (p x _0) x)))
 $1 (A. ((x) (A. ((y) (= (p x y) (p y x))))))
 

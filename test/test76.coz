@@ -1,3 +1,5 @@
+(*  Copyright 2006 INRIA  *)
+
 (* Testing inductive types. *)
 (* Need "-x inductive" for this one *)
 

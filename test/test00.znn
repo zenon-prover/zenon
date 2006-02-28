@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 (A. ((x) (P x)))
 
 $goal (E. ((x) (P x)))

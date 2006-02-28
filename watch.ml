@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.6 2006-02-27 16:56:52 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.7 2006-02-28 14:33:28 doligez Exp $";;
 
 open Printf;;
 
@@ -48,7 +48,7 @@ let check (p, dep) =
 let has_deps pds = List.exists snd pds;;
 
 let warn phrases_dep p moreused =
-  if !Globals.warnings_flag && has_deps phrases_dep then begin
+  if !Error.warnings_flag && has_deps phrases_dep then begin
     let prf = Lazy.force p in
     Hashtbl.clear used;
     HE.clear hyp_names;

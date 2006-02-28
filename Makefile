@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.34 2006-02-27 16:56:52 doligez Exp $
+#  $Id: Makefile,v 1.35 2006-02-28 14:33:28 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -56,18 +56,6 @@ uninstall:
 	rm -f "${BINDIR}"/zenon
 	cd "${LIBDIR}"; rm -f ${COQSRC} ${COQOBJ}
 
-.PHONY: logo
-logo: zenon-logo.png zenon-logo-small.png
-
-# "gs" is ghostscript
-zenon-logo.png: zenon-logo.ps
-	gs -sDEVICE=png16m -sOutputFile=zenon-logo.png -r720 -g2400x800 \
-	   -dNOPAUSE -dBATCH zenon-logo.ps
-
-# "convert" is part of ImageMagick
-zenon-logo-small.png: zenon-logo.png
-	convert zenon-logo.png -resize 10% zenon-logo-small.png
-
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
 .ml.cmo:
@@ -107,15 +95,11 @@ parsecoq.mli: parsecoq.ml
 	:
 
 SUMIMPL = ${IMPL:checksum.ml=}
-checksum.ml: ${INTF} ${SUMIMPL}
-	echo 'let v = "'`${SUM} ${SUMIMPL} ${INTF} | ${SUM}`'";;' >checksum.ml
+checksum.ml: ${SUMIMPL}
+	echo 'let v = "'`${SUM} ${SUMIMPL} | ${SUM}`'";;' >checksum.ml
 
 .v.vo:
 	${COQC} $*.v
-
-zenon_equiv.vo: zenon_equiv.v
-	: ### The following command may take a few minutes to complete. ###
-	${COQC} zenon_equiv.v
 
 .PHONY: clean
 clean:
@@ -125,7 +109,6 @@ clean:
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml
 	rm -f checksum.ml
 	rm -f zenon zenon.opt zenon.byt
-	rm -f zenon-logo.png zenon-logo-small.png
 
 .PHONY: archclean
 archclean: clean
@@ -134,5 +117,6 @@ archclean: clean
 .PHONY: depend
 depend: ${IMPL} ${INTF}
 	ocamldep ${CAMLP4} ${IMPL} ${INTF} >.depend
+	coqdep ${COQSRC} >>.depend
 
 include .depend

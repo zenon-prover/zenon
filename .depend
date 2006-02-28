@@ -117,5 +117,6 @@ lexcoq.cmi: parsecoq.cmi
 tptp.cmi: phrase.cmi 
 coqterm.cmi: phrase.cmi llproof.cmi expr.cmi 
 lltocoq.cmi: phrase.cmi llproof.cmi 
-checksum.cmo: checksum.cmi 
-checksum.cmx: checksum.cmi 
+zenon.vo: zenon.v
+zenon_coqbool.vo: zenon_coqbool.v
+zenon_equiv.vo: zenon_equiv.v zenon.vo

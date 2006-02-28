@@ -1,3 +1,5 @@
+(*  Copyright 2006 INRIA  *)
+
 A'*     -> anonymous hypotheses
 H'*     -> local hypotheses
 K'match -> pattern-matching keyword

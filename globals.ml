@@ -1,9 +1,8 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.15 2005-11-21 18:48:28 doligez Exp $";;
+Version.add "$Id: globals.ml,v 1.16 2006-02-28 14:33:28 doligez Exp $";;
 
 let debug_flag = ref false;;
 
-let warnings_flag = ref true;;
 let stats_flag = ref false;;
 let quiet_flag = ref false;;
 let size_limit = ref 100_000_000.;;

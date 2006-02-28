@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 # file: species_general_set.foc
 # species: partial_order
 # theorem: gt_is_lt

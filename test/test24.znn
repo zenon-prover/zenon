@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 $def (x) _1
 
 $goal (= x _1)

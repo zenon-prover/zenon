@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 # TPTP syn064+1
 
 $sig P ("nat" "nat") "Prop"

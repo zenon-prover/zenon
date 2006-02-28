@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 # file: species_general_set.foc
 # species: ordered_lattice
 # property: leq_reflexive

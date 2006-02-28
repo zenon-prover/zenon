@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.15 2006-02-27 16:56:52 doligez Exp $
+#  $Id: configure,v 1.16 2006-02-28 14:33:28 doligez Exp $
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
@@ -62,6 +62,18 @@ case $sum in
 ;;
 esac
 
+case `type gs` in
+*'not found'*) gs=: ;;
+*' is '*) gs=gs ;;
+*) gs=: ;;
+esac
+
+case `type convert` in
+*'not found'*) convert=: ;;
+*' is '*) convert=convert ;;
+*) convert=: ;;
+esac
+
 {
   echo BINDIR="$bindir"
   echo LIBDIR="$libdir"
@@ -69,6 +81,8 @@ esac
   echo BYTDEBUGFLAGS="$bytdebugflags"
   echo OPTDEBUGFLAGS="$optdebugflags"
   echo SUM="$sum"
+  echo GS="$gs"
+  echo CONVERT="$convert"
 } >.config_var
 
 echo Configuration summary for zenon:

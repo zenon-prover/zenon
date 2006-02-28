@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-(*  $Id: error.mli,v 1.4 2005-11-13 22:49:11 doligez Exp $  *)
+(*  $Id: error.mli,v 1.5 2006-02-28 14:33:28 doligez Exp $  *)
 
 val warnings_flag : bool ref;;
 val err_file : string ref;;

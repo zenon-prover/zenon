@@ -1,3 +1,5 @@
+;  Copyright 2006 INRIA
+
 # file: species_general_additive_law.foc
 # species: partially_ordered_additive_monoid
 # property: inf_idempotent / __goal_4

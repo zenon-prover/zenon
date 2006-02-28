@@ -1,4 +1,5 @@
 #!/bin/sh
+#  Copyright 2006 INRIA
 
 # usage: equivbench.sh <n>
 
