@@ -1,4 +1,5 @@
 ;  Copyright 2006 INRIA
+;  $Id: test22.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
 
 $1 (A. ((x) (= (p x _0) x)))
 $1 (A. ((x) (A. ((y) (= (p x y) (p y x))))))

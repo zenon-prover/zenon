@@ -1,4 +1,5 @@
 ;  Copyright 2006 INRIA
+;  $Id: test10.znn,v 1.5 2006-03-01 14:39:03 doligez Exp $
 
 (A. ((x) (\/ (R x) (R (f x)))))
 $goal (E. ((x) (/\ (R x) (R (f (f x))))))

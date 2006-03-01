@@ -1,4 +1,5 @@
 ;  Copyright 2006 INRIA
+;  $Id: test45.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
 
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid

@@ -1,5 +1,5 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.9 2006-02-16 09:22:46 doligez Exp $
+#  $Id: Makefile,v 1.10 2006-03-01 14:39:03 doligez Exp $
 
 ZOPT = -q -x coqbool -max-time 10m -max-size 500M ${RND}
 
@@ -61,7 +61,7 @@ coqscript:
 	  fi ; \
 	done; \
 	echo
-	rm -f tmp_test.v
+	rm -f tmp_test.v tmp_test.vo
 
 coqterm:
 	: testing term output
@@ -78,9 +78,9 @@ coqterm:
 	  fi ; \
 	done; \
 	echo
-	rm -f tmp_test.v
+	rm -f tmp_test.v tmp_test.vo
 
 coq: coqterm coqscript
 
 clean:
-	rm -f tmp_test.v
+	rm -f tmp_test.v tmp_test.vo

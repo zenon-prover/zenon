@@ -1,4 +1,5 @@
 ;  Copyright 2006 INRIA
+;  $Id: test01.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
 
 $sig P ("nat") "Prop"
 $sig Q ("nat") "Prop"

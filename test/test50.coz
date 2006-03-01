@@ -1,4 +1,5 @@
 (*  Copyright 2006 INRIA  *)
+(*  $Id: test50.coz,v 1.6 2006-03-01 14:39:03 doligez Exp $  *)
 
 (*
 ; test du parseur de syntaxe Coq

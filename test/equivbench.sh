@@ -1,5 +1,6 @@
 #!/bin/sh
 #  Copyright 2006 INRIA
+#  $Id: equivbench.sh,v 1.3 2006-03-01 14:39:03 doligez Exp $
 
 # usage: equivbench.sh <n>
 

@@ -1,4 +1,5 @@
 ;  Copyright 2006 INRIA
+;  $Id: test11.znn,v 1.3 2006-03-01 14:39:03 doligez Exp $
 
 (-. (E. ((x) (/\ (S x) (Q x)))))
 (A. ((x) (\/ (-. (P x)) (\/ (Q x) (R x)))))

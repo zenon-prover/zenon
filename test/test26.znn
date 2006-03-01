@@ -1,4 +1,5 @@
 ;  Copyright 2006 INRIA
+;  $Id: test26.znn,v 1.5 2006-03-01 14:39:03 doligez Exp $
 
 $sig abst_T () "Type"
 $sig abst_equal ("abst_T" "abst_T") "bool"
