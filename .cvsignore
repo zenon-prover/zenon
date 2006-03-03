@@ -3,6 +3,7 @@
 *.output
 *.annot
 *.vo
+stamp.ml
 lexzen.ml
 parsezen.ml
 parsezen.mli
