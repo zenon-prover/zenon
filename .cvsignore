@@ -23,3 +23,6 @@ gmon.out
 .DS_Store
 parser.output
 checksum.ml
+lexer.ml
+parser.ml
+parser.mli
