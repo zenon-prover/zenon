@@ -1,9 +1,10 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lextptp.mll,v 1.4 2006-02-16 09:22:45 doligez Exp $";;
+Version.add "$Id: lextptp.mll,v 1.5 2006-03-13 14:23:47 doligez Exp $";;
 
-open Parsetptp;;
 open Lexing;;
+open Parsetptp;;
+open Printf;;
 
 }
 
@@ -65,6 +66,6 @@ rule token = parse
 
   | eof              { EOF }
   | _                {
-      let msg = "bad character " ^ Lexing.lexeme lexbuf
-      in raise (Error.Lex_error msg)
+      let msg = sprintf "bad character %C" (Lexing.lexeme_char lexbuf 0) in
+      raise (Error.Lex_error msg)
     }

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.26 2006-02-27 16:56:52 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.27 2006-03-13 14:23:47 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -444,7 +444,7 @@ let pr_oc oc prefix t =
         let (lams, body) = get_lams [] t in
         bprintf b "(fun%a=>%a)" pr_lams lams pr body;
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
-    | Capp (Cvar "=", args) -> bprintf b "(@eq _ %a)" pr_list args;
+    | Capp (Cvar "=", args) -> bprintf b "(@eq _%a)" pr_list args;
     | Capp (t1, []) -> pr b t1;
     | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
     | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;

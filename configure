@@ -1,17 +1,20 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.17 2006-03-13 10:35:43 prevosto Exp $
+#  $Id: configure,v 1.18 2006-03-13 14:23:47 doligez Exp $
 
-#NdV: exec_prefix is a hack to be compatible with 
-# toplevel configure
-exec_prefix=/usr/local
-
+prefix=
 bindir=/usr/local/bin
-libdir=/usr/local/lib/foc
-coqc=`which coqc`
+libdir=/usr/local/lib/zenon
 debug=false
-sum=''
+convert=convert; case `type -path convert` in '') convert=: ;; esac
+coqc=coqc; case `type -path coqc` in '') coqc=: ;; esac
+gs=gs; case `type -path gs` in '') gs=: ;; esac
+
+sum=:
+for i in sum md5 md5sum md5deep sha1deep sha256deep; do
+  case `type -path $i` in '') ;; *) sum=$i; break ;; esac
+done
 
 case `whoami` in
   doligez | prevosto) debug=true;;
@@ -20,31 +23,28 @@ esac
 while : ; do
   case $# in 0) break;; esac
   case "$1" in
-    -exec_prefix | --exec_prefix)
-       exec_prefix=$2
-       shift 2
-    ;;
-    -bindir | --bindir)
-       bindir=$2
-       shift 2
-    ;;
-    -debug | --debug | --enable-debug)
-       debug=true
-       shift
-    ;;
-    -libdir | --libdir)
-       libdir=$2
-       shift 2
-    ;;
-    -nodebug | --nodebug)
-       debug=false
-       shift
-    ;;
-    -sum | --sum)
-       sum=$2
-       shift 2
-    ;;
-    *) echo 'usage: ./configure [-bindir <dir>] [-libdir <dir>]' >&2
+    -bindir | --bindir) bindir="$2"; shift 2;;
+    -convert | --convert) convert="$2"; shift 2;;
+    -coqc | --coqc) coqc="$2"; shift 2;;
+    -debug | --debug | --enable-debug) debug=true; shift;;
+    -exec_prefix | --exec_prefix) shift 2;;
+    -gs | --gs) gs="$2"; shift 2;;
+    -libdir | --libdir) libdir="$2"; shift 2;;
+    -nodebug | --nodebug | --disable-debug) debug=false; shift;;
+    -prefix | --prefix) prefix="$2"; shift 2;;
+    -sum | --sum) sum="$2"; shift 2;;
+    *) echo 'usage: ./configure [options]' >&2
+       echo 'options are:' >&2
+       echo '  [-]-bindir <directory>' >&2
+       echo '  [-]-convert <exec-file>' >&2
+       echo '  [-]-coq <exec-file>' >&2
+       echo '  [-]-debug | --enable-debug' >&2
+       echo '  [-]-exec_prefix <directory>' >&2
+       echo '  [-]-gs <exec-file>' >&2
+       echo '  [-]-libdir <directory>' >&2
+       echo '  [-]-nodebug | --disable-debug' >&2
+       echo '  [-]-prefix <directory>' >&2
+       echo '  [-]-sum <exec-file>' >&2
        exit 2
     ;;
   esac
@@ -58,40 +58,15 @@ else
   optdebugflags=
 fi
 
-case $sum in
-'')
-  sum=:
-  for i in sum md5 md5sum md5deep sha1deep sha256deep; do
-    $i /dev/null >/dev/null 2>&1
-    case $? in
-    0) sum="$i"; break;;
-    esac
-  done
-;;
-esac
-
-case `type gs` in
-*'not found'*) gs=: ;;
-*' is '*) gs=gs ;;
-*) gs=: ;;
-esac
-
-case `type convert` in
-*'not found'*) convert=: ;;
-*' is '*) convert=convert ;;
-*) convert=: ;;
-esac
-
 {
-  echo exec_prefix="$exec_prefix"
-  echo BINDIR="$bindir"
-  echo LIBDIR="$libdir"
-  echo COQC="$coqc"
+  echo BINDIR="$prefix$bindir"
   echo BYTDEBUGFLAGS="$bytdebugflags"
+  echo CONVERT="$convert"
+  echo COQC="$coqc"
+  echo GS="$gs"
+  echo LIBDIR="$prefix$libdir"
   echo OPTDEBUGFLAGS="$optdebugflags"
   echo SUM="$sum"
-  echo GS="$gs"
-  echo CONVERT="$convert"
 } >.config_var
 
 echo Configuration summary for zenon:

@@ -1,14 +1,14 @@
 (*  Copyright 2004 INRIA  *)
-let myvers = "$Id: version.ml,v 1.37 2006-03-01 15:37:21 doligez Exp $";;
+let myvers = "$Id: version.ml,v 1.38 2006-03-13 14:23:47 doligez Exp $";;
 
 open Printf;;
 
-let number = 46;;      (* strictly increasing *)
-let date = "2006-03-01";;
+let number = 48;;      (* strictly increasing *)
+let date = "2006-03-13";;
 
 let major = 0;;
 let minor = 4;;
-let bugfix = 1;;       (* even = development version; odd = released version *)
+let bugfix = 2;;       (* even = development version; odd = released version *)
 
 let short = sprintf "%d.%d.%d" major minor bugfix;;
 let full = sprintf "%d.%d.%d [%d] %s" major minor bugfix number date;;

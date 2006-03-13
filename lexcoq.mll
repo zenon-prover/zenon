@@ -1,11 +1,14 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.7 2006-02-16 16:28:33 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.8 2006-03-13 14:23:47 doligez Exp $";;
 
-open Parsecoq;;
 open Lexing;;
+open Parsecoq;;
+open Printf;;
 
 exception Lex_error of string;;
+
+let stringbuf = Buffer.create 100;;
 
 }
 
@@ -115,18 +118,18 @@ rule token = parse
   | "%%end-auto-proof" inline*
       { ENDPROOF }
 
-  | eof                     { EOF }
+  | eof
+      { EOF }
 
-  | "\"" stringchar + "\""  {
-      let s = Lexing.lexeme lexbuf in
-      STRING (String.sub s 1 (String.length s - 2))
+  | "\"" {
+      Buffer.reset stringbuf;
+      string lexbuf
     }
-
   | [ '0'-'9' ]+
       { NUM (Lexing.lexeme lexbuf) }
 
-  | _                       {
-      let msg = "bad character " ^ Lexing.lexeme lexbuf in
+  | _ {
+      let msg = sprintf "bad character %C" (Lexing.lexeme_char lexbuf 0) in
       raise (Error.Lex_error msg)
     }
 
@@ -140,3 +143,21 @@ and comment = parse
       };
       comment lexbuf
     }
+
+and string = parse
+  | stringchar {
+      Buffer.add_string stringbuf (Lexing.lexeme lexbuf);
+      string lexbuf
+    }
+  | newline {
+      lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with
+        pos_bol = lexbuf.lex_curr_p.pos_cnum;
+        pos_lnum = lexbuf.lex_curr_p.pos_lnum + 1;
+      };
+      Buffer.add_string stringbuf (Lexing.lexeme lexbuf);
+      string lexbuf
+    }
+  | "\"" {
+      STRING (Buffer.contents stringbuf)
+    }
+
