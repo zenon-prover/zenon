@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.35 2006-02-28 14:33:28 doligez Exp $
+#  $Id: Makefile,v 1.36 2006-03-13 10:35:43 prevosto Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -110,9 +110,11 @@ clean:
 	rm -f checksum.ml
 	rm -f zenon zenon.opt zenon.byt
 
-.PHONY: archclean
+.PHONY: archclean realclean
 archclean: clean
 	rm -f .config_var
+
+realclean: archclean
 
 .PHONY: depend
 depend: ${IMPL} ${INTF}

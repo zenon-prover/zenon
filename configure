@@ -1,7 +1,11 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.16 2006-02-28 14:33:28 doligez Exp $
+#  $Id: configure,v 1.17 2006-03-13 10:35:43 prevosto Exp $
+
+#NdV: exec_prefix is a hack to be compatible with 
+# toplevel configure
+exec_prefix=/usr/local
 
 bindir=/usr/local/bin
 libdir=/usr/local/lib/foc
@@ -16,6 +20,10 @@ esac
 while : ; do
   case $# in 0) break;; esac
   case "$1" in
+    -exec_prefix | --exec_prefix)
+       exec_prefix=$2
+       shift 2
+    ;;
     -bindir | --bindir)
        bindir=$2
        shift 2
@@ -75,6 +83,7 @@ case `type convert` in
 esac
 
 {
+  echo exec_prefix="$exec_prefix"
   echo BINDIR="$bindir"
   echo LIBDIR="$libdir"
   echo COQC="$coqc"
