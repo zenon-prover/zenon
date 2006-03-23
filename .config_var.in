@@ -1,0 +1,12 @@
+#  Copyright 1997 INRIA
+#  $Id: .config_var.in,v 1.1 2006-03-23 15:26:33 doligez Exp $
+
+BINDIR=@BINDIR@
+BYTDEBUGFLAGS=@BYTDEBUGFLAGS@
+CONVERT=@CONVERT@
+COQC=@COQC@
+exec_prefix=@exec_prefix@
+GS=@GS@
+LIBDIR=@LIBDIR@
+OPTDEBUGFLAGS=@OPTDEBUGFLAGS@
+SUM=@SUM@
