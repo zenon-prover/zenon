@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.37 2006-03-13 14:23:47 doligez Exp $
+#  $Id: Makefile,v 1.38 2006-03-29 11:01:53 rousse Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -46,11 +46,11 @@ zenon: zenon.opt
 
 .PHONY: install
 install:
-	mkdir -p "${BINDIR}"
-	cp zenon "${BINDIR}"/
-	mkdir -p "${LIBDIR}"
-	cp ${COQSRC} "${LIBDIR}"/
-	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${LIBDIR}"; done
+	mkdir -p "${DESTDIR}${BINDIR}"
+	cp zenon "${DESTDIR}${BINDIR}"/
+	mkdir -p "${DESTDIR}${LIBDIR}"
+	cp ${COQSRC} "${DESTDIR}${LIBDIR}"/
+	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${DESTDIR}${LIBDIR}"; done
 
 .PHONY: uninstall
 uninstall:
