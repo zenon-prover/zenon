@@ -1,13 +1,13 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.20 2006-03-23 15:26:33 doligez Exp $
+#  $Id: configure,v 1.21 2006-03-30 13:11:04 doligez Exp $
 
 exec_prefix=/usr/local
 prefix=
 bindir=/usr/local/bin
 libdir=/usr/local/lib/zenon
-debug=false
+debug=true
 convert=convert; case `type -path convert` in '') convert=: ;; esac
 coqc=coqc; case `type -path coqc` in '') coqc=: ;; esac
 gs=gs; case `type -path gs` in '') gs=: ;; esac
@@ -16,10 +16,6 @@ sum=:
 for i in sum md5 md5sum md5deep sha1deep sha256deep; do
   case `type -path $i` in '') ;; *) sum=$i; break ;; esac
 done
-
-case `whoami` in
-  doligez | prevosto) debug=true;;
-esac
 
 while : ; do
   case $# in 0) break;; esac
