@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.38 2006-03-29 11:01:53 rousse Exp $
+#  $Id: Makefile,v 1.39 2006-03-30 13:11:26 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -33,7 +33,6 @@ include .config_var
 
 .PHONY: all
 all: zenon zenon.opt zenon.byt ${COQOBJ}
-
 
 zenon.opt: ${OBJOPT}
 	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${OBJOPT}
@@ -111,11 +110,9 @@ clean:
 	rm -f checksum.ml
 	rm -f zenon zenon.opt zenon.byt
 
-.PHONY: archclean realclean
-archclean: clean
+.PHONY: distclean
+distclean: clean
 	rm -f .config_var
-
-realclean: archclean
 
 .PHONY: depend
 depend: ${IMPL} ${INTF}
