@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.32 2006-02-27 16:56:52 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.33 2006-04-05 09:16:12 prevosto Exp $";;
 
 open Printf;;
 open Globals;;
@@ -83,6 +83,8 @@ let set_random seed =
   random_seed := seed;
 ;;
 
+let print_libdir () = Printf.printf "%s\n%!" Config.libdir; exit 0
+
 let umsg = "Usage: zenon [options] <file>";;
 
 let rec argspec = [
@@ -157,6 +159,8 @@ let rec argspec = [
      "                 suppress warnings";
   "-wout", Arg.Set_string Error.err_file,
         "<file>        output errors and warnings to <file> instead of stderr";
+  "-where", Arg.Unit print_libdir, 
+  "prints the location of the zenon library and exits";
   "-x", Arg.String Extension.activate,
      "<ext>            activate extension <ext>"
 ]

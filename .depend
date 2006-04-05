@@ -1,5 +1,7 @@
 version.cmo: version.cmi 
 version.cmx: version.cmi 
+config.cmo: config.cmi 
+config.cmx: config.cmi 
 misc.cmo: version.cmi misc.cmi 
 misc.cmx: version.cmx misc.cmi 
 heap.cmo: version.cmi heap.cmi 
@@ -18,10 +20,10 @@ llproof.cmo: version.cmi expr.cmi llproof.cmi
 llproof.cmx: version.cmx expr.cmx llproof.cmi 
 mlproof.cmo: version.cmi expr.cmi mlproof.cmi 
 mlproof.cmx: version.cmx expr.cmx mlproof.cmi 
-watch.cmo: version.cmi phrase.cmi misc.cmi llproof.cmi globals.cmi expr.cmi \
-    error.cmi watch.cmi 
-watch.cmx: version.cmx phrase.cmx misc.cmx llproof.cmx globals.cmx expr.cmx \
-    error.cmx watch.cmi 
+watch.cmo: version.cmi phrase.cmi misc.cmi llproof.cmi expr.cmi error.cmi \
+    watch.cmi 
+watch.cmx: version.cmx phrase.cmx misc.cmx llproof.cmx expr.cmx error.cmx \
+    watch.cmi 
 eqrel.cmo: version.cmi mlproof.cmi expr.cmi eqrel.cmi 
 eqrel.cmx: version.cmx mlproof.cmx expr.cmx eqrel.cmi 
 index.cmo: version.cmi mlproof.cmi misc.cmi globals.cmi expr.cmi index.cmi 
@@ -91,11 +93,11 @@ checksum.cmx: checksum.cmi
 main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
     phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi mltoll.cmi lltocoq.cmi \
     llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi globals.cmi extension.cmi \
-    error.cmi eqrel.cmi coqterm.cmi checksum.cmi main.cmi 
+    error.cmi eqrel.cmi coqterm.cmi config.cmi checksum.cmi main.cmi 
 main.cmx: watch.cmx version.cmx tptp.cmx prove.cmx progress.cmx print.cmx \
     phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx mltoll.cmx lltocoq.cmx \
     llproof.cmx lexzen.cmx lextptp.cmx lexcoq.cmx globals.cmx extension.cmx \
-    error.cmx eqrel.cmx coqterm.cmx checksum.cmx main.cmi 
+    error.cmx eqrel.cmx coqterm.cmx config.cmx checksum.cmx main.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 

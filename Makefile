@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.39 2006-03-30 13:11:26 doligez Exp $
+#  $Id: Makefile,v 1.40 2006-04-05 09:16:12 prevosto Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -12,7 +12,7 @@ CAMLCFLAGS = ${CAMLFLAGS} ${BYTDEBUGFLAGS}
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
-MODULES = version misc heap globals error progress expr \
+MODULES = version config misc heap globals error progress expr \
           phrase llproof mlproof watch eqrel index \
           print step node extension mltoll prove \
           parsezen lexzen parsetptp lextptp parsecoq lexcoq \
@@ -32,7 +32,13 @@ COQOBJ = ${COQMODULES:%=%.vo}
 include .config_var
 
 .PHONY: all
-all: zenon zenon.opt zenon.byt ${COQOBJ}
+all: byt opt coq zenon
+
+coq: ${COQOBJ}
+
+byt: zenon.byt
+
+opt: zenon.opt
 
 zenon.opt: ${OBJOPT}
 	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${OBJOPT}
@@ -40,8 +46,14 @@ zenon.opt: ${OBJOPT}
 zenon.byt: ${OBJBYT}
 	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${OBJBYT}
 
-zenon: zenon.opt
-	cp zenon.opt zenon
+
+zenon: zenon.byt
+	if test -x zenon.opt; then \
+	  cp zenon.opt zenon; \
+        else \
+	  cp zenon.byt zenon; \
+	fi
+     
 
 .PHONY: install
 install:
@@ -93,6 +105,9 @@ parsecoq.ml: parsecoq.mly
 
 parsecoq.mli: parsecoq.ml
 	:
+
+config.ml: .config_var
+	echo 'let libdir = "' ${LIBDIR} '"' > config.ml
 
 SUMIMPL = ${IMPL:checksum.ml=}
 checksum.ml: ${SUMIMPL}
