@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.40 2006-04-05 09:16:12 prevosto Exp $
+#  $Id: Makefile,v 1.41 2006-04-05 09:22:53 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -61,7 +61,7 @@ install:
 	cp zenon "${DESTDIR}${BINDIR}"/
 	mkdir -p "${DESTDIR}${LIBDIR}"
 	cp ${COQSRC} "${DESTDIR}${LIBDIR}"/
-	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${DESTDIR}${LIBDIR}"; done
+	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${DESTDIR}${LIBDIR}";done
 
 .PHONY: uninstall
 uninstall:
@@ -107,7 +107,7 @@ parsecoq.mli: parsecoq.ml
 	:
 
 config.ml: .config_var
-	echo 'let libdir = "' ${LIBDIR} '"' > config.ml
+	echo 'let libdir = "${LIBDIR}";;' > config.ml
 
 SUMIMPL = ${IMPL:checksum.ml=}
 checksum.ml: ${SUMIMPL}
