@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.27 2006-03-13 14:23:47 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.28 2006-04-25 09:02:01 prevosto Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -498,15 +498,15 @@ let print_lemma oc (name, t) =
 ;;
 
 let print_theorem oc (name, t) phrases =
-  let prefix = sprintf "Definition %s:" name in
+  let prefix = sprintf "Theorem %s:" name in
   begin match get_goal phrases with
   | Some (Enot (g, _)) -> pr_oc oc prefix (trexpr [] g);
   | None -> pr_oc oc prefix (trexpr [] efalse);
   | _ -> assert false
   end;
-  fprintf oc ":=\n";
+  fprintf oc ".\nProof.\nexact(";
   pr_oc oc "" t;
-  fprintf oc ".\n";
+  fprintf oc ").\nQed.\n";
 ;;
 
 type result =
