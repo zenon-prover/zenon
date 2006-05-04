@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.22 2006-02-28 14:33:28 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.23 2006-05-04 09:57:47 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -803,7 +803,8 @@ and translate_derived p =
       let n3 = make_pnp aeb ndec [n1; n2] in
       let n4 = make_direct_sym_neq c d n3 in
       to_llproof n4
-  | P_NotP_sym (s, Eapp (s1, [a; b], _), (Eapp (s2, [c; d], _) as pcd)) ->
+  | P_NotP_sym (s, Eapp (s1, [a; b], _), Enot (Eapp (s2, [c; d], _) as pcd, _))
+    ->
       assert (s = s1 && s = s2);
       let (n1, n2) = gethyps2 p in
       let sym_hyp = Eqrel.get_sym_hyp s in
