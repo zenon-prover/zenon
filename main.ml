@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.33 2006-04-05 09:16:12 prevosto Exp $";;
+Version.add "$Id: main.ml,v 1.34 2006-05-04 16:51:10 doligez Exp $";;
 
 open Printf;;
 open Globals;;
@@ -157,10 +157,10 @@ let rec argspec = [
             "          print CVS version strings and exit";
   "-w", Arg.Clear Error.warnings_flag,
      "                 suppress warnings";
+  "-where", Arg.Unit print_libdir,
+         "             print the location of the zenon library and exit";
   "-wout", Arg.Set_string Error.err_file,
         "<file>        output errors and warnings to <file> instead of stderr";
-  "-where", Arg.Unit print_libdir, 
-  "prints the location of the zenon library and exits";
   "-x", Arg.String Extension.activate,
      "<ext>            activate extension <ext>"
 ]
