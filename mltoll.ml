@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.23 2006-05-04 09:57:47 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.24 2006-05-04 16:51:39 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -803,16 +803,17 @@ and translate_derived p =
       let n3 = make_pnp aeb ndec [n1; n2] in
       let n4 = make_direct_sym_neq c d n3 in
       to_llproof n4
-  | P_NotP_sym (s, Eapp (s1, [a; b], _), Enot (Eapp (s2, [c; d], _) as pcd, _))
-    ->
+  | P_NotP_sym (s, (Eapp (s1, [a; b], _) as pab),
+                (Enot (Eapp (s2, [c; d], _), _) as npcd)) ->
       assert (s = s1 && s = s2);
       let (n1, n2) = gethyps2 p in
       let sym_hyp = Eqrel.get_sym_hyp s in
       let pba = eapp (s, [b; a]) in
-      let npcd = enot pcd in
       let n3 = make_pnp pba npcd [n1; n2] in
-      let n4 = make_alls sym_hyp [a; b] n3 in
-      let (n, ext) = to_llproof n4 in
+      let n4 = make_cl pab in
+      let n5 = make_impl pab pba n4 n3 in
+      let n6 = make_alls sym_hyp [a; b] n5 in
+      let (n, ext) = to_llproof n6 in
       (n, union [sym_hyp] ext)
   | P_NotP_sym _ -> assert false
   | Refl (s, a, b) ->
