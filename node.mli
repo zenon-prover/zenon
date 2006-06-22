@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: node.mli,v 1.5 2005-11-13 22:49:11 doligez Exp $  *)
+(*  $Id: node.mli,v 1.6 2006-06-22 17:09:40 doligez Exp $  *)
 
 open Expr;;
 
@@ -12,7 +12,7 @@ type node = {
   nconc : Expr.expr list;
   nrule : Mlproof.rule;
   nprio : priority;
-  ngoal : int;
+  ngoal : goalness;
   nbranches : Expr.expr list array;
 };;
 

@@ -1,11 +1,12 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.10 2006-02-16 16:28:33 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.11 2006-06-22 17:09:40 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
+open Namespace;;
 open Phrase;;
 
 let rec mk_type_string e =
@@ -153,7 +154,7 @@ let rec mk_pattern accu l =
 
 %nonassoc let_in
 %nonassoc IDENT FQN
-%nonassoc FORALL EXISTS COMMA_ FUN EQ_GT_ IF THEN ELSE
+%nonassoc FORALL EXISTS COMMA_ FUN EQ_GT_ IF THEN ELSE IN
 %right DASH_GT_ LT_DASH_GT_
 %right BACKSL_SLASH_
 %right SLASH_BACKSL_
@@ -168,14 +169,13 @@ let rec mk_pattern accu l =
 
 file:
   | hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ EOF
-      { ($3, (Hyp ("z'g", enot $5, 0), false) :: $1) }
-
-/* deprecated "Focal" format -- kept for compatibility */
-
+      { ($3, (Hyp (goal_name, enot $5, 0), false) :: $1) }
   | expr hyp_def_list EOF
-      { ("theorem", (Hyp ("z'g", enot $1, 0), false) :: $2) }
+      { (*Error.warn "deprecated input format"; *)
+        ("theorem", (Hyp (goal_name, enot $1, 0), false) :: $2) }
   | proof_head expr hyp_def_list ENDPROOF EOF
-      { ($1, (Hyp ("z'g", enot $2, 0), false) :: $3) }
+      { (* Error.warn "deprecated input format"; *)
+        ($1, (Hyp (goal_name, enot $2, 0), false) :: $3) }
 ;
 
 proof_head:
@@ -205,7 +205,7 @@ expr:
       { mk_let $2 $4 $6 }
 
   | MATCH expr WITH pat_expr_list END
-      { eapp ("K'match", $2 :: $4) }
+      { eapp ("$match", $2 :: $4) }
 
   | IF expr THEN expr ELSE expr
       { eapp ("(__g_ifthenelse _)", [$2; $4; $6]) }

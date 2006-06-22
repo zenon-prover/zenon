@@ -1,8 +1,13 @@
 #!/bin/sh
 #  Copyright 2006 INRIA
-#  $Id: equivbench.sh,v 1.3 2006-03-01 14:39:03 doligez Exp $
+#  $Id: equivbench.sh,v 1.4 2006-06-22 17:09:40 doligez Exp $
 
-# usage: equivbench.sh <n>
+usage() { echo 'usage: equivbench.sh <n>' >&2; }
+
+case $# in
+ 1) ;;
+ *) usage; exit 2;;
+esac
 
 n=$1
 
@@ -22,8 +27,8 @@ awk 'BEGIN {
 }' >equivbenchtmp.znn
 
 awk 'BEGIN {
-  print "Require Import zenon8.";
-  print "Require Import zenon_equiv8.";
+  print "Require Import zenon.";
+  print "Require Import zenon_equiv.";
   for (i = 0; i < '$n'; i++){
     printf ("Parameter p_%d : Prop.\n", i);
   }
@@ -32,6 +37,6 @@ awk 'BEGIN {
 
 #time ../zenon equivbenchtmp.znn -x equiv
 
-time ../zenon equivbenchtmp.znn -x equiv -ocoqterm8 -short >equivbenchtmp.v
+time ../zenon equivbenchtmp.znn -x equiv -ocoqterm -short >equivbenchtmp.v
 wc equivbenchtmp.v
-time coqc equivbenchmeta.v
+#time coqc -I /usr/local/lib/zenon equivbenchmeta.v

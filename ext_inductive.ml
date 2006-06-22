@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.2 2006-02-27 16:56:52 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.3 2006-06-22 17:09:40 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -59,7 +59,7 @@ let make_match_branches ctx m =
 
 let newnodes_match e g =
   match e with
-  | Eapp ("=", [Eapp ("K'match", m, _) as e1; e2], _) ->
+  | Eapp ("=", [Eapp ("$match", m, _) as e1; e2], _) ->
       let branches = make_match_branches (fun x -> eapp ("=", [x; e2])) m in
       [ Node {
         nconc = [e];
@@ -68,7 +68,7 @@ let newnodes_match e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("=", [e1; Eapp ("K'match", m, _) as e2], _) ->
+  | Eapp ("=", [e1; Eapp ("$match", m, _) as e2], _) ->
       let branches = make_match_branches (fun x -> eapp ("=", [e1; x])) m in
       [ Node {
         nconc = [e];
@@ -77,7 +77,7 @@ let newnodes_match e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("=", [Eapp ("K'match", m, _) as e1; e2], _), _) ->
+  | Enot (Eapp ("=", [Eapp ("$match", m, _) as e1; e2], _), _) ->
       let branches = make_match_branches (fun x -> enot (eapp ("=", [x; e2]))) m
       in
       [ Node {
@@ -87,7 +87,7 @@ let newnodes_match e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("=", [e1; Eapp ("K'match", m, _) as e2], _), _) ->
+  | Enot (Eapp ("=", [e1; Eapp ("$match", m, _) as e2], _), _) ->
       let branches = make_match_branches (fun x -> enot (eapp ("=", [e1; x]))) m
       in
       [ Node {
@@ -97,7 +97,7 @@ let newnodes_match e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("K'match", m, _) ->
+  | Eapp ("$match", m, _) ->
       let branches = make_match_branches (fun x -> x) m in
       [ Node {
         nconc = [e];

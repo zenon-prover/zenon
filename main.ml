@@ -1,8 +1,10 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.34 2006-05-04 16:51:10 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.35 2006-06-22 17:09:40 doligez Exp $";;
 
 open Printf;;
+
 open Globals;;
+open Namespace;;
 
 type proof_level =
   | Proof_none
@@ -212,7 +214,7 @@ let parse_file f =
           close chan;
           let result = List.map (fun x -> (x, false)) phrases in
           let is_goal = function
-            | (Phrase.Hyp ("z'g", _, _), _) -> true
+            | (Phrase.Hyp (name, _, _), _) -> name = goal_name
             | _ -> false
           in
           let goal_found = List.exists is_goal result in
@@ -281,7 +283,6 @@ let main () =
     let llp = lazy (optim (Extension.postprocess
                              (Mltoll.translate th_name ppphrases proof)))
     in
-    let used = ref [] in
     begin match !proof_level with
     | Proof_none -> ()
     | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
@@ -292,13 +293,12 @@ let main () =
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
     | Proof_coq ->
         let u = Lltocoq.output stdout phrases (Lazy.force llp) in
-        used := u;
+        Watch.warn phrases_dep llp u;
     | Proof_coqterm ->
         let (p, u) = Coqterm.trproof phrases (Lazy.force llp) in
-        used := u;
+        Watch.warn phrases_dep llp u;
         Coqterm.print stdout p;
     end;
-    Watch.warn phrases_dep llp !used;
   with Prove.NoProof ->
     retcode := 10;
     if not !quiet_flag then printf "(* NO-PROOF *)\n";

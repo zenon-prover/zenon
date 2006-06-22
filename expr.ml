@@ -1,7 +1,8 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.20 2006-02-27 16:56:52 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.21 2006-06-22 17:09:40 doligez Exp $";;
 
 open Misc;;
+open Namespace;;
 
 let ( =%= ) = ( = );;
 let ( = ) = ();;
@@ -394,7 +395,7 @@ let size = get_size;;
 let has_metas e = get_metas e <> [];;
 let count_metas e = List.length (get_metas e);;
 
-let cursym = ref "V'";;
+let cursym = ref var_prefix;;
 
 let rec incr_sym n =
   if n >= String.length !cursym

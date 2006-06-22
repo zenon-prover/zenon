@@ -1,10 +1,11 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.7 2006-02-28 14:33:28 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.8 2006-06-22 17:09:40 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Llproof;;
+open Namespace;;
 
 module HE = Hashtbl.Make (Expr);;
 let hyp_names = (HE.create 37 : string HE.t);;
@@ -51,6 +52,7 @@ let warn phrases_dep p moreused =
   if !Error.warnings_flag && has_deps phrases_dep then begin
     let prf = Lazy.force p in
     Hashtbl.clear used;
+    Hashtbl.add used Namespace.goal_name ();
     HE.clear hyp_names;
     List.iter extract_name phrases_dep;
     List.iter add_expr (Misc.list_last prf).proof.conc;
@@ -72,7 +74,7 @@ let rec check_unused name e =
   | Eall (Evar (v, _), t, e1, _, _) | Eex (Evar (v, _), t, e1, _, _)
   | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
     ->
-       if t <> "" && not (List.mem v (get_fv e1)) then begin
+       if t <> univ_name && not (List.mem v (get_fv e1)) then begin
          Error.warn (sprintf "unused variable (%s : %s) in %s" v t name);
        end;
        check_unused name e1;

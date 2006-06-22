@@ -1,8 +1,9 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.28 2006-04-25 09:02:01 prevosto Exp $";;
+Version.add "$Id: coqterm.ml,v 1.29 2006-06-22 17:09:40 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
+open Namespace;;
 open Printf;;
 
 let ( @@ ) = List.rev_append;;
@@ -34,7 +35,7 @@ let lemma_env = (Hashtbl.create 97 : (string, string list) Hashtbl.t);;
 let mapping = ref [];;
 let constants_used = ref [];;
 
-let rawname e = sprintf "H'%x" (Index.get_number e);;
+let rawname e = sprintf "%s%x" hyp_prefix (Index.get_number e);;
 
 let rec make_mapping phrases =
   match phrases with
@@ -59,7 +60,7 @@ let getname e =
 let is_mapped e = List.mem_assoc (rawname e) !mapping;;
 
 let is_goal e =
-  try List.assoc (rawname e) !mapping = "z'g"
+  try List.assoc (rawname e) !mapping = goal_name
   with Not_found -> false
 ;;
 
@@ -72,8 +73,8 @@ exception Cannot_infer of string;;
 let synthesize s =
   let ty = Mltoll.get_meta_type s in
   match ty with
-  | "?" -> "z'a" (* FIXME all_list should get the types from context *)
-  | "" | "z'U" -> "z'a"
+  | "?" -> any_name (* FIXME all_list should get the types from context *)
+  | t when t = univ_name -> any_name
   | "nat" -> "O"
   | "bool" -> "true"
   | "Z" -> "Z0"
@@ -330,7 +331,7 @@ let rec trp l =
 let rec get_goal phrases =
   match phrases with
   | [] -> None
-  | Phrase.Hyp ("z'g", e, _) :: _ -> Some e
+  | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
   | _ :: t -> get_goal t
 ;;
 
@@ -349,7 +350,7 @@ let trproof phrases l =
     match get_goal phrases with
     | Some goal ->
         let trg = tropt [] goal in
-        let term = Capp (Cvar "NNPP", [Cwild; Clam ("z'g", trg, raw)]) in
+        let term = Capp (Cvar "NNPP", [Cwild; Clam (goal_name, trg, raw)]) in
         ((phrases, lemmas, th_name, term), !constants_used)
     | None -> ((phrases, lemmas, th_name, raw), !constants_used)
   with
@@ -428,7 +429,7 @@ let make_lemma_type t =
 
 let tr_ty t =
   match t with
-  | "" -> "z'U"
+  | t when t = univ_name -> t
   | "?" -> "_"
   | s -> sprintf "(%s)" s
 ;;
@@ -594,7 +595,7 @@ let get_signatures ps ext_decl =
 let print_signature oc (sym, sign) =
   let rec print_arity n =
     if n = 0 then () else begin
-      fprintf oc "z'U -> ";
+      fprintf oc "%s -> " univ_name;
       print_arity (n-1);
     end;
   in
@@ -605,7 +606,7 @@ let print_signature oc (sym, sign) =
         print_arity arity;
         match kind with
         | Prop -> fprintf oc "Prop.\n";
-        | Term -> fprintf oc "z'U.\n";
+        | Term -> fprintf oc "%s.\n" univ_name;
         | Type s -> fprintf oc "%s.\n" s;
         | Indirect _ -> assert false;
       end;
@@ -621,7 +622,7 @@ let print_var oc e =
 
 let declare_hyp oc h =
   match h with
-  | Phrase.Hyp ("z'g", _, _) -> ()
+  | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
       pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] stmt);
       fprintf oc ".\n";
@@ -645,10 +646,11 @@ let declare_hyp oc h =
 
 let declare_context oc phrases =
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-CONTEXT *)\n";
+  fprintf oc "Add LoadPath \"%s\".\n" Config.libdir;
   fprintf oc "Require Import zenon.\n";
   let ext_decl = Extension.declare_context_coq oc in
-  fprintf oc "Parameter z'U : Set.\n";
-  fprintf oc "Parameter z'a : z'U.\n";
+  fprintf oc "Parameter %s : Set.\n" univ_name;
+  fprintf oc "Parameter %s : %s.\n" any_name univ_name;
   let sigs = get_signatures phrases ext_decl in
   List.iter (print_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;

@@ -1,10 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.14 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.15 2006-06-22 17:09:40 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Phrase;;
+open Namespace;;
 
 (* Mapping from TPTP identifiers to coq expressions. *)
 let trans_table = Hashtbl.create 35;;
@@ -111,10 +112,10 @@ let rec xtranslate dirs ps =
       Hyp (name, body, 1) :: (xtranslate dirs t)
   | Formula (name, "conjecture", body) :: t ->
       tptp_thm_name := name;
-      Hyp ("z'g", enot (body), 0) :: (xtranslate dirs t)
+      Hyp (goal_name, enot (body), 0) :: (xtranslate dirs t)
   | Formula (name, "negated_conjecture", body) :: t ->
       tptp_thm_name := name;
-      Hyp ("z'g", body, 0) :: (xtranslate dirs t)
+      Hyp (goal_name, body, 0) :: (xtranslate dirs t)
   | Formula (name, k, body) :: t ->
       Error.warn ("unknown formula kind: " ^ k);
       Hyp (name, body, 1) :: (xtranslate dirs t)

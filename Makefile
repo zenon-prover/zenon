@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.41 2006-04-05 09:22:53 doligez Exp $
+#  $Id: Makefile,v 1.42 2006-06-22 17:09:40 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -12,7 +12,7 @@ CAMLCFLAGS = ${CAMLFLAGS} ${BYTDEBUGFLAGS}
 CAMLLEX = ocamllex
 CAMLYACC = ocamlyacc
 
-MODULES = version config misc heap globals error progress expr \
+MODULES = version config misc heap globals error progress namespace expr \
           phrase llproof mlproof watch eqrel index \
           print step node extension mltoll prove \
           parsezen lexzen parsetptp lextptp parsecoq lexcoq \
@@ -114,7 +114,7 @@ checksum.ml: ${SUMIMPL}
 	echo 'let v = "'`${SUM} ${SUMIMPL} | ${SUM}`'";;' >checksum.ml
 
 .v.vo:
-	${COQC} $*.v
+	${COQC} -q $*.v
 
 .PHONY: clean
 clean:

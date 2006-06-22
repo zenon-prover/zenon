@@ -1,18 +1,13 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.5 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.6 2006-06-22 17:09:40 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
+open Namespace;;
 open Phrase;;
-
-let rec mk_quant q vs body =
-  match vs with
-  | [] -> body
-  | h::t -> q (h, "", mk_quant q t body)
-;;
 
 let rec myfold f e el =
   match el with
@@ -44,35 +39,40 @@ let mk_elam (vars, typ, body) =
 let hyp_counter = ref 0;;
 let gen_hyp_name () =
   incr hyp_counter;
-  sprintf "A'%d" !hyp_counter
+  sprintf "%s%d" anon_prefix !hyp_counter
 ;;
 
 %}
 
 %token OPEN
 %token CLOSE
+%token EOF
+
 %token <string> IDENT
 %token <string> STRING
 %token <int> INT
-%token DEF
-%token GOAL
-%token SIG
-%token INDUCTIVE
-%token NOT
-%token AND
-%token OR
-%token IMPLY
-%token RIMPLY
-%token EQUIV
-%token TRUE
-%token FALSE
+
 %token ALL
-%token EX
-%token TAU
+%token AND
+%token DEF
 %token EQUAL
+%token EQUIV
+%token EX
+%token FALSE
+%token GOAL
+%token HYP
+%token IMPLY
+%token INDSET
+%token INDPROP
 %token LAMBDA
+%token LET
 %token MATCH
-%token EOF
+%token NOT
+%token OR
+%token RIMPLY
+%token SIG
+%token TAU
+%token TRUE
 
 %start file
 %type <Phrase.phrase list> file
@@ -87,13 +87,13 @@ file:
 phrase:
   | DEF OPEN IDENT ident_list CLOSE expr
       { let idl = List.map evar $4 in Def (DefReal ($3, idl, $6)) }
-  | int_opt hyp_name expr
-      { Hyp ($2, $3, $1) }
+  | HYP int_opt hyp_name expr
+      { Hyp ($3, $4, $2) }
   | GOAL expr
-      { Hyp ("z'g", enot $2, 0) }
+      { Hyp (goal_name, enot $2, 0) }
   | SIG IDENT OPEN string_list CLOSE STRING
       { Sig ($2, $4, $6) }
-  | INDUCTIVE IDENT OPEN ident_list CLOSE
+  | INDSET IDENT OPEN ident_list CLOSE
       { Inductive ($2, $4) }
 ;
 
@@ -115,7 +115,8 @@ expr:
   | mlambda                              { mk_elam $1 }
   | OPEN TAU lambda CLOSE                { etau $3 }
   | OPEN EQUAL expr expr CLOSE           { eapp ("=", [$3; $4]) }
-  | OPEN MATCH expr case_list CLOSE      { eapp ("K'match", $3 :: $4) }
+  | OPEN MATCH expr case_list CLOSE      { eapp ("$match", $3 :: $4) }
+  | OPEN LET id_expr_list_expr CLOSE     { eapp ("$let", $3) }
 ;
 
 expr_list:
@@ -125,12 +126,12 @@ expr_list:
 
 lambda:
   | OPEN OPEN IDENT STRING CLOSE expr CLOSE      { (evar $3, $4, $6) }
-  | OPEN OPEN IDENT CLOSE expr CLOSE             { (evar $3, "", $5) }
+  | OPEN OPEN IDENT CLOSE expr CLOSE             { (evar $3, univ_name, $5) }
 ;
 
 mlambda:
   | OPEN OPEN ident_list STRING CLOSE expr CLOSE { ($3, $4, $6) }
-  | OPEN OPEN ident_list CLOSE expr CLOSE        { ($3, "", $5) }
+  | OPEN OPEN ident_list CLOSE expr CLOSE        { ($3, univ_name, $5) }
 ;
 
 ident_list:
@@ -158,6 +159,13 @@ case_list:
       { [] }
   | OPEN IDENT ident_list CLOSE expr case_list
       { eapp ($2, List.map evar $3) :: $5 :: $6 }
+;
+
+id_expr_list_expr:
+  | expr
+      { [$1] }
+  | IDENT expr id_expr_list_expr
+      { (evar $1) :: $2 :: $3 }
 ;
 
 %%

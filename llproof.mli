@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.9 2005-11-09 15:18:24 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.10 2006-06-22 17:09:40 doligez Exp $  *)
 
 open Expr;;
 
@@ -10,7 +10,6 @@ open Expr;;
   3. Le predicat "=" a toujours deux arguments.
 
   Types:
-   "" -> pas de type specifie par l'utilisateur -> "z'U"
    "?" -> wildcard -> "_"
    autre -> type specifie par l'utilisateur
 *)

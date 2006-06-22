@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.5 2006-03-13 14:23:47 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.6 2006-06-22 17:09:40 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;
@@ -11,7 +11,7 @@ open Printf;;
 let newline = ('\010' | '\013' | "\013\010")
 let space = [' ' '\009' '\012']
 let idstart = ['A'-'Z' 'a'-'z' '_']
-let idchar =  ['A'-'Z' 'a'-'z' '_' '0'-'9']
+let idchar =  ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'']
 let stringchar = [^ '\000'-'\031' '\"' '\127'-'\255']
 
 rule token = parse
@@ -34,10 +34,13 @@ rule token = parse
     }
 
   | "$def"      { DEF }
-  | "$inductive"{ INDUCTIVE }
-  | "$sig"      { SIG }
   | "$goal"     { GOAL }
+  | "$hyp"      { HYP }
+  | "$indset"   { INDSET }
+  | "$indprop"  { INDPROP }
+  | "$let"      { LET }
   | "$match"    { MATCH }
+  | "$sig"      { SIG }
 
   | "-."        { NOT }
   | "/\\"       { AND }

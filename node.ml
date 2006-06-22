@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.9 2005-11-21 18:48:28 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.10 2006-06-22 17:09:40 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -13,7 +13,7 @@ type node = {
   nconc : expr list;
   nrule : Mlproof.rule;
   nprio : priority;
-  ngoal : int;
+  ngoal : goalness;
   nbranches : expr list array;
 };;
 

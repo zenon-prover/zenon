@@ -1,10 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.30 2006-02-27 16:56:52 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.31 2006-06-22 17:09:40 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Llproof;;
+open Namespace;;
 
 let rec p_list init printer sep oc l =
   match l with
@@ -17,7 +18,7 @@ let rec p_list init printer sep oc l =
 
 let p_type oc t =
   match t with
-  | "" -> fprintf oc "z'U";
+  | t when t = univ_name -> fprintf oc "%s" t;
   | "?" -> fprintf oc "_";
   | s -> fprintf oc "%s" s;
 ;;

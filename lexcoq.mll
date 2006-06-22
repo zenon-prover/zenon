@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.8 2006-03-13 14:23:47 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.9 2006-06-22 17:09:40 doligez Exp $";;
 
 open Lexing;;
 open Parsecoq;;
@@ -20,7 +20,7 @@ let upper = [ 'A' - 'Z' ]
 let lower = [ 'a' - 'z' ]
 
 let idstart = [ 'A' - 'Z' 'a' - 'z' '_' ]
-let idchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' ]
+let idchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' '\'' ]
 
 rule token = parse
 
@@ -160,4 +160,3 @@ and string = parse
   | "\"" {
       STRING (Buffer.contents stringbuf)
     }
-

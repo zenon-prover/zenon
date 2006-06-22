@@ -1,9 +1,10 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.24 2006-05-04 16:51:39 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.25 2006-06-22 17:09:40 doligez Exp $";;
 
 open Expr;;
 open Misc;;
 open Mlproof;;
+open Namespace;;
 open Printf;;
 
 module LL = Llproof;;
@@ -12,7 +13,7 @@ let lemma_num = ref 0;;
 let lemma_suffix = ref "";;
 let lemma_list = ref [];;
 
-let lemma_name n = sprintf "L'%d_%s" n !lemma_suffix;;
+let lemma_name n = sprintf "%s%d_%s" lemma_prefix n !lemma_suffix;;
 
 let meta_types_table = (Hashtbl.create 97 : (int, string) Hashtbl.t);;
 
@@ -92,21 +93,26 @@ let ident_to_type s =
   result
 ;;
 
-let make_meta_name m = sprintf "X'%d_%s" m (type_to_ident (get_type m));;
-let is_meta s = String.length s >= 2 && String.sub s 0 2 = "X'";;
+let make_meta_name m =
+  sprintf "%s%d_%s" meta_prefix m (type_to_ident (get_type m))
+;;
+let is_meta s =
+  String.length s >= String.length meta_prefix
+  && String.sub s 0 (String.length meta_prefix) = meta_prefix
+;;
 let get_meta_type s =
   let len = String.length s in
-  assert (len > 2);
+  assert (len > String.length meta_prefix);
   let rec skip_digits i =
     match s.[i] with
     | '0'..'9' -> skip_digits (i+1)
     | _ -> i
   in
-  let ofs = 1 + skip_digits 2 in
+  let ofs = 1 + skip_digits (String.length meta_prefix) in
   ident_to_type (String.sub s ofs (len - ofs))
 ;;
 
-let make_tau_name p = sprintf "T'%d" (Index.get_number p);;
+let make_tau_name p = sprintf "%s%d" tau_prefix (Index.get_number p);;
 
 
 module HE = Hashtbl.Make (Expr);;
