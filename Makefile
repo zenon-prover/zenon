@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.43 2006-06-27 15:33:10 doligez Exp $
+#  $Id: Makefile,v 1.44 2006-06-27 16:18:17 prevosto Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -79,7 +79,6 @@ zenon: zenon.byt
         else \
 	  cp zenon.byt zenon; \
 	fi
-     
 
 .PHONY: install
 install:
