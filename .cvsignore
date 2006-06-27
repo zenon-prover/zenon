@@ -3,7 +3,6 @@
 *.output
 *.annot
 *.vo
-stamp.ml
 lexzen.ml
 parsezen.ml
 parsezen.mli
@@ -17,13 +16,9 @@ parsetptp.mli
 zenon
 zenon.opt
 zenon.byt
-header.ml
-header.mli
 gmon.out
 .DS_Store
-parser.output
 checksum.ml
-lexer.ml
-parser.ml
-parser.mli
 config.ml
+dist
+zenon.tar.gz
