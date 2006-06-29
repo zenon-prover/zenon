@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.11 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.12 2006-06-29 08:32:15 doligez Exp $";;
 
 open Printf;;
 
@@ -154,7 +154,8 @@ let rec mk_pattern accu l =
 
 %nonassoc let_in
 %nonassoc IDENT FQN
-%nonassoc FORALL EXISTS COMMA_ FUN EQ_GT_ IF THEN ELSE IN
+%right COMMA_
+%nonassoc FORALL EXISTS FUN EQ_GT_ IF THEN ELSE IN
 %right DASH_GT_ LT_DASH_GT_
 %right BACKSL_SLASH_
 %right SLASH_BACKSL_
@@ -242,6 +243,10 @@ expr1:
       { evar ($1) }
   | NUM
       { eapp ($1, []) }
+
+  | LPAREN_ expr comma_expr_list RPAREN_
+      { mk_apply (evar tuple_name, $2 :: $3) }
+
   | LPAREN_ expr RPAREN_
       { $2 }
   | TRUE
@@ -253,6 +258,13 @@ expr1:
 expr1_list:
   | expr1                  { [$1] }
   | expr1 expr1_list       { $1 :: $2 }
+;
+
+comma_expr_list:
+  | COMMA_ expr
+      { [$2] }
+  | COMMA_ expr comma_expr_list
+      { $2 :: $3 }
 ;
 
 pat_expr_list:
