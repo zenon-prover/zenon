@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.31 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.32 2006-07-03 16:54:36 doligez Exp $";;
 
 open Printf;;
 
@@ -122,10 +122,13 @@ let p_start_thm oc conc =
 
 let p_end oc = fprintf oc "Qed.\n";;
 
+let p_intro oc e =
+  fprintf oc "zenon_intro %s; " (getname e);
+;;
+
 let p_intros oc l =
-  match l with
-  | [] -> fprintf oc "idtac"
-  | _ -> fprintf oc "intros %a" p_name_list l;
+  List.iter (p_intro oc) l;
+  fprintf oc "idtac";
 ;;
 
 let p_rev_app oc (f, args) =
