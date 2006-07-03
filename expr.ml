@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.21 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.22 2006-07-03 16:54:14 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -406,7 +406,7 @@ let rec incr_sym n =
 ;;
 
 let newname () =
-  incr_sym 2;
+  incr_sym (String.length var_prefix);
   String.copy !cursym
 ;;
 
