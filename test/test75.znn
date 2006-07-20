@@ -1,8 +1,8 @@
 ;  Copyright 2006 INRIA
-;  $Id: test75.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test75.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
-$1 (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (r X Y) (r Y Z)) (r X Z))))))))
-$1 (A. ((X Y) (=> (r X Y) (r Y X))))
-$1 (A. ((x) (r b x)))
-$1 (=> True (= a b))
+$hyp (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (r X Y) (r Y Z)) (r X Z))))))))
+$hyp (A. ((X Y) (=> (r X Y) (r Y X))))
+$hyp (A. ((x) (r b x)))
+$hyp (=> True (= a b))
 $goal (r c a)

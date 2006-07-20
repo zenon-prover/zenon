@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.29 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.30 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -99,9 +99,9 @@ let rec trexpr env e =
   | Eequiv (e1, e2, _) -> Cequiv (trexpr env e1, trexpr env e2)
   | Etrue -> Cvar "True"
   | Efalse -> Cvar "False"
-  | Eall (Evar (v, _), t, e1, _, _) -> Call (v, t, trexpr (v::env) e1)
+  | Eall (Evar (v, _), t, e1, _) -> Call (v, t, trexpr (v::env) e1)
   | Eall _ -> assert false
-  | Eex (Evar (v, _), t, e1, _, _) -> Cex (v, t, trexpr (v::env) e1)
+  | Eex (Evar (v, _), t, e1, _) -> Cex (v, t, trexpr (v::env) e1)
   | Eex _ -> assert false
   | Etau _ -> assert false
   | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr (v::env) e1)
@@ -186,20 +186,20 @@ let rec trtree env node =
       let lam2 = mklam p (mklam (enot q) sub2) in
       let concl = getv (enot (eequiv (p, q))) in
       Capp (Cvar "zenon_notequiv", [tropt p; tropt q; lam1; lam2; concl])
-  | Rex (Eex (Evar (x, _) as vx, ty, px, _, _) as exp, z) ->
+  | Rex (Eex (Evar (x, _) as vx, ty, px, _) as exp, z) ->
       let sub = tr_subtree_1 hyps in
       let pz = substitute [(vx, evar z)] px in
       let lam = Clam (z, Cty ty, mklam pz sub) in
       Capp (Cvar "zenon_ex", [Cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
-  | Rnotall (Eall (Evar (x, _) as vx, ty, px, _, _) as allp, z) ->
+  | Rnotall (Eall (Evar (x, _) as vx, ty, px, _) as allp, z) ->
       let sub = tr_subtree_1 hyps in
       let npz = enot (substitute [(vx, evar z)] px) in
       let lam = Clam (z, Cty ty, mklam npz sub) in
       let concl = getv (enot allp) in
       Capp (Cvar "zenon_notall", [Cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false
-  | Rall (Eall (Evar (x, _) as vx, ty, px, _, _) as allp, t) ->
+  | Rall (Eall (Evar (x, _) as vx, ty, px, _) as allp, t) ->
       let sub = tr_subtree_1 hyps in
       let pt = substitute [(vx, t)] px in
       let lam = mklam pt sub in
@@ -207,7 +207,7 @@ let rec trtree env node =
       let concl = getv allp in
       Capp (Cvar "zenon_all", [Cty ty; p; trexpr t; lam; concl])
   | Rall _ -> assert false
-  | Rnotex (Eex (Evar (x, _) as vx, ty, px, _, _) as exp, t) ->
+  | Rnotex (Eex (Evar (x, _) as vx, ty, px, _) as exp, t) ->
       let sub = tr_subtree_1 hyps in
       let npt = enot (substitute [(vx, t)] px) in
       let lam = mklam npt sub in
@@ -543,7 +543,7 @@ let get_signatures ps ext_decl =
       -> get_sig Prop env e1;
          get_sig Prop env e2;
     | Enot (e1, _) -> get_sig Prop env e1;
-    | Eall (Evar (v, _), _, e1, _, _) | Eex (Evar (v, _), _, e1, _, _)
+    | Eall (Evar (v, _), _, e1, _) | Eex (Evar (v, _), _, e1, _)
     | Etau (Evar (v, _), _, e1, _) | Elam (Evar (v, _), _, e1, _)
       -> get_sig Prop (v::env) e1;
     | Eall _ | Eex _ | Etau _ | Elam _ -> assert false

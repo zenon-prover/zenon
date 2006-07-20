@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.16 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.17 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -52,7 +52,8 @@ let rec expr o ex =
   let pr f = oprintf o f in
   match ex with
   | Evar (v, _) -> pr "%s" v;
-  | Emeta (m, _) -> pr "%s%d" meta_prefix m;
+
+  | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
   | Eapp (s, es, _) ->
       pr "(%s" s; List.iter (fun x -> pr " "; expr o x) es; pr ")";
   | Enot (e, _) -> pr "(-. "; expr o e; pr ")";
@@ -66,13 +67,13 @@ let rec expr o ex =
       pr "(<=> "; expr o e1; pr " "; expr o e2; pr ")";
   | Etrue -> pr "(True)";
   | Efalse -> pr "(False)";
-  | Eall (v, t, e, _, _) when t = univ_name ->
+  | Eall (v, t, e, _) when t = univ_name ->
       pr "(A. ((%a) " print_var v; expr o e; pr "))";
-  | Eall (v, t, e, _, _) ->
+  | Eall (v, t, e, _) ->
       pr "(A. ((%a \"%s\") " print_var v t; expr o e; pr "))";
-  | Eex (v, t, e, _, _) when t = univ_name ->
+  | Eex (v, t, e, _) when t = univ_name ->
       pr "(E. ((%a) " print_var v; expr o e; pr "))";
-  | Eex (v, t, e, _, _) ->
+  | Eex (v, t, e, _) ->
       pr "(E. ((%a \"%s\") " print_var v t; expr o e; pr "))";
   | Etau (v, t, e, _) when t = univ_name ->
       pr "(t. ((%a) " print_var v; expr o e; pr "))";
@@ -93,7 +94,7 @@ let rec expr_soft o ex =
   let pr f = oprintf o f in
   match ex with
   | Evar (v, _) -> pr "%s" v;
-  | Emeta (m, _) -> pr "%s%d" meta_prefix m;
+  | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
   | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) ->
       pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
   | Eapp (s, es, _) ->
@@ -113,14 +114,14 @@ let rec expr_soft o ex =
       pr "("; expr_soft o e1; pr " <=> "; expr_soft o e2; pr ")";
   | Etrue -> pr "True";
   | Efalse -> pr "False";
-  | Eall (Evar (v, _), t, e, _, _) when t = univ_name ->
+  | Eall (Evar (v, _), t, e, _) when t = univ_name ->
       pr "(All %s, " v; expr_soft o e; pr ")";
-  | Eall (Evar (v, _), t, e, _, _) ->
+  | Eall (Evar (v, _), t, e, _) ->
       pr "(All %s:%s, " v t; expr_soft o e; pr ")";
   | Eall _ -> assert false
-  | Eex (Evar (v, _), t, e, _, _) when t = univ_name ->
+  | Eex (Evar (v, _), t, e, _) when t = univ_name ->
       pr "(Ex %s, " v; expr_soft o e; pr ")";
-  | Eex (Evar (v, _), t, e, _, _) ->
+  | Eex (Evar (v, _), t, e, _) ->
       pr "(Ex %s:%s, " v t; expr_soft o e; pr ")";
   | Eex _ -> assert false
   | Etau _ as e -> pr "T_%d" (Index.get_number e);
@@ -411,9 +412,9 @@ let rec llproof_prop o pr =
       pro " <=> ";
       llproof_prop o p2;
       pro ")";
-  | Eall (v, t, p, _, _) ->
+  | Eall (v, t, p, _) ->
       pro "All %a, " print_vartype (v, t); llproof_prop o p;
-  | Eex (v, t, p, _, _) ->
+  | Eex (v, t, p, _) ->
       pro "Ex %a, " print_vartype (v, t); llproof_prop o p;
   | Elam (v, t, p, _) ->
       pro "lambda %a, " print_vartype (v, t); llproof_prop o p;

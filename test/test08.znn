@@ -1,16 +1,16 @@
 ;  Copyright 2006 INRIA
-;  $Id: test08.znn,v 1.3 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test08.znn,v 1.4 2006-07-20 13:19:21 doligez Exp $
 
 # File : COM003+1
 # Status : theorem
 # Rating : 0.33
 # axiom: p1
-$1  (=> (E. ((X) (/\ (algorithm X) (A. ((Y) (=> (program Y) (A. ((Z) (decides X Y Z))))))))) (E. ((W) (/\ (program W) (A. ((Y) (=> (program Y) (A. ((Z) (decides W Y Z))))))))))
+$hyp  (=> (E. ((X) (/\ (algorithm X) (A. ((Y) (=> (program Y) (A. ((Z) (decides X Y Z))))))))) (E. ((W) (/\ (program W) (A. ((Y) (=> (program Y) (A. ((Z) (decides W Y Z))))))))))
 # axiom: p2
-$1  (A. ((W) (=> (/\ (program W) (A. ((Y) (=> (program Y) (A. ((Z) (decides W Y Z))))))) (A. ((Y) (A. ((Z) (/\ (=> (/\ (program Y) (halts2 Y Z)) (/\ (halts3 W Y Z) (outputs W (good)))) (=> (/\ (program Y) (-. (halts2 Y Z))) (/\ (halts3 W Y Z) (outputs W (bad))))))))))))
+$hyp  (A. ((W) (=> (/\ (program W) (A. ((Y) (=> (program Y) (A. ((Z) (decides W Y Z))))))) (A. ((Y) (A. ((Z) (/\ (=> (/\ (program Y) (halts2 Y Z)) (/\ (halts3 W Y Z) (outputs W (good)))) (=> (/\ (program Y) (-. (halts2 Y Z))) (/\ (halts3 W Y Z) (outputs W (bad))))))))))))
 # axiom: p3
-$1  (=> (E. ((W) (/\ (program W) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (/\ (halts3 W Y Y) (outputs W (good)))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts3 W Y Y) (outputs W (bad)))))))))) (E. ((V) (/\ (program V) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (/\ (halts2 V Y) (outputs V (good)))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts2 V Y) (outputs V (bad)))))))))))
+$hyp  (=> (E. ((W) (/\ (program W) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (/\ (halts3 W Y Y) (outputs W (good)))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts3 W Y Y) (outputs W (bad)))))))))) (E. ((V) (/\ (program V) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (/\ (halts2 V Y) (outputs V (good)))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts2 V Y) (outputs V (bad)))))))))))
 # axiom: p4
-$1  (=> (E. ((V) (/\ (program V) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (/\ (halts2 V Y) (outputs V (good)))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts2 V Y) (outputs V (bad)))))))))) (E. ((U) (/\ (program U) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (-. (halts2 U Y))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts2 U Y) (outputs U (bad)))))))))))
+$hyp  (=> (E. ((V) (/\ (program V) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (/\ (halts2 V Y) (outputs V (good)))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts2 V Y) (outputs V (bad)))))))))) (E. ((U) (/\ (program U) (A. ((Y) (/\ (=> (/\ (program Y) (halts2 Y Y)) (-. (halts2 U Y))) (=> (/\ (program Y) (-. (halts2 Y Y))) (/\ (halts2 U Y) (outputs U (bad)))))))))))
 # [negated] conjecture : prove_this
 $goal (-. (E. ((X1) (/\ (algorithm X1) (A. ((Y1) (=> (program Y1) (A. ((Z1) (decides X1 Y1 Z1))))))))))

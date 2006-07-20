@@ -1,11 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: node.mli,v 1.6 2006-06-22 17:09:40 doligez Exp $  *)
+(*  $Id: node.mli,v 1.7 2006-07-20 13:19:21 doligez Exp $  *)
 
 open Expr;;
 
 type priority =
   | Arity
-  | Inst of int
+  | Inst of expr
 ;;
 
 type node = {

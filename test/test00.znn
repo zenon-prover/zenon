@@ -1,6 +1,6 @@
 ;  Copyright 2006 INRIA
-;  $Id: test00.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test00.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
-(A. ((x) (P x)))
+$hyp (A. ((x) (P x)))
 
 $goal (E. ((x) (P x)))

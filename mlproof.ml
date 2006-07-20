@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.7 2005-11-05 11:13:17 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.8 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -112,7 +112,7 @@ let make_nimpl p q n0 =
 let make_nall nap n0 =
   let (v, t, p) =
     match nap with
-    | Enot (Eall (v, t, body, _, _), _) -> (v, t, body)
+    | Enot (Eall (v, t, body, _), _) -> (v, t, body)
     | _ -> assert false
   in
   let tnp = etau (v, t, enot p) in
@@ -123,7 +123,7 @@ let make_nall nap n0 =
 let make_ex ep n0 =
   let (v, t, p) =
     match ep with
-    | Eex (v, t, body, _, _) -> (v, t, body)
+    | Eex (v, t, body, _) -> (v, t, body)
     | _ -> assert false
   in
   let tp = etau (v, t, p) in
@@ -134,7 +134,7 @@ let make_ex ep n0 =
 let make_all ap a n0 =
   let (v, p) =
     match ap with
-    | Eall (v, _, body, _, _) -> (v, body)
+    | Eall (v, _, body, _) -> (v, body)
     | _ -> assert false
   in
   let pa = substitute [(v, a)] p in
@@ -144,7 +144,7 @@ let make_all ap a n0 =
 let make_nex nep a n0 =
   let (v, p) =
     match nep with
-    | Enot (Eall (v, _, body, _, _), _) -> (v, body)
+    | Enot (Eall (v, _, body, _), _) -> (v, body)
     | _ -> assert false
   in
   let npa = enot (substitute [(v, a)] p) in

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.10 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.11 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 
@@ -40,14 +40,14 @@ let rec check_body env s e =
     -> check_body env s f1 && check_body env s f2
   | Etrue | Efalse
     -> true
-  | Eall (v, _, f, _, _) | Eex (v, _, f, _, _)
+  | Eall (v, _, f, _) | Eex (v, _, f, _)
   | Etau (v, _, f, _) | Elam (v, _, f, _)
     -> check_body (v::env) s f
 ;;
 
 let rec is_def env e =
   match e with
-  | Eall (v, t, f, _, _) -> is_def (v::env) f
+  | Eall (v, t, f, _) -> is_def (v::env) f
   | Eequiv (Eapp ("=", _, _), _, _)
   | Eequiv (_, Eapp ("=", _, _), _)
     -> false
@@ -68,7 +68,7 @@ let rec is_def env e =
 
 let rec make_def orig env e =
   match e with
-  | Eall (v, t, f, _, _) -> make_def orig (v::env) f
+  | Eall (v, t, f, _) -> make_def orig (v::env) f
   | Eequiv (Eapp (s, args, _), body, _) when check_args env args ->
       DefPseudo (orig, s, extract_args args, body)
   | Eequiv (body, Eapp (s, args, _), _) when check_args env args ->
@@ -99,8 +99,8 @@ let rec free_syms env accu e =
   | Eimply (f, g, _) -> free_syms env (free_syms env accu f) g
   | Eequiv (f, g, _) -> free_syms env (free_syms env accu f) g
   | Etrue | Efalse -> accu
-  | Eall (v, t, f, _, _)
-  | Eex (v, t, f, _, _)
+  | Eall (v, t, f, _)
+  | Eex (v, t, f, _)
   | Etau (v, t, f, _)
   | Elam (v, t, f, _)
     -> free_syms (v::env) accu f

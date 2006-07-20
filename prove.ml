@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.19 2006-02-28 14:33:28 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.20 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -10,32 +10,8 @@ open Printf;;
 let ( =%= ) = ( = );;
 let ( = ) = Expr.equal;;
 
-module OrderedInt = struct
-  type t = int;;
-  let compare = Pervasives.compare;;
-end;;
-
-module IntMap = Map.Make (OrderedInt);;
-
-type merge_status =
-  | Main of int list      (* variables that depend on this one *)
-  | Ref of int            (* which variable this one depends on *)
-;;
-
-type inst =
-  | Ground of expr * goalness
-  | Partial of string * int * goalness
-;;
-
-type inst_info = {
-  merge : merge_status;
-  formulas : (expr * goalness) list;
-  terms : inst list;
-};;
-
 type state = {
   queue : queue;
-  inst : inst_info IntMap.t;
   (* forms : indexes of the current branch's formulas *)
   (* cur_depth : int; *)
   (* extended_state : state records of the active extensions *)
@@ -60,6 +36,8 @@ let cur_depth = ref 0;;
 let top_depth = ref 0;;
 let max_depth = ref 1_000_000_000;;
 
+let steps = ref 0.;;
+
 (****************)
 
 let complement fm =
@@ -80,8 +58,8 @@ let rec replace_meta m va e =
   | Eequiv (f, g, _) -> eequiv (replace_meta m va f, replace_meta m va g)
   | Etrue -> e
   | Efalse -> e
-  | Eall (v, t, f, o, _) -> eall (v, t, replace_meta m va f, o)
-  | Eex (v, t, f, o, _) -> eex (v, t, replace_meta m va f, o)
+  | Eall (v, t, f, _) -> eall (v, t, replace_meta m va f)
+  | Eex (v, t, f, _) -> eex (v, t, replace_meta m va f)
   | Etau (v, t, f, _) -> etau (v, t, replace_meta m va f)
   | Elam (v, t, f, _) -> elam (v, t, replace_meta m va f)
 ;;
@@ -107,188 +85,35 @@ let rec pure_meta l =
 (****************)
 
 let add_node st n =
-  { st with queue = insert st.queue n }
+  { (*st with*) queue = insert st.queue n }
 ;;
 
 let add_node_list st ns =
   List.fold_left add_node st ns
 ;;
 
-let get_info st m =
-  try IntMap.find m st.inst
-  with Not_found -> { merge = Main [m]; formulas = []; terms = [] }
-;;
-
-let rec get_ref st m =
-  let info = get_info st m in
-  match info.merge with
-  | Main l -> m
-  | Ref mm -> get_ref st mm
-;;
-
-let add_inst_term st m inst =
-  let info = get_info st m in
-  let info1 = { info with terms = inst :: info.terms } in
-  { st with inst = IntMap.add m info1 st.inst }
-;;
-
-let add_inst_form st m form =
-  let info = get_info st m in
-  let info1 = { info with formulas = form :: info.formulas } in
-  { st with inst = IntMap.add m info1 st.inst }
-;;
-
-let get_formulas st m = (get_info st m).formulas;;
-let get_terms st m = (get_info st m).terms;;
-
-let make_one_inst inst (fm, g2) =
-  match inst with
-  | Partial (sym, arity, g1) ->
-      let vars = list_init arity newvar in
-      let term = eapp (sym, vars) in
-      begin match fm with
-      | Eall (v, t, p, m, _) ->
-          let n = all_list vars (Expr.substitute [(v, term)] p) in
-          {
-            nconc = [fm];
-            nrule = AllPartial (fm, sym, arity);
-            nprio = Inst m;
-            ngoal = min g1 g2;
-            nbranches = [| [n] |];
-          }
-      | Enot (Eex (v, t, p, m, _), _) ->
-          let n = enot (ex_list vars (Expr.substitute [(v, term)] p)) in
-          {
-            nconc = [fm];
-            nrule = NotExPartial (fm, sym, arity);
-            nprio = Inst m;
-            ngoal = min g1 g2;
-            nbranches = [| [n] |];
-          }
-      | _ -> assert false
-      end
-  | Ground (term, g1) ->
-      begin match fm with
-      | Eall (v, t, p, m, _) ->
-          let n = Expr.substitute [(v, term)] p in
-          {
-            nconc = [fm];
-            nrule = All (fm, term);
-            nprio = Inst m;
-            ngoal = min g1 g2;
-            nbranches = [| [n] |];
-          }
-      | Enot (Eex (v, t, p, m, _), _) ->
-          let n = enot (Expr.substitute [(v, term)] p) in
-          {
-            nconc = [fm];
-            nrule = NotEx (fm, term);
-            nprio = Inst m;
-            ngoal = min g1 g2;
-            nbranches = [| [n] |];
-          }
-      | _ -> assert false
-      end
-;;
-
-let inst_equal i1 i2 =
-  match i1, i2 with
-  | Ground (e1, _), Ground (e2, _) -> e1 = e2
-  | Partial (s1, a1, _), Partial (s2, a2, _) -> s1 =%= s2 && a1 =%= a2
-  | _, _ -> false
-;;
-
-let add_inst st mm i =
-  let info = get_info st mm in
-  if List.exists (inst_equal i) info.terms then
-    st
-  else begin
-    let nodes = List.map (make_one_inst i) info.formulas in
-    let st1 = add_inst_term st mm i in
-    add_node_list st1 nodes
-  end
-;;
-
-(* [make_inst st m e g]
-   update the state st with the instantiation m <- e with goalness g
-   return the new state and a flag:
-     true if the instantiation is full, false if partial
-*)
-
-let make_inst st m e g =
-  let mm = get_ref st m in
-  (* FIXME TODO: canoniser les metavariables de e *)
-  if Expr.occurs_as_meta mm e then begin
-    match e with
-    | Eapp (sym, args, _) ->
-        (add_inst st mm (Partial (sym, List.length args, g)), false)
-    | Etau _ ->
-        (add_inst st mm (Ground (e, g)), true)
-    | Emeta _ ->
-        (st, false)
-    | _ -> assert false
-  end else begin
-    (add_inst st mm (Ground (e, g)), true)
-  end
-;;
-
-(* [make_inst_fm st m fm g]
-   update the state st with the instantiations of fm by the insts of m
-   and add fm to the forms of m, where the goalness of fm is g
-*)
-let make_inst_fm st m fm g =
-  let mm = get_ref st m in
-  let info = get_info st mm in
-  if List.exists (fun (x, _) -> x = fm) info.formulas then
-    st
-  else begin
-    let fmg = (fm, g) in
-    let nodes = List.map (fun i -> make_one_inst i fmg) info.terms in
-    let st1 = add_inst_form st mm fmg in
-    add_node_list st1 nodes
-  end
-;;
-
-let make_cross_inst is fs =
-  let f fs i = List.map (make_one_inst i) fs in
-  List.flatten (List.map (f fs) is)
-;;
-
-let merge_metas st m1 m2 g =
-  let mm1 = get_ref st m1 in
-  let mm2 = get_ref st m2 in
-  let info1 = get_info st mm1 in
-  let info2 = get_info st mm2 in
-  let l1 = match info1.merge with Main l -> l | _ -> assert false in
-  let l2 = match info2.merge with Main l -> l | _ -> assert false in
-  if mm1 =%= mm2 then st
-  else
-    let (mmx, lx, infox, mmy, ly, infoy) =
-      if mm1 < mm2
-      then (mm1, l1, info1, mm2, l2, info2)
-      else (mm2, l2, info2, mm1, l1, info1)
-    in
-    let i = Ground (emeta (mmx), g) in
-    let nodes_m = List.map (make_one_inst i) infoy.formulas in
-    let f x = not (List.exists (inst_equal x) infox.terms) in
-    let termy = List.filter f infoy.terms in
-    let nodes_xy = make_cross_inst infox.terms infoy.formulas in
-    let nodes_yx = make_cross_inst termy infox.formulas in
-    let infoxx = {
-      merge = Main (ly @@ lx);
-      formulas = infoy.formulas @@ infox.formulas;
-      terms = termy @@ infox.terms;
-    } in
-    let instx = IntMap.add mmx infoxx st.inst in
-    let f inst m =
-      let ii = { (get_info st m) with merge = Ref mmx } in
-      IntMap.add m ii inst
-    in
-    let insty = List.fold_left f instx ly in
-    let st1 = add_node_list st nodes_m in
-    let st2 = add_node_list st1 nodes_xy in
-    let st3 = add_node_list st2 nodes_yx in
-    { st3 with inst = insty }
+let make_inst st m term g =
+  match m with
+  | Eall (v, t, p, _) ->
+      let n = Expr.substitute [(v, term)] p in
+      add_node st {
+        nconc = [m];
+        nrule = All (m, term);
+        nprio = Inst m;
+        ngoal = g;
+        nbranches = [| [n] |];
+      }, false
+  | Eex (v, t, p, _) ->
+      let n = Expr.substitute [(v, term)] (enot p) in
+      let nm = enot (m) in
+      add_node st {
+        nconc = [nm];
+        nrule = NotEx (nm, term);
+        nprio = Inst m;
+        ngoal = g;
+        nbranches = [| [n] |];
+      }, false
+  | _ -> assert false
 ;;
 
 (* [make_inequals l1 l2]
@@ -538,7 +363,7 @@ let newnodes_beta st fm g =
 
 let newnodes_delta st fm g =
   match fm with
-  | Eex (v, t, p, _, _) ->
+  | Eex (v, t, p, _) ->
       add_node st {
         nconc = [fm];
         nrule = Ex (fm);
@@ -546,7 +371,7 @@ let newnodes_delta st fm g =
         ngoal = g;
         nbranches = [| [Expr.substitute [(v, etau (v, t, p))] p] |];
       }, true
-  | Enot (Eall (v, t, p, _, _), _) ->
+  | Enot (Eall (v, t, p, _), _) ->
       let np = enot (p) in
       add_node st {
         nconc = [fm];
@@ -560,24 +385,20 @@ let newnodes_delta st fm g =
 
 let newnodes_gamma st fm g =
   match fm with
-  | Eall (v, t, p, m, _) ->
-      let mm = get_ref st m in
-      let w = emeta (mm) in
+  | Eall (v, t, p, _) ->
+      let w = emeta (fm) in
       let branches = [| [Expr.substitute [(v, w)] p] |] in
-      let st1 = make_inst_fm st mm fm g in
-      add_node st1 {
+      add_node st {
         nconc = [fm];
         nrule = All (fm, w);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }, true
-  | Enot (Eex (v, t, p, m, _), _) ->
-      let mm = get_ref st m in
-      let w = emeta (mm) in
+  | Enot (Eex (v, t, p, _) as fm1, _) ->
+      let w = emeta (fm1) in
       let branches = [| [enot (Expr.substitute [(v, w)] p)] |] in
-      let st1 = make_inst_fm st mm fm g in
-      add_node st1 {
+      add_node st {
         nconc = [fm];
         nrule = NotEx (fm, w);
         nprio = Arity;
@@ -775,8 +596,9 @@ let newnodes_refl st fm g =
         nbranches = [| [enot (eapp ("=", [e1; e2]))] |];
       }, false
 
-  | Enot (Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _), _) ->
-      merge_metas st m1 m2 g, true
+(*
+  | Enot (Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _), _) -> st, false
+*)
 
   | Enot (Eapp ("=", [Emeta (m, _); e], _), _) -> make_inst st m e g
   | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) -> make_inst st m e g
@@ -1164,7 +986,7 @@ let add_nodes st fm g =
     ]
   in
   let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm g) in
-  let insert_node s n = {s with queue = insert s.queue n} in
+  let insert_node s n = {(*s with*) queue = insert s.queue n} in
   let st2 = List.fold_left insert_node st1 newnodes2 in
   let (st3, stop3) =
     List.fold_left combine (st2, stop2) [
@@ -1382,12 +1204,17 @@ let check_limits () =
   if !progress_period < 1 then progress_period := 1;
   progress_last := tm;
   if tm > !Globals.time_limit then begin
-    Error.err "time out";
+    Error.err "max time exceeded";
     flush stderr;
     raise NoProof;
   end;
   if float heap_size > !Globals.size_limit then begin
-    Error.err "size out";
+    Error.err "max size exceeded";
+    flush stderr;
+    raise NoProof;
+  end;
+  if !steps > !Globals.step_limit then begin
+    Error.err "max step exceeded";
     flush stderr;
     raise NoProof;
   end;
@@ -1427,7 +1254,7 @@ and next_node stk st =
       if !Globals.debug_flag then Step.forms "NO PROOF" (Index.get_all ());
       raise NoProof
   | Some (n, q1) ->
-      let st1 = {st with queue = q1} in
+      let st1 = {(*st with*) queue = q1} in
       match reduce_branches n with
       | Some n1 ->
           let (n2, brstate) = add_virtual_branch n1 in
@@ -1497,7 +1324,7 @@ let ticker finished () =
 ;;
 
 let rec iter_refute rl =
-  match refute [] {queue = empty; inst = IntMap.empty} rl with
+  match refute [] {queue = empty} rl with
   | Backtrack ->
       max_depth := 2 * !max_depth;
       Progress.do_progress begin fun () ->

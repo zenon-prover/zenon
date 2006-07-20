@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.8 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.9 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -71,7 +71,7 @@ let rec check_unused name e =
   | Enot (e1, _) -> check_unused name e1;
   | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
     -> check_unused name e1; check_unused name e2;
-  | Eall (Evar (v, _), t, e1, _, _) | Eex (Evar (v, _), t, e1, _, _)
+  | Eall (Evar (v, _), t, e1, _) | Eex (Evar (v, _), t, e1, _)
   | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
     ->
        if t <> univ_name && not (List.mem v (get_fv e1)) then begin

@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.4 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.5 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -108,9 +108,9 @@ formula:
 ;
 atom:
   | ALL LBRACKET var_list RBRACKET COLON atom
-                                   { mk_quant ealln $3 $6 }
+                                   { mk_quant eall $3 $6 }
   | EX LBRACKET var_list RBRACKET COLON atom
-                                   { mk_quant eexn $3 $6 }
+                                   { mk_quant eex $3 $6 }
   | NOT atom                       { enot ($2) }
   | OPEN formula CLOSE             { $2 }
   | TRUE                           { etrue }

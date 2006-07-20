@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test30.znn,v 1.5 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test30.znn,v 1.6 2006-07-20 13:19:21 doligez Exp $
 
 # file: species_general_set.foc
 # species: ordered_set
@@ -21,7 +21,7 @@ $sig abst_leq ("abst_T" "abst_T") "bool"
 
 $def (abst_equal x y) (__g_and_b (abst_leq x y) (abst_leq y x))
 
-$1
+$hyp
   (A. ((x "abst_T") (A. ((y "abst_T")
     (\/ (Is_true (abst_leq x y)) (Is_true (abst_leq y x)))))))
 

@@ -1,7 +1,7 @@
 ;  Copyright 2006 INRIA
-;  $Id: test21.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test21.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
-(A. ((x) (= (p _0 x) x)))
-(A. ((x) (A. ((y) (= (p x y) (p y x))))))
+$hyp (A. ((x) (= (p _0 x) x)))
+$hyp (A. ((x) (A. ((y) (= (p x y) (p y x))))))
 
 $goal (= (p (p _0 _1) _0) _1)

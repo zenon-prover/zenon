@@ -1,12 +1,12 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.10 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.11 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 open Printf;;
 
 type priority =
   | Arity
-  | Inst of int
+  | Inst of expr
 ;;
 
 type node = {

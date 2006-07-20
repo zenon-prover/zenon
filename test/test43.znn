@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test43.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test43.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
 ; file: species_general_set.foc
 ; species: lattice
@@ -28,17 +28,17 @@ $sig abst_inf ("abst_T" "abst_T") "abst_T"
 $def (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
 ; abst_equal_transitive
-$1 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
+$hyp (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
      (=> (Is_true (abst_equal x y))
          (=> (Is_true (abst_equal y z))
              (Is_true (abst_equal x z))))))))))
 
 # abst_equal_symmetric
-$1 (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_equal x y)) (Is_true (abst_equal y x)))))))
 
 # abst_inf_is_associative
-$1 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
+$hyp (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
      (Is_true (abst_equal (abst_inf (abst_inf x y) z)
                           (abst_inf x (abst_inf y z))))))))))
 
@@ -47,9 +47,11 @@ $sig y () "abst_T"
 $sig z () "abst_T"
 
 ; __lemma_1_2
+$hyp
 (Is_true (abst_equal (abst_inf (abst_inf x y) z) (abst_inf x z)))
 
 ; __lemma_1_1
+$hyp
 (Is_true (abst_equal x (abst_inf x (abst_inf y z))))
 
 $goal

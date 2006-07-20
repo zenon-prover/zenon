@@ -1,15 +1,11 @@
 (*  Copyright 2006 INRIA  *)
-(*  $Id: test53.coz,v 1.6 2006-03-01 14:39:03 doligez Exp $  *)
+(*  $Id: test53.coz,v 1.7 2006-07-20 13:19:21 doligez Exp $  *)
 
 (*
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
 ; property: sup_idempotent / __goal_11
 *)
-%%begin-auto-proof
-
-(Is_true ((abst_equal (abst_plus y x ) (abst_plus y (abst_sup x y ) ) ))
-)
 
 Parameter abst_T : Type.
 Parameter abst_equal : abst_T -> abst_T -> bool.
@@ -36,4 +32,7 @@ Parameter __lemma_1_1_1:
    ))
   ).
 
-%%end-auto-proof
+Theorem thm :
+(Is_true ((abst_equal (abst_plus y x ) (abst_plus y (abst_sup x y ) ) ))
+)
+.

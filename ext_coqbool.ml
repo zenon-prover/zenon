@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.15 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.16 2006-07-20 13:19:21 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
@@ -452,8 +452,8 @@ let rec fold_istrue e =
   | Eequiv (e1, e2, _) -> eequiv (fold_istrue e1, fold_istrue e2)
   | Etrue -> e
   | Efalse -> e
-  | Eall (v, t, e, o, _) -> eall (v, t, fold_istrue e, o)
-  | Eex (v, t, e, o, _) -> eex (v, t, fold_istrue e, o)
+  | Eall (v, t, e, _) -> eall (v, t, fold_istrue e)
+  | Eex (v, t, e, _) -> eex (v, t, fold_istrue e)
   | Etau (v, t, e, _) -> etau (v, t, fold_istrue e)
   | Elam (v, t, e, _) -> elam (v, t, fold_istrue e)
 ;;
@@ -486,8 +486,8 @@ let rec process_expr e =
   | Eequiv (e1, e2, _) -> eequiv (process_expr e1, process_expr e2)
   | Etrue -> e
   | Efalse -> e
-  | Eall (e1, t, e2, o, _) -> eall (process_expr e1, t, process_expr e2, o)
-  | Eex (e1, t, e2, o, _) -> eex (process_expr e1, t, process_expr e2, o)
+  | Eall (e1, t, e2, _) -> eall (process_expr e1, t, process_expr e2)
+  | Eex (e1, t, e2, _) -> eex (process_expr e1, t, process_expr e2)
   | Etau (e1, t, e2, _) -> etau (process_expr e1, t, process_expr e2)
   | Elam (e1, t, e2, _) -> elam (process_expr e1, t, process_expr e2)
 ;;

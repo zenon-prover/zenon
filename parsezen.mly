@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.6 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.7 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -21,13 +21,13 @@ let mkimply e el = myfold eimply e el;;
 let mkequiv e el = myfold eequiv e el;;
 let mkrimply e el = myfold (fun (a, b) -> eimply (b, a)) e el;;
 
-let mk_ealln (vars, typ, body) =
-  let f v b = ealln (evar v, typ, b) in
+let mk_eall (vars, typ, body) =
+  let f v b = eall (evar v, typ, b) in
   List.fold_right f vars body
 ;;
 
-let mk_eexn (vars, typ, body) =
-  let f v b = eexn (evar v, typ, b) in
+let mk_eex (vars, typ, body) =
+  let f v b = eex (evar v, typ, b) in
   List.fold_right f vars body
 ;;
 
@@ -110,8 +110,8 @@ expr:
   | TRUE                                 { etrue }
   | OPEN FALSE CLOSE                     { efalse }
   | FALSE                                { efalse }
-  | OPEN ALL mlambda CLOSE               { mk_ealln $3 }
-  | OPEN EX mlambda CLOSE                { mk_eexn $3 }
+  | OPEN ALL mlambda CLOSE               { mk_eall $3 }
+  | OPEN EX mlambda CLOSE                { mk_eex $3 }
   | mlambda                              { mk_elam $1 }
   | OPEN TAU lambda CLOSE                { etau $3 }
   | OPEN EQUAL expr expr CLOSE           { eapp ("=", [$3; $4]) }

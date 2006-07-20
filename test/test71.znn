@@ -1,8 +1,8 @@
 ;  Copyright 2006 INRIA
-;  $Id: test71.znn,v 1.5 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test71.znn,v 1.6 2006-07-20 13:19:21 doligez Exp $
 
-$sig p ("") "Prop"
-$sig f ("") ""
+$sig p ("zenon'U") "Prop"
+$sig f ("zenon'U") "zenon'U"
 $goal
   (E. ((x) (-. (/\ (\/ (p x) (p (f (f (f (f (f (f (f (f x))))))))))
                    (\/ (-. (p x)) (-. (p (f (f (f (f (f (f (f x))))))))))))))

@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test29.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test29.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
 # file: species_general_set.foc
 # species: partial_order
@@ -29,19 +29,19 @@
 #(* Qed *).
 
 $sig not_b ("bool") "bool"
-$sig abst_equal ("" "") "bool"
-$sig abst_leq ("" "") "bool"
-$sig abst_lt ("" "") "bool"
+$sig abst_equal ("zenon'U" "zenon'U") "bool"
+$sig abst_leq ("zenon'U" "zenon'U") "bool"
+$sig abst_lt ("zenon'U" "zenon'U") "bool"
 
 $def (abst_different x y) (not_b (abst_equal x y))
 $def (abst_geq x y) (abst_leq y x)
 $def (abst_gt x y) (abst_lt y x)
 
-$1
+$hyp
   (A. ((x) (A. ((y)
     (=> (Is_true (abst_equal x y)) (Is_true (abst_equal y x)))))))
 
-$1
+$hyp
   (A. ((x) (A. ((y)
     (/\ (=> (Is_true (abst_lt x y))
             (/\ (Is_true (abst_leq x y)) (Is_true (abst_different x y))))
@@ -51,7 +51,7 @@ $1
 
 
 # from Bool.v
-(A. ((x "bool") (<=> (Is_true (not_b x)) (-. (Is_true x)))))
+$hyp (A. ((x "bool") (<=> (Is_true (not_b x)) (-. (Is_true x)))))
 
 $goal
   (A. ((x) (A. ((y)

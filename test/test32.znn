@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test32.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test32.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
 # file: species_general_set.foc
 # species: lattice
@@ -22,9 +22,9 @@ $sig abst_inf ("abst_T" "abst_T") "abst_T"
 
 $def (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
-$1 (A. ((x "abst_T") (Is_true (abst_equal x x))))
+$hyp (A. ((x "abst_T") (Is_true (abst_equal x x))))
 
-$1 (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_equal x y))
          (Is_true (abst_equal x (abst_inf x y))))))))
 

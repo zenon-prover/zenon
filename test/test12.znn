@@ -1,10 +1,10 @@
 ;  Copyright 2006 INRIA
-;  $Id: test12.znn,v 1.4 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test12.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
 
-$1 (\/ A B)
-$2 (=> B C)
-$3 (=> A C)
-$4 (=> C D)
-$5 (-. D)
+$hyp (\/ A B)
+$hyp (=> B C)
+$hyp (=> A C)
+$hyp (=> C D)
+$hyp (-. D)
 
 $goal False

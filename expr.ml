@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.22 2006-07-03 16:54:14 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.23 2006-07-20 13:19:21 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -9,7 +9,7 @@ let ( = ) = ();;
 
 type expr =
   | Evar of string * private_info
-  | Emeta of int * private_info
+  | Emeta of expr * private_info
   | Eapp of string * expr list * private_info
 
   | Enot of expr * private_info
@@ -20,8 +20,8 @@ type expr =
   | Etrue
   | Efalse
 
-  | Eall of expr * string * expr * int * private_info
-  | Eex of expr * string * expr * int * private_info
+  | Eall of expr * string * expr * private_info
+  | Eex of expr * string * expr * private_info
   | Etau of expr * string * expr * private_info
   | Elam of expr * string * expr * private_info
 
@@ -31,7 +31,7 @@ and private_info = {
   free_vars : string list;
   size : int;
   taus : int;           (* depth of tau nesting *)
-  metas : int list;
+  metas : expr list;
 };;
 
 type definition =
@@ -103,8 +103,8 @@ let get_priv = function
   | Etrue -> priv_true
   | Efalse -> priv_false
 
-  | Eall (_, _, _, _, h) -> h
-  | Eex (_, _, _, _, h) -> h
+  | Eall (_, _, _, h) -> h
+  | Eex (_, _, _, h) -> h
   | Etau (_, _, _, h) -> h
   | Elam (_, _, _, h) -> h
 ;;
@@ -134,8 +134,8 @@ let rec remove x l =
 let combine x y = x + y * 131 + 1;;
 
 let priv_var s = mkpriv 0 [s] 1 0 [];;
-let priv_meta n =
-  mkpriv (combine k_meta n) [] 1 0 [n]
+let priv_meta e =
+  mkpriv (combine k_meta (get_skel e)) [] 1 0 [e]
 ;;
 let priv_app s args =
   let comb_skel accu e = combine (get_skel e) accu in
@@ -178,11 +178,11 @@ let priv_equiv e1 e2 =
          (max (get_taus e1) (get_taus e2))
          (union (get_metas e1) (get_metas e2))
 ;;
-let priv_all v t e m =
+let priv_all v t e =
   mkpriv (combine k_all (combine (Hashtbl.hash t) (get_skel e)))
          (remove v (get_fv e)) (1 + get_size e) (get_taus e) (get_metas e)
 ;;
-let priv_ex v t e m =
+let priv_ex v t e =
   mkpriv (combine k_ex (combine (Hashtbl.hash t) (get_skel e)))
          (remove v (get_fv e)) (1 + get_size e) (get_taus e) (get_metas e)
 ;;
@@ -242,15 +242,9 @@ module HashedExpr = struct
     | Efalse, Efalse
     | Etrue, Etrue
       -> true
-    | Eall (v1, t1, f1, m1, _), Eall (v2, t2, f2, m2, _)
-    | Eex (v1, t1, f1, m1, _), Eex (v2, t2, f2, m2, _)
-      -> (List.mem (var_name v1) (get_fv f1))
-          =%= (List.mem (var_name v2) (get_fv f2))
-         && equal_in_env (v1::env1) (v2::env2) f1 f2
+    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
+    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
-      -> (List.mem (var_name v1) (get_fv f1))
-         =%= (List.mem (var_name v2) (get_fv f2))
-         && equal_in_env (v1::env1) (v2::env2) f1 f2
     | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
       -> (List.mem (var_name v1) (get_fv f1))
          =%= (List.mem (var_name v2) (get_fv f2))
@@ -276,13 +270,9 @@ module HashedExpr = struct
     | Eimply (f1, g1, _), Eimply (f2, g2, _)
     | Eequiv (f1, g1, _), Eequiv (f2, g2, _)
       -> f1 == f2 && g1 == g2
-    | Eall (v1, t1, f1, m1, _), Eall (v2, t2, f2, m2, _)
-    | Eex (v1, t1, f1, m1, _), Eex (v2, t2, f2, m2, _)
-      -> t1 =%= t2
-         && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
+    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
+    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
-      -> t1 =%= t2
-         && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
     | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
       -> t1 =%= t2
          && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
@@ -318,7 +308,7 @@ let he_merge k =
 *)
 
 let evar (s) = he_merge (Evar (s, priv_var s));;
-let emeta (n) = he_merge (Emeta (n, priv_meta n));;
+let emeta (e) = he_merge (Emeta (e, priv_meta e));;
 let eapp (s, args) = he_merge (Eapp (s, args, priv_app s args));;
 let enot (e) = he_merge (Enot (e, priv_not e));;
 let eand (e1, e2) = he_merge (Eand (e1, e2, priv_and e1 e2));;
@@ -327,32 +317,21 @@ let eimply (e1, e2) = he_merge (Eimply (e1, e2, priv_imply e1 e2));;
 let etrue = Etrue;;
 let efalse = Efalse;;
 let eequiv (e1, e2) = he_merge (Eequiv (e1, e2, priv_equiv e1 e2));;
-let eall (v, t, e, m) = he_merge (Eall (v, t, e, m, priv_all v t e m));;
-let eex (v, t, e, m) = he_merge (Eex (v, t, e, m, priv_ex v t e m));;
+let eall (v, t, e) = he_merge (Eall (v, t, e, priv_all v t e));;
+let eex (v, t, e) = he_merge (Eex (v, t, e, priv_ex v t e));;
 let etau (v, t, e) = he_merge (Etau (v, t, e, priv_tau v t e));;
 let elam (v, t, e) = he_merge (Elam (v, t, e, priv_lam v t e));;
-
-let cur_meta = ref 0;;
-
-let ealln (v, t, e) =
-  incr cur_meta;
-  eall (v, t, e, !cur_meta)
-;;
-let eexn (v, t, e) =
-  incr cur_meta;
-  eex (v, t, e, !cur_meta)
-;;
 
 let rec all_list vs body =
   match vs with
   | [] -> body
-  | h::t -> ealln (h, "?", all_list t body)
+  | h::t -> eall (h, "?", all_list t body)
 ;;
 
 let rec ex_list vs body =
   match vs with
   | [] -> body
-  | h::t -> eexn (h, "?", ex_list t body)
+  | h::t -> eex (h, "?", ex_list t body)
 ;;
 
 type t = expr;;
@@ -448,20 +427,20 @@ let rec substitute map e =
   | Eimply (f, g, _) -> eimply (substitute map f, substitute map g)
   | Eequiv (f, g, _) -> eequiv (substitute map f, substitute map g)
   | Etrue | Efalse -> e
-  | Eall (v, t, f, o, _) ->
+  | Eall (v, t, f, _) ->
       let map1 = rm_binding v map in
       if conflict v map1 then
         let nv = newvar () in
-        eall (nv, t, substitute ((v, nv) :: map1) f, o)
+        eall (nv, t, substitute ((v, nv) :: map1) f)
       else
-        eall (v, t, substitute map1 f, o)
-  | Eex (v, t, f, o, _) ->
+        eall (v, t, substitute map1 f)
+  | Eex (v, t, f, _) ->
       let map1 = rm_binding v map in
       if conflict v map1 then
         let nv = newvar () in
-        eex (nv, t, substitute ((v, nv) :: map1) f, o)
+        eex (nv, t, substitute ((v, nv) :: map1) f)
       else
-        eex (v, t, substitute map1 f, o)
+        eex (v, t, substitute map1 f)
   | Etau (v, t, f, _) ->
       let map1 = rm_binding v map in
       if conflict v map1 then

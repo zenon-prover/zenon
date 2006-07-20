@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.35 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.36 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -114,10 +114,14 @@ let rec argspec = [
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
   "-max", Arg.String parse_size_time,
-       "<s>[kMGT]/<t>[smhd]   Set both size and time limit (see below)";
+       "<s>[kMGT]/<i>[kMGT]/<t>[smhd] set size, step, and time limits"
+       ^ " (see below)";
   "-max-size", Arg.String (int_arg size_limit),
             "<s>[kMGT] limit heap size to <s> kilo/mega/giga/tera word"
             ^ " (default 100M)";
+  "-max-step", Arg.String (int_arg step_limit),
+            "<i>[kMGT] limit number of steps to <s> kilo/mega/giga/tera"
+            ^ " (default 10k)";
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (default 5m)";

@@ -1,12 +1,12 @@
 ;  Copyright 2006 INRIA
-;  $Id: test13.znn,v 1.3 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test13.znn,v 1.4 2006-07-20 13:19:21 doligez Exp $
 
 # File : SYN548+1
 # Status : theorem
 # Rating : 0.67
 # axiom: reflexivity_of_reachable
-$1  (A. ((X) (reachable X X)))
+$hyp  (A. ((X) (reachable X X)))
 # axiom: transitivity_of_reachable
-$1  (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (reachable X Y) (reachable Y Z)) (reachable X Z))))))))
+$hyp  (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (reachable X Y) (reachable Y Z)) (reachable X Z))))))))
 # [negated] conjecture : prove_this
 $goal (E. ((X) (/\ (reachable (initial_world) X) (A. ((Y) (=> (reachable X Y) (<=> (A. ((Z) (=> (reachable Y Z) (\/ (p Z) (A. ((V) (=> (reachable Z V) (q V)))))))) (\/ (A. ((W) (=> (reachable Y W) (p W)))) (A. ((W) (=> (reachable Y W) (q W))))))))))))

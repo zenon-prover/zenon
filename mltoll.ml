@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.25 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.26 2006-07-20 13:19:21 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -15,43 +15,14 @@ let lemma_list = ref [];;
 
 let lemma_name n = sprintf "%s%d_%s" lemma_prefix n !lemma_suffix;;
 
-let meta_types_table = (Hashtbl.create 97 : (int, string) Hashtbl.t);;
-
-let rec init_meta e =
-  match e with
-  | Evar _ -> ()
-  | Emeta _ -> ()
-  | Eapp (_, el, _) -> List.iter init_meta el;
-  | Enot (e, _) -> init_meta e;
-  | Eand (e1, e2, _)
-  | Eor (e1, e2, _)
-  | Eimply (e1, e2, _)
-  | Eequiv (e1, e2, _)
-    -> init_meta e1; init_meta e2;
-  | Etrue | Efalse -> ()
-  | Eall (_, t, e, m, _)
-  | Eex (_, t, e, m, _)
-    -> Hashtbl.add meta_types_table m t; init_meta e;
-  | Etau (_, _, e, _)
-  | Elam (_, _, e, _)
-    -> init_meta e;
-;;
-
-let extract_meta_types phrases =
-  let f ph =
-    match ph with
-    | Phrase.Hyp (_, e, _) -> init_meta e;
-    | Phrase.Def (DefReal (_, _, e)) -> init_meta e;
-    | Phrase.Def (DefPseudo ((e, _), _, _, _)) -> init_meta e;
-    | Phrase.Sig _ -> ()
-    | Phrase.Inductive _ -> ()
-  in
-  List.iter f phrases
-;;
+module HE = Hashtbl.Make (Expr);;
 
 let get_type m =
-  try Hashtbl.find meta_types_table m
-  with Not_found -> "?"
+  match m with
+  | Eall (v, t, e, _)
+  | Eex (v, t, e, _)
+     -> t
+  | _ -> assert false
 ;;
 
 let type_to_ident s =
@@ -93,8 +64,9 @@ let ident_to_type s =
   result
 ;;
 
-let make_meta_name m =
-  sprintf "%s%d_%s" meta_prefix m (type_to_ident (get_type m))
+let make_meta_name e =
+  sprintf "%s%d_%s" meta_prefix (Index.get_number e)
+          (type_to_ident (get_type e))
 ;;
 let is_meta s =
   String.length s >= String.length meta_prefix
@@ -114,8 +86,7 @@ let get_meta_type s =
 
 let make_tau_name p = sprintf "%s%d" tau_prefix (Index.get_number p);;
 
-
-module HE = Hashtbl.Make (Expr);;
+let term_tbl = HE.create 9997;;
 
 let memo tbl f x =
   try HE.find tbl x
@@ -124,8 +95,6 @@ let memo tbl f x =
     HE.add tbl x result;
     result
 ;;
-
-let term_tbl = HE.create 9997;;
 
 let rec xtr_term t =
   match t with
@@ -154,8 +123,8 @@ let rec xtr_prop a =
   | Eequiv (p, q, _) -> eequiv (tr_prop p, tr_prop q)
   | Etrue -> etrue
   | Efalse -> efalse
-  | Eall (v, t, e, o, _) -> eall (v, t, tr_prop e, o)
-  | Eex (v, t, e, o, _) -> eex (v, t, tr_prop e, o)
+  | Eall (v, t, e, _) -> eall (v, t, tr_prop e)
+  | Eex (v, t, e, _) -> eex (v, t, tr_prop e)
 
   | Etau _ -> evar (make_tau_name a)
   | Elam _ -> assert false
@@ -173,10 +142,10 @@ let tr_rule r =
   | And (p, q) -> LL.Rconnect (LL.And, tr_prop p, tr_prop q)
   | NotOr (p, q) -> LL.Rnotconnect (LL.Or, tr_prop p, tr_prop q)
   | NotImpl (p, q) -> LL.Rnotconnect (LL.Imply, tr_prop p, tr_prop q)
-  | NotAll (Enot (Eall (v, t, p, _, _) as pp, _)) ->
+  | NotAll (Enot (Eall (v, t, p, _) as pp, _)) ->
       LL.Rnotall (tr_prop pp, make_tau_name (etau (v, t, enot (p))))
   | NotAll _ -> assert false
-  | Ex (Eex (v, t, p, _, _) as pp) ->
+  | Ex (Eex (v, t, p, _) as pp) ->
       LL.Rex (tr_prop pp, make_tau_name (etau (v, t, p)))
   | Ex _ -> assert false
   | All (p, t) -> LL.Rall (tr_prop p, tr_term t)
@@ -236,8 +205,8 @@ let rec get_params accu p =
   | Eequiv (e, f, _) -> get_params (get_params accu e) f
   | Etrue -> accu
   | Efalse -> accu
-  | Eall (v, t, e, _, _) -> get_params accu e
-  | Eex (v, t, e, _, _) -> get_params accu e
+  | Eall (v, t, e, _) -> get_params accu e
+  | Eex (v, t, e, _) -> get_params accu e
   | Etau (v, t, _, _) -> merge [(make_tau_name p, t)] accu
   | Elam (v, t, e, _) -> get_params accu e
 ;;
@@ -434,10 +403,10 @@ let rec xfind_occ v e1 e2 =
   | Eequiv (f1, g1, _), Eequiv (f2, g2, _) ->
       xfind_occ v f1 f2; xfind_occ v g1 g2
   | Efalse, _ -> ()
-  | Eall (v1, _, _, _, _), _ when Expr.equal v1 v -> ()
-  | Eall (_, _, f1, _, _), Eall (_, _, f2, _, _) -> xfind_occ v f1 f2
-  | Eex (v1, _, _, _, _), _ when Expr.equal v1 v -> ()
-  | Eex (_, _, f1, _, _), Eex (_, _, f2, _, _) -> xfind_occ v f1 f2
+  | Eall (v1, _, _, _), _ when Expr.equal v1 v -> ()
+  | Eall (_, _, f1, _), Eall (_, _, f2, _) -> xfind_occ v f1 f2
+  | Eex (v1, _, _, _), _ when Expr.equal v1 v -> ()
+  | Eex (_, _, f1, _), Eex (_, _, f2, _) -> xfind_occ v f1 f2
   | Etau _, _ -> ()
   | Elam _, _ -> ()
   | _, _ -> assert false
@@ -451,8 +420,8 @@ let find_occ v e1 e2 =
 
 let find_subst e1 e2 =
   match e1, e2 with
-  | Eall (v1, _, f1, _, _), Eall (v2, _, f2, _, _) -> (v2, find_occ v1 f1 f2)
-  | Eex (v1, _, f1, _, _), Eex (v2, _, f2, _, _) -> (v2, find_occ v1 f1 f2)
+  | Eall (v1, _, f1, _), Eall (v2, _, f2, _) -> (v2, find_occ v1 f1 f2)
+  | Eex (v1, _, f1, _), Eex (v2, _, f2, _) -> (v2, find_occ v1 f1 f2)
   | _, _ -> assert false
 ;;
 
@@ -489,7 +458,7 @@ and find_diff_list l1 l2 =
 
 let rec get_univ f =
   match f with
-  | Eall (v, ty, body, m, _) -> (v, m) :: get_univ body
+  | Eall (v, ty, body, _) -> (v, f) :: get_univ body
   | _ -> []
 ;;
 
@@ -502,7 +471,7 @@ let get_args def args folded unfolded =
 
 let inst_all e f =
   match e with
-  | Eall (v, t, e1, _, _) -> Expr.substitute [(v, f)] e1
+  | Eall (v, t, e1, _) -> Expr.substitute [(v, f)] e1
   | _ -> assert false
 ;;
 
@@ -519,7 +488,7 @@ let rec decompose_forall e v p naxyz arity f args =
     n2
   end else begin
     match naxyz with
-    | Enot (Eall (v1, t1, p1, _, _), _) ->
+    | Enot (Eall (v1, t1, p1, _), _) ->
         let tau = etau (v1, t1, enot p1) in
         let nayz = enot (substitute [(v1, tau)] p1) in
         let n1 = decompose_forall e v p nayz (arity-1) f (args @ [tau]) in
@@ -538,7 +507,7 @@ let rec decompose_exists e v p exyz arity f args =
     n2
   end else begin
     match exyz with
-    | Eex (v1, t1, p1, _, _) ->
+    | Eex (v1, t1, p1, _) ->
         let tau = etau (v1, t1, p1) in
         let eyz = substitute [(v1, tau)] p1 in
         let n1 = decompose_exists e v p eyz (arity-1) f (args @ [tau]) in
@@ -551,7 +520,7 @@ let rec decompose_exists e v p exyz arity f args =
 let rec make_alls e vs n0 =
   match e, vs with
   | _, [] -> n0
-  | Eall (v, _, body, _, _), h::t ->
+  | Eall (v, _, body, _), h::t ->
       make_all e h (make_alls (substitute [(v, h)] body) t n0)
   | _, _ -> assert false
 ;;
@@ -760,7 +729,7 @@ and translate_derived p =
       let (node, extras, subs) = recomp_disj sub e in
       assert (subs = []);
       (node, extras)
-  | AllPartial ((Eall (v1, t1, q, o, _) as e1), f, arity) ->
+  | AllPartial ((Eall (v1, t1, q, _) as e1), f, arity) ->
       let n1 = gethyps1 p in
       let vs = make_vars arity in
       let sxyz = eapp (f, vs) in
@@ -770,7 +739,7 @@ and translate_derived p =
       let n3 = make_cut axyz n1 n2 in
       to_llproof n3
   | AllPartial _ -> assert false
-  | NotExPartial ((Enot (Eex (v1, t1, q, o, _), _) as ne1), f, arity) ->
+  | NotExPartial ((Enot (Eex (v1, t1, q, _), _) as ne1), f, arity) ->
       let n1 = gethyps1 p in
       let vs = make_vars arity in
       let sxyz = eapp (f, vs) in
@@ -981,7 +950,6 @@ let translate th_name phrases p =
   lemma_num := 0;
   lemma_suffix := th_name;
   lemma_list := [];
-  extract_meta_types phrases;
   let (ll, extras) = to_llproof p in
   let ext = List.filter (charged_extra phrases) extras in
   let ll1 = List.fold_left discharge_extra ll ext in

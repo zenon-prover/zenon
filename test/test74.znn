@@ -1,7 +1,7 @@
 ;  Copyright 2006 INRIA
-;  $Id: test74.znn,v 1.2 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test74.znn,v 1.3 2006-07-20 13:19:21 doligez Exp $
 
-(E. ((Z W) (A. ((X Y) (<=> (big_f X Y) (/\ (= X Z) (= Y W)))))))
+$hyp (E. ((Z W) (A. ((X Y) (<=> (big_f X Y) (/\ (= X Z) (= Y W)))))))
 
 $goal
 (E. ((W) (A. ((Y) (<=> (E. ((Z) (A. ((X) (<=> (big_f X Y) (= X Z))))))

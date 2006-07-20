@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.12 2006-06-29 08:32:15 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.13 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -34,12 +34,12 @@ let mk_apply (e, l) =
 ;;
 
 let mk_all bindings body =
-  let f (var, ty) e = ealln (evar var, ty, e) in
+  let f (var, ty) e = eall (evar var, ty, e) in
   List.fold_right f bindings body
 ;;
 
 let mk_ex bindings body =
-  let f (var, ty) e = eexn (evar var, ty, e) in
+  let f (var, ty) e = eex (evar var, ty, e) in
   List.fold_right f bindings body
 ;;
 
@@ -172,7 +172,7 @@ file:
   | hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ EOF
       { ($3, (Hyp (goal_name, enot $5, 0), false) :: $1) }
   | expr hyp_def_list EOF
-      { (*Error.warn "deprecated input format"; *)
+      { (* Error.warn "deprecated input format"; *)
         ("theorem", (Hyp (goal_name, enot $1, 0), false) :: $2) }
   | proof_head expr hyp_def_list ENDPROOF EOF
       { (* Error.warn "deprecated input format"; *)

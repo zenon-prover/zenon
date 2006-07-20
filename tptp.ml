@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.15 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.16 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -71,8 +71,8 @@ let rec make_annot_expr e =
   | Eimply (e1,e2,_) -> eimply (make_annot_expr e1, make_annot_expr e2)
   | Eequiv (e1,e2,_) -> eequiv (make_annot_expr e1, make_annot_expr e2)
   | Etrue | Efalse -> e
-  | Eall (x,s,e,o,_) -> eall (x, s, make_annot_expr e, o)
-  | Eex (x,s,e,o,_) -> eex (x, s, make_annot_expr e, o)
+  | Eall (x,s,e,_) -> eall (x, s, make_annot_expr e)
+  | Eex (x,s,e,_) -> eex (x, s, make_annot_expr e)
   | Etau (x,s,e,_) -> etau (x, s, make_annot_expr e)
   | Elam (x,s,e,_) -> elam (x, s, make_annot_expr e)
 ;;

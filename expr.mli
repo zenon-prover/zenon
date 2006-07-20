@@ -1,12 +1,12 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.14 2006-02-27 16:56:52 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.15 2006-07-20 13:19:21 doligez Exp $  *)
 
 type private_info;;
 
 
 type expr = private
   | Evar of string * private_info
-  | Emeta of int * private_info
+  | Emeta of expr * private_info    (* expr = Eall (...)  or   Eex (...) *)
   | Eapp of string * expr list * private_info
 
   | Enot of expr * private_info
@@ -17,9 +17,8 @@ type expr = private
   | Etrue
   | Efalse
 
-  | Eall of expr * string * expr * int * private_info
-  | Eex of expr * string * expr * int * private_info
-      (* variable, type, body, metavariable *)
+  | Eall of expr * string * expr * private_info
+  | Eex of expr * string * expr * private_info
   | Etau of expr * string * expr * private_info
   | Elam of expr * string * expr * private_info
       (* variable, type, body *)
@@ -37,7 +36,7 @@ val compare : t -> t -> int;;
 val hash : t -> int;;
 
 val evar : string -> expr;;
-val emeta : int -> expr;;
+val emeta : expr -> expr;;
 val eapp : string * expr list -> expr;;
 
 val enot : expr -> expr;;
@@ -47,13 +46,11 @@ val eimply : expr * expr -> expr;;
 val eequiv : expr * expr -> expr;;
 val etrue : expr;;
 val efalse : expr;;
-val eall : expr * string * expr * int -> expr;;
-val eex : expr * string * expr * int -> expr;;
+val eall : expr * string * expr -> expr;;
+val eex : expr * string * expr -> expr;;
 val etau : expr * string * expr -> expr;;
 val elam : expr * string * expr -> expr;;
 
-val ealln : expr * string * expr -> expr;;
-val eexn : expr * string * expr -> expr;;
 val all_list : expr list -> expr -> expr;;
 val ex_list : expr list -> expr -> expr;;
 
@@ -77,14 +74,14 @@ val preunifiable : expr -> expr -> bool;;
    except inside a tau).
 *)
 
-val preunify : expr -> expr -> (int * expr) list;;
+val preunify : expr -> expr -> (expr * expr) list;;
 (* [preunify e1 e2]
    If e1 and e2 are pre-unifiable, return the set of pre-unifiers.
    Return an empty list if they are not pre-unifiable.
-   A pre-unifier is: (metavariable_number, value)
+   A pre-unifier is: (metavariable, value)
 *)
 
-val occurs_as_meta : int -> expr -> bool;;
+val occurs_as_meta : expr -> expr -> bool;;
 (* [occurs e1 e2] returns true if [Emeta (e1, _)] occurs in [e2] *)
 
 val substitute : (expr * expr) list -> expr -> expr;;
@@ -96,7 +93,7 @@ val size : expr -> int;;
 val get_taus : expr -> int;;   (* tau nesting level *)
 val has_metas : expr -> bool;;
 val count_metas : expr -> int;;
-val get_metas : expr -> int list;;
+val get_metas : expr -> expr list;;
 val get_fv : expr -> string list;;
 
 type goalness = int;;

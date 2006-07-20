@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.32 2006-07-03 16:54:36 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.33 2006-07-20 13:19:21 doligez Exp $";;
 
 open Printf;;
 
@@ -50,10 +50,10 @@ let rec p_expr oc e =
       poc "True";
   | Efalse ->
       poc "False";
-  | Eall (Evar (x, _), t, e, _, _) ->
+  | Eall (Evar (x, _), t, e, _) ->
       poc "(forall %s : %a, %a)" x p_type t p_expr e;
   | Eall _ -> assert false
-  | Eex (Evar (x, _), t, e, _, _) ->
+  | Eex (Evar (x, _), t, e, _) ->
       poc "(exists %s : %a, %a)" x p_type t p_expr e;
   | Eex _ -> assert false
   | Elam (Evar (x, _), t, e, _) ->
@@ -204,25 +204,25 @@ let p_rule oc r =
   | Rnotnot (p as e) ->
       poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
       0
-  | Rex (Eex (x, _, e, _, _) as p, v) ->
+  | Rex (Eex (x, _, e, _) as p, v) ->
       let h0 = getname p in
       let h1 = getname (substitute [(x, evar v)] e) in
       poc "elim %s. zenon_intro %s. zenon_intro %s.\n" h0 v h1;
       0
   | Rex _ -> assert false
-  | Rnotall (Eall (x, _, e, _, _) as p, v) ->
+  | Rnotall (Eall (x, _, e, _) as p, v) ->
       let h0 = getname (enot p) in
       let h1 = getname (enot (substitute [(x, evar v)] e)) in
       poc "apply %s. zenon_intro %s. apply NNPP. zenon_intro %s.\n" h0 v h1;
       0
   | Rnotall _ -> assert false
-  | Rall (Eall (x, _, e, _, _) as p, t) ->
+  | Rall (Eall (x, _, e, _) as p, t) ->
       let h0 = getname p in
       let h1 = getname (substitute [(x, t)] e) in
       poc "generalize (%s %a). zenon_intro %s.\n" h0 p_expr t h1;
       0
   | Rall _ -> assert false
-  | Rnotex (Eex (x, _, e, _, _) as p, t) ->
+  | Rnotex (Eex (x, _, e, _) as p, t) ->
       let h0 = getname (enot p) in
       let h1 = getname (enot (substitute [(x, t)] e)) in
       poc "apply %s. exists %a. apply NNPP. zenon_intro %s.\n" h0 p_expr t h1;

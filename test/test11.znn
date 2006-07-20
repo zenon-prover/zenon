@@ -1,8 +1,8 @@
 ;  Copyright 2006 INRIA
-;  $Id: test11.znn,v 1.3 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test11.znn,v 1.4 2006-07-20 13:19:21 doligez Exp $
 
-(-. (E. ((x) (/\ (S x) (Q x)))))
-(A. ((x) (\/ (-. (P x)) (\/ (Q x) (R x)))))
-(\/ (E. ((x) (P x))) (E. ((x) (Q x))))
-(A. ((x) (\/ (-. (\/ (Q x) (R x))) (S x))))
+$hyp (-. (E. ((x) (/\ (S x) (Q x)))))
+$hyp (A. ((x) (\/ (-. (P x)) (\/ (Q x) (R x)))))
+$hyp (\/ (E. ((x) (P x))) (E. ((x) (Q x))))
+$hyp (A. ((x) (\/ (-. (\/ (Q x) (R x))) (S x))))
 $goal (E. ((x) (/\ (P x) (R x))))

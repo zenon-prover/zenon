@@ -1,11 +1,11 @@
 ;  Copyright 2006 INRIA
-;  $Id: test06.znn,v 1.3 2006-03-01 14:39:03 doligez Exp $
+;  $Id: test06.znn,v 1.4 2006-07-20 13:19:21 doligez Exp $
 
 # TPTP syn054+1
 
-(-. (E. ((X) (/\ (S X) (Q X)))))
-(A. ((X) (=> (P X) (\/ (Q X) (R X)))))
-(=> (-. (E. ((X) (P X)))) (E. ((Y) (Q Y))))
-(A. ((X) (=> (\/ (Q X) (R X)) (S X))))
+$hyp (-. (E. ((X) (/\ (S X) (Q X)))))
+$hyp (A. ((X) (=> (P X) (\/ (Q X) (R X)))))
+$hyp (=> (-. (E. ((X) (P X)))) (E. ((Y) (Q Y))))
+$hyp (A. ((X) (=> (\/ (Q X) (R X)) (S X))))
 
 $goal (E. ((X) (/\ (P X) (R X))))

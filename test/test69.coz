@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-(*  $Id: test69.coz,v 1.6 2006-03-01 14:39:03 doligez Exp $  *)
+(*  $Id: test69.coz,v 1.7 2006-07-20 13:19:21 doligez Exp $  *)
 
 (*
 ; file: products.foc
@@ -8,10 +8,6 @@
 
 ; Attention, ce fichier a ete modifie a la main
 *)
-%%begin-auto-proof
-
-(Is_true (((setoid_equal  self_s2 ) (scnd x ) (scnd x ) ))
-)
 
 Parameter abst_T : Type.
 Parameter foo : Type.
@@ -22,4 +18,8 @@ Parameter self_s2 : foo.
 
 Parameter s2equal_reflexive: forall (x: abst_T),
  (Is_true ((setoid_equal self_s2  x x)) ).
-%%end-auto-proof
+
+Theorem thm :
+(Is_true (((setoid_equal  self_s2 ) (scnd x ) (scnd x ) ))
+)
+.
