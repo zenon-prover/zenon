@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.36 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.37 2007-04-23 17:19:11 doligez Exp $";;
 
 open Printf;;
 
@@ -113,6 +113,9 @@ let rec argspec = [
          "             read input file in TPTP format";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
+  "-loadpath", Arg.Set_string load_path,
+    sprintf "          path to Zenon's coq libraries (default %s)"
+            Config.libdir;
   "-max", Arg.String parse_size_time,
        "<s>[kMGT]/<i>[kMGT]/<t>[smhd] set size, step, and time limits"
        ^ " (see below)";

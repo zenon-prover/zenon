@@ -1,6 +1,6 @@
 #!/bin/sh
 #  Copyright 2006 INRIA
-#  $Id: equivbench.sh,v 1.4 2006-06-22 17:09:40 doligez Exp $
+#  $Id: equivbench.sh,v 1.5 2007-04-23 17:19:11 doligez Exp $
 
 usage() { echo 'usage: equivbench.sh <n>' >&2; }
 
@@ -19,7 +19,7 @@ awk 'BEGIN {
   for (i = 0; i < '$n'; i++){
     printf ("(<=> p_%d\n", i);
   }
-  print "True";
+  print "T.";
   for (i = 0; i < 2 * '$n'; i++){
     printf ")";
   }

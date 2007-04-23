@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test12.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test12.znn,v 1.6 2007-04-23 17:19:11 doligez Exp $
 
 $hyp (\/ A B)
 $hyp (=> B C)
@@ -7,4 +7,4 @@ $hyp (=> A C)
 $hyp (=> C D)
 $hyp (-. D)
 
-$goal False
+$goal F.

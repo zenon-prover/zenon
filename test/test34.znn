@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test34.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test34.znn,v 1.6 2007-04-23 17:19:11 doligez Exp $
 
 # file: species_general_set.foc
 # species: lattice
@@ -33,7 +33,7 @@
 ;; Zenon can't solve this problem yet ;;
 ;; hence the following line...        ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-$hyp False
+$hyp F.
 
 $sig abst_T () "Type"
 $sig abst_equal ("abst_T" "abst_T") "bool"

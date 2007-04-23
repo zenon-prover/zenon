@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.5 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.6 2007-04-23 17:19:11 doligez Exp $";;
 
 open Printf;;
 
@@ -11,7 +11,7 @@ open Phrase;;
 let rec mk_quant q vs body =
   match vs with
   | [] -> body
-  | h::t -> q (h, "", mk_quant q t body)
+  | h::t -> q (h, Namespace.univ_name, mk_quant q t body)
 ;;
 
 %}

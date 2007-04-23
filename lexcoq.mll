@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.9 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.10 2007-04-23 17:19:11 doligez Exp $";;
 
 open Lexing;;
 open Parsecoq;;
@@ -107,6 +107,8 @@ rule token = parse
   | "with"                  { WITH }
 
   | idstart idchar * ('.' idstart idchar *) *
+      { IDENT (Lexing.lexeme lexbuf) }
+  | ['0' - '9'] +
       { IDENT (Lexing.lexeme lexbuf) }
 
   | "%%begin-auto-proof" inline*

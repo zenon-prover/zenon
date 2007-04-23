@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.30 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.31 2007-04-23 17:19:11 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -646,7 +646,7 @@ let declare_hyp oc h =
 
 let declare_context oc phrases =
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-CONTEXT *)\n";
-  fprintf oc "Add LoadPath \"%s\".\n" Config.libdir;
+  fprintf oc "Add LoadPath \"%s\".\n" !Globals.load_path;
   fprintf oc "Require Import zenon.\n";
   let ext_decl = Extension.declare_context_coq oc in
   fprintf oc "Parameter %s : Set.\n" univ_name;

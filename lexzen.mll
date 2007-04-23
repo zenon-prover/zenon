@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.6 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.7 2007-04-23 17:19:11 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;
@@ -48,8 +48,8 @@ rule token = parse
   | "=>"        { IMPLY }
   | "<="        { RIMPLY }
   | "<=>"       { EQUIV }
-  | "True"      { TRUE }
-  | "False"     { FALSE }
+  | "T."        { TRUE }
+  | "F."        { FALSE }
   | "A."        { ALL }
   | "E."        { EX }
   | "t."        { TAU }

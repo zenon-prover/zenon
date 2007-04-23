@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.20 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.21 2007-04-23 17:19:11 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1204,16 +1204,19 @@ let check_limits () =
   if !progress_period < 1 then progress_period := 1;
   progress_last := tm;
   if tm > !Globals.time_limit then begin
+    Progress.end_progress "";
     Error.err "max time exceeded";
     flush stderr;
     raise NoProof;
   end;
   if float heap_size > !Globals.size_limit then begin
+    Progress.end_progress "";
     Error.err "max size exceeded";
     flush stderr;
     raise NoProof;
   end;
   if !steps > !Globals.step_limit then begin
+    Progress.end_progress "";
     Error.err "max step exceeded";
     flush stderr;
     raise NoProof;

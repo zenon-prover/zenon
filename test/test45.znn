@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test45.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test45.znn,v 1.6 2007-04-23 17:19:11 doligez Exp $
 
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
@@ -9,7 +9,7 @@
 ;; Zenon cannot solve this problem yet
 ;; hence the following line
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-$hyp False
+$hyp F.
 
 $sig abst_equal ("zenon'U" "zenon'U") "bool"
 

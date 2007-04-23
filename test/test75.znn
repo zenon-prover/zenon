@@ -1,8 +1,8 @@
 ;  Copyright 2006 INRIA
-;  $Id: test75.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test75.znn,v 1.6 2007-04-23 17:19:11 doligez Exp $
 
 $hyp (A. ((X) (A. ((Y) (A. ((Z) (=> (/\ (r X Y) (r Y Z)) (r X Z))))))))
 $hyp (A. ((X Y) (=> (r X Y) (r Y X))))
 $hyp (A. ((x) (r b x)))
-$hyp (=> True (= a b))
+$hyp (=> T. (= a b))
 $goal (r c a)
