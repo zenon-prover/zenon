@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.37 2007-04-23 17:19:11 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.38 2007-07-31 13:09:05 doligez Exp $";;
 
 open Printf;;
 
@@ -160,6 +160,8 @@ let rec argspec = [
          "             print statistics";
   "-short", Arg.Set short_flag,
          "             output a less detailed proof";
+  "-namespace", Arg.Set namespace_flag,
+             "         prefix all symbols to avoid clashes";
   "-v", Arg.Unit short_version,
      "                 print version string and exit";
   "-versions", Arg.Unit cvs_version,

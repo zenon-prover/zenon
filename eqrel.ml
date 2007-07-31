@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.10 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: eqrel.ml,v 1.11 2007-07-31 13:09:05 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -65,9 +65,9 @@ let get_leaves path env e =
   typ := "";
   try
     do_disj env e;
-    (path, env, !leaves, !typ)
+    (List.rev path, env, !leaves, !typ)
   with Wrong_shape ->
-    (path, env, [], "")
+    (List.rev path, env, [], "")
 ;;
 
 let subexprs = ref [];;

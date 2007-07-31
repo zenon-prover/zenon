@@ -1,12 +1,17 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.6 2007-04-23 17:19:11 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.7 2007-07-31 13:09:05 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Phrase;;
+
+let ns pre s = (if !Globals.namespace_flag then pre else "") ^ s;;
+let ns_hyp s = ns "H_" s;;
+let ns_var s = ns "v_" s;;
+let ns_fun s = ns "f_" s;;
 
 let rec mk_quant q vs body =
   match vs with
@@ -77,12 +82,12 @@ file:
 phrase:
   | INCLUDE OPEN STRING CLOSE DOT  { Phrase.Include $3 }
   | INPUT_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
-                                   { Phrase.Formula ($3, $5, $7) }
+                                   { Phrase.Formula (ns_hyp $3, $5, $7) }
   | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:
-  | UIDENT                             { evar ($1) }
-  | LIDENT arguments                   { eapp ($1, $2) }
+  | UIDENT                             { evar (ns_var $1) }
+  | LIDENT arguments                   { eapp (ns_fun $1, $2) }
   | EQUAL OPEN expr COMMA expr CLOSE   { eapp ("=", [$3; $5]) }
   | expr EQSYM expr                    { eapp ("=", [$1; $3]) }
   | expr NEQSYM expr                   { enot (eapp ("=", [$1; $3])) }
@@ -118,8 +123,8 @@ atom:
   | expr                           { $1 }
 ;
 var_list:
-  | UIDENT COMMA var_list          { evar $1 :: $3 }
-  | UIDENT                         { [evar $1] }
+  | UIDENT COMMA var_list          { evar (ns_var $1) :: $3 }
+  | UIDENT                         { [evar (ns_var $1)] }
 ;
 
 %%
