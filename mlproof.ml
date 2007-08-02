@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.8 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.9 2007-08-02 14:25:25 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -38,6 +38,7 @@ type rule =
   | Trans of expr * expr
   | Trans_sym of expr * expr
   | TransEq of expr * expr * expr
+  | TransEq2 of expr * expr * expr
   | TransEq_sym of expr * expr * expr
 
   | Cut of expr

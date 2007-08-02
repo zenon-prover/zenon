@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.27 2007-08-02 12:16:56 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.28 2007-08-02 14:25:25 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -176,6 +176,7 @@ let tr_rule r =
   | Trans _
   | Trans_sym _
   | TransEq _
+  | TransEq2 _
   | TransEq_sym _
   | Definition (DefPseudo _, _, _)
     -> assert false
@@ -266,7 +267,7 @@ let is_derived = function
   | AllPartial _
   | NotExPartial _
   | Refl _
-  | Trans _ | Trans_sym _ | TransEq _ | TransEq_sym _
+  | Trans _ | Trans_sym _ | TransEq _ | TransEq2 _ | TransEq_sym _
     -> true
 
   | Cut _ -> false
@@ -675,9 +676,15 @@ let expand_transeq r a b c d n1 n2 n3 =
   n22
 ;;
 
-let expand_transeq_sym r a b c d n1 n2 n3 =
+let expand_transeq2 r a b c d n1 n2 n3 =
   let n4 = expand_transeq r b a c d n1 n2 n3 in
   let n5 = make_direct_sym_eq a b n4 in
+  n5
+;;
+
+let expand_transeq_sym r a b c d n1 n2 n3 =
+  let n4 = expand_transeq r a b d c n1 n2 n3 in
+  let n5 = make_direct_nsym r c d n4 in
   n5
 ;;
 
@@ -846,12 +853,18 @@ and translate_derived p =
       let n4 = expand_transeq s a b c d n1 n2 n3 in
       let (n, ext) = to_llproof n4 in
       (n, union [Eqrel.get_trans_hyp s] ext)
+  | TransEq2 (a, b, Enot (Eapp (s, [c; d], _), _)) ->
+      let (n1, n2, n3) = gethyps3 p in
+      let n4 = expand_transeq2 s a b c d n1 n2 n3 in
+      let (n, ext) = to_llproof n4 in
+      (n, union [Eqrel.get_trans_hyp s] ext)
   | TransEq_sym (a, b, Enot (Eapp (s, [c; d], _), _)) ->
       let (n1, n2, n3) = gethyps3 p in
       let n4 = expand_transeq_sym s a b c d n1 n2 n3 in
       let (n, ext) = to_llproof n4 in
       (n, union [Eqrel.get_trans_hyp s] ext)
-  | Trans _ | Trans_sym _ | TransEq _ | TransEq_sym _ -> assert false
+  | Trans _ | Trans_sym _ | TransEq _ | TransEq2 _ | TransEq_sym _
+    -> assert false
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in
       Extension.to_llproof tr_prop tr_term p sub

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.22 2007-08-02 12:16:56 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.23 2007-08-02 14:25:25 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -661,7 +661,12 @@ let mknode_transeq sym (e1, g1) (e2, g2) =
     | Eapp ("=", [a; b], _), Enot (Eapp (r, [c; d], _), _) -> (r, a, b, c, d)
     | _, _ -> assert false
   in
-  let (x, y, z, t) = if sym then (c, b, a, d) else (c, a, b, d) in
+  let rsym = Eqrel.sym r in
+  let (x, y, z, t) =
+    if sym then
+      if rsym then (d, a, b, c) else (c, b, a, d)
+    else (c, a, b, d)
+  in
   let branches = [|
     [enot (eapp ("=", [x; y])); enot (eapp (r, [x; y]))];
     [enot (eapp (r, [x; y])); enot (eapp (r, [z; t]))];
@@ -669,7 +674,10 @@ let mknode_transeq sym (e1, g1) (e2, g2) =
   |] in
   {
     nconc = [e1; e2];
-    nrule = if sym then TransEq_sym (a, b, e2) else TransEq (a, b, e2);
+    nrule =
+      if sym then
+        if rsym then TransEq_sym (a, b, e2) else TransEq2 (a, b, e2)
+      else TransEq (a, b, e2);
     nprio = Arity;
     ngoal = min g1 g2;
     nbranches = branches;

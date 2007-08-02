@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.6 2005-11-05 11:13:17 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.7 2007-08-02 14:25:25 doligez Exp $  *)
 
 open Expr;;
 
@@ -45,6 +45,9 @@ type rule =
       (* r(a,b),-r(c,d)  /  d!=a,-r(d,a) | b!=c,-r(b,c)         [rab -rcd]*)
   | TransEq of expr * expr * expr
       (* a=b,-r(c,d)  /  c!=a,-r(c,a) | -r(c,a),-r(b,d) | b!=d,-r(b,d)
+                                                                [a b -rcd]*)
+  | TransEq2 of expr * expr * expr
+      (* a=b,-r(c,d)  /  c!=b,-r(c,b) | -r(c,b),-r(a,d) | a!=d,-r(a,d)
                                                                 [a b -rcd]*)
   | TransEq_sym of expr * expr * expr
       (* a=b,-r(c,d)  /  d!=a,-r(d,a) | -r(d,a),-r(b,c) | b!=c,-r(b,c)
