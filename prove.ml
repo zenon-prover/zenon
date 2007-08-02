@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.21 2007-04-23 17:19:11 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.22 2007-08-02 12:16:56 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -661,7 +661,7 @@ let mknode_transeq sym (e1, g1) (e2, g2) =
     | Eapp ("=", [a; b], _), Enot (Eapp (r, [c; d], _), _) -> (r, a, b, c, d)
     | _, _ -> assert false
   in
-  let (x, y, z, t) = if sym then (d, a, b, c) else (c, a, b, d) in
+  let (x, y, z, t) = if sym then (c, b, a, d) else (c, a, b, d) in
   let branches = [|
     [enot (eapp ("=", [x; y])); enot (eapp (r, [x; y]))];
     [enot (eapp (r, [x; y])); enot (eapp (r, [z; t]))];
@@ -895,12 +895,8 @@ let newnodes_match_trans st fm g =
         if s =%= "=" then [] else
         let eqmatches_ll = Index.find_trans_left "=" h1 in
         let eqmatches_rr = Index.find_trans_right "=" h2 in
-        let eqmatches_lr =
-          if Eqrel.sym s then Index.find_trans_right "=" h1 else []
-        in
-        let eqmatches_rl =
-          if Eqrel.sym s then Index.find_trans_left "=" h2 else []
-        in
+        let eqmatches_lr = Index.find_trans_right "=" h1 in
+        let eqmatches_rl = Index.find_trans_left "=" h2 in
         List.flatten [
           List.map (mknode_negtranseq false fmg) eqmatches_ll;
           List.map (mknode_negtranseq true fmg) eqmatches_lr;

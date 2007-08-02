@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.17 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.18 2007-08-02 12:16:56 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -205,9 +205,9 @@ let get_rule_name = function
   | NotExPartial (e1, s, n) -> "NotEx-Partial", [e1]
   | Refl (s, e1, e2) -> "Refl("^s^")", [e1; e2]
   | Trans (e1, e2) -> "Trans", [e1; e2]
-  | Trans_sym (e1, e2) -> "Trans_sym", [e1; e2]
+  | Trans_sym (e1, e2) -> "Trans-sym", [e1; e2]
   | TransEq (e1, e2, e3) -> "TransEq", [e1; e2; e3]
-  | TransEq_sym (e1, e2, e3) -> "TransEq_sym", [e1; e2; e3]
+  | TransEq_sym (e1, e2, e3) -> "TransEq-sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
 ;;

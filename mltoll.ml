@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.26 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.27 2007-08-02 12:16:56 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -569,6 +569,16 @@ let make_direct_sym_neq a b n0 =
   n4
 ;;
 
+let make_direct_sym_eq a b n0 =
+  (* apply symmetry of equality: a=b / b=a / (n0) *)
+  let aeb = eapp ("=", [a; b]) in
+  let bea = eapp ("=", [b; a]) in
+  let n1 = make_cl aeb in
+  let n2 = make_direct_sym_neq b a n1 in
+  let n3 = make_cut bea n0 n2 in
+  n3
+;;
+
 let gethyps1 p =
   match p.mlhyps with
   | [| n1 |] -> n1
@@ -666,8 +676,8 @@ let expand_transeq r a b c d n1 n2 n3 =
 ;;
 
 let expand_transeq_sym r a b c d n1 n2 n3 =
-  let n4 = expand_transeq r a b d c n1 n2 n3 in
-  let n5 = make_direct_nsym r c d n4 in
+  let n4 = expand_transeq r b a c d n1 n2 n3 in
+  let n5 = make_direct_sym_eq a b n4 in
   n5
 ;;
 
@@ -840,7 +850,7 @@ and translate_derived p =
       let (n1, n2, n3) = gethyps3 p in
       let n4 = expand_transeq_sym s a b c d n1 n2 n3 in
       let (n, ext) = to_llproof n4 in
-      (n, union [Eqrel.get_trans_hyp s; Eqrel.get_sym_hyp s] ext)
+      (n, union [Eqrel.get_trans_hyp s] ext)
   | Trans _ | Trans_sym _ | TransEq _ | TransEq_sym _ -> assert false
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.38 2007-07-31 13:09:05 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.39 2007-08-02 12:16:56 doligez Exp $";;
 
 open Printf;;
 
@@ -154,14 +154,14 @@ let rec argspec = [
       "                display progress messages";
   "-q", Arg.Set quiet_flag,
      "                 suppress proof-found/no-proof/begin-proof/end-proof";
+  "-rename", Arg.Set namespace_flag,
+          "            prefix all input symbols to avoid clashes";
   "-rnd", Arg.Int set_random,
        "<seed>         randomize proof search";
   "-stats", Arg.Set stats_flag,
          "             print statistics";
   "-short", Arg.Set short_flag,
          "             output a less detailed proof";
-  "-namespace", Arg.Set namespace_flag,
-             "         prefix all symbols to avoid clashes";
   "-v", Arg.Unit short_version,
      "                 print version string and exit";
   "-versions", Arg.Unit cvs_version,
