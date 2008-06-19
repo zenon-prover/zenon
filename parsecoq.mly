@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.13 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.14 2008-06-19 15:16:12 doligez Exp $";;
 
 open Printf;;
 
@@ -14,7 +14,10 @@ let rec mk_type_string e =
   | Evar (s, _) -> s
   | Emeta _ -> assert false
   | Eapp (s, args, _) ->
-      List.fold_left (fun s a -> sprintf "%s %s" s (mk_type_string a)) s args
+     let inside =
+       List.fold_left (fun s a -> sprintf "%s %s" s (mk_type_string a)) s args
+     in
+     sprintf "(%s)" inside
   | _ -> assert false (* FIXME TODO *)
 ;;
 
