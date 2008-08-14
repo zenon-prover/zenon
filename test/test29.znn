@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test29.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test29.znn,v 1.6 2008-08-14 14:02:09 doligez Exp $
 
 # file: species_general_set.foc
 # species: partial_order
@@ -29,9 +29,9 @@
 #(* Qed *).
 
 $sig not_b ("bool") "bool"
-$sig abst_equal ("zenon'U" "zenon'U") "bool"
-$sig abst_leq ("zenon'U" "zenon'U") "bool"
-$sig abst_lt ("zenon'U" "zenon'U") "bool"
+$sig abst_equal ("zenon_U" "zenon_U") "bool"
+$sig abst_leq ("zenon_U" "zenon_U") "bool"
+$sig abst_lt ("zenon_U" "zenon_U") "bool"
 
 $def (abst_different x y) (not_b (abst_equal x y))
 $def (abst_geq x y) (abst_leq y x)

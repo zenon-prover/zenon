@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.16 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.17 2008-08-14 14:02:09 doligez Exp $";;
 
 open Printf;;
 
@@ -146,7 +146,7 @@ let translate dirs ps =
   let cooked = process_annotations raw in
   let name = if !annot_thm_name <> "" then !annot_thm_name
              else if !tptp_thm_name <> "" then !tptp_thm_name
-             else "theorem"
+             else thm_default_name
   in
   (cooked, name)
 ;;

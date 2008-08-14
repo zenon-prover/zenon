@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.7 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.8 2008-08-14 14:02:09 doligez Exp $";;
 
 open Printf;;
 
@@ -93,7 +93,7 @@ phrase:
       { Hyp (goal_name, enot $2, 0) }
   | SIG IDENT OPEN string_list CLOSE STRING
       { Sig ($2, $4, $6) }
-  | INDSET IDENT OPEN ident_list CLOSE
+  | INDSET IDENT OPEN constr_list CLOSE
       { Inductive ($2, $4) }
 ;
 
@@ -166,6 +166,13 @@ id_expr_list_expr:
       { [$1] }
   | IDENT expr id_expr_list_expr
       { (evar $1) :: $2 :: $3 }
+;
+
+constr_list:
+  | /* empty */
+      { [] }
+  | OPEN IDENT string_list CLOSE constr_list
+      { ($2, $3) :: $5 }
 ;
 
 %%

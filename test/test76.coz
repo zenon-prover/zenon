@@ -1,19 +1,14 @@
 (*  Copyright 2006 INRIA  *)
-(*  $Id: test76.coz,v 1.4 2006-03-01 14:39:03 doligez Exp $  *)
+(*  $Id: test76.coz,v 1.5 2008-08-14 14:02:09 doligez Exp $  *)
 
 (* Testing inductive types. *)
 (* Need "-x inductive" for this one *)
 
 Inductive foo : Set :=
-  | A : foo
+  | A : foo -> foo
   | B : foo
 .
 
-(*
-Theorem foo : 1 = match A with | A => 1 | B => 0 end.
-*)
+Parameter x : foo.
 
-(*_MUST_USE_*) Parameter bar : z = A.
-(*_MUST_USE_*) Parameter gee : z = A.
-
-Theorem x : A = z.
+Theorem t : B = match x with | A x => B | B => B end.

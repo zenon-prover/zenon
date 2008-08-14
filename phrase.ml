@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.11 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.12 2008-08-14 14:02:09 doligez Exp $";;
 
 open Expr;;
 
@@ -7,7 +7,7 @@ type phrase =
   | Hyp of string * expr * int
   | Def of definition
   | Sig of string * string list * string
-  | Inductive of string * string list
+  | Inductive of string * (string * string list) list
 ;;
 
 exception Bad_arg;;

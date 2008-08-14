@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.31 2007-04-23 17:19:11 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.32 2008-08-14 14:02:09 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -85,12 +85,20 @@ let synthesize s =
   | _ -> raise (Cannot_infer ty)
 ;;
 
+let to_var e =
+  match e with
+  | Evar (v, _) -> v
+  | _ -> assert false
+;;
+
 let rec trexpr env e =
   match e with
   | Evar (v, _) when Mltoll.is_meta v && not (List.mem v env) ->
       Cvar (synthesize v)
   | Evar (v, _) -> Cvar v
   | Emeta _ -> assert false
+  | Eapp ("$match", e1 :: cases, _) ->
+      Cmatch (trexpr env e1, trcases env cases)
   | Eapp (f, args, _) -> Capp (Cvar f, List.map (trexpr env) args)
   | Enot (e1, _) -> Cnot (trexpr env e1)
   | Eand (e1, e2, _) -> Cand (trexpr env e1, trexpr env e2)
@@ -106,6 +114,16 @@ let rec trexpr env e =
   | Etau _ -> assert false
   | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr (v::env) e1)
   | Elam _ -> assert false
+
+and trcases env l =
+  match l with
+  | [] -> []
+  | [_] -> assert false
+  | Eapp (c, vs, _) :: e :: t ->
+      let vs1 = List.map to_var vs in
+      (c, vs1, trexpr (vs1 @ env) e) :: (trcases env t)
+  | Evar (c, _) :: e :: t -> (c, [], trexpr env e) :: (trcases env t)
+  | _ -> assert false
 ;;
 
 let tropt env e = if !Globals.short_flag then Cwild else trexpr env e;;
@@ -445,6 +463,7 @@ let pr_oc oc prefix t =
         let (lams, body) = get_lams [] t in
         bprintf b "(fun%a=>%a)" pr_lams lams pr body;
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
+    | Capp (Cvar "=", [e1; e2]) -> bprintf b "(%a = %a)" pr e1 pr e2;
     | Capp (Cvar "=", args) -> bprintf b "(@eq _%a)" pr_list args;
     | Capp (t1, []) -> pr b t1;
     | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
@@ -522,7 +541,7 @@ type signature =
   | Hyp_name
 ;;
 
-let predefined = ["Type"; "Prop"; "="];;
+let predefined = ["Type"; "Prop"; "="; "$match"];;
 
 let get_signatures ps ext_decl =
   let symtbl = (Hashtbl.create 97 : (string, signature) Hashtbl.t) in
@@ -564,7 +583,8 @@ let get_signatures ps ext_decl =
     | Phrase.Sig (sym, args, res) ->
         set_type sym (Declared res);
     | Phrase.Inductive (ty, constrs) ->
-        List.iter (fun x -> set_type x (Declared ty)) constrs;
+        set_type ty (Declared "Set");
+        List.iter (fun (x, _) -> set_type x (Declared ty)) constrs;
   in
   List.iter do_phrase ps;
   let rec follow_indirect path s =
@@ -620,6 +640,12 @@ let print_var oc e =
   | _ -> assert false
 ;;
 
+let print_constr oc tyname (cname, tys) =
+  fprintf oc " | %s : " cname;
+  List.iter (fun ty -> fprintf oc "%s -> " ty) tys;
+  fprintf oc "%s\n" tyname;
+;;
+
 let declare_hyp oc h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
@@ -641,7 +667,10 @@ let declare_hyp oc h =
       fprintf oc "Parameter %s : " sym;
       List.iter (fun x -> fprintf oc "%s -> " (tr_ty x)) args;
       fprintf oc "%s.\n" (tr_ty res);
-  | Phrase.Inductive _ -> assert false (* FIXME *)
+  | Phrase.Inductive (name, constrs) ->
+      fprintf oc "Inductive %s : Set :=\n" name;
+      List.iter (print_constr oc name) constrs;
+      fprintf oc ".\n";
 ;;
 
 let declare_context oc phrases =

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.33 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.34 2008-08-14 14:02:09 doligez Exp $";;
 
 open Printf;;
 
@@ -34,6 +34,8 @@ let rec p_expr oc e =
       poc "(%a = %a)" p_expr e1 p_expr e2;
   | Eapp ("=", l, _) ->
       p_expr oc (eapp ("@eq _", l));
+  | Eapp ("$match", e1 :: l, _) ->
+      poc "match %a with%a end" p_expr e1 p_cases l;
   | Eapp (f, l, _) ->
       poc "(%s%a)" f p_expr_list l;
   | Enot (e, _) ->
@@ -63,6 +65,18 @@ let rec p_expr oc e =
   | Etau _ -> assert false
 
 and p_expr_list oc l = p_list " " p_expr "" oc l;
+
+and p_cases oc l =
+  match l with
+  | [] -> ()
+  | [_] -> assert false
+  | Eapp (c, vs, _) :: e :: t ->
+      fprintf oc " | %s%a => %a" c p_expr_list vs p_expr e;
+      p_cases oc t;
+  | Evar (c, _) :: e :: t ->
+      fprintf oc " | %s => %a" c p_expr e;
+      p_cases oc t;
+  | _ -> assert false
 ;;
 
 let p_id_list oc l = p_list " " (fun oc x -> fprintf oc "%s" x) "" oc l;;
@@ -100,7 +114,7 @@ let declare_theorem oc name params concl =
     | [] -> efalse
     | _ -> assert false
   in
-  fprintf oc "Lemma %s : %a%a.\n" name p_forall params p_expr nconcl;
+  fprintf oc "Theorem %s : %a%a.\n" name p_forall params p_expr nconcl;
 ;;
 
 let getname = Coqterm.getname;;
@@ -194,6 +208,10 @@ let p_rule oc r =
   | Rextension ("zenon_inductive_discriminate", [], [conc], []) ->
       poc "discriminate %s.\n" (getname conc);
       0
+(*
+  | Rextension ("zenon_inductive_match_neq_right", [e1; e2], [conc], hyps) ->
+      ...
+*)
   | Rextension (name, args, conc, hyps) ->
       poc "apply (%s_s%a%a)" name p_expr_list args p_name_list conc;
       begin match hyps with

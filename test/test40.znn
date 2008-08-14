@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test40.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test40.znn,v 1.6 2008-08-14 14:02:09 doligez Exp $
 
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
@@ -23,7 +23,7 @@
 ; By def abst_order_inf:= [x: abst_T][y: abst_T](abst_equal  x (abst_inf  x y))
 ; (* Qed *).
 
-$sig abst_equal ("zenon'U" "zenon'U") "bool"
+$sig abst_equal ("zenon_U" "zenon_U") "bool"
 
 $def (abst_order_inf x y) (abst_equal x (abst_inf x y))
 

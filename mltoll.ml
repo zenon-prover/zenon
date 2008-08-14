@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.28 2007-08-02 14:25:25 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.29 2008-08-14 14:02:09 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -226,10 +226,24 @@ let get_lemma p =
   }, extras)
 ;;
 
+(* FIXME DEBUG *)
+let check_lemma name llprf =
+  let rec check_set l =
+    match l with
+    | h::t when List.exists ((==) h) t ->
+       fprintf stderr "duplicate conc in lemma %s\n" name;
+       flush stderr;
+    | _ -> ()
+  in
+  check_set llprf.LL.conc;
+;;
+
 let make_lemma llprf extras mlprf =
   incr lemma_num;
   let name = lemma_name !lemma_num in
   mlprf.mlrefc <- - !lemma_num;
+(* FIXME DEBUG *)
+check_lemma name llprf;
   let l = {
     LL.name = name;
     LL.params = List.fold_left get_params [] mlprf.mlconc;
@@ -286,8 +300,9 @@ let rec recomp_conj sub extras f =
           LL.conc = tr_prop f :: diff n2.LL.conc [la; lb];
           LL.rule = LL.Rconnect (LL.And, la, lb);
           LL.hyps = [n2];
-        }
-      in (nn, diff ext2 [f])
+      } in
+      check_lemma "*" nn;
+      (nn, diff ext2 [f])
   | Enot (a, _) -> recomp_conj_n sub extras a
   | _ -> (sub, extras)
 
@@ -301,8 +316,9 @@ and recomp_conj_n sub extras f =
           LL.conc = enot (tr_prop f) :: diff n2.LL.conc [enot la; enot lb];
           LL.rule = LL.Rnotconnect (LL.Or, la, lb);
           LL.hyps = [n2];
-        }
-      in (nn, diff ext2 [enot f])
+      } in
+      check_lemma "*" nn;
+      (nn, diff ext2 [enot f])
   | Eimply (a, b, _) ->
       let la = tr_prop a and lb = tr_prop b in
       let (n1, ext1) = recomp_conj sub extras a in
@@ -311,8 +327,9 @@ and recomp_conj_n sub extras f =
           LL.conc = enot (tr_prop f) :: diff n2.LL.conc [la; enot lb];
           LL.rule = LL.Rnotconnect (LL.Imply, la, lb);
           LL.hyps = [n2];
-        }
-      in (nn, diff ext2 [enot f])
+      } in
+      check_lemma "*" nn;
+      (nn, diff ext2 [enot f])
   | Enot (a, _) ->
       let la = tr_prop a in
       let (n1, ext1) = recomp_conj sub extras a in
@@ -320,8 +337,9 @@ and recomp_conj_n sub extras f =
           LL.conc = enot (tr_prop f) :: diff n1.LL.conc [la];
           LL.rule = LL.Rnotnot (la);
           LL.hyps = [n1];
-        }
-      in (nn, diff ext1 [enot f])
+      } in
+      check_lemma "*" nn;
+      (nn, diff ext1 [enot f])
   | _ -> (sub, extras)
 ;;
 
@@ -337,8 +355,9 @@ let rec recomp_disj sub f =
           LL.conc = tr_prop f :: (union c1 c2);
           LL.rule = LL.Rconnect (LL.Or, la, lb);
           LL.hyps = [n1; n2];
-        }
-      in (nn, diff (union ext1 ext2) [f], sub2)
+      } in
+      check_lemma "*" nn;
+      (nn, diff (union ext1 ext2) [f], sub2)
   | Eimply (a, b, _) ->
       let la = tr_prop a and lb = tr_prop b in
       let (n1, ext1, sub1) = recomp_disj_n sub a in
@@ -349,8 +368,9 @@ let rec recomp_disj sub f =
           LL.conc = tr_prop f :: (union c1 c2);
           LL.rule = LL.Rconnect (LL.Imply, la, lb);
           LL.hyps = [n1; n2];
-        }
-      in (nn, diff (union ext1 ext2) [f], sub2)
+      } in
+      check_lemma "*" nn;
+      (nn, diff (union ext1 ext2) [f], sub2)
   | Enot (a, _) -> recomp_disj_n sub a
   | _ ->
      begin match sub with
@@ -370,8 +390,9 @@ and recomp_disj_n sub f =
           LL.conc = enot (tr_prop f) :: (union c1 c2);
           LL.rule = LL.Rnotconnect (LL.And, la, lb);
           LL.hyps = [n1; n2];
-        }
-      in (nn, diff (union ext1 ext2) [enot f], sub2)
+      } in
+      check_lemma "*" nn;
+      (nn, diff (union ext1 ext2) [enot f], sub2)
   | Enot (a, _) ->
       let la = tr_prop a in
       let (n1, ext1, sub1) = recomp_disj sub a in
@@ -380,8 +401,9 @@ and recomp_disj_n sub f =
           LL.conc = enot (tr_prop f) :: c1;
           LL.rule = LL.Rnotnot (la);
           LL.hyps = [n1];
-        }
-      in (nn, diff ext1 [enot f], sub1)
+      } in
+      check_lemma "*" nn;
+      (nn, diff ext1 [enot f], sub1)
   | _ ->
      begin match sub with
      | (node, ext) :: rest -> (node, ext, rest)
@@ -706,11 +728,13 @@ let rec to_llproof p =
       else
         let (subproofs, subextras) = get_sub (Array.to_list p.mlhyps) in
         let extras = diff subextras p.mlconc in
-        ({
+        let nn = {
           LL.conc = List.map tr_prop (extras @@ p.mlconc);
           LL.rule = tr_rule p.mlrule;
           LL.hyps = subproofs;
-        }, extras)
+        } in
+        check_lemma "*" nn;
+        (nn, extras)
     in
     if p.mlrefc > 1 then begin
       make_lemma result extras p;
@@ -962,11 +986,13 @@ let discharge_extra ll e =
   assert (extras = []);
   let le = tr_prop e in
   let lrelhyps = List.map tr_prop relhyps in
-  {
+  let nn = {
     LL.conc = union lrelhyps (diff ll.LL.conc [le]);
     LL.rule = LL.Rcut (le);
     LL.hyps = [ll; lp];
-  }
+  } in
+  check_lemma "*" nn;
+  nn
 ;;
 
 let translate th_name phrases p =

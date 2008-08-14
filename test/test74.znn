@@ -1,7 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test74.znn,v 1.4 2007-04-23 17:19:11 doligez Exp $
-
-$hyp F.
+;  $Id: test74.znn,v 1.5 2008-08-14 14:02:09 doligez Exp $
 
 $hyp (E. ((Z W) (A. ((X Y) (<=> (big_f X Y) (/\ (= X Z) (= Y W)))))))
 

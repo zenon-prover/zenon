@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.3 2006-06-22 17:09:40 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.4 2008-08-14 14:02:09 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -17,7 +17,16 @@ open Phrase;;
 
 exception Empty;;
 
-let constructor_table = (Hashtbl.create 100 : (string, int) Hashtbl.t);;
+type constructor_desc = {
+  cd_num : int;
+  cd_name : string;
+  cd_type : string;
+  cd_args : string list;
+};;
+
+let constructor_table =
+  (Hashtbl.create 100 : (string, constructor_desc) Hashtbl.t)
+;;
 
 let is_constr s = Hashtbl.mem constructor_table s;;
 
@@ -33,8 +42,8 @@ let compare_cases c1 c2 =
   let (cs1, _, _) = c1 in
   let (cs2, _, _) = c2 in
     try
-      Pervasives.compare (Hashtbl.find constructor_table cs1)
-                         (Hashtbl.find constructor_table cs2)
+      Pervasives.compare (Hashtbl.find constructor_table cs1).cd_num
+                         (Hashtbl.find constructor_table cs2).cd_num
     with Not_found -> raise Empty
 ;;
 
@@ -52,10 +61,12 @@ let make_match_branches ctx m =
           | _ -> eapp (constr, vars)
         in
         let shape = eapp ("=", [e; pattern]) in
-        [ex_list vars (eand (shape, ctx body))]
+        ex_list vars (eand (shape, ctx body))
       in
-      Array.of_list (List.map f c)
+      List.map f c
 ;;
+
+let mkbr l = Array.map (fun x -> [x]) (Array.of_list l);;
 
 let newnodes_match e g =
   match e with
@@ -63,48 +74,48 @@ let newnodes_match e g =
       let branches = make_match_branches (fun x -> eapp ("=", [x; e2])) m in
       [ Node {
         nconc = [e];
-        nrule = Ext ("inductive", "match-eq-left", [e1; e2]);
+        nrule = Ext ("inductive", "match-eq-left", e1 :: e2 :: branches);
         nprio = Arity;
         ngoal = g;
-        nbranches = branches;
+        nbranches = mkbr branches;
       }; Stop ]
   | Eapp ("=", [e1; Eapp ("$match", m, _) as e2], _) ->
       let branches = make_match_branches (fun x -> eapp ("=", [e1; x])) m in
       [ Node {
         nconc = [e];
-        nrule = Ext ("inductive", "match-eq-right", [e1; e2]);
+        nrule = Ext ("inductive", "match-eq-right", e1 :: e2 :: branches);
         nprio = Arity;
         ngoal = g;
-        nbranches = branches;
+        nbranches = mkbr branches;
       }; Stop ]
   | Enot (Eapp ("=", [Eapp ("$match", m, _) as e1; e2], _), _) ->
       let branches = make_match_branches (fun x -> enot (eapp ("=", [x; e2]))) m
       in
       [ Node {
         nconc = [e];
-        nrule = Ext ("inductive", "match-neq-left", [e1; e2]);
+        nrule = Ext ("inductive", "match-neq-left", e1 :: e2 :: branches);
         nprio = Arity;
         ngoal = g;
-        nbranches = branches;
+        nbranches = mkbr branches;
       }; Stop ]
   | Enot (Eapp ("=", [e1; Eapp ("$match", m, _) as e2], _), _) ->
       let branches = make_match_branches (fun x -> enot (eapp ("=", [e1; x]))) m
       in
       [ Node {
         nconc = [e];
-        nrule = Ext ("inductive", "match-neq-right", [e1; e2]);
+        nrule = Ext ("inductive", "match-neq-right", e1 :: e2 :: branches);
         nprio = Arity;
         ngoal = g;
-        nbranches = branches;
+        nbranches = mkbr branches;
       }; Stop ]
   | Eapp ("$match", m, _) ->
       let branches = make_match_branches (fun x -> x) m in
       [ Node {
         nconc = [e];
-        nrule = Ext ("inductive", "match-prop", [e]);
+        nrule = Ext ("inductive", "match-prop", e :: branches);
         nprio = Arity;
         ngoal = g;
-        nbranches = branches;
+        nbranches = mkbr branches;
       }; Stop ]
   | _ -> []
 ;;
@@ -152,6 +163,9 @@ let newnodes e g =
 open Llproof;;
 
 let to_llproof tr_prop tr_term mlp args =
+  let argl = Array.to_list args in
+  let hyps = List.map fst argl in
+  let add = List.flatten (List.map snd argl) in
   match mlp.mlrule with
   | Ext ("inductive", "discriminate", [e]) ->
       let node = {
@@ -159,13 +173,64 @@ let to_llproof tr_prop tr_term mlp args =
         rule = Rextension ("zenon_inductive_discriminate", [], [tr_prop e], []);
         hyps = [];
       } in
-      (node, [])
+      (node, add)
+  | Ext ("inductive", "match-neq-left", e1 :: e2 :: branches) ->
+      let te1 = tr_prop e1 in
+      let te2 = tr_prop e2 in
+      let node = {
+        conc = List.map tr_prop mlp.mlconc;
+        rule = Rextension ("zenon_inductive_match_neq_left",
+                           [te1; te2],
+                           [enot (eapp ("=", [te1; te2]))],
+                           List.map (fun x-> [tr_prop x]) branches);
+        hyps = hyps;
+      } in
+      (node, add)
+  | Ext ("inductive", "match-neq-right", e1 :: e2 :: branches) ->
+      let te1 = tr_prop e1 in
+      let te2 = tr_prop e2 in
+      let node = {
+        conc = List.map tr_prop mlp.mlconc;
+        rule = Rextension ("zenon_inductive_match_neq_right",
+                           [te1; te2],
+                           [enot (eapp ("=", [te1; te2]))],
+                           List.map (fun x-> [tr_prop x]) branches);
+        hyps = hyps;
+      } in
+      (node, add)
+  | Ext ("inductive", "match-eq-left", e1 :: e2 :: branches) ->
+      let te1 = tr_prop e1 in
+      let te2 = tr_prop e2 in
+      let node = {
+        conc = List.map tr_prop mlp.mlconc;
+        rule = Rextension ("zenon_inductive_match_eq_left",
+                           [te1; te2],
+                           [eapp ("=", [te1; te2])],
+                           List.map (fun x-> [tr_prop x]) branches);
+        hyps = hyps;
+      } in
+      (node, add)
+  | Ext ("inductive", "match-eq-right", e1 :: e2 :: branches) ->
+      let te1 = tr_prop e1 in
+      let te2 = tr_prop e2 in
+      let node = {
+        conc = List.map tr_prop mlp.mlconc;
+        rule = Rextension ("zenon_inductive_match_eq_right",
+                           [te1; te2],
+                           [eapp ("=", [te1; te2])],
+                           List.map (fun x-> [tr_prop x]) branches);
+        hyps = hyps;
+      } in
+      (node, add)
   | _ -> assert false (* FIXME TODO *)
 ;;
 
 let add_inductive_def ty constrs =
-  let f i c = Hashtbl.add constructor_table c i in
-  list_iteri f constrs
+  let f i (name, args) =
+    let desc = { cd_num = i; cd_type = ty; cd_args = args; cd_name = name } in
+    Hashtbl.add constructor_table name desc;
+  in
+  list_iteri f constrs;
 ;;
 
 let preprocess l =

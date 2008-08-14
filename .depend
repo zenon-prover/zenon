@@ -92,18 +92,22 @@ lltocoq.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi globals.cmi \
     expr.cmi error.cmi coqterm.cmi lltocoq.cmi 
 lltocoq.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx globals.cmx \
     expr.cmx error.cmx coqterm.cmx lltocoq.cmi 
+lltoisar.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi index.cmi \
+    globals.cmi expr.cmi coqterm.cmi lltoisar.cmi 
+lltoisar.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx index.cmx \
+    globals.cmx expr.cmx coqterm.cmx lltoisar.cmi 
 checksum.cmo: checksum.cmi 
 checksum.cmx: checksum.cmi 
 main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
     phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi namespace.cmi \
-    mltoll.cmi lltocoq.cmi llproof.cmi lexzen.cmi lextptp.cmi lexcoq.cmi \
-    globals.cmi extension.cmi error.cmi eqrel.cmi coqterm.cmi config.cmi \
-    checksum.cmi main.cmi 
+    mltoll.cmi lltoisar.cmi lltocoq.cmi llproof.cmi lexzen.cmi lextptp.cmi \
+    lexcoq.cmi globals.cmi extension.cmi error.cmi eqrel.cmi coqterm.cmi \
+    config.cmi checksum.cmi main.cmi 
 main.cmx: watch.cmx version.cmx tptp.cmx prove.cmx progress.cmx print.cmx \
     phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx namespace.cmx \
-    mltoll.cmx lltocoq.cmx llproof.cmx lexzen.cmx lextptp.cmx lexcoq.cmx \
-    globals.cmx extension.cmx error.cmx eqrel.cmx coqterm.cmx config.cmx \
-    checksum.cmx main.cmi 
+    mltoll.cmx lltoisar.cmx lltocoq.cmx llproof.cmx lexzen.cmx lextptp.cmx \
+    lexcoq.cmx globals.cmx extension.cmx error.cmx eqrel.cmx coqterm.cmx \
+    config.cmx checksum.cmx main.cmi 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 
@@ -125,6 +129,8 @@ lexcoq.cmi: parsecoq.cmi
 tptp.cmi: phrase.cmi 
 coqterm.cmi: phrase.cmi llproof.cmi expr.cmi 
 lltocoq.cmi: phrase.cmi llproof.cmi 
+lltoisar.cmi: phrase.cmi llproof.cmi 
 zenon.vo: zenon.v
 zenon_coqbool.vo: zenon_coqbool.v
 zenon_equiv.vo: zenon_equiv.v zenon.vo
+zenon_inductive.vo: zenon_inductive.v

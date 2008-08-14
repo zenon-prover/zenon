@@ -1,7 +1,7 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.11 2007-04-23 17:19:11 doligez Exp $
+#  $Id: Makefile,v 1.12 2008-08-14 14:02:09 doligez Exp $
 
-ZOPT = -q -x coqbool -max-time 10m -max-size 500M ${RND}
+ZOPT = -q -x coqbool -max-time 10m -max-size 500M -x inductive
 
 BENCH = test13.znn test16.znn test38.znn test41.znn test48.znn
 
@@ -22,7 +22,7 @@ default: coq
 .PHONY: bench
 bench:
 	@for i in ${BENCH}; do \
-	  echo -n $$i' '; \
+	  echo $$i' ' | tr -d '\n'; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  (/usr/bin/time -p sh -c "../zenon ${ZOPT} -i$$fmt $$i 2>&4" 2>&1 \
            | while read k t; \
@@ -33,8 +33,8 @@ bench:
 
 .PHONY: test
 test:
-	@for i in test*; do \
-	  echo -n $$i' '; \
+	@for i in test[0-9]*; do \
+	  echo $$i' ' | tr -d '\n'; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  if ../zenon ${ZOPT} -i$$fmt $$i; then \
 	    : ; \
@@ -50,12 +50,13 @@ coqscript:
 	: testing script output
 	@for n in ${COQTESTSCRIPT}; do \
 	  i=`echo test$$n.*`; \
-	  echo -n $$i' '; \
+	  echo $$i' ' | tr -d '\n'; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoq -context -loadpath .. \
                       >tmp_test.v \
-	     && (echo -n $$i '-> coqc'; coqc -I .. tmp_test.v); then \
-	    echo -n '' ; \
+	     && (echo $$i '-> coqc' | tr -d '\n'; \
+	         coqc -I .. tmp_test.v); then \
+	    echo '' | tr -d '\n'; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \
 	    exit 3 ; \
@@ -68,12 +69,13 @@ coqterm:
 	: testing term output
 	@for n in ${COQTESTTERM}; do \
 	  i=`echo test$$n.*`; \
-	  echo -n $$i' '; \
+	  echo $$i' ' | tr -d '\n'; \
 	  case $$i in *.znn) fmt=z;; *.coz) fmt=focal;; *.p) fmt=tptp;; esac; \
 	  if ../zenon ${ZOPT} -i$$fmt $$i -ocoqterm -context -loadpath .. \
                       >tmp_test.v \
-	     && (echo -n $$i '-> coqc'; coqc -I .. tmp_test.v); then \
-	    echo -n '' ; \
+	     && (echo $$i '-> coqc' | tr -d '\n'; \
+	         coqc -I .. tmp_test.v); then \
+	    echo '' | tr -d '\n'; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \
 	    exit 3 ; \

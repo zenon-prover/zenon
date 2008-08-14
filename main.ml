@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.39 2007-08-02 12:16:56 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.40 2008-08-14 14:02:09 doligez Exp $";;
 
 open Printf;;
 
@@ -14,6 +14,7 @@ type proof_level =
   | Proof_lx
   | Proof_coq
   | Proof_coqterm
+  | Proof_isar
 ;;
 let proof_level = ref Proof_none;;
 
@@ -123,7 +124,7 @@ let rec argspec = [
             "<s>[kMGT] limit heap size to <s> kilo/mega/giga/tera word"
             ^ " (default 100M)";
   "-max-step", Arg.String (int_arg step_limit),
-            "<i>[kMGT] limit number of steps to <s> kilo/mega/giga/tera"
+            "<i>[kMGT] limit number of steps to <i> kilo/mega/giga/tera"
             ^ " (default 10k)";
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
@@ -134,6 +135,8 @@ let rec argspec = [
             "          print the proof in Coq term format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),
       "<n>             print the proof in high-level format up to depth <n>";
+  "-oisar", Arg.Unit (fun () -> proof_level := Proof_isar),
+         "             print the proof in Isar format";
   "-ol", Arg.Unit (fun () -> proof_level := Proof_l),
       "                print the proof in low-level format";
   "-olx", Arg.Unit (fun () -> proof_level := Proof_lx),
@@ -228,7 +231,7 @@ let parse_file f =
           in
           let goal_found = List.exists is_goal result in
           if not goal_found then Error.warn "no goal given";
-          ("theorem", result)
+          (thm_default_name, result)
     with
     | Parsing.Parse_error -> report_error lexbuf "syntax error."
     | Error.Lex_error msg -> report_error lexbuf msg
@@ -305,8 +308,11 @@ let main () =
         Watch.warn phrases_dep llp u;
     | Proof_coqterm ->
         let (p, u) = Coqterm.trproof phrases (Lazy.force llp) in
-        Watch.warn phrases_dep llp u;
         Coqterm.print stdout p;
+        Watch.warn phrases_dep llp u;
+    | Proof_isar ->
+        let u = Lltoisar.output stdout phrases (Lazy.force llp) in
+        Watch.warn phrases_dep llp u;
     end;
   with Prove.NoProof ->
     retcode := 10;

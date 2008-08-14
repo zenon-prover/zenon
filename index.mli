@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.5 2005-11-13 22:49:11 doligez Exp $  *)
+(*  $Id: index.mli,v 1.6 2008-08-14 14:02:09 doligez Exp $  *)
 
 open Expr;;
 
@@ -20,17 +20,12 @@ val find_neg : string -> (expr * goalness) list;;
 
 type direction = Left | Right | Both;;
 
-type head = Sym of string | Tau of expr | Wild;;
+type head = Sym of string | Tau of expr | Meta of expr;;
 val get_head : expr -> head;;
 
-val add_trans : expr -> direction -> unit;;
+val add_trans : expr -> unit;;
 val find_trans_left : string -> head -> (expr * goalness) list;;
 val find_trans_right : string -> head -> (expr * goalness) list;;
-
-val find_trans_leftonly : string -> head -> (expr * goalness) list;;
-val find_trans_rightonly : string -> head -> (expr * goalness) list;;
-val find_all_trans_leftonly : head -> (expr * goalness) list;;
-val find_all_trans_rightonly : head -> (expr * goalness) list;;
 
 val add_negtrans : expr -> unit;;
 val find_negtrans_left : string -> head -> (expr * goalness) list;;
@@ -38,7 +33,6 @@ val find_negtrans_right : string -> head -> (expr * goalness) list;;
 
 val find_all_negtrans_left : head -> (expr * goalness) list;;
 val find_all_negtrans_right : head -> (expr * goalness) list;;
-val find_all_negtrans : unit -> (expr * goalness) list;;
 
 (* ==== proof cache ==== *)
 

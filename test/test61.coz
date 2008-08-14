@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-(*  $Id: test61.coz,v 1.7 2006-07-20 13:19:21 doligez Exp $  *)
+(*  $Id: test61.coz,v 1.8 2008-08-14 14:02:09 doligez Exp $  *)
 
 (*
 ; file: species_general_additive_law.foc
@@ -31,4 +31,3 @@ Theorem thm :
  ))
 )
 .
-

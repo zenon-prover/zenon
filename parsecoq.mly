@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.14 2008-06-19 15:16:12 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.15 2008-08-14 14:02:09 doligez Exp $";;
 
 open Printf;;
 
@@ -176,7 +176,7 @@ file:
       { ($3, (Hyp (goal_name, enot $5, 0), false) :: $1) }
   | expr hyp_def_list EOF
       { (* Error.warn "deprecated input format"; *)
-        ("theorem", (Hyp (goal_name, enot $1, 0), false) :: $2) }
+        (thm_default_name, (Hyp (goal_name, enot $1, 0), false) :: $2) }
   | proof_head expr hyp_def_list ENDPROOF EOF
       { (* Error.warn "deprecated input format"; *)
         ($1, (Hyp (goal_name, enot $2, 0), false) :: $3) }
@@ -347,19 +347,19 @@ hyp_def_list:
 
 constr_list:
   | BAR_ IDENT COLON_ constr_type constr_list
-      { $2 :: $5 }
+      { ($2, $4) :: $5 }
   | /* empty */
       { [] }
 ;
 
 constr_type:
-  | arg_type                          { () }
-  | arg_type DASH_GT_ constr_type     { () }
+  | arg_type                          { [] }
+  | arg_type DASH_GT_ constr_type     { $1 :: $3 }
 ;
 
 arg_type:
-  | LPAREN_ arg_type RPAREN_          { () }
-  | IDENT                             { () }
+  | LPAREN_ arg_type RPAREN_          { $2 }
+  | IDENT                             { $1 }
 ;
 
 %%
