@@ -1,9 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.16 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.17 2008-08-14 14:08:25 pessaux Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
    false, true, (__g_ifthenelse _)
+  And for FoCaLize:
+    basics.not_b; basics.and_b; basics.or_b; basics.xor_b
  *)
 
 (* FIXME TODO:
@@ -44,7 +46,8 @@ let isfalse e = enot (eapp ("Is_true", [e]));;
 
 let newnodes_istrue e g =
   match e with
-  | Eapp ("Is_true**__g_and_b", [e1; e2], _) ->
+  | Eapp ("Is_true**__g_and_b", [e1; e2], _)
+  | Eapp ("Is_true**basics.and_b", [e1; e2], _) ->
       let branches = [| [eand (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
@@ -53,7 +56,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**__g_or_b", [e1; e2], _) ->
+  | Eapp ("Is_true**__g_or_b", [e1; e2], _)
+  | Eapp ("Is_true**basics.or_b", [e1; e2], _) ->
       let branches = [| [eor (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
@@ -62,7 +66,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**__g_xor_b", [e1; e2], _) ->
+  | Eapp ("Is_true**__g_xor_b", [e1; e2], _)
+  | Eapp ("Is_true**basics.xor_b", [e1; e2], _) ->
       let branches = [| [enot (eequiv (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
@@ -71,7 +76,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**__g_not_b", [e1], _) ->
+  | Eapp ("Is_true**__g_not_b", [e1], _)
+  | Eapp ("Is_true**basics.not_b", [e1], _) ->
       let branches = [| [isfalse e1] |] in
       [ Node {
         nconc = [e];
@@ -80,7 +86,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_and_b", [e1; e2], _), _) ->
+  | Enot (Eapp ("Is_true**__g_and_b", [e1; e2], _), _)
+  | Enot (Eapp ("Is_true**basics.and_b", [e1; e2], _), _) ->
       let branches = [| [enot (eand (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
@@ -89,7 +96,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_or_b", [e1; e2], _), _) ->
+  | Enot (Eapp ("Is_true**__g_or_b", [e1; e2], _), _)
+  | Enot (Eapp ("Is_true**basics.or_b", [e1; e2], _), _) ->
       let branches = [| [enot (eor (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
@@ -98,7 +106,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_xor_b", [e1; e2], _), _) ->
+  | Enot (Eapp ("Is_true**__g_xor_b", [e1; e2], _), _)
+  | Enot (Eapp ("Is_true**basics.xor_b", [e1; e2], _), _) ->
       let branches = [| [eequiv (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
@@ -107,7 +116,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_not_b", [e1], _), _) ->
+  | Enot (Eapp ("Is_true**__g_not_b", [e1], _), _)
+  | Enot (Eapp ("Is_true**basics.not_b", [e1], _), _) ->
       let branches = [| [istrue e1] |] in
       [ Node {
         nconc = [e];
@@ -309,35 +319,59 @@ let to_llargs tr_prop tr_term r =
   match r with
   | Ext (_, "and", [e1; e2]) ->
       let h = tr_prop (eand (istrue e1, istrue e2)) in
-      let c = tr_prop (istrue (eapp ("__g_and_b", [e1; e2]))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (istrue (eapp ("basics.and_b", [e1; e2])))
+        else tr_prop (istrue (eapp ("__g_and_b", [e1; e2]))) in
       ("zenon_coqbool_and", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "or", [e1; e2]) ->
       let h = tr_prop (eor (istrue e1, istrue e2)) in
-      let c = tr_prop (istrue (eapp ("__g_or_b", [e1; e2]))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (istrue (eapp ("basics.or_b", [e1; e2])))
+        else tr_prop (istrue (eapp ("__g_or_b", [e1; e2]))) in
       ("zenon_coqbool_or", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "xor", [e1; e2]) ->
       let h = tr_prop (enot (eequiv (istrue e1, istrue e2))) in
-      let c = tr_prop (istrue (eapp ("__g_xor_b", [e1; e2]))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (istrue (eapp ("basics.xor_b", [e1; e2])))
+        else tr_prop (istrue (eapp ("__g_xor_b", [e1; e2]))) in
       ("zenon_coqbool_xor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "not", [e1]) ->
       let h = tr_prop (enot (istrue e1)) in
-      let c = tr_prop (istrue (eapp ("__g_not_b", [e1]))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (istrue (eapp ("basics.not_b", [e1])))
+        else tr_prop (istrue (eapp ("__g_not_b", [e1]))) in
       ("zenon_coqbool_not", [tr_term e1], [c], [ [h] ])
   | Ext (_, "notand", [e1; e2]) ->
       let h = tr_prop (enot (eand (istrue e1, istrue e2))) in
-      let c = tr_prop (enot (istrue (eapp ("__g_and_b", [e1; e2])))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (enot (istrue (eapp ("basics.and_b", [e1; e2]))))
+        else tr_prop (enot (istrue (eapp ("__g_and_b", [e1; e2])))) in
       ("zenon_coqbool_notand", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "notor", [e1; e2]) ->
       let h = tr_prop (enot (eor (istrue e1, istrue e2))) in
-      let c = tr_prop (enot (istrue (eapp ("__g_or_b", [e1; e2])))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (enot (istrue (eapp ("basics.or_b", [e1; e2]))))
+        else tr_prop (enot (istrue (eapp ("__g_or_b", [e1; e2])))) in
       ("zenon_coqbool_notor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "notxor", [e1; e2]) ->
       let h = tr_prop (eequiv (istrue e1, istrue e2)) in
-      let c = tr_prop (enot (istrue (eapp ("__g_xor_b", [e1; e2])))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (enot (istrue (eapp ("basics.xor_b", [e1; e2]))))
+        else tr_prop (enot (istrue (eapp ("__g_xor_b", [e1; e2])))) in
       ("zenon_coqbool_notxor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "notnot", [e1]) ->
       let h = tr_prop (istrue e1) in
-      let c = tr_prop (enot (istrue (eapp ("__g_not_b", [e1])))) in
+      let c =
+        if !Globals.used_for_focalize_flag then
+          tr_prop (enot (istrue (eapp ("basics.not_b", [e1]))))
+        else tr_prop (enot (istrue (eapp ("__g_not_b", [e1])))) in
       ("zenon_coqbool_notnot", [tr_term e1], [c], [ [h] ])
   | Ext (_, "false", []) ->
       let c = tr_prop (istrue (evar "false")) in
@@ -559,7 +593,9 @@ let postprocess p = List.map process_lemma p;;
 let declare_context_coq oc =
   fprintf oc "Require Import zenon_coqbool.\n";
   ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b";
-   "true"; "false"; "(__g_ifthenelse _)"]
+   "true"; "false"; "(__g_ifthenelse _)" ;
+   (* Extensions for FoCaLize. *)
+   "basics.not_b"; "basics.and_b"; "basics.or_b"; "basics.xor_b"]
 ;;
 
 Extension.register {

@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.15 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.16 2008-08-14 14:08:25 pessaux Exp $";;
 
 open Printf;;
 
@@ -319,15 +319,33 @@ id_or_expr:
   | STRING { $1 }
 ;
 
+
 hyp_def:
   | PARAMETER id_or_expr COLON_ expr PERIOD_
       { Hyp ($2, $4, 1) }
   | DEFINITION id_or_expr COLON_EQ_ expr PERIOD_
       { let (params, expr) = get_params $4 in Def (DefReal ($2, params, expr)) }
+/* Modif par François. A valider, Damien. */
+  | DEFINITION IDENT compact_args COLON_ typ COLON_EQ_ expr PERIOD_
+      {
+       let compact_params = $3 in
+       let (other_params, expr) = get_params $7 in
+       Def (DefReal ($2, (compact_params @ other_params), expr))
+     }
+/* Fin modif par François. */
   | INDUCTIVE IDENT COLON_ IDENT COLON_EQ_ constr_list PERIOD_
       { (* FIXME should check that $4 = "Set" *)
         Inductive ($2, $6) }
 ;
+
+
+/* Modif par François. A valider, Damien. */
+compact_args:
+    /* empty */                                          { [] }
+  | LPAREN_ IDENT COLON_ typ RPAREN_ compact_args    { (evar $2) :: $6 }
+;
+/* Fin modif par François. */
+
 
 dep_hyp_def:
   | DEPENDS ON hyp_def         {

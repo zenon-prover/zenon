@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: globals.mli,v 1.12 2007-07-31 13:09:05 doligez Exp $  *)
+(*  $Id: globals.mli,v 1.13 2008-08-14 14:08:25 pessaux Exp $  *)
 
 val debug_flag : bool ref;;
 
@@ -14,6 +14,7 @@ val random_flag : bool ref;;
 val random_seed : int ref;;
 val load_path : string ref;;
 val namespace_flag : bool ref;;
+val used_for_focalize_flag : bool ref;;
 
 val inferences : int ref;;
 val proof_nodes : int ref;;
