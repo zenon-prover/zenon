@@ -71,11 +71,11 @@ tptp.cmo: version.cmi phrase.cmi parsetptp.cmi namespace.cmi lextptp.cmi \
 tptp.cmx: version.cmx phrase.cmx parsetptp.cmx namespace.cmx lextptp.cmx \
     extension.cmx expr.cmx error.cmx tptp.cmi 
 ext_coqbool.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
-    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
-    ext_coqbool.cmi 
+    llproof.cmi index.cmi globals.cmi extension.cmi expr.cmi error.cmi \
+    eqrel.cmi ext_coqbool.cmi 
 ext_coqbool.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
-    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
-    ext_coqbool.cmi 
+    llproof.cmx index.cmx globals.cmx extension.cmx expr.cmx error.cmx \
+    eqrel.cmx ext_coqbool.cmi 
 ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     extension.cmi expr.cmi ext_equiv.cmi 
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
@@ -92,10 +92,10 @@ lltocoq.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi globals.cmi \
     expr.cmi error.cmi coqterm.cmi lltocoq.cmi 
 lltocoq.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx globals.cmx \
     expr.cmx error.cmx coqterm.cmx lltocoq.cmi 
-lltoisar.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi index.cmi \
-    globals.cmi expr.cmi coqterm.cmi lltoisar.cmi 
-lltoisar.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx index.cmx \
-    globals.cmx expr.cmx coqterm.cmx lltoisar.cmi 
+lltoisar.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi llproof.cmi \
+    index.cmi globals.cmi expr.cmi coqterm.cmi lltoisar.cmi 
+lltoisar.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx llproof.cmx \
+    index.cmx globals.cmx expr.cmx coqterm.cmx lltoisar.cmi 
 checksum.cmo: checksum.cmi 
 checksum.cmx: checksum.cmi 
 main.cmo: watch.cmi version.cmi tptp.cmi prove.cmi progress.cmi print.cmi \
