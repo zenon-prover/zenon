@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.23 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.24 2008-08-26 13:47:41 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -35,9 +35,11 @@ and private_info = {
 };;
 
 type definition =
-  | DefReal of string * expr list * expr
+  | DefReal of string * string * expr list * expr
   | DefPseudo of (expr * int) * string * expr list * expr
 ;;
+
+exception Higher_order;;
 
 
 (************************)
@@ -455,6 +457,56 @@ let rec substitute map e =
         elam (nv, t, substitute ((v, nv) :: map1) f)
       else
         elam (v, t, substitute map1 f)
+;;
+
+let rec substitute_2nd map e =
+  match e with
+  | Evar (v, _) -> (try List.assq e map with Not_found -> e)
+  | Emeta _ -> e
+  | Eapp (s, args, _) ->
+     let acts = List.map (substitute_2nd map) args in
+     begin try
+      let lam = List.assq (evar s) map in
+      match lam, acts with
+      | Elam (v, _, body, _), [a] -> substitute [(v,a)] body
+      | Evar (v, _), _ -> eapp (v, acts)
+      | _ -> raise Higher_order
+     with Not_found -> eapp (s, acts)
+     end
+  | Enot (f, _) -> enot (substitute_2nd map f)
+  | Eand (f, g, _) -> eand (substitute_2nd map f, substitute_2nd map g)
+  | Eor (f, g, _) -> eor (substitute_2nd map f, substitute_2nd map g)
+  | Eimply (f, g, _) -> eimply (substitute_2nd map f, substitute_2nd map g)
+  | Eequiv (f, g, _) -> eequiv (substitute_2nd map f, substitute_2nd map g)
+  | Etrue | Efalse -> e
+  | Eall (v, t, f, _) ->
+      let map1 = rm_binding v map in
+      if conflict v map1 then
+        let nv = newvar () in
+        eall (nv, t, substitute_2nd ((v, nv) :: map1) f)
+      else
+        eall (v, t, substitute_2nd map1 f)
+  | Eex (v, t, f, _) ->
+      let map1 = rm_binding v map in
+      if conflict v map1 then
+        let nv = newvar () in
+        eex (nv, t, substitute_2nd ((v, nv) :: map1) f)
+      else
+        eex (v, t, substitute_2nd map1 f)
+  | Etau (v, t, f, _) ->
+      let map1 = rm_binding v map in
+      if conflict v map1 then
+        let nv = newvar () in
+        etau (nv, t, substitute_2nd ((v, nv) :: map1) f)
+      else
+        etau (v, t, substitute_2nd map1 f)
+  | Elam (v, t, f, _) ->
+      let map1 = rm_binding v map in
+      if conflict v map1 then
+        let nv = newvar () in
+        elam (nv, t, substitute_2nd ((v, nv) :: map1) f)
+      else
+        elam (v, t, substitute_2nd map1 f)
 ;;
 
 type goalness = int;;

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: globals.ml,v 1.20 2008-08-14 14:08:25 pessaux Exp $";;
+Version.add "$Id: globals.ml,v 1.21 2008-08-26 13:47:41 doligez Exp $";;
 
 let debug_flag = ref false;;
 
@@ -14,7 +14,6 @@ let random_flag = ref false;;
 let random_seed = ref 0;;
 let load_path = ref Config.libdir;;
 let namespace_flag = ref false;;
-let used_for_focalize_flag = ref false ;;
 
 let inferences = ref 0;;
 let proof_nodes = ref 0;;

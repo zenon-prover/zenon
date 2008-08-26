@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.32 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.33 2008-08-26 13:47:41 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -255,7 +255,7 @@ let rec trtree env node =
       let optg = tropt gg in
       Capp (Cvar "zenon_notequal", [Cwild; optf; optg; ffegg; fdg])
   | Rnotequal _ -> assert false
-  | Rdefinition (sym, folded, unfolded) ->
+  | Rdefinition (name, sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
   | Rextension ("zenon_inductive_discriminate",
@@ -576,7 +576,7 @@ let get_signatures ps ext_decl =
     | Phrase.Hyp (name, e, _) ->
         get_sig Prop [] e;
         set_type name Hyp_name;
-    | Phrase.Def (DefReal (s, _, e)) ->
+    | Phrase.Def (DefReal (_, s, _, e)) ->
         defined := s :: !defined;
         get_sig (Indirect s) [] e;
     | Phrase.Def (DefPseudo _) -> assert false
@@ -652,11 +652,11 @@ let declare_hyp oc h =
   | Phrase.Hyp (name, stmt, _) ->
       pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] stmt);
       fprintf oc ".\n";
-  | Phrase.Def (DefReal (sym, [], body)) ->
+  | Phrase.Def (DefReal (name, sym, [], body)) ->
       let prefix = sprintf "Definition %s := " sym in
       pr_oc oc prefix (trexpr [] body);
       fprintf oc ".\n";
-  | Phrase.Def (DefReal (sym, params, body)) ->
+  | Phrase.Def (DefReal (name, sym, params, body)) ->
       fprintf oc "Definition %s := fun" sym;
       List.iter (print_var oc) params;
       fprintf oc " =>\n";

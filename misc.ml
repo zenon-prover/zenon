@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.7 2006-02-16 09:22:46 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.8 2008-08-26 13:47:41 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -57,5 +57,12 @@ let rec xlist_iteri f l i =
 ;;
 
 let list_iteri f l = xlist_iteri f l 0;;
+
+let rec list_iter3 f l1 l2 l3 =
+  match l1, l2, l3 with
+  | h1 :: t1, h2 :: t2, h3 :: t3 -> f h1 h2 h3; list_iter3 f t1 t2 t3
+  | [], [], [] -> ()
+  | _, _, _ -> raise (Invalid_argument "list_iter3")
+;;
 
 let debug = Printf.eprintf;;

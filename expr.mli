@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.15 2006-07-20 13:19:21 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.16 2008-08-26 13:47:41 doligez Exp $  *)
 
 type private_info;;
 
@@ -25,7 +25,7 @@ type expr = private
 ;;
 
 type definition =
-  | DefReal of string * expr list * expr
+  | DefReal of string * string * expr list * expr
   | DefPseudo of (expr * int) * string * expr list * expr
 ;;
 
@@ -85,6 +85,8 @@ val occurs_as_meta : expr -> expr -> bool;;
 (* [occurs e1 e2] returns true if [Emeta (e1, _)] occurs in [e2] *)
 
 val substitute : (expr * expr) list -> expr -> expr;;
+val substitute_2nd : (expr * expr) list -> expr -> expr;;
+exception Higher_order;;
 
 val newvar : unit -> expr;;
 val newname : unit -> string;;

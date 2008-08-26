@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.12 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.13 2008-08-26 13:47:41 doligez Exp $";;
 
 open Expr;;
 
@@ -172,7 +172,7 @@ let rec xseparate deps multi defs hyps l =
 let change_to_def body =
   if is_def [] body then begin
     match make_def (body, 0) [] body with
-    | DefPseudo (_, s, args, def) -> DefReal (s, args, def)
+    | DefPseudo (_, s, args, def) -> DefReal ("", s, args, def)
     | _ -> assert false
   end else begin
     raise (Invalid_argument "change_to_def")

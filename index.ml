@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.8 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.9 2008-08-26 13:47:41 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -307,14 +307,14 @@ let defs = (Hashtbl.create tblsize : (string, definition) Hashtbl.t);;
 
 let add_def d =
   match d with
-  | DefReal (s, a, e) -> Hashtbl.add defs s d;
+  | DefReal (_, s, a, e) -> Hashtbl.add defs s d;
   | DefPseudo (h, s, a, e) -> Hashtbl.add defs s d;
 ;;
 let has_def s = Hashtbl.mem defs s;;
 let get_def s =
   let d = Hashtbl.find defs s in
   match d with
-  | DefReal (s, params, body) -> (d, params, body)
+  | DefReal (_, s, params, body) -> (d, params, body)
   | DefPseudo (hyp, s, params, body) -> (d, params, body)
 ;;
 

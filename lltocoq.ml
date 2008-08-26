@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.34 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.35 2008-08-26 13:47:41 doligez Exp $";;
 
 open Printf;;
 
@@ -261,7 +261,7 @@ let p_rule oc r =
       let h1 = getname (enot e) in
       poc "exact (%s %s).\n" h1 h0;
       0
-  | Rdefinition (s, c, h) ->
+  | Rdefinition (_, s, c, h) ->
       poc "assert (%s : %a). exact %s.\n" (getname h) p_expr h (getname c);
       0
   | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.24 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.25 2008-08-26 13:47:41 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -132,6 +132,10 @@ let make_inequals l1 l2 = Array.of_list (make_inequals_aux l1 l2);;
 
 let arity_warning s =
   Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
+;;
+
+let higher_order_warning s =
+  Error.warn (sprintf "symbol %s is used higher-order substitution" s);
 ;;
 
 let make_notequiv st sym (p, g) (np, ng) =
@@ -414,7 +418,7 @@ let newnodes_unfold st fm g =
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = substitute subst body in
+        let unfolded = substitute_2nd subst body in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
@@ -423,6 +427,7 @@ let newnodes_unfold st fm g =
             nbranches = [| [unfolded] |];
         }, true
       with
+      | Higher_order -> higher_order_warning p; (st, false)
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
       | Not_found -> assert false
       end
@@ -430,7 +435,7 @@ let newnodes_unfold st fm g =
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (substitute subst body) in
+        let unfolded = enot (substitute_2nd subst body) in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
@@ -439,6 +444,7 @@ let newnodes_unfold st fm g =
             nbranches = [| [unfolded] |];
         }, true
       with
+      | Higher_order -> higher_order_warning p; (st, false)
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
       | Not_found -> assert false
       end
@@ -446,7 +452,7 @@ let newnodes_unfold st fm g =
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = eapp (s, [substitute subst body; e]) in
+        let unfolded = eapp (s, [substitute_2nd subst body; e]) in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
@@ -455,6 +461,7 @@ let newnodes_unfold st fm g =
             nbranches = [| [unfolded] |];
         }, true
       with
+      | Higher_order -> higher_order_warning p; (st, false)
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
       | Not_found -> assert false
       end
@@ -462,7 +469,7 @@ let newnodes_unfold st fm g =
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = eapp (s, [e; substitute subst body]) in
+        let unfolded = eapp (s, [e; substitute_2nd subst body]) in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
@@ -471,6 +478,7 @@ let newnodes_unfold st fm g =
             nbranches = [| [unfolded] |];
         }, true
       with
+      | Higher_order -> higher_order_warning p; (st, false)
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
       | Not_found -> assert false
       end
@@ -479,7 +487,7 @@ let newnodes_unfold st fm g =
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (eapp (s, [substitute subst body; e])) in
+        let unfolded = enot (eapp (s, [substitute_2nd subst body; e])) in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
@@ -488,6 +496,7 @@ let newnodes_unfold st fm g =
             nbranches = [| [unfolded] |];
         }, true
       with
+      | Higher_order -> higher_order_warning p; (st, false)
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
       | Not_found -> assert false
       end
@@ -496,7 +505,7 @@ let newnodes_unfold st fm g =
       begin try
         let (d, params, body) = Index.get_def p in
         let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (eapp (s, [e; substitute subst body])) in
+        let unfolded = enot (eapp (s, [e; substitute_2nd subst body])) in
         add_node st {
             nconc = [fm];
             nrule = Definition (d, fm, unfolded);
@@ -505,6 +514,7 @@ let newnodes_unfold st fm g =
             nbranches = [| [unfolded] |];
         }, true
       with
+      | Higher_order -> higher_order_warning p; (st, false)
       | Invalid_argument "List.map2" -> arity_warning p; (st, false)
       | Not_found -> assert false
       end

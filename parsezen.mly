@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.8 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.9 2008-08-26 13:47:41 doligez Exp $";;
 
 open Printf;;
 
@@ -85,8 +85,8 @@ file:
 ;
 
 phrase:
-  | DEF OPEN IDENT ident_list CLOSE expr
-      { let idl = List.map evar $4 in Def (DefReal ($3, idl, $6)) }
+  | DEF hyp_name OPEN IDENT ident_list CLOSE expr
+      { let idl = List.map evar $5 in Def (DefReal ($2, $4, idl, $7)) }
   | HYP int_opt hyp_name expr
       { Hyp ($3, $4, $2) }
   | GOAL expr

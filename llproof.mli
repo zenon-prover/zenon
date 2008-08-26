@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.10 2006-06-22 17:09:40 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.11 2008-08-26 13:47:41 doligez Exp $  *)
 
 open Expr;;
 
@@ -187,13 +187,13 @@ type rule =
 
      ********************)
 
-  | Rdefinition of string * expr * expr
+  | Rdefinition of string * string * expr * expr
     (*
         H
-       --- Rdefinition (sym, C, H)
+       --- Rdefinition (name, sym, C, H)
         C
 
-       Si on peut passer de C a H en depliant la definition de sym.
+       Si on peut passer de C a H en depliant la definition "name" de sym.
 
      ********************)
 

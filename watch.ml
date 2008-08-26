@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.9 2006-07-20 13:19:21 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.10 2008-08-26 13:47:41 doligez Exp $";;
 
 open Printf;;
 
@@ -17,7 +17,7 @@ let add n = if not (test n) then Hashtbl.add used n ();;
 
 let add_def p =
   match p.rule with
-  | Rdefinition (s, _, _) -> add s
+  | Rdefinition (_, s, _, _) -> add s
   | _ -> ()
 ;;
 
@@ -42,7 +42,8 @@ let dowarn kind name =
 let check (p, dep) =
   match p with
   | Phrase.Hyp (name, _, _) when not (test name) -> dowarn "hypothesis" name
-  | Phrase.Def (DefReal (s, _, _)) when not (test s) -> dowarn "definition" s
+  | Phrase.Def (DefReal (_, s, _, _)) when not (test s) ->
+     dowarn "definition" s
   | _ -> ()
 ;;
 
@@ -85,7 +86,7 @@ let warn_unused_var phr_dep =
   let f (p, _) =
     match p with
     | Phrase.Hyp (name, e, _) -> check_unused name e
-    | Phrase.Def (DefReal (name, _, body)) -> check_unused name body
+    | Phrase.Def (DefReal (_, name, _, body)) -> check_unused name body
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig _ -> ()
     | Phrase.Inductive _ -> ()

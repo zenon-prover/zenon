@@ -1,14 +1,10 @@
-(*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.18 2008-08-26 13:47:41 doligez Exp $";;
+(*  Copyright 2008 INRIA  *)
+Version.add "$Id: ext_focal.ml,v 1.1 2008-08-26 13:47:41 doligez Exp $";;
 
-(* Extension for Coq's "bool" type. *)
-(* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
+(* Extension for Coq's "bool" type, as used in focal. *)
+(* Symbols: Is_true, basics.not_b; basics.and_b; basics.or_b; basics.xor_b
    false, true, (__g_ifthenelse _)
  *)
-
-(* FIXME TODO:
-   warning s'il y a une definition de Is_true, __g_and_b, etc.
-*)
 
 open Printf;;
 
@@ -44,74 +40,74 @@ let isfalse e = enot (eapp ("Is_true", [e]));;
 
 let newnodes_istrue e g =
   match e with
-  | Eapp ("Is_true**__g_and_b", [e1; e2], _) ->
+  | Eapp ("Is_true**basics.and_b", [e1; e2], _) ->
       let branches = [| [eand (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "and", [e1; e2]);
+        nrule = Ext ("focal", "and", [e1; e2]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**__g_or_b", [e1; e2], _) ->
+  | Eapp ("Is_true**basics.or_b", [e1; e2], _) ->
       let branches = [| [eor (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "or", [e1; e2]);
+        nrule = Ext ("focal", "or", [e1; e2]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**__g_xor_b", [e1; e2], _) ->
+  | Eapp ("Is_true**basics.xor_b", [e1; e2], _) ->
       let branches = [| [enot (eequiv (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "xor", [e1; e2]);
+        nrule = Ext ("focal", "xor", [e1; e2]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**__g_not_b", [e1], _) ->
+  | Eapp ("Is_true**basics.not_b", [e1], _) ->
       let branches = [| [isfalse e1] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "not", [e1]);
+        nrule = Ext ("focal", "not", [e1]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_and_b", [e1; e2], _), _) ->
+  | Enot (Eapp ("Is_true**basics.and_b", [e1; e2], _), _) ->
       let branches = [| [enot (eand (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "notand", [e1; e2]);
+        nrule = Ext ("focal", "notand", [e1; e2]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_or_b", [e1; e2], _), _) ->
+  | Enot (Eapp ("Is_true**basics.or_b", [e1; e2], _), _) ->
       let branches = [| [enot (eor (istrue e1, istrue e2))] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "notor", [e1; e2]);
+        nrule = Ext ("focal", "notor", [e1; e2]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_xor_b", [e1; e2], _), _) ->
+  | Enot (Eapp ("Is_true**basics.xor_b", [e1; e2], _), _) ->
       let branches = [| [eequiv (istrue e1, istrue e2)] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "notxor", [e1; e2]);
+        nrule = Ext ("focal", "notxor", [e1; e2]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**__g_not_b", [e1], _), _) ->
+  | Enot (Eapp ("Is_true**basics.not_b", [e1], _), _) ->
       let branches = [| [istrue e1] |] in
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "notnot", [e1]);
+        nrule = Ext ("focal", "notnot", [e1]);
         nprio = Arity;
         ngoal = g;
         nbranches = branches;
@@ -122,7 +118,7 @@ let newnodes_istrue e g =
   | Eapp ("Is_true", [Evar ("false", _)], _) ->
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "false", []);
+        nrule = Ext ("focal", "false", []);
         nprio = Arity;
         ngoal = g;
         nbranches = [| |];
@@ -130,7 +126,7 @@ let newnodes_istrue e g =
   | Enot (Eapp ("Is_true", [Evar ("true", _)], _), _) ->
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "nottrue", []);
+        nrule = Ext ("focal", "nottrue", []);
         nprio = Arity;
         ngoal = g;
         nbranches = [| |];
@@ -140,7 +136,7 @@ let newnodes_istrue e g =
   | Eapp ("=", [Evar ("true", _); Evar ("false", _)], _) ->
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "truefalse", []);
+        nrule = Ext ("focal", "truefalse", []);
         nprio = Arity;
         ngoal = g;
         nbranches = [| |];
@@ -148,7 +144,7 @@ let newnodes_istrue e g =
   | Eapp ("=", [Evar ("false", _); Evar ("true", _)], _) ->
       [ Node {
         nconc = [e];
-        nrule = Ext ("coqbool", "falsetrue", []);
+        nrule = Ext ("focal", "falsetrue", []);
         nprio = Arity;
         ngoal = g;
         nbranches = [| |];
@@ -195,7 +191,7 @@ let newnodes_istrue e g =
       let branches = [| [eapp ("Is_true**" ^ s, args)] |] in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "merge", []);
+          nrule = Ext ("focal", "merge", []);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -205,7 +201,7 @@ let newnodes_istrue e g =
       let branches = [| [eapp ("Is_true", [eapp (ss, args)])] |] in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "split", []);
+          nrule = Ext ("focal", "split", []);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -214,7 +210,7 @@ let newnodes_istrue e g =
       let branches = [| [enot (eapp ("Is_true**" ^ s, args))] |] in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "merge", []);
+          nrule = Ext ("focal", "merge", []);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -224,7 +220,7 @@ let newnodes_istrue e g =
       let branches = [| [enot (eapp ("Is_true", [eapp (ss, args)]))] |] in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "split", []);
+          nrule = Ext ("focal", "split", []);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -242,7 +238,7 @@ let newnodes_ifthenelse e g =
       let branches = ite_branches istrue cond thn els in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "ite_bool", [cond; thn; els]);
+          nrule = Ext ("focal", "ite_bool", [cond; thn; els]);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -251,7 +247,7 @@ let newnodes_ifthenelse e g =
       let branches = ite_branches isfalse cond thn els in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "ite_bool_n", [cond; thn; els]);
+          nrule = Ext ("focal", "ite_bool_n", [cond; thn; els]);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -262,7 +258,7 @@ let newnodes_ifthenelse e g =
       let branches = ite_branches pat cond thn els in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "ite_rel_l", [e]);
+          nrule = Ext ("focal", "ite_rel_l", [e]);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -273,7 +269,7 @@ let newnodes_ifthenelse e g =
       let branches = ite_branches pat cond thn els in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "ite_rel_r", [e]);
+          nrule = Ext ("focal", "ite_rel_r", [e]);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -284,7 +280,7 @@ let newnodes_ifthenelse e g =
       let branches = ite_branches pat cond thn els in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "ite_rel_nl", [e]);
+          nrule = Ext ("focal", "ite_rel_nl", [e]);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -295,7 +291,7 @@ let newnodes_ifthenelse e g =
       let branches = ite_branches pat cond thn els in
       [ Node {
           nconc = [e];
-          nrule = Ext ("coqbool", "ite_rel_nr", [e]);
+          nrule = Ext ("focal", "ite_rel_nr", [e]);
           nprio = Arity;
           ngoal = g;
           nbranches = branches;
@@ -309,50 +305,50 @@ let to_llargs tr_prop tr_term r =
   match r with
   | Ext (_, "and", [e1; e2]) ->
       let h = tr_prop (eand (istrue e1, istrue e2)) in
-      let c = tr_prop (istrue (eapp ("__g_and_b", [e1; e2]))) in
-      ("zenon_coqbool_and", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let c = tr_prop (istrue (eapp ("basics.and_b", [e1; e2]))) in
+      ("zenon_focal_and", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "or", [e1; e2]) ->
       let h = tr_prop (eor (istrue e1, istrue e2)) in
-      let c = tr_prop (istrue (eapp ("__g_or_b", [e1; e2]))) in
-      ("zenon_coqbool_or", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let c = tr_prop (istrue (eapp ("basics.or_b", [e1; e2]))) in
+      ("zenon_focal_or", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "xor", [e1; e2]) ->
       let h = tr_prop (enot (eequiv (istrue e1, istrue e2))) in
-      let c = tr_prop (istrue (eapp ("__g_xor_b", [e1; e2]))) in
-      ("zenon_coqbool_xor", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let c = tr_prop (istrue (eapp ("basics.xor_b", [e1; e2]))) in
+      ("zenon_focal_xor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "not", [e1]) ->
       let h = tr_prop (enot (istrue e1)) in
-      let c = tr_prop (istrue (eapp ("__g_not_b", [e1]))) in
-      ("zenon_coqbool_not", [tr_term e1], [c], [ [h] ])
+      let c = tr_prop (istrue (eapp ("basics.not_b", [e1]))) in
+      ("zenon_focal_not", [tr_term e1], [c], [ [h] ])
   | Ext (_, "notand", [e1; e2]) ->
       let h = tr_prop (enot (eand (istrue e1, istrue e2))) in
-      let c = tr_prop (enot (istrue (eapp ("__g_and_b", [e1; e2])))) in
-      ("zenon_coqbool_notand", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let c = tr_prop (enot (istrue (eapp ("basics.and_b", [e1; e2])))) in
+      ("zenon_focal_notand", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "notor", [e1; e2]) ->
       let h = tr_prop (enot (eor (istrue e1, istrue e2))) in
-      let c = tr_prop (enot (istrue (eapp ("__g_or_b", [e1; e2])))) in
-      ("zenon_coqbool_notor", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let c = tr_prop (enot (istrue (eapp ("basics.or_b", [e1; e2])))) in
+      ("zenon_focal_notor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "notxor", [e1; e2]) ->
       let h = tr_prop (eequiv (istrue e1, istrue e2)) in
-      let c = tr_prop (enot (istrue (eapp ("__g_xor_b", [e1; e2])))) in
-      ("zenon_coqbool_notxor", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let c = tr_prop (enot (istrue (eapp ("basics.xor_b", [e1; e2])))) in
+      ("zenon_focal_notxor", [tr_term e1; tr_term e2], [c], [ [h] ])
   | Ext (_, "notnot", [e1]) ->
       let h = tr_prop (istrue e1) in
-      let c = tr_prop (enot (istrue (eapp ("__g_not_b", [e1])))) in
-      ("zenon_coqbool_notnot", [tr_term e1], [c], [ [h] ])
+      let c = tr_prop (enot (istrue (eapp ("basics.not_b", [e1])))) in
+      ("zenon_focal_notnot", [tr_term e1], [c], [ [h] ])
   | Ext (_, "false", []) ->
       let c = tr_prop (istrue (evar "false")) in
-      ("zenon_coqbool_false", [], [c], []);
+      ("zenon_focal_false", [], [c], []);
   | Ext (_, "nottrue", []) ->
       let c = tr_prop (enot (istrue (evar "true"))) in
-      ("zenon_coqbool_nottrue", [], [c], []);
+      ("zenon_focal_nottrue", [], [c], []);
   | Ext (_, "falsetrue", []) ->
       let c = tr_prop (eapp ("=", [evar "false"; evar "true"])) in
-      ("zenon_coqbool_falsetrue", [], [c], []);
+      ("zenon_focal_falsetrue", [], [c], []);
   | Ext (_, "truefalse", []) ->
       let c = tr_prop (eapp ("=", [evar "true"; evar "false"])) in
-      ("zenon_coqbool_truefalse", [], [c], []);
-  | Ext (_, "merge", _) -> ("zenon_coqbool_merge", [], [], [])
-  | Ext (_, "split", _) -> ("zenon_coqbool_split", [], [], [])
+      ("zenon_focal_truefalse", [], [c], []);
+  | Ext (_, "merge", _) -> ("zenon_focal_merge", [], [], [])
+  | Ext (_, "split", _) -> ("zenon_focal_split", [], [], [])
 
   | Ext (_, "ite_bool", ([cond; thn; els] as args)) ->
       let ht1 = tr_prop (istrue cond) in
@@ -361,7 +357,7 @@ let to_llargs tr_prop tr_term r =
       let he2 = tr_prop (istrue els) in
       let c = tr_prop (istrue (eapp ("(__g_ifthenelse _)", [cond; thn; els])))
       in
-      ("zenon_coqbool_ite_bool", List.map tr_term args, [c],
+      ("zenon_focal_ite_bool", List.map tr_term args, [c],
        [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_bool_n", ([cond; thn; els] as args)) ->
       let ht1 = tr_prop (istrue cond) in
@@ -370,7 +366,7 @@ let to_llargs tr_prop tr_term r =
       let he2 = tr_prop (isfalse els) in
       let c = tr_prop (isfalse (eapp ("(__g_ifthenelse _)", [cond; thn; els])))
       in
-      ("zenon_coqbool_ite_bool_n", List.map tr_term args, [c],
+      ("zenon_focal_ite_bool_n", List.map tr_term args, [c],
        [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_l",
          [Eapp (r, [Eapp ("(__g_ifthenelse _)", [c; t; e], _); e2], _) as a])
@@ -382,7 +378,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_coqbool_ite_rel_l", List.map tr_term [rf; c; t; e; e2],
+      ("zenon_focal_ite_rel_l", List.map tr_term [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_r",
          [Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [c; t; e], _)], _) as a])
@@ -394,7 +390,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_coqbool_ite_rel_r", List.map tr_term [rf; e1; c; t; e],
+      ("zenon_focal_ite_rel_r", List.map tr_term [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nl",
          [Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)",
@@ -407,7 +403,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_coqbool_ite_rel_nl", List.map tr_term [rf; c; t; e; e2],
+      ("zenon_focal_ite_rel_nl", List.map tr_term [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nr",
          [Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)",
@@ -420,7 +416,7 @@ let to_llargs tr_prop tr_term r =
       let concl = tr_prop a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_coqbool_ite_rel_nr", List.map tr_term [rf; e1; c; t; e],
+      ("zenon_focal_ite_rel_nr", List.map tr_term [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | _ -> assert false
 ;;
@@ -521,8 +517,8 @@ let rec process_prooftree p =
         hyps = [step1];
       } in
       step2
-  | Rextension ("zenon_coqbool_merge", _, _, _)
-  | Rextension ("zenon_coqbool_split", _, _, _)
+  | Rextension ("zenon_focal_merge", _, _, _)
+  | Rextension ("zenon_focal_split", _, _, _)
     -> begin match phyps with
        | [ p ] -> p
        | _ -> assert false
@@ -558,14 +554,15 @@ let process_lemma l = { l with proof = process_prooftree l.proof };;
 let postprocess p = List.map process_lemma p;;
 
 let declare_context_coq oc =
-  fprintf oc "Require Import zenon_coqbool.\n";
-  ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b";
+  fprintf oc "Require Import zenon_focal.\n";
+  ["bool"; "Is_true"; "basics.not_b"; "basics.and_b"; "basics.or_b";
+   "basics.xor_b";
    "true"; "false"; "(__g_ifthenelse _)" ;
   ]
 ;;
 
 Extension.register {
-  Extension.name = "coqbool";
+  Extension.name = "focal";
   Extension.newnodes = newnodes;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
