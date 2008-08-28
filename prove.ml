@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.25 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.26 2008-08-28 12:57:05 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -729,7 +729,7 @@ let newnodes_match_trans st fm g =
         List.map (mknode_transeq true fmg) matches_rl;
         List.map (mknode_transeq false fmg) matches_rr;
       ] in
-      add_node_list st nodes, true
+      add_node_list st nodes, false
   | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
       Index.add_trans fm;
       let h1 = Index.get_head e1 in
@@ -748,7 +748,7 @@ let newnodes_match_trans st fm g =
         List.map (mknode_trans true fmg) matches_rl;
         List.map (mknode_trans false fmg) matches_rr;
       ] in
-      add_node_list st nodes, true
+      add_node_list st nodes, false
   | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
       Index.add_negtrans fm;
       let h1 = Index.get_head e1 in
@@ -780,7 +780,7 @@ let newnodes_match_trans st fm g =
           List.map (mknode_negtranseq false fmg) eqmatches_rr;
         ]
       in
-      add_node_list st (eqnodes @@ nodes), true
+      add_node_list st (eqnodes @@ nodes), false
   | _ -> st, false
 ;;
 

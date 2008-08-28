@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.3 2008-08-28 10:23:51 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.4 2008-08-28 12:57:05 doligez Exp $";;
 
 open Printf;;
 
@@ -44,7 +44,7 @@ let base36 x =
   end
 ;;
 
-let getname e = "z_" ^ (base36 (Index.get_number e));;
+let getname e = "z_H" ^ (base36 (Index.get_number e));;
 
 let apply lam arg =
   match lam with
@@ -134,7 +134,7 @@ let p_is dict oc h =
       fprintf oc "\n";
       dict
     end else begin
-      fprintf oc "(is \"%s%s%s%s%s\")\n"
+      fprintf oc " (is \"%s%s%s%s%s\")\n"
               pre (mk_pat dict n1) op (mk_pat dict n2) post;
       dict_addlist [n1; n2] dict
     end
@@ -145,7 +145,7 @@ let p_is dict oc h =
       fprintf oc "\n";
       dict
     end else begin
-      fprintf oc "(is \"%s%s%s\")\n" pre (mk_pat dict n) post;
+      fprintf oc " (is \"%s%s%s\")\n" pre (mk_pat dict n) post;
       dict_add n dict
     end
   in
@@ -265,7 +265,7 @@ let rec p_tree i dict oc proof =
      let n_c = getname conc in
      iprintf (iinc i) oc "have %s_%s: \"%a == %a\"" n_hyp n_conc
              (p_expr dict) hyp (p_expr dict) conc;
-     fprintf oc "(is \"%s == %s\")\n" (mk_pat dict n_h) (mk_pat dict n_c);
+     fprintf oc " (is \"%s == %s\")\n" (mk_pat dict n_h) (mk_pat dict n_c);
      let dict2 = dict_addlist [n_h; n_c] dict in
      iprintf (iinc i) oc "by (unfold %s)\n" name;
      iprintf (iinc i) oc "have %s: \"%a\"" n_hyp (p_expr dict2) hyp;
@@ -288,11 +288,11 @@ let rec p_tree i dict oc proof =
      let neq = enot (eapp ("=", [e1; e1])) in
      let n_neq = getname neq in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule zenon_noteq[OF %s])\n" n_neq;
+     iprintf i oc "by (rule zenon_noteq [OF %s])\n" n_neq;
   | Rnottrue ->
      let nh = getname (enot etrue) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule zenon_nottrue[OF %s])\n" nh;
+     iprintf i oc "by (rule zenon_nottrue [OF %s])\n" nh;
   | Rfalse ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s)\n" (getname efalse);
@@ -303,7 +303,7 @@ and p_alpha i dict oc lem h0 hs sub =
   let pr_h (dict, j) h =
     iprintf i oc "have %s: \"%a\"" (getname h) (p_expr dict) h;
     let dict2 = p_is dict oc h in
-    iprintf i oc "by (rule zenon_%s_%d[OF %s])\n" lem j n_h0;
+    iprintf i oc "by (rule zenon_%s_%d [OF %s])\n" lem j n_h0;
     (dict2, j+1)
   in
   let (dict3, _) = List.fold_left pr_h (dict, 0) hs in
@@ -312,7 +312,7 @@ and p_alpha i dict oc lem h0 hs sub =
 and p_beta i dict oc lem h0 hs sub =
   let n0 = getname h0 in
   iprintf i oc "show FALSE\n";
-  iprintf i oc "proof (rule zenon_%s[OF %s])\n" lem n0;
+  iprintf i oc "proof (rule zenon_%s [OF %s])\n" lem n0;
   let rec p_sub dict l1 l2 =
     match l1, l2 with
     | h::hs, t::ts ->
@@ -332,7 +332,7 @@ and p_gamma i dict oc lem neg lam e conc sub =
   let n_body = getname body in
   iprintf i oc "have %s: \"%s%a\"" n_body negs (p_apply dict) (lam, e);
   let dict2 = p_is dict oc body in
-  iprintf i oc "by (rule zenon_%s_0[of \"%a\" \"%a\"], fact %s)\n"
+  iprintf i oc "by (rule zenon_%s_0 [of \"%a\" \"%a\"], fact %s)\n"
           lem (p_expr dict2) lam (p_expr dict2) e (getname conc);
   p_tree i dict2 oc t;
 
@@ -342,7 +342,7 @@ and p_delta i dict oc lem h0 v neg lam sub =
   let h00 = ng h0 in
   let n00 = getname h00 in
   iprintf i oc "show FALSE\n";
-  iprintf i oc "proof (rule zenon_%s[OF %s])\n" lem n00;
+  iprintf i oc "proof (rule zenon_%s [OF %s])\n" lem n00;
   iprintf (iinc i) oc "fix %s\n" v;
   let h =
     match lam with
@@ -441,20 +441,21 @@ let p_theorem oc thm phrases lemmas =
   in
   let hyps = List.filter (fun x -> x <> ngoal) thm.proof.conc in
   let hypnames = mk_hyp_table phrases in
+  iprintf 0 oc "proof (rule zenon_nnpp)\n";
+  let i = iinc 0 in
   let p_asm dict x =
-    iprintf 1 oc "have %s:\"%a\"" (getname x) (p_expr dict) x;
+    iprintf i oc "have %s:\"%a\"" (getname x) (p_expr dict) x;
     let dict2 = p_is dict oc x in
     begin match HE.find hypnames x with
-    | "" -> iprintf 1 oc "by fact\n"
-    | n -> iprintf 1 oc "by blast\n"
+    | "" -> iprintf i oc "by fact\n"
+    | n -> iprintf i oc "by blast\n"
     end;
     dict2
   in
-  iprintf 0 oc "proof (rule zenon_nnpp)\n";
   let dict3 = List.fold_left p_asm dict_empty hyps in
-  List.iter (p_lemma 1 dict_empty oc) lemmas;
-  let dict4 = p_sequent 1 dict3 oc [enot (goal)] in
-  p_tree 1 dict4 oc thm.proof;
+  List.iter (p_lemma i dict_empty oc) lemmas;
+  let dict4 = p_sequent i dict3 oc [enot (goal)] in
+  p_tree i dict4 oc thm.proof;
   iprintf 0 oc "qed\n";
 ;;
 
