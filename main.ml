@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.42 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.43 2008-08-28 10:23:51 doligez Exp $";;
 
 open Printf;;
 
@@ -194,23 +194,49 @@ let report_error lexbuf msg =
   exit 2;
 ;;
 
+let make_lexbuf stdin_opt f =
+  let (name, chan, close) =
+    match f with
+    | "-" when stdin_opt -> ("", stdin, ignore)
+    | _ -> (f, open_in f, close_in)
+  in
+  let lexbuf = Lexing.from_channel chan in
+  lexbuf.Lexing.lex_curr_p <- {
+     Lexing.pos_fname = name;
+     Lexing.pos_lnum = 1;
+     Lexing.pos_bol = 0;
+     Lexing.pos_cnum = 0;
+  };
+  (lexbuf, fun () -> close chan)
+;;
+
+let zparse_file f =
+  let (lexbuf, closer) = make_lexbuf false f in
+  let result = Parsezen.file Lexzen.token lexbuf in
+  closer ();
+  result
+;;
+
+let rec expand_includes incpath zphrases =
+  let exp p =
+    match p with
+    | Phrase.Zhyp (s,e,i) -> [Phrase.Hyp (s,e,i)]
+    | Phrase.Zdef (d) -> [Phrase.Def (d)]
+    | Phrase.Zsig (s,l,t) -> [Phrase.Sig (s,l,t)]
+    | Phrase.Zinductive (s,l) -> [Phrase.Inductive (s,l)]
+    | Phrase.Zinclude f -> expand_includes incpath (zparse_file f)
+  in
+  List.concat (List.map exp zphrases)
+;;
+
 let parse_file f =
   try
-    let (name, chan, close) =
-      if f = "-" then ("", stdin, ignore) else (f, open_in f, close_in)
-    in
-    let lexbuf = Lexing.from_channel chan in
-    lexbuf.Lexing.lex_curr_p <- {
-       Lexing.pos_fname = name;
-       Lexing.pos_lnum = 1;
-       Lexing.pos_bol = 0;
-       Lexing.pos_cnum = 0;
-    };
+    let (lexbuf, closer) = make_lexbuf true f in
     try
       match !input_format with
       | I_tptp ->
           let tpphrases = Parsetptp.file Lextptp.token lexbuf in
-          close chan;
+          closer ();
           let d = Filename.dirname f in
           let pp = Filename.parent_dir_name in
           let upup = Filename.concat (Filename.concat d pp) pp in
@@ -219,11 +245,13 @@ let parse_file f =
           (name, List.map (fun x -> (x, false)) forms)
       | I_focal ->
           let (name, result) = Parsecoq.file Lexcoq.token lexbuf in
-          close chan;
+          closer ();
           (name, result)
       | I_zenon ->
-          let phrases = Parsezen.file Lexzen.token lexbuf in
-          close chan;
+          let zphrases = Parsezen.file Lexzen.token lexbuf in
+          closer ();
+          let incpath = List.rev (Filename.dirname f :: !include_path) in
+          let phrases = expand_includes incpath zphrases in
           let result = List.map (fun x -> (x, false)) phrases in
           let is_goal = function
             | (Phrase.Hyp (name, _, _), _) -> name = goal_name

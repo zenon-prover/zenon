@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.1 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.2 2008-08-28 10:23:51 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -52,7 +52,7 @@ let to_llargs tr_prop tr_term r =
   | Ext (_, "in_subsetof", [e1; s; Elam (v, _, p, _) as pred]) ->
       let h1 = tr_prop (eapp ("TLA.in", [e1; s])) in
       let h2 = tr_prop (substitute [(v, e1)] p) in
-      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.subsetOf", [s; pred])]))
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("subsetOf", [s; pred])]))
       in
       ("subsetOfE", [tr_term e1; tr_term s; tr_term pred; tr_term efalse],
        [c], [ [h1; h2] ])
@@ -60,7 +60,7 @@ let to_llargs tr_prop tr_term r =
       let h1 = tr_prop (enot (eapp ("TLA.in", [e1; s]))) in
       let h2 = tr_prop (enot (substitute [(v, e1)] p)) in
       let c = tr_prop (enot (eapp ("TLA.in",
-                                   [e1; eapp ("TLA.subsetOf", [s; pred])])))
+                                   [e1; eapp ("subsetOf", [s; pred])])))
       in
       ("zenon_notin_subsetof", [tr_term e1; tr_term s; tr_term pred],
        [c], [ [h1]; [h2] ])

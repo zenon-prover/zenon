@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.8 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.9 2008-08-28 10:23:51 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;
@@ -41,6 +41,7 @@ rule token = parse
   | "$let"      { LET }
   | "$match"    { MATCH }
   | "$sig"      { SIG }
+  | "$include"  { INCLUDE }
 
   | "-."        { NOT }
   | "/\\"       { AND }

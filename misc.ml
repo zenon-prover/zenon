@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.8 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.9 2008-08-28 10:23:51 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -63,6 +63,13 @@ let rec list_iter3 f l1 l2 l3 =
   | h1 :: t1, h2 :: t2, h3 :: t3 -> f h1 h2 h3; list_iter3 f t1 t2 t3
   | [], [], [] -> ()
   | _, _, _ -> raise (Invalid_argument "list_iter3")
+;;
+
+let rec list_fold_left3 f a l1 l2 l3 =
+  match l1, l2, l3 with
+  | h1 :: t1, h2 :: t2, h3 :: t3 -> list_fold_left3 f (f a h1 h2 h3) t1 t2 t3
+  | [], [], [] -> a
+  | _ -> raise (Invalid_argument "list_fold_left3")
 ;;
 
 let debug = Printf.eprintf;;

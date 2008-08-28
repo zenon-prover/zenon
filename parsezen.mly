@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.9 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.10 2008-08-28 10:23:51 doligez Exp $";;
 
 open Printf;;
 
@@ -62,6 +62,7 @@ let gen_hyp_name () =
 %token GOAL
 %token HYP
 %token IMPLY
+%token INCLUDE
 %token INDSET
 %token INDPROP
 %token LAMBDA
@@ -75,7 +76,7 @@ let gen_hyp_name () =
 %token TRUE
 
 %start file
-%type <Phrase.phrase list> file
+%type <Phrase.zphrase list> file
 
 %%
 
@@ -86,15 +87,17 @@ file:
 
 phrase:
   | DEF hyp_name OPEN IDENT ident_list CLOSE expr
-      { let idl = List.map evar $5 in Def (DefReal ($2, $4, idl, $7)) }
+      { let idl = List.map evar $5 in Zdef (DefReal ($2, $4, idl, $7)) }
   | HYP int_opt hyp_name expr
-      { Hyp ($3, $4, $2) }
+      { Zhyp ($3, $4, $2) }
   | GOAL expr
-      { Hyp (goal_name, enot $2, 0) }
+      { Zhyp (goal_name, enot $2, 0) }
   | SIG IDENT OPEN string_list CLOSE STRING
-      { Sig ($2, $4, $6) }
+      { Zsig ($2, $4, $6) }
   | INDSET IDENT OPEN constr_list CLOSE
-      { Inductive ($2, $4) }
+      { Zinductive ($2, $4) }
+  | INCLUDE STRING
+      { Zinclude ($2) }
 ;
 
 expr:

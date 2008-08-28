@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: phrase.mli,v 1.9 2008-08-14 14:02:09 doligez Exp $  *)
+(*  $Id: phrase.mli,v 1.10 2008-08-28 10:23:51 doligez Exp $  *)
 
 open Expr;;
 
@@ -8,6 +8,14 @@ type phrase =
   | Def of definition
   | Sig of string * string list * string  (* sym, args, result *)
   | Inductive of string * (string * string list) list
+;;
+
+type zphrase =
+  | Zhyp of string * expr * int
+  | Zdef of definition
+  | Zsig of string * string list * string
+  | Zinductive of string * (string * string list) list
+  | Zinclude of string
 ;;
 
 val separate : phrase list -> definition list * (expr * int) list;;
