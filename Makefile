@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.46 2008-08-26 13:47:41 doligez Exp $
+#  $Id: Makefile,v 1.47 2008-08-29 14:28:16 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -153,6 +153,7 @@ dist: ${ALLSRC}
 
 .PHONY: clean
 clean:
+	rm -f .#* config_var
 	rm -f *.cmo *.cmi *.cmx *.o *.vo *.annot *.output
 	rm -f parsezen.ml parsezen.mli lexzen.ml
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml
@@ -160,6 +161,8 @@ clean:
 	rm -f checksum.ml
 	rm -f zenon zenon.opt zenon.byt
 	rm -rf dist zenon.tar.gz
+	cd doc; make clean
+	cd test; make clean
 
 .PHONY: distclean
 distclean: clean
