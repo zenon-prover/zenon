@@ -22,3 +22,4 @@ checksum.ml
 config.ml
 dist
 zenon.tar.gz
+.svn
