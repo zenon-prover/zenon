@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.4 2008-08-28 12:57:05 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.5 2008-09-02 13:23:22 doligez Exp $";;
 
 open Printf;;
 
@@ -259,21 +259,18 @@ let rec p_tree i dict oc proof =
   | Rdefinition (name, s, conc, hyp) ->
      let n_conc = getname conc in
      let n_hyp = getname hyp in
-     iprintf i oc "show FALSE\n";
-     iprintf i oc "proof -\n";
      let n_h = getname hyp in
      let n_c = getname conc in
-     iprintf (iinc i) oc "have %s_%s: \"%a == %a\"" n_hyp n_conc
+     iprintf i oc "have %s_%s: \"%a == %a\"" n_hyp n_conc
              (p_expr dict) hyp (p_expr dict) conc;
      fprintf oc " (is \"%s == %s\")\n" (mk_pat dict n_h) (mk_pat dict n_c);
      let dict2 = dict_addlist [n_h; n_c] dict in
-     iprintf (iinc i) oc "by (unfold %s)\n" name;
-     iprintf (iinc i) oc "have %s: \"%a\"" n_hyp (p_expr dict2) hyp;
+     iprintf i oc "by (unfold %s)\n" name;
+     iprintf i oc "have %s: \"%a\"" n_hyp (p_expr dict2) hyp;
      let dict3 = p_is dict2 oc hyp in
-     iprintf (iinc i) oc "by (unfold %s_%s, fact %s)\n" n_hyp n_conc (getname conc);
+     iprintf i oc "by (unfold %s_%s, fact %s)\n" n_hyp n_conc (getname conc);
      let t = match proof.hyps with [t] -> t | _ -> assert false in
-     p_tree (iinc i) dict3 oc t;
-     iprintf i oc "qed\n";
+     p_tree i dict3 oc t;
   | Rnotequal _ -> assert false (* TODO *)
   | Rpnotp (Eapp (p, args1, _) as pp, (Enot (Eapp (q, args2, _), _) as np)) ->
      assert (p = q);
