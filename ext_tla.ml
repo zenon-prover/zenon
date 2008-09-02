@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.2 2008-08-28 10:23:51 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.3 2008-09-02 13:24:26 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -43,6 +43,24 @@ let newnodes e g =
         ngoal = g;
         nbranches = branches;
       }]
+  | Eapp ("TLA.in", [e1; Eapp ("SUBSET", [s], _)], _) ->
+     let branches = [| [eapp ("TLA.subseteq", [e1; s])] |] in
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "in_SUBSET", [e1; s]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = branches;
+     }]
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("SUBSET", [s], _)], _), _) ->
+     let branches = [| [enot (eapp ("TLA.subseteq", [e1; s]))] |] in
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "notin_SUBSET", [e1; s]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = branches;
+     }]
   | _ -> []
 ;;
 
@@ -64,6 +82,14 @@ let to_llargs tr_prop tr_term r =
       in
       ("zenon_notin_subsetof", [tr_term e1; tr_term s; tr_term pred],
        [c], [ [h1]; [h2] ])
+  | Ext (_, "in_SUBSET", [e1; s]) ->
+      let h1 = tr_prop (eapp ("TLA.subseteq", [e1; s])) in
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("SUBSET", [s])])) in
+      ("zenon_in_SUBSET", [tr_term e1; tr_term s], [c], [[h1]])
+  | Ext (_, "notin_SUBSET", [e1; s]) ->
+      let h1 = tr_prop (enot (eapp ("TLA.subseteq", [e1; s]))) in
+      let c = tr_prop (enot (eapp ("TLA.in", [e1; eapp ("SUBSET", [s])]))) in
+      ("zenon_notin_SUBSET", [tr_term e1; tr_term s], [c], [[h1]])
   | _ -> assert false
 ;;
 
