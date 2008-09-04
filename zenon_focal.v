@@ -1,15 +1,18 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_focal.v,v 1.1 2008-09-02 12:42:46 pessaux Exp $  *)
+(*  $Id: zenon_focal.v,v 1.2 2008-09-04 10:13:32 doligez Exp $  *)
 
 Require Export Bool.
 
-Definition __g_not_b := negb.
-Definition __g_and_b := andb.
-Definition __g_or_b := orb.
-Definition __g_xor_b := xorb.
-Definition __g_ifthenelse :=
-  fun (A:Type) (cond:bool) (x y:A) => if cond then x else y
-.
+(* magic: this whole file depends on the following definitions:
+   basics.and_b := andb
+   basics.or_b := orb
+   basics.not_b := negb
+   basics.xor_b := xorb
+
+   It also relies on the fact that the Focal compiler compiles
+   "if ... then ... else ..." to Coq's "if ... then ... else ..."
+   construct.
+*)
 
 Lemma zenon_focal_false : Is_true false -> False.
 Proof.
@@ -34,29 +37,26 @@ Proof.
 Qed.
 
 Lemma zenon_focal_not :
- forall a : bool, (~ Is_true a -> False) -> Is_true (__g_not_b a) -> False.
+ forall a : bool, (~ Is_true a -> False) -> Is_true (negb a) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_not_b.
   unfold negb.
   destruct a; tauto.
 Qed.
 
 Lemma zenon_focal_notnot :
- forall a : bool, (Is_true a -> False) -> ~ Is_true (__g_not_b a) -> False.
+ forall a : bool, (Is_true a -> False) -> ~ Is_true (negb a) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_not_b.
   unfold negb.
   destruct a; tauto.
 Qed.
 
 Lemma zenon_focal_and :
  forall a b : bool,
- (Is_true a /\ Is_true b -> False) -> Is_true (__g_and_b a b) -> False.
+ (Is_true a /\ Is_true b -> False) -> Is_true (andb a b) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_and_b.
   unfold andb.
   unfold ifb.
   destruct a; tauto.
@@ -64,10 +64,9 @@ Qed.
 
 Lemma zenon_focal_notand :
  forall a b : bool,
- (~ (Is_true a /\ Is_true b) -> False) -> ~ Is_true (__g_and_b a b) -> False.
+ (~ (Is_true a /\ Is_true b) -> False) -> ~ Is_true (andb a b) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_and_b.
   unfold andb.
   unfold ifb.
   destruct a; tauto.
@@ -75,10 +74,9 @@ Qed.
 
 Lemma zenon_focal_or :
  forall a b : bool,
- (Is_true a \/ Is_true b -> False) -> Is_true (__g_or_b a b) -> False.
+ (Is_true a \/ Is_true b -> False) -> Is_true (orb a b) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_or_b.
   unfold orb.
   unfold ifb.
   destruct a; tauto.
@@ -86,10 +84,9 @@ Qed.
 
 Lemma zenon_focal_notor :
  forall a b : bool,
- (~ (Is_true a \/ Is_true b) -> False) -> ~ Is_true (__g_or_b a b) -> False.
+ (~ (Is_true a \/ Is_true b) -> False) -> ~ Is_true (orb a b) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_or_b.
   unfold orb.
   unfold ifb.
   destruct a; tauto.
@@ -97,10 +94,9 @@ Qed.
 
 Lemma zenon_focal_xor :
  forall a b : bool,
- (~ (Is_true a <-> Is_true b) -> False) -> Is_true (__g_xor_b a b) -> False.
+ (~ (Is_true a <-> Is_true b) -> False) -> Is_true (xorb a b) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_xor_b.
   unfold xorb.
   unfold ifb.
   destruct a; destruct b; tauto.
@@ -108,10 +104,9 @@ Qed.
 
 Lemma zenon_focal_notxor :
  forall a b : bool,
- ((Is_true a <-> Is_true b) -> False) -> ~ Is_true (__g_xor_b a b) -> False.
+ ((Is_true a <-> Is_true b) -> False) -> ~ Is_true (xorb a b) -> False.
 Proof.
   unfold Is_true.
-  unfold __g_xor_b.
   unfold xorb.
   unfold ifb.
   destruct a; destruct b; tauto.
@@ -121,7 +116,7 @@ Lemma zenon_focal_ite_bool :
   forall cond thn els : bool,
   (Is_true cond -> Is_true thn -> False) ->
   (~Is_true cond -> Is_true els -> False) ->
-  Is_true (__g_ifthenelse _ cond thn els) -> False.
+  Is_true (if cond then thn else els) -> False.
 Proof.
   intro cond; unfold Is_true; destruct cond; auto.
 Qed.
@@ -130,7 +125,7 @@ Lemma zenon_focal_ite_bool_n :
   forall cond thn els : bool,
   (Is_true cond -> ~Is_true thn -> False) ->
   (~Is_true cond -> ~Is_true els -> False) ->
-  ~Is_true (__g_ifthenelse _ cond thn els) -> False.
+  ~Is_true (if cond then thn else els) -> False.
 Proof.
   intro cond; unfold Is_true; destruct cond; auto.
 Qed.
@@ -139,7 +134,7 @@ Lemma zenon_focal_ite_rel_l :
   forall (A B : Type) (r: A -> B -> Prop) (cond : bool) (thn els : A) (e2 : B),
   (Is_true cond -> (r thn e2) -> False) ->
   (~Is_true cond -> (r els e2) -> False) ->
-  r (__g_ifthenelse _ cond thn els) e2 -> False.
+  r (if cond then thn else els) e2 -> False.
 Proof.
   intros A B r cond; unfold Is_true; destruct cond; auto.
 Qed.
@@ -150,7 +145,7 @@ Lemma zenon_focal_ite_rel_r :
   forall (A B : Type) (r: A -> B -> Prop) (e1 : A) (cond : bool) (thn els : B),
   (Is_true cond -> (r e1 thn) -> False) ->
   (~Is_true cond -> (r e1 els) -> False) ->
-  r e1 (__g_ifthenelse _ cond thn els) -> False.
+  r e1 (if cond then thn else els) -> False.
 Proof.
   intros A B r e1 cond; unfold Is_true; destruct cond; auto.
 Qed.
@@ -161,7 +156,7 @@ Lemma zenon_focal_ite_rel_nl :
   forall (A B : Type) (r: A -> B -> Prop) (cond : bool) (thn els : A) (e2 : B),
   (Is_true cond -> ~(r thn e2) -> False) ->
   (~Is_true cond -> ~(r els e2) -> False) ->
-  ~(r (__g_ifthenelse _ cond thn els) e2) -> False.
+  ~(r (if cond then thn else els) e2) -> False.
 Proof.
   intros A B r cond; unfold Is_true; destruct cond; auto.
 Qed.
@@ -172,14 +167,13 @@ Lemma zenon_focal_ite_rel_nr :
   forall (A B : Type) (r: A -> B -> Prop) (e1 : A) (cond : bool) (thn els : B),
   (Is_true cond -> ~(r e1 thn) -> False) ->
   (~Is_true cond -> ~(r e1 els) -> False) ->
-  ~(r e1 (__g_ifthenelse _ cond thn els)) -> False.
+  ~(r e1 (if cond then thn else els)) -> False.
 Proof.
   intros A B r e1 cond; unfold Is_true; destruct cond; auto.
 Qed.
 
 Implicit Arguments zenon_focal_ite_rel_nr [A B].
 
-(* ************************************************ *)
 
 Definition zenon_focal_false_s := zenon_focal_false.
 Definition zenon_focal_nottrue_s := zenon_focal_nottrue.

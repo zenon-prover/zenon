@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.33 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.34 2008-09-04 10:13:31 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -23,6 +23,7 @@ type coqterm =
   | Clet of string * coqterm * coqterm
   | Cwild
   | Cmatch of coqterm * (string * string list * coqterm) list
+  | Cifthenelse of coqterm * coqterm * coqterm
 ;;
 
 type coqproof =
@@ -99,6 +100,8 @@ let rec trexpr env e =
   | Emeta _ -> assert false
   | Eapp ("$match", e1 :: cases, _) ->
       Cmatch (trexpr env e1, trcases env cases)
+  | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
+      Cifthenelse (trexpr env e1, trexpr env e2, trexpr env e3)
   | Eapp (f, args, _) -> Capp (Cvar f, List.map (trexpr env) args)
   | Enot (e1, _) -> Cnot (trexpr env e1)
   | Eand (e1, e2, _) -> Cand (trexpr env e1, trexpr env e2)
@@ -478,6 +481,8 @@ let pr_oc oc prefix t =
     | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
     | Cwild -> bprintf b "_";
     | Cmatch (e, cl) -> bprintf b "match %a with %a end" pr e pr_cases cl;
+    | Cifthenelse (e1, e2, e3) ->
+       bprintf b "(if %a then %a else %a)" pr e1 pr e2 pr e3;
 
   and pr_list b l =
     let f t = bprintf b " %a" pr t; in

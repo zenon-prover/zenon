@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.35 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.36 2008-09-04 10:13:31 doligez Exp $";;
 
 open Printf;;
 
@@ -36,6 +36,8 @@ let rec p_expr oc e =
       p_expr oc (eapp ("@eq _", l));
   | Eapp ("$match", e1 :: l, _) ->
       poc "match %a with%a end" p_expr e1 p_cases l;
+  | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
+      poc "(if %a then %a else %a)" p_expr e1 p_expr e2 p_expr e3;
   | Eapp (f, l, _) ->
       poc "(%s%a)" f p_expr_list l;
   | Enot (e, _) ->

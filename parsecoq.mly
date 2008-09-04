@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.17 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.18 2008-09-04 10:13:32 doligez Exp $";;
 
 open Printf;;
 
@@ -212,7 +212,7 @@ expr:
       { eapp ("$match", $2 :: $4) }
 
   | IF expr THEN expr ELSE expr
-      { eapp ("(__g_ifthenelse _)", [$2; $4; $6]) }
+      { eapp ("FOCAL.ifthenelse", [$2; $4; $6]) }
 
   | expr DASH_GT_ expr
       { eimply ($1, $3) }
