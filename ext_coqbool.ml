@@ -1,9 +1,9 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.18 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.19 2008-09-08 13:47:15 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
-   false, true, (__g_ifthenelse _)
+   false, true, FOCAL.ifthenelse
  *)
 
 (* FIXME TODO:
@@ -238,7 +238,7 @@ let ite_branches pat cond thn els =
 
 let newnodes_ifthenelse e g =
   match e with
-  | Eapp ("Is_true**(__g_ifthenelse _)", [cond; thn; els], _) ->
+  | Eapp ("Is_true**FOCAL.ifthenelse", [cond; thn; els], _) ->
       let branches = ite_branches istrue cond thn els in
       [ Node {
           nconc = [e];
@@ -247,7 +247,7 @@ let newnodes_ifthenelse e g =
           ngoal = g;
           nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**(__g_ifthenelse _)", [cond; thn; els], _), _) ->
+  | Enot (Eapp ("Is_true**FOCAL.ifthenelse", [cond; thn; els], _), _) ->
       let branches = ite_branches isfalse cond thn els in
       [ Node {
           nconc = [e];
@@ -256,7 +256,7 @@ let newnodes_ifthenelse e g =
           ngoal = g;
           nbranches = branches;
       }; Stop ]
-  | Eapp (r, [Eapp ("(__g_ifthenelse _)", [cond; thn; els], _); e2], _)
+  | Eapp (r, [Eapp ("FOCAL.ifthenelse", [cond; thn; els], _); e2], _)
     when Eqrel.any r ->
       let pat x = eapp (r, [x; e2]) in
       let branches = ite_branches pat cond thn els in
@@ -267,7 +267,7 @@ let newnodes_ifthenelse e g =
           ngoal = g;
           nbranches = branches;
       }; Stop ]
-  | Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [cond; thn; els], _)], _)
+  | Eapp (r, [e1; Eapp ("FOCAL.ifthenelse", [cond; thn; els], _)], _)
     when Eqrel.any r ->
       let pat x = eapp (r, [e1; x]) in
       let branches = ite_branches pat cond thn els in
@@ -278,7 +278,7 @@ let newnodes_ifthenelse e g =
           ngoal = g;
           nbranches = branches;
       }; Stop ]
-  | Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)", [cond; thn; els], _); e2], _),_)
+  | Enot (Eapp (r, [Eapp ("FOCAL.ifthenelse", [cond; thn; els], _); e2], _),_)
     when Eqrel.any r ->
       let pat x = enot (eapp (r, [x; e2])) in
       let branches = ite_branches pat cond thn els in
@@ -289,7 +289,7 @@ let newnodes_ifthenelse e g =
           ngoal = g;
           nbranches = branches;
       }; Stop ]
-  | Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [cond; thn; els], _)], _),_)
+  | Enot (Eapp (r, [e1; Eapp ("FOCAL.ifthenelse", [cond; thn; els], _)], _),_)
     when Eqrel.any r ->
       let pat x = enot (eapp (r, [e1; x])) in
       let branches = ite_branches pat cond thn els in
@@ -359,7 +359,7 @@ let to_llargs tr_prop tr_term r =
       let ht2 = tr_prop (istrue thn) in
       let he1 = tr_prop (isfalse cond) in
       let he2 = tr_prop (istrue els) in
-      let c = tr_prop (istrue (eapp ("(__g_ifthenelse _)", [cond; thn; els])))
+      let c = tr_prop (istrue (eapp ("FOCAL.ifthenelse", [cond; thn; els])))
       in
       ("zenon_coqbool_ite_bool", List.map tr_term args, [c],
        [ [ht1; ht2]; [he1; he2] ])
@@ -368,12 +368,12 @@ let to_llargs tr_prop tr_term r =
       let ht2 = tr_prop (isfalse thn) in
       let he1 = tr_prop (isfalse cond) in
       let he2 = tr_prop (isfalse els) in
-      let c = tr_prop (isfalse (eapp ("(__g_ifthenelse _)", [cond; thn; els])))
+      let c = tr_prop (isfalse (eapp ("FOCAL.ifthenelse", [cond; thn; els])))
       in
       ("zenon_coqbool_ite_bool_n", List.map tr_term args, [c],
        [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_l",
-         [Eapp (r, [Eapp ("(__g_ifthenelse _)", [c; t; e], _); e2], _) as a])
+         [Eapp (r, [Eapp ("FOCAL.ifthenelse", [c; t; e], _); e2], _) as a])
     ->
       let ht1 = tr_prop (istrue c) in
       let ht2 = tr_prop (eapp (r, [t; e2])) in
@@ -385,7 +385,7 @@ let to_llargs tr_prop tr_term r =
       ("zenon_coqbool_ite_rel_l", List.map tr_term [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_r",
-         [Eapp (r, [e1; Eapp ("(__g_ifthenelse _)", [c; t; e], _)], _) as a])
+         [Eapp (r, [e1; Eapp ("FOCAL.ifthenelse", [c; t; e], _)], _) as a])
     ->
       let ht1 = tr_prop (istrue c) in
       let ht2 = tr_prop (eapp (r, [e1; t])) in
@@ -397,7 +397,7 @@ let to_llargs tr_prop tr_term r =
       ("zenon_coqbool_ite_rel_r", List.map tr_term [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nl",
-         [Enot (Eapp (r, [Eapp ("(__g_ifthenelse _)",
+         [Enot (Eapp (r, [Eapp ("FOCAL.ifthenelse",
                                 [c; t; e], _); e2], _), _) as a])
     ->
       let ht1 = tr_prop (istrue c) in
@@ -410,7 +410,7 @@ let to_llargs tr_prop tr_term r =
       ("zenon_coqbool_ite_rel_nl", List.map tr_term [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nr",
-         [Enot (Eapp (r, [e1; Eapp ("(__g_ifthenelse _)",
+         [Enot (Eapp (r, [e1; Eapp ("FOCAL.ifthenelse",
                                     [c; t; e], _)], _), _) as a])
     ->
       let ht1 = tr_prop (istrue c) in
@@ -560,7 +560,7 @@ let postprocess p = List.map process_lemma p;;
 let declare_context_coq oc =
   fprintf oc "Require Import zenon_coqbool.\n";
   ["bool"; "Is_true"; "__g_not_b"; "__g_and_b"; "__g_or_b"; "__g_xor_b";
-   "true"; "false"; "(__g_ifthenelse _)" ;
+   "true"; "false"; "FOCAL.ifthenelse" ;
   ]
 ;;
 
