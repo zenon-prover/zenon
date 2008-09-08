@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.43 2008-08-28 10:23:51 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.44 2008-09-08 13:14:19 doligez Exp $";;
 
 open Printf;;
 
@@ -25,7 +25,7 @@ type input_format =
 ;;
 let input_format = ref I_zenon;;
 
-let include_path = ref [];;
+let include_path = ref [Config.libdir];;
 
 let opt_level = ref 1;;
 
@@ -105,7 +105,9 @@ let rec argspec = [
   "--help", Arg.Unit print_usage,
          "             print this option list and exit";
   "-I", Arg.String (fun x -> include_path := x :: !include_path),
-     " <dir>           add <dir> to the include path (for TPTP input format)";
+     " <dir>           add <dir> to the include path";
+  "-I-", Arg.Unit (fun () -> include_path := []),
+     " <dir>           clear the include path";
   "-icoq", Arg.Unit (fun () -> input_format := I_focal),
         "              read input file in Coq format";
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
@@ -181,6 +183,8 @@ let rec argspec = [
 
 and print_usage () =
   Arg.usage argspec umsg;
+  eprintf "The default include path is the following:\n";
+  List.iter (fun x -> eprintf "  %s\n" x) !include_path;
   exit 0;
 ;;
 
@@ -224,7 +228,23 @@ let rec expand_includes incpath zphrases =
     | Phrase.Zdef (d) -> [Phrase.Def (d)]
     | Phrase.Zsig (s,l,t) -> [Phrase.Sig (s,l,t)]
     | Phrase.Zinductive (s,l) -> [Phrase.Inductive (s,l)]
-    | Phrase.Zinclude f -> expand_includes incpath (zparse_file f)
+    | Phrase.Zinclude f ->
+       begin
+         let rec loop l =
+           match l with
+           | [] ->
+              eprintf "include file not found: %s\n" f;
+              exit 12;
+           | h::t ->
+              let pf = try Some (zparse_file (Filename.concat h f))
+                       with _ -> None
+              in
+              match pf with
+              | Some p -> expand_includes incpath p
+              | None -> loop t
+         in
+         loop incpath
+       end
   in
   List.concat (List.map exp zphrases)
 ;;
