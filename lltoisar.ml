@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.5 2008-09-02 13:23:22 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.6 2008-09-09 15:09:16 doligez Exp $";;
 
 open Printf;;
 
@@ -64,12 +64,28 @@ let rec p_list dict init printer sep oc l =
 let tr_infix s =
   match s with
   | "=" -> "="
+  | "TLA.cup" -> "\\\\cup"
+  | "TLA.cap" -> "\\\\cap"
+  | "TLA.setminus" -> "\\\\"
   | "TLA.in" -> "\\\\in"
   | "TLA.subseteq" -> "\\\\subseteq"
   | _ -> ""
 ;;
 
 let is_infix s = tr_infix s <> "";;
+
+let tr_constant s =
+  match s with
+  | "TLA.emptyset" -> "{}"
+  | "TLA.infinity" -> "infinity"
+  | _ -> s
+;;
+
+let tr_prefix s =
+  if String.length s > 4 && String.sub s 0 4 = "TLA."
+  then String.sub s 4 (String.length s - 4)
+  else s
+;;
 
 let rec p_expr dict oc e =
   let poc fmt = fprintf oc fmt in
@@ -79,11 +95,11 @@ let rec p_expr dict oc e =
   | Evar (v, _) when Mltoll.is_meta v ->
       poc "(CHOOSE x : TRUE)";
   | Evar (v, _) ->
-      poc "%s" v;
+      poc "%s" (tr_constant v);
   | Eapp (f, [e1; e2], _) when is_infix f ->
       poc "(%a %s %a)" (p_expr dict) e1 (tr_infix f) (p_expr dict) e2;
   | Eapp (f, l, _) ->
-      poc "%s(%a)" f (p_expr_list dict) l;
+      poc "%s(%a)" (tr_prefix f) (p_expr_list dict) l;
   | Enot (e, _) ->
       poc "(~%a)" (p_expr dict) e;
   | Eand (e1, e2, _) ->
@@ -203,6 +219,21 @@ let rec p_tree i dict oc proof =
   | Rnotconnect (Equiv, e1, e2) ->
      beta "notequiv" (enot (eequiv (e1, e2)))
           [[enot (e1); e2]; [e1; enot (e2)]] proof.hyps;
+  | Rextension (name, args, con, [hs]) ->
+     let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
+     let p_con dict oc e = fprintf oc "%s" (getname e) in
+     let p_hyp (dict, j) h =
+       iprintf i oc "have %s: \"%a\"" (getname h) (p_expr dict) h;
+       let dict2 = p_is dict oc h in
+       iprintf i oc "by (rule %s_%d [of %a], fact %a)\n" name j
+               (p_list dict2 "" p_arg " ") args (p_list dict2 "" p_con " ") con;
+       (dict2, j+1)
+     in
+     let (dict3, _) = List.fold_left p_hyp (dict, 0) hs in
+     begin match proof.hyps with
+     | [t] -> p_tree i dict3 oc t;
+     | _ -> assert false
+     end;
   | Rextension (name, args, con, hs) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (getname e) in
