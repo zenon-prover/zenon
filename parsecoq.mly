@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.20 2008-09-11 11:45:48 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.21 2008-09-11 11:57:12 doligez Exp $";;
 
 open Printf;;
 
@@ -208,10 +208,10 @@ expr:
   | LET IDENT COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $4 $6 }
 
-  | LET LPAREN_ IDENT COLON_ expr RPAREN_ COLON_EQ_ expr IN expr %prec let_in
+  | LET LPAREN_ IDENT COLON_ junk RPAREN_ COLON_EQ_ expr IN expr %prec let_in
       { mk_let $3 $8 $10 }
 
-  | LET IDENT COLON_ expr COLON_EQ_ expr IN expr %prec let_in
+  | LET IDENT COLON_ junk COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $6 $8 }
 
   | MATCH expr WITH pat_expr_list END
@@ -385,6 +385,17 @@ constr_type:
 arg_type:
   | LPAREN_ arg_type RPAREN_          { $2 }
   | IDENT                             { $1 }
+;
+
+junk:
+  | /* empty */                       { () }
+  | IDENT junk                        { () }
+  | NUM junk                          { () }
+  | LPAREN_RPAREN_ junk               { () }
+  | PERIOD_ junk                      { () }
+  | COLON_ junk                       { () }
+  | PERIOD_LPAREN_ junk RPAREN_       { () }
+  | LPAREN_ junk RPAREN_              { () }
 ;
 
 %%
