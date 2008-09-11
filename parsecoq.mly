@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.18 2008-09-04 10:13:32 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.19 2008-09-11 11:41:59 doligez Exp $";;
 
 open Printf;;
 
@@ -207,6 +207,9 @@ expr:
 
   | LET IDENT COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $4 $6 }
+
+  | LET LPAREN_ IDENT COLON_ expr RPAREN_ COLON_EQ_ expr IN expr %prec let_in
+      { mk_let $3 $8 $10 }
 
   | MATCH expr WITH pat_expr_list END
       { eapp ("$match", $2 :: $4) }
