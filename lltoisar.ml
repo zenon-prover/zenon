@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.6 2008-09-09 15:09:16 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.7 2008-09-12 13:31:06 doligez Exp $";;
 
 open Printf;;
 
@@ -378,7 +378,8 @@ and p_delta i dict oc lem h0 v neg lam sub =
     | _ -> assert false
   in
   let n_h = getname h in
-  iprintf (iinc i) oc "assume %s: \"%s%a\"" n_h negs (p_apply dict) (lam, evar (v));
+  iprintf (iinc i) oc "assume %s: \"%s%a\"" n_h negs
+          (p_apply dict) (lam, evar (v));
   let dict2 = p_is dict oc h in
   p_tree (iinc i) dict2 oc t;
   iprintf i oc "qed\n";
@@ -476,7 +477,7 @@ let p_theorem oc thm phrases lemmas =
     let dict2 = p_is dict oc x in
     begin match HE.find hypnames x with
     | "" -> iprintf i oc "by fact\n"
-    | n -> iprintf i oc "by blast\n"
+    | n -> iprintf i oc "by (rule %s)\n" n
     end;
     dict2
   in

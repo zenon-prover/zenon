@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.26 2008-08-28 12:57:05 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.27 2008-09-12 13:31:06 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -713,75 +713,77 @@ let preunif_g e1 (e2, g2) =
 ;;
 
 let newnodes_match_trans st fm g =
-  let fmg = (fm, g) in
-  match fm with
-  | Eapp ("=", [e1; e2], _) ->
-      Index.add_trans fm;
-      let h1 = Index.get_head e1 in
-      let h2 = Index.get_head e2 in
-      let matches_ll = Index.find_all_negtrans_left h1 in
-      let matches_rr = Index.find_all_negtrans_right h2 in
-      let matches_lr = Index.find_all_negtrans_left h2 in
-      let matches_rl = Index.find_all_negtrans_right h1 in
-      let nodes = List.flatten [
-        List.map (mknode_transeq false fmg) matches_ll;
-        List.map (mknode_transeq true fmg) matches_lr;
-        List.map (mknode_transeq true fmg) matches_rl;
-        List.map (mknode_transeq false fmg) matches_rr;
-      ] in
-      add_node_list st nodes, false
-  | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
-      Index.add_trans fm;
-      let h1 = Index.get_head e1 in
-      let h2 = Index.get_head e2 in
-      let matches_ll = Index.find_negtrans_left s h1 in
-      let matches_rr = Index.find_negtrans_right s h2 in
-      let matches_lr =
-        if Eqrel.sym s then Index.find_negtrans_left s h2 else []
-      in
-      let matches_rl =
-        if Eqrel.sym s then Index.find_negtrans_right s h1 else []
-      in
-      let nodes = List.flatten [
-        List.map (mknode_trans false fmg) matches_ll;
-        List.map (mknode_trans true fmg) matches_lr;
-        List.map (mknode_trans true fmg) matches_rl;
-        List.map (mknode_trans false fmg) matches_rr;
-      ] in
-      add_node_list st nodes, false
-  | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
-      Index.add_negtrans fm;
-      let h1 = Index.get_head e1 in
-      let h2 = Index.get_head e2 in
-      let matches_ll = Index.find_trans_left s h1 in
-      let matches_rr = Index.find_trans_right s h2 in
-      let matches_lr =
-        if Eqrel.sym s then Index.find_trans_right s h1 else []
-      in
-      let matches_rl =
-        if Eqrel.sym s then Index.find_trans_left s h2 else []
-      in
-      let nodes = List.flatten [
-        List.map (mknode_negtrans false fmg) matches_ll;
-        List.map (mknode_negtrans true fmg) matches_lr;
-        List.map (mknode_negtrans true fmg) matches_rl;
-        List.map (mknode_negtrans false fmg) matches_rr;
-      ] in
-      let eqnodes =
-        if s =%= "=" then [] else
-        let eqmatches_ll = Index.find_trans_left "=" h1 in
-        let eqmatches_rr = Index.find_trans_right "=" h2 in
-        let eqmatches_lr = Index.find_trans_right "=" h1 in
-        let eqmatches_rl = Index.find_trans_left "=" h2 in
-        List.flatten [
-          List.map (mknode_negtranseq false fmg) eqmatches_ll;
-          List.map (mknode_negtranseq true fmg) eqmatches_lr;
-          List.map (mknode_negtranseq true fmg) eqmatches_rl;
-          List.map (mknode_negtranseq false fmg) eqmatches_rr;
-        ]
-      in
-      add_node_list st (eqnodes @@ nodes), false
-  | _ -> st, false
+  try
+    let fmg = (fm, g) in
+    match fm with
+    | Eapp ("=", [e1; e2], _) ->
+        Index.add_trans fm;
+        let h1 = Index.get_head e1 in
+        let h2 = Index.get_head e2 in
+        let matches_ll = Index.find_all_negtrans_left h1 in
+        let matches_rr = Index.find_all_negtrans_right h2 in
+        let matches_lr = Index.find_all_negtrans_left h2 in
+        let matches_rl = Index.find_all_negtrans_right h1 in
+        let nodes = List.flatten [
+          List.map (mknode_transeq false fmg) matches_ll;
+          List.map (mknode_transeq true fmg) matches_lr;
+          List.map (mknode_transeq true fmg) matches_rl;
+          List.map (mknode_transeq false fmg) matches_rr;
+        ] in
+        add_node_list st nodes, false
+    | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
+        Index.add_trans fm;
+        let h1 = Index.get_head e1 in
+        let h2 = Index.get_head e2 in
+        let matches_ll = Index.find_negtrans_left s h1 in
+        let matches_rr = Index.find_negtrans_right s h2 in
+        let matches_lr =
+          if Eqrel.sym s then Index.find_negtrans_left s h2 else []
+        in
+        let matches_rl =
+          if Eqrel.sym s then Index.find_negtrans_right s h1 else []
+        in
+        let nodes = List.flatten [
+          List.map (mknode_trans false fmg) matches_ll;
+          List.map (mknode_trans true fmg) matches_lr;
+          List.map (mknode_trans true fmg) matches_rl;
+          List.map (mknode_trans false fmg) matches_rr;
+        ] in
+        add_node_list st nodes, false
+    | Enot (Eapp (s, [e1; e2], _), _) when Eqrel.trans s ->
+        Index.add_negtrans fm;
+        let h1 = Index.get_head e1 in
+        let h2 = Index.get_head e2 in
+        let matches_ll = Index.find_trans_left s h1 in
+        let matches_rr = Index.find_trans_right s h2 in
+        let matches_lr =
+          if Eqrel.sym s then Index.find_trans_right s h1 else []
+        in
+        let matches_rl =
+          if Eqrel.sym s then Index.find_trans_left s h2 else []
+        in
+        let nodes = List.flatten [
+          List.map (mknode_negtrans false fmg) matches_ll;
+          List.map (mknode_negtrans true fmg) matches_lr;
+          List.map (mknode_negtrans true fmg) matches_rl;
+          List.map (mknode_negtrans false fmg) matches_rr;
+        ] in
+        let eqnodes =
+          if s =%= "=" then [] else
+          let eqmatches_ll = Index.find_trans_left "=" h1 in
+          let eqmatches_rr = Index.find_trans_right "=" h2 in
+          let eqmatches_lr = Index.find_trans_right "=" h1 in
+          let eqmatches_rl = Index.find_trans_left "=" h2 in
+          List.flatten [
+            List.map (mknode_negtranseq false fmg) eqmatches_ll;
+            List.map (mknode_negtranseq true fmg) eqmatches_lr;
+            List.map (mknode_negtranseq true fmg) eqmatches_rl;
+            List.map (mknode_negtranseq false fmg) eqmatches_rr;
+          ]
+        in
+        add_node_list st (eqnodes @@ nodes), false
+    | _ -> st, false
+  with Index.No_head -> st, false
 ;;
 
 let newnodes_match_sym st fm g =

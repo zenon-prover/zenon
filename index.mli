@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.6 2008-08-14 14:02:09 doligez Exp $  *)
+(*  $Id: index.mli,v 1.7 2008-09-12 13:31:06 doligez Exp $  *)
 
 open Expr;;
 
@@ -22,6 +22,7 @@ type direction = Left | Right | Both;;
 
 type head = Sym of string | Tau of expr | Meta of expr;;
 val get_head : expr -> head;;
+exception No_head;;
 
 val add_trans : expr -> unit;;
 val find_trans_left : string -> head -> (expr * goalness) list;;
