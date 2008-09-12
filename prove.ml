@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.27 2008-09-12 13:31:06 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.28 2008-09-12 14:19:57 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -884,8 +884,10 @@ let add_nodes st fm g =
 
 let rec reduce_list accu l =
   match l with
-  | [] -> accu
-  | Enot (Efalse, _) :: t -> reduce_list accu t
+  | Enot (Efalse, _) :: t
+  | Etrue :: t
+  | Enot (Eapp ("TLA.in", [_; Evar ("TLA.emptyset", _)], _), _) :: t
+    -> reduce_list accu t
   | Eapp (s, [e1; e2], _) :: t when Expr.equal e1 e2 && Eqrel.refl s ->
       reduce_list accu t
   | Eapp (s, [e1; e2], _) as f :: t when Eqrel.sym s ->
@@ -904,6 +906,7 @@ let rec reduce_list accu l =
      if Index.member f || List.exists (Expr.equal f) accu
      then reduce_list accu t
      else reduce_list (f :: accu) t
+  | [] -> accu
 ;;
 
 let reduce_branches n =

@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.5 2008-09-12 13:31:06 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.6 2008-09-12 14:19:57 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -39,7 +39,7 @@ let is_set_expr e =
 
 let newnodes e g =
   match e with
-  (* emptyset *)
+  (* emptyset -> nothing to do *)
   (* upair *)
   (* add *)
   (* infinity *)

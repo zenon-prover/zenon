@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.7 2008-09-12 13:31:06 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.8 2008-09-12 14:19:57 doligez Exp $";;
 
 open Printf;;
 
@@ -477,7 +477,7 @@ let p_theorem oc thm phrases lemmas =
     let dict2 = p_is dict oc x in
     begin match HE.find hypnames x with
     | "" -> iprintf i oc "by fact\n"
-    | n -> iprintf i oc "by (rule %s)\n" n
+    | n -> iprintf i oc "using %s by blast\n" n
     end;
     dict2
   in
