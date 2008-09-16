@@ -1,20 +1,20 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.21 2006-03-30 13:11:04 doligez Exp $
+#  $Id: configure,v 1.22 2008-09-16 12:25:45 doligez Exp $
 
 exec_prefix=/usr/local
 prefix=
 bindir=/usr/local/bin
 libdir=/usr/local/lib/zenon
 debug=true
-convert=convert; case `type -path convert` in '') convert=: ;; esac
-coqc=coqc; case `type -path coqc` in '') coqc=: ;; esac
-gs=gs; case `type -path gs` in '') gs=: ;; esac
+if type convert >/dev/null; then convert=convert; else convert=:; fi
+if type coqc >/dev/null; then coqc=coqc; else coqc=:; fi
+if type gs >/dev/null; then gs=gs; else gs=:; fi
 
 sum=:
 for i in sum md5 md5sum md5deep sha1deep sha256deep; do
-  case `type -path $i` in '') ;; *) sum=$i; break ;; esac
+  if type $i >/dev/null; then sum=$i; break; fi
 done
 
 while : ; do

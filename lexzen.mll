@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.9 2008-08-28 10:23:51 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.10 2008-09-16 12:25:45 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;
@@ -10,7 +10,7 @@ open Printf;;
 
 let newline = ('\010' | '\013' | "\013\010")
 let space = [' ' '\009' '\012']
-let idstart = ['A'-'Z' 'a'-'z' '_']
+let idstart = ['A'-'Z' 'a'-'z' '_' '0'-'9']
 let idchar =  ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'' '.']
 let stringchar = [^ '\000'-'\031' '\"' '\127'-'\255']
 

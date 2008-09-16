@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.6 2008-09-12 14:19:57 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.7 2008-09-16 12:25:45 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -28,6 +28,7 @@ let tla_set_constructors = [
   "TLA.setminus";
   "TLA.subsetOf";
   "TLA.setOfAll";
+  "TLA.FuncSet";
 ];;
 
 let is_set_expr e =
@@ -39,10 +40,27 @@ let is_set_expr e =
 
 let newnodes e g =
   match e with
-  (* emptyset -> nothing to do *)
-  (* upair *)
-  (* add *)
-  (* infinity *)
+  (* emptyset -> no rule needed *)
+  (* upair -- needed ? *)
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _) ->
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "in_add", [e1; e2; e3]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [eapp ("=", [e1; e2])];
+                      [eapp ("TLA.in", [e1; e3])] |];
+     }]
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _), _) ->
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "notin_add", [e1; e2; e3]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [enot (eapp ("=", [e1; e2]));
+                       enot (eapp ("TLA.in", [e1; e3]))] |];
+     }]
+  (* infinity -- needed ? *)
   | Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _) ->
      [ Node {
        nconc = [e];
@@ -108,6 +126,18 @@ let newnodes e g =
         nbranches = branches;
       }]
   (* setOfAll *)
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.FuncSet", [e2; e3], _)], _) ->
+     let x = Expr.newvar () in
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "in_funcset", [e1; e2; e3]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [eall (x, "",
+                         eimply (eapp ("TLA.in", [x; e2]),
+                                 eapp ("TLA.in", [eapp ("TLA.fapply", [e1; x]);
+                                                  e3])))] |];
+     }]
   | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
      let branches = [| [eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
@@ -139,9 +169,19 @@ let newnodes e g =
 
 let to_llargs tr_prop tr_term r =
   match r with
-  (* emptyset *)
+  (* emptyset -> no rule needed *)
   (* upair *)
-  (* add *)
+  | Ext (_, "in_add", [e1; e2; e3]) ->
+      let h1 = tr_prop (eapp ("=", [e1; e2])) in
+      let h2 = tr_prop (eapp ("TLA.in", [e1; e3])) in
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.add", [e2; e3])])) in
+      ("zenon_in_add", List.map tr_term [e1; e2; e3], [c], [[h1]; [h2]])
+  | Ext (_, "notin_add", [e1; e2; e3]) ->
+      let h1 = tr_prop (enot (eapp ("=", [e1; e2]))) in
+      let h2 = tr_prop (enot (eapp ("TLA.in", [e1; e3]))) in
+      let c = tr_prop (enot (eapp ("TLA.in", [e1; eapp ("TLA.add", [e2; e3])])))
+      in
+      ("zenon_notin_add", List.map tr_term [e1; e2; e3], [c], [[h1; h2]])
   (* infinity *)
   | Ext (_, "in_SUBSET", [e1; s]) ->
       let h1 = tr_prop (eapp ("TLA.subseteq", [e1; s])) in
@@ -182,6 +222,15 @@ let to_llargs tr_prop tr_term r =
       ("zenon_notin_subsetof", [tr_term e1; tr_term s; tr_term pred],
        [c], [ [h1]; [h2] ])
   (* setOfAll *)
+  | Ext (_, "in_funcset", [e1; e2; e3]) ->
+      let x = Expr.newvar () in
+      let h1 = tr_prop (eall (x, "",
+                         eimply (
+                          eapp ("TLA.in", [x; e2]),
+                          eapp ("TLA.in", [eapp ("TLA.fapply", [e1; x]); e3]))))
+      in
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.FuncSet", [e2; e3])])) in
+      ("zenon_in_funcset", List.map tr_term [e1; e2; e3], [c], [[h1]])
   | Ext (_, "extensionality", [e1; e2]) ->
       let x = Expr.newvar () in
       let h1 = tr_prop (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),

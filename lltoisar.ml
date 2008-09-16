@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.8 2008-09-12 14:19:57 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.9 2008-09-16 12:25:45 doligez Exp $";;
 
 open Printf;;
 
@@ -477,7 +477,7 @@ let p_theorem oc thm phrases lemmas =
     let dict2 = p_is dict oc x in
     begin match HE.find hypnames x with
     | "" -> iprintf i oc "by fact\n"
-    | n -> iprintf i oc "using %s by blast\n" n
+    | n -> iprintf i oc "using %s by safe\n" n
     end;
     dict2
   in
@@ -496,8 +496,29 @@ let rec p_lemmas oc llp phrases lemmas =
 ;;
 
 let output oc phrases llp =
-  if !Globals.ctx_flag then failwith "cannot output context in isar mode";
-                                                                  (* TODO *)
+  if !Globals.ctx_flag then begin
+    assert false
+(*
+    fprintf oc "(* BEGIN-CONTEXT *)\n";
+    fprintf oc "theory zenon_tmp_theory imports Constant Zenon begin\n";
+    let f p =
+      match p with
+      | Hyp ("", _, _) -> ()
+      | Hyp (name, e, _) ->
+         fprintf oc "axioms %s: \"%a\"\n" name (p_expr dict_empty) e
+      | Def (DefReal (name, sym, args, body)) ->
+         fprintf oc "consts %s :: \"[%a] \\<Rightarrow> c\"\n" sym ...;
+         fprintf oc "defs %s: \"%s(%a) \\<equiv> %a\"\n" name sym ... ...;
+      | Def _ -> assert false
+      | Sig _ -> failwith "signatures not implemented in isar output"
+      | Inductive _ -> failwith "inductives not implemented in isar output"
+    in
+    List.iter f phrases;
+    fprintf oc "theorem zenon_tmp_thm:\n";
+    ...
+    fprintf oc "(* END-CONTEXT *)\n";
+*)
+  end;
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
   p_lemmas oc llp phrases [];
   if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
