@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.7 2008-09-16 12:25:45 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.8 2008-09-16 14:07:51 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -41,7 +41,24 @@ let is_set_expr e =
 let newnodes e g =
   match e with
   (* emptyset -> no rule needed *)
-  (* upair -- needed ? *)
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.upair", [e2; e3], _)], _) ->
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "in_upair", [e1; e2; e3]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [eapp ("=", [e1; e2])];
+                      [eapp ("=", [e1; e3])] |];
+     }]
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.upair", [e2; e3], _)], _), _) ->
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "notin_upair", [e1; e2; e3]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [enot (eapp ("=", [e1; e2])); enot (eapp ("=", [e1; e3]))]
+                   |];
+     }]
   | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _) ->
      [ Node {
        nconc = [e];
@@ -126,17 +143,35 @@ let newnodes e g =
         nbranches = branches;
       }]
   (* setOfAll *)
-  | Eapp ("TLA.in", [e1; Eapp ("TLA.FuncSet", [e2; e3], _)], _) ->
+  | Eapp ("TLA.in", [f; Eapp ("TLA.FuncSet", [a; b], _)], _) ->
+     let h1 = eapp ("TLA.isAFcn", [f]) in
+     let h2 = eapp ("=", [eapp ("TLA.DOMAIN", [f]); a]) in
      let x = Expr.newvar () in
+     let h3 = eall (x, "",
+                eimply (eapp ("TLA.in", [x; a]),
+                        eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
+     in
      [ Node {
        nconc = [e];
-       nrule = Ext ("tla", "in_funcset", [e1; e2; e3]);
+       nrule = Ext ("tla", "in_funcset", [f; a; b]);
        nprio = Arity;
        ngoal = g;
-       nbranches = [| [eall (x, "",
-                         eimply (eapp ("TLA.in", [x; e2]),
-                                 eapp ("TLA.in", [eapp ("TLA.fapply", [e1; x]);
-                                                  e3])))] |];
+       nbranches = [| [h1; h2; h3] |];
+     }]
+  | Enot (Eapp ("TLA.in", [f; Eapp ("TLA.FuncSet", [a; b], _)], _), _) ->
+     let h1 = eapp ("TLA.isAFcn", [f]) in
+     let h2 = eapp ("=", [eapp ("TLA.DOMAIN", [f])]) in
+     let x = Expr.newvar () in
+     let h3 = eall (x, "",
+                eimply (eapp ("TLA.in", [x; a]),
+                        eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
+     in
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "notin_funcset", [f; a; b]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [enot h1]; [enot h2]; [enot h3] |];
      }]
   | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
@@ -170,7 +205,18 @@ let newnodes e g =
 let to_llargs tr_prop tr_term r =
   match r with
   (* emptyset -> no rule needed *)
-  (* upair *)
+  | Ext (_, "in_upair", [e1; e2; e3]) ->
+      let h1 = tr_prop (eapp ("=", [e1; e2])) in
+      let h2 = tr_prop (eapp ("=", [e1; e3])) in
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.upair", [e2; e3])])) in
+      ("zenon_in_upair", List.map tr_term [e1; e2; e3], [c], [[h1]; [h2]])
+  | Ext (_, "notin_upair", [e1; e2; e3]) ->
+      let h1 = tr_prop (enot (eapp ("=", [e1; e2]))) in
+      let h2 = tr_prop (enot (eapp ("=", [e1; e3]))) in
+      let c = tr_prop (enot (eapp ("TLA.in",
+                                   [e1; eapp ("TLA.upair", [e2; e3])])))
+      in
+      ("zenon_notin_upair", List.map tr_term [e1; e2; e3], [c], [[h1; h2]])
   | Ext (_, "in_add", [e1; e2; e3]) ->
       let h1 = tr_prop (eapp ("=", [e1; e2])) in
       let h2 = tr_prop (eapp ("TLA.in", [e1; e3])) in
@@ -222,15 +268,28 @@ let to_llargs tr_prop tr_term r =
       ("zenon_notin_subsetof", [tr_term e1; tr_term s; tr_term pred],
        [c], [ [h1]; [h2] ])
   (* setOfAll *)
-  | Ext (_, "in_funcset", [e1; e2; e3]) ->
+  | Ext (_, "in_funcset", [f; a; b]) ->
+      let h1 = eapp ("TLA.isAFcn", [f]) in
+      let h2 = eapp ("=", [eapp ("TLA.DOMAIN", [f]); a]) in
       let x = Expr.newvar () in
-      let h1 = tr_prop (eall (x, "",
-                         eimply (
-                          eapp ("TLA.in", [x; e2]),
-                          eapp ("TLA.in", [eapp ("TLA.fapply", [e1; x]); e3]))))
+      let h3 = eall (x, "",
+                 eimply (eapp ("TLA.in", [x; a]),
+                         eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
       in
-      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.FuncSet", [e2; e3])])) in
-      ("zenon_in_funcset", List.map tr_term [e1; e2; e3], [c], [[h1]])
+      let c = tr_prop (eapp ("TLA.in", [f; eapp ("TLA.FuncSet", [a; b])])) in
+      ("zenon_in_funcset", List.map tr_term [f; a; b], [c],
+                           [List.map tr_prop [h1; h2; h3]])
+  | Ext (_, "notin_funcset", [f; a; b]) ->
+      let h1 = eapp ("TLA.isAFcn", [f]) in
+      let h2 = eapp ("=", [eapp ("TLA.DOMAIN", [f]); a]) in
+      let x = Expr.newvar () in
+      let h3 = eall (x, "",
+                 eimply (eapp ("TLA.in", [x; a]),
+                         eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
+      in
+      let c = tr_prop (eapp ("TLA.in", [f; eapp ("TLA.FuncSet", [a; b])])) in
+      ("zenon_notin_funcset", List.map tr_term [f; a; b], [c],
+       List.map (fun x -> [enot x]) [h1; h2; h3])
   | Ext (_, "extensionality", [e1; e2]) ->
       let x = Expr.newvar () in
       let h1 = tr_prop (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),

@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.9 2008-09-16 12:25:45 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.10 2008-09-16 14:07:51 doligez Exp $";;
 
 open Printf;;
 
@@ -497,27 +497,28 @@ let rec p_lemmas oc llp phrases lemmas =
 
 let output oc phrases llp =
   if !Globals.ctx_flag then begin
-    assert false
-(*
     fprintf oc "(* BEGIN-CONTEXT *)\n";
     fprintf oc "theory zenon_tmp_theory imports Constant Zenon begin\n";
     let f p =
       match p with
-      | Hyp ("", _, _) -> ()
-      | Hyp (name, e, _) ->
+      | Phrase.Hyp ("", _, _) -> ()
+      | Phrase.Hyp (name, e, _) ->
          fprintf oc "axioms %s: \"%a\"\n" name (p_expr dict_empty) e
-      | Def (DefReal (name, sym, args, body)) ->
-         fprintf oc "consts %s :: \"[%a] \\<Rightarrow> c\"\n" sym ...;
-         fprintf oc "defs %s: \"%s(%a) \\<equiv> %a\"\n" name sym ... ...;
-      | Def _ -> assert false
-      | Sig _ -> failwith "signatures not implemented in isar output"
-      | Inductive _ -> failwith "inductives not implemented in isar output"
+      | Phrase.Def (DefReal (name, sym, args, body)) ->
+         fprintf oc "consts %s :: \"[%a] \\<Rightarrow> c\"\n" sym
+                 (p_list dict_empty "c" (fun _ _ _ -> ()) ",") args;
+         fprintf oc "defs %s: \"%s(%a) \\<equiv> %a\"\n" name sym
+                 (p_list dict_empty "c" p_expr ",") args
+                 (p_expr dict_empty) body;
+      | Phrase.Def _ -> assert false
+      | Phrase.Sig _ -> failwith "signatures not implemented in isar output"
+      | Phrase.Inductive _ ->
+         failwith "inductives not implemented in isar output"
     in
     List.iter f phrases;
     fprintf oc "theorem zenon_tmp_thm:\n";
-    ...
+    fprintf oc "TODO: output theorem statement\n";
     fprintf oc "(* END-CONTEXT *)\n";
-*)
   end;
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
   p_lemmas oc llp phrases [];
