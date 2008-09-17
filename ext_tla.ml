@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.9 2008-09-17 11:09:25 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.10 2008-09-17 15:24:00 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -328,7 +328,9 @@ let newnodes e g =
 
 let to_llargs tr_prop tr_term r =
   match r with
-  (* emptyset -> no rule needed *)
+  | Ext (_, "in_emptyset", [e1]) ->
+     let c = tr_prop (eapp ("TLA.in", [e1; evar ("TLA.emptyset")])) in
+      ("zenon_in_emptyset", [tr_term e1], [c], [])
   | Ext (_, "in_upair", [e1; e2; e3]) ->
       let h1 = tr_prop (eapp ("=", [e1; e2])) in
       let h2 = tr_prop (eapp ("=", [e1; e3])) in
@@ -469,6 +471,10 @@ let to_llargs tr_prop tr_term r =
      ("zenon_fapplyfcn", [tr_prop ctx; tr_term s; tr_term l; tr_term a],
       [c], [[h1]; [h2]])
   | Ext (_, "fapplyfcn", _) -> assert false
+  | Ext (group, name, _) ->
+      eprintf "unknown extension: %s_%s\n" group name;
+      flush stderr;
+      assert false
   | _ -> assert false
 ;;
 

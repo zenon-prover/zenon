@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.11 2008-09-17 11:09:25 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.12 2008-09-17 15:24:00 doligez Exp $";;
 
 open Printf;;
 
@@ -27,7 +27,7 @@ let iprintf i oc fmt (* args *) =
   fprintf oc fmt (* args *);
 ;;
 
-let iinc i = if i >= 20 then i else i+2;;
+let iinc i = if i >= 15 then i else i+1;;
 
 let base36 x =
   if x = 0 then "0" else begin
@@ -219,6 +219,12 @@ let rec p_tree i dict oc proof =
   | Rnotconnect (Equiv, e1, e2) ->
      beta "notequiv" (enot (eequiv (e1, e2)))
           [[enot (e1); e2]; [e1; enot (e2)]] proof.hyps;
+  | Rextension (name, args, con, []) ->
+     let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
+     let p_con dict oc e = fprintf oc "%s" (getname e) in
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "by (rule %s [of %a], fact %a)\n" name
+             (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
   | Rextension (name, args, con, [hs]) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (getname e) in
