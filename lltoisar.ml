@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.10 2008-09-16 14:07:51 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.11 2008-09-17 11:09:25 doligez Exp $";;
 
 open Printf;;
 
@@ -310,7 +310,7 @@ let rec p_tree i dict oc proof =
      let pr d x y z = p_sub_equal (iinc i) d oc x y z in
      let dict2 = list_fold_left3 pr dict args1 args2 proof.hyps in
      let mk l = eapp (p, l) in
-     p_subst (iinc i) dict2 oc mk args1 args2 [] (getname pp);
+     p_subst i dict2 oc mk args1 args2 [] (getname pp);
   | Rpnotp _ -> assert false
   | Rnoteq e1 ->
      let neq = enot (eapp ("=", [e1; e1])) in
@@ -407,7 +407,8 @@ and p_sub_equal i dict oc e1 e2 prf =
 and p_subst i dict oc mk l1 l2 rl2 prev =
   match l1, l2 with
   | [], [] ->
-     iprintf i oc "thus \"?%s\" .\nqed\n" prev;
+     iprintf (iinc i) oc "thus \"?%s\" .\n" prev;
+     iprintf i oc "qed\n";
   | h1 :: t1, h2 :: t2 ->
      let newrl2 = h2 :: rl2 in
      if Expr.equal h1 h2 then
@@ -416,10 +417,11 @@ and p_subst i dict oc mk l1 l2 rl2 prev =
        let args = List.rev_append newrl2 t1 in
        let e = mk args in
        let n_e = getname e in
-       iprintf i oc "have %s: \"%a\"" n_e (p_expr dict) e;
+       iprintf (iinc i) oc "have %s: \"%a\"" n_e (p_expr dict) e;
        let dict2 = p_is dict oc e in
        let eq = eapp ("=", [h1; h2]) in
-       iprintf i oc "by (rule subst [OF %s], fact %s)\n" (getname eq) prev;
+       iprintf (iinc i) oc "by (rule subst [OF %s], fact %s)\n" (getname eq)
+               prev;
        p_subst i dict2 oc mk t1 t2 newrl2 n_e;
      end;
   | _, _ -> assert false
@@ -502,13 +504,15 @@ let output oc phrases llp =
     let f p =
       match p with
       | Phrase.Hyp ("", _, _) -> ()
-      | Phrase.Hyp (name, e, _) ->
+      | Phrase.Hyp (name, e, _) when name <> Namespace.goal_name ->
          fprintf oc "axioms %s: \"%a\"\n" name (p_expr dict_empty) e
+      | Phrase.Hyp _ -> ()
       | Phrase.Def (DefReal (name, sym, args, body)) ->
-         fprintf oc "consts %s :: \"[%a] \\<Rightarrow> c\"\n" sym
+         let isym = tr_prefix sym in
+         fprintf oc "consts \"%s\" :: \"[%a] \\<Rightarrow> c\"\n" isym
                  (p_list dict_empty "c" (fun _ _ _ -> ()) ",") args;
-         fprintf oc "defs %s: \"%s(%a) \\<equiv> %a\"\n" name sym
-                 (p_list dict_empty "c" p_expr ",") args
+         fprintf oc "defs \"%s\": \"%s(%a) \\<equiv> %a\"\n" name isym
+                 (p_list dict_empty "" p_expr ",") args
                  (p_expr dict_empty) body;
       | Phrase.Def _ -> assert false
       | Phrase.Sig _ -> failwith "signatures not implemented in isar output"
@@ -517,7 +521,20 @@ let output oc phrases llp =
     in
     List.iter f phrases;
     fprintf oc "theorem zenon_tmp_thm:\n";
-    fprintf oc "TODO: output theorem statement\n";
+    let f p =
+      match p with
+      | Phrase.Hyp ("", e, _) ->
+         fprintf oc "assumes \"%a\"\n" (p_expr dict_empty) e;
+      | _ -> ()
+    in
+    List.iter f phrases;
+    let f p =
+      match p with
+      | Phrase.Hyp (name, Enot (e, _), _) when name = Namespace.goal_name ->
+         fprintf oc "shows \"%a\"\n" (p_expr dict_empty) e;
+      | _ -> ()
+    in
+    List.iter f phrases;
     fprintf oc "(* END-CONTEXT *)\n";
   end;
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";

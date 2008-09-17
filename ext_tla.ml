@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.8 2008-09-16 14:07:51 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.9 2008-09-17 11:09:25 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -38,9 +38,30 @@ let is_set_expr e =
   | _ -> false
 ;;
 
-let newnodes e g =
+let tla_fcn_constructors = [
+  "TLA.Fcn";
+  "TLA.except";
+  "TLA.oneArg";
+  "TLA.extend";
+];;
+
+let is_fcn_expr e =
   match e with
-  (* emptyset -> no rule needed *)
+  | Evar (v, _) -> List.mem v tla_fcn_constructors
+  | Eapp (f, _, _) -> List.mem f tla_fcn_constructors
+  | _ -> false
+;;
+
+let newnodes_prop e g =
+  match e with
+  | Eapp ("TLA.in", [e1; Evar ("TLA.emptyset", _)], _) ->
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "in_emptyset", [e1]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| |];
+     }]
   | Eapp ("TLA.in", [e1; Eapp ("TLA.upair", [e2; e3], _)], _) ->
      [ Node {
        nconc = [e];
@@ -114,8 +135,42 @@ let newnodes e g =
         nbranches = [| [enot (eapp ("TLA.in", [e1; e2]));
                         enot (eapp ("TLA.in", [e1; e3]))] |];
       }]
-  (* cap *)
-  (* setminus *)
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.cap", [e2; e3], _)], _) ->
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("tla", "in_cap", [e1; e2; e3]);
+        nprio = Arity;
+        ngoal = g;
+        nbranches = [| [eapp ("TLA.in", [e1; e2]);
+                        eapp ("TLA.in", [e1; e3])] |];
+      }]
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.cap", [e2; e3], _)], _), _) ->
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("tla", "notin_cap", [e1; e2; e3]);
+        nprio = Arity;
+        ngoal = g;
+        nbranches = [| [enot (eapp ("TLA.in", [e1; e2]))];
+                       [enot (eapp ("TLA.in", [e1; e3]))] |];
+      }]
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.setminus", [e2; e3], _)], _) ->
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("tla", "in_setminus", [e1; e2; e3]);
+        nprio = Arity;
+        ngoal = g;
+        nbranches = [| [eapp ("TLA.in", [e1; e2]);
+                        enot (eapp ("TLA.in", [e1; e3]))] |];
+      }]
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.setminus", [e2; e3], _)], _), _) ->
+      [ Node {
+        nconc = [e];
+        nrule = Ext ("tla", "notin_setminus", [e1; e2; e3]);
+        nprio = Arity;
+        ngoal = g;
+        nbranches = [| [enot (eapp ("TLA.in", [e1; e2]))];
+                       [eapp ("TLA.in", [e1; e3])] |];
+      }]
   | Eapp ("TLA.in",
           [e1; Eapp ("TLA.subsetOf", [s; Elam (v, _, p, _) as pred], _)],
           _) ->
@@ -175,32 +230,101 @@ let newnodes e g =
      }]
   | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
-     let branches = [| [eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
-                                             eapp ("TLA.in", [x; e2])))] |]
-     in
      [ Node {
        nconc = [e];
-       nrule = Ext ("tla", "extensionality", [e1; e2]);
+       nrule = Ext ("tla", "setext", [e1; e2]);
        nprio = Inst e;
        ngoal = g;
-       nbranches = branches;
+       nbranches = [| [eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
+                                            eapp ("TLA.in", [x; e2])))] |];
      }]
   | Enot (Eapp ("=", [e1; e2], _), _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
-     let branches = [| [enot (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
-                                                   eapp ("TLA.in", [x; e2]))))
-                    ] |]
-     in
      [ Node {
        nconc = [e];
-       nrule = Ext ("tla", "notextensionality", [e1; e2]);
+       nrule = Ext ("tla", "notsetext", [e1; e2]);
        nprio = Inst e;
        ngoal = g;
-       nbranches = branches;
+       nbranches = [| [enot (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
+                                                  eapp ("TLA.in", [x; e2]))))]
+                   |];
      }]
+  | Eapp ("=", [e1; e2], _) when is_fcn_expr e1 || is_fcn_expr e2 ->
+     let x = Expr.newvar () in
+     [ Node {
+       nconc = [e];
+       nrule = Ext ("tla", "funext", [e1; e2]);
+       nprio = Inst e;
+       ngoal = g;
+       nbranches = [| [eall (x, "", eapp ("=", [eapp ("TLA.fapply", [e1; x]);
+                                                eapp ("TLA.fapply", [e2; x])]))]
+                   |];
+     }]
+  (* TODO : notfunext -- with a lot more hypotheses *)
   | _ -> []
 ;;
 
+let newnodes_expr e g =
+  let mknode rule branches =
+    [ Node {
+      nconc = [e];
+      nrule = rule;
+      nprio = Arity;
+      ngoal = g;
+      nbranches = branches;
+    }]
+  in
+  match e with
+  | Eapp ("=",
+          [Eapp ("TLA.fapply",
+                 [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
+                  a], _);
+           e2], _) ->
+     let x = Expr.newvar () in
+     let ctx = elam (x, "", eapp ("=", [x; e2])) in
+     let fres = Expr.substitute [(v, a)] b in
+     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
+            [| [enot (eapp ("TLA.in", [a; s]))];
+               [eapp ("=", [fres; e2])] |]
+  | Eapp ("=",
+          [e1;
+           Eapp ("TLA.fapply",
+                 [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
+                  a], _)], _) ->
+     let x = Expr.newvar () in
+     let ctx = elam (x, "", eapp ("=", [e1; x])) in
+     let fres = Expr.substitute [(v, a)] b in
+     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
+            [| [enot (eapp ("TLA.in", [a; s]))];
+               [eapp ("=", [e1; fres])] |]
+  | Enot (Eapp ("=",
+                [Eapp ("TLA.fapply",
+                       [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
+                        a], _);
+                 e2], _), _) ->
+     let x = Expr.newvar () in
+     let ctx = elam (x, "", enot (eapp ("=", [x; e2]))) in
+     let fres = Expr.substitute [(v, a)] b in
+     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
+            [| [enot (eapp ("TLA.in", [a; s]))];
+               [enot (eapp ("=", [fres; e2]))] |]
+  | Enot (Eapp ("=",
+                [e1;
+                 Eapp ("TLA.fapply",
+                       [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
+                        a], _)], _), _) ->
+     let x = Expr.newvar () in
+     let ctx = elam (x, "", enot (eapp ("=", [e1; x]))) in
+     let fres = Expr.substitute [(v, a)] b in
+     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
+            [| [enot (eapp ("TLA.in", [a; s]))];
+               [enot (eapp ("=", [e1; fres]))] |]
+  | _ -> []
+;;
+
+let newnodes e g =
+  newnodes_prop e g @ newnodes_expr e g
+;;
 
 let to_llargs tr_prop tr_term r =
   match r with
@@ -250,8 +374,32 @@ let to_llargs tr_prop tr_term r =
       let c = tr_prop (enot (eapp ("TLA.in", [e1; eapp ("TLA.cup", [e2; e3])])))
       in
       ("zenon_notin_cup", [tr_term e1; tr_term e2; tr_term e3], [c], [[h1; h2]])
-  (* cap *)
-  (* setminus *)
+  | Ext (_, "in_cap", [e1; e2; e3]) ->
+      let h1 = tr_prop (eapp ("TLA.in", [e1; e2])) in
+      let h2 = tr_prop (eapp ("TLA.in", [e1; e3])) in
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.cap", [e2; e3])])) in
+      ("zenon_in_cap", [tr_term e1; tr_term e2; tr_term e3], [c], [[h1; h2]])
+  | Ext (_, "notin_cap", [e1; e2; e3]) ->
+      let h1 = tr_prop (enot (eapp ("TLA.in", [e1; e2]))) in
+      let h2 = tr_prop (enot (eapp ("TLA.in", [e1; e3]))) in
+      let c = tr_prop (enot (eapp ("TLA.in", [e1; eapp ("TLA.cap", [e2; e3])])))
+      in
+      ("zenon_notin_cap", [tr_term e1; tr_term e2; tr_term e3], [c],
+       [[h1]; [h2]])
+  | Ext (_, "in_setminus", [e1; e2; e3]) ->
+      let h1 = tr_prop (eapp ("TLA.in", [e1; e2])) in
+      let h2 = tr_prop (enot (eapp ("TLA.in", [e1; e3]))) in
+      let c = tr_prop (eapp ("TLA.in", [e1; eapp ("TLA.setminus", [e2; e3])])) in
+      ("zenon_in_setminus", [tr_term e1; tr_term e2; tr_term e3], [c],
+       [[h1; h2]])
+  | Ext (_, "notin_setminus", [e1; e2; e3]) ->
+      let h1 = tr_prop (enot (eapp ("TLA.in", [e1; e2]))) in
+      let h2 = tr_prop (eapp ("TLA.in", [e1; e3])) in
+      let c = tr_prop (enot (eapp ("TLA.in",
+                                   [e1; eapp ("TLA.setminus", [e2; e3])])))
+      in
+      ("zenon_notin_setminus", [tr_term e1; tr_term e2; tr_term e3], [c],
+       [[h1]; [h2]])
   | Ext (_, "in_subsetof", [e1; s; Elam (v, _, p, _) as pred]) ->
       let h1 = tr_prop (eapp ("TLA.in", [e1; s])) in
       let h2 = tr_prop (substitute [(v, e1)] p) in
@@ -290,20 +438,37 @@ let to_llargs tr_prop tr_term r =
       let c = tr_prop (eapp ("TLA.in", [f; eapp ("TLA.FuncSet", [a; b])])) in
       ("zenon_notin_funcset", List.map tr_term [f; a; b], [c],
        List.map (fun x -> [enot x]) [h1; h2; h3])
-  | Ext (_, "extensionality", [e1; e2]) ->
+  | Ext (_, "setext", [e1; e2]) ->
       let x = Expr.newvar () in
       let h1 = tr_prop (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
                                              eapp ("TLA.in", [x; e2]))))
       in
       let c = tr_prop (eapp ("=", [e1; e2])) in
       ("zenon_extensionality", [tr_term e1; tr_term e2], [c], [[h1]])
-  | Ext (_, "notextensionality", [e1; e2]) ->
+  | Ext (_, "notsetext", [e1; e2]) ->
       let x = Expr.newvar () in
       let h1 = tr_prop (enot (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
                                                    eapp ("TLA.in", [x; e2])))))
       in
       let c = tr_prop (enot (eapp ("=", [e1; e2]))) in
       ("zenon_notextensionality", [tr_term e1; tr_term e2], [c], [[h1]])
+  | Ext (_, "funext", [e1; e2]) ->
+     let x = Expr.newvar () in
+     let h1 = tr_prop (eall (x, "", eapp ("=", [eapp ("TLA.fapply", [e1; x]);
+                                                eapp ("TLA.fapply", [e2; x])])))
+     in
+     let c = tr_prop (eapp ("=", [e1; e2])) in
+     ("zenon_funext", [tr_term e1; tr_term e2], [c], [[h1]])
+  | Ext (_, "fapplyfcn",
+         [(Elam (cv, _, cb, _) as ctx); s; (Elam (v, _, b, _) as l); a]) ->
+     let h1 = tr_prop (enot (eapp ("TLA.in", [a; s]))) in
+     let newarg = Expr.substitute [(v, a)] b in
+     let h2 = tr_prop (Expr.substitute [(cv, newarg)] cb) in
+     let oldarg = eapp ("TLA.fapply", [eapp ("TLA.Fcn", [s; l]); a]) in
+     let c = tr_prop (Expr.substitute [(cv, oldarg)] cb) in
+     ("zenon_fapplyfcn", [tr_prop ctx; tr_term s; tr_term l; tr_term a],
+      [c], [[h1]; [h2]])
+  | Ext (_, "fapplyfcn", _) -> assert false
   | _ -> assert false
 ;;
 
@@ -324,11 +489,7 @@ let preprocess l = l;;
 
 let postprocess p = p;;
 
-let declare_context_coq oc =
-  [
-    "TLA.in"; "TLA.subsetOf";
-  ]
-;;
+let declare_context_coq oc = [];;
 
 Extension.register {
   Extension.name = "tla";

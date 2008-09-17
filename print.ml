@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.20 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.21 2008-09-17 11:09:25 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -375,6 +375,12 @@ let rec llproof_term o t =
       llproof_term o e2;
       pr ")";
   | Eapp (s, args, _) -> pr "%s(" s; llproof_term_list o args; pr ")";
+  | Elam (v, t, b, _) ->
+     pr "(lambda %a, " print_vartype (v, t);
+     llproof_term o b;
+     pr ")";
+  | Efalse -> pr "false";
+  | Etrue -> pr "true";
   | _ -> assert false
 
 and llproof_term_list o l =
@@ -419,7 +425,8 @@ let rec llproof_prop o pr =
   | Eex (v, t, p, _) ->
       pro "Ex %a, " print_vartype (v, t); llproof_prop o p;
   | Elam (v, t, p, _) ->
-      pro "lambda %a, " print_vartype (v, t); llproof_prop o p;
+      pro "(lambda %a, " print_vartype (v, t); llproof_prop o p;
+      pro ")";
   | Eapp ("=", [t1; t2], _) ->
       pro "(";
       llproof_term o t1;
