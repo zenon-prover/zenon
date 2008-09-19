@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.10 2008-09-17 15:24:00 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.11 2008-09-19 13:39:36 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -446,14 +446,14 @@ let to_llargs tr_prop tr_term r =
                                              eapp ("TLA.in", [x; e2]))))
       in
       let c = tr_prop (eapp ("=", [e1; e2])) in
-      ("zenon_extensionality", [tr_term e1; tr_term e2], [c], [[h1]])
+      ("zenon_setext", [tr_term e1; tr_term e2], [c], [[h1]])
   | Ext (_, "notsetext", [e1; e2]) ->
       let x = Expr.newvar () in
       let h1 = tr_prop (enot (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
                                                    eapp ("TLA.in", [x; e2])))))
       in
       let c = tr_prop (enot (eapp ("=", [e1; e2]))) in
-      ("zenon_notextensionality", [tr_term e1; tr_term e2], [c], [[h1]])
+      ("zenon_notsetext", [tr_term e1; tr_term e2], [c], [[h1]])
   | Ext (_, "funext", [e1; e2]) ->
      let x = Expr.newvar () in
      let h1 = tr_prop (eall (x, "", eapp ("=", [eapp ("TLA.fapply", [e1; x]);
