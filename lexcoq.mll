@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.10 2007-04-23 17:19:11 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.11 2008-10-06 14:25:23 doligez Exp $";;
 
 open Lexing;;
 open Parsecoq;;
@@ -9,6 +9,7 @@ open Printf;;
 exception Lex_error of string;;
 
 let stringbuf = Buffer.create 100;;
+let idbuf = Buffer.create 100;;
 
 }
 
@@ -106,8 +107,12 @@ rule token = parse
   | "True"                  { TRUE }
   | "with"                  { WITH }
 
-  | idstart idchar * ('.' idstart idchar *) *
-      { IDENT (Lexing.lexeme lexbuf) }
+  | idstart idchar * ('.' idstart idchar *) * {
+        Buffer.reset idbuf;
+        Buffer.add_string idbuf (Lexing.lexeme lexbuf);
+        ident lexbuf;
+        IDENT (Buffer.contents idbuf)
+      }
   | ['0' - '9'] +
       { IDENT (Lexing.lexeme lexbuf) }
 
@@ -162,3 +167,17 @@ and string = parse
   | "\"" {
       STRING (Buffer.contents stringbuf)
     }
+
+and ident = parse
+  | ".(" idstart idchar * ('.' idstart idchar *) * {
+      Buffer.add_string idbuf (Lexing.lexeme lexbuf);
+      ident lexbuf;
+      ident_close lexbuf;
+    }
+  | "" { () }
+
+and ident_close = parse
+  | ")" { Buffer.add_string idbuf (Lexing.lexeme lexbuf); }
+  | _ { let msg = sprintf "bad character %C" (Lexing.lexeme_char lexbuf 0) in
+        raise (Error.Lex_error msg);
+      }
