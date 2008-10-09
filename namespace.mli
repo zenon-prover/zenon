@@ -1,8 +1,9 @@
 (*  Copyright 2006 INRIA  *)
-(*  $Id: namespace.mli,v 1.3 2008-08-14 14:02:09 doligez Exp $  *)
+(*  $Id: namespace.mli,v 1.4 2008-10-09 13:21:30 doligez Exp $  *)
 
 val anon_prefix : string;;    (* anonymous hypotheses *)
 val builtin_prefix : string;; (* built-in symbols *)
+val dummy_prefix : string;;   (* dummy local idents *)
 val hyp_prefix : string;;     (* local hypotheses *)
 val lemma_prefix : string;;   (* lemmas *)
 val tau_prefix : string;;     (* skolem constants *)

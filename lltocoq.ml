@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.36 2008-09-04 10:13:31 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.37 2008-10-09 13:21:30 doligez Exp $";;
 
 open Printf;;
 
@@ -109,7 +109,7 @@ let declare_lemma oc name params concl =
   fprintf oc "Lemma %s : %a%a.\n" name p_forall params p_nand (get_goals concl);
 ;;
 
-let declare_theorem oc name params concl =
+let declare_theorem oc name params concl phrases =
   let nconcl =
     match get_goals concl with
     | [ Enot (e, _) ] -> e
@@ -117,6 +117,8 @@ let declare_theorem oc name params concl =
     | _ -> assert false
   in
   fprintf oc "Theorem %s : %a%a.\n" name p_forall params p_expr nconcl;
+  fprintf oc "Proof.\n";
+  Coqterm.print_use_all oc phrases;
 ;;
 
 let getname = Coqterm.getname;;
@@ -321,18 +323,18 @@ let p_script_thm oc proof =
 
 let notmeta (v, _) = not (Mltoll.is_meta v);;
 
-let rec p_lemmas oc l =
+let rec p_lemmas oc phrases l =
   match l with
   | [] -> assert false
   | [thm] ->
       let params = List.filter notmeta thm.params in
-      declare_theorem oc thm.name params thm.proof.conc;
+      declare_theorem oc thm.name params thm.proof.conc phrases;
       p_script_thm oc thm.proof;
   | lem :: t ->
       let params = List.filter notmeta lem.params in
       declare_lemma oc lem.name params lem.proof.conc;
       p_script_lemma oc (List.length params) lem.proof;
-      p_lemmas oc t;
+      p_lemmas oc phrases t;
 ;;
 
 let output oc phrases llp =
@@ -340,7 +342,7 @@ let output oc phrases llp =
     Coqterm.init_mapping phrases;
     if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    p_lemmas oc llp;
+    p_lemmas oc phrases llp;
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
     !Coqterm.constants_used
   with

@@ -1,10 +1,11 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: namespace.ml,v 1.3 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: namespace.ml,v 1.4 2008-10-09 13:21:30 doligez Exp $";;
 
 let prefix = "zenon_";;
 
 let anon_prefix = prefix ^ "A";;
 let builtin_prefix = prefix ^ "B";;
+let dummy_prefix = prefix ^ "D";;
 let hyp_prefix = prefix ^ "H";;
 let lemma_prefix = prefix ^ "L";;
 let tau_prefix = prefix ^ "T";;

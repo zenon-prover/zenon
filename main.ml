@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.44 2008-09-08 13:14:19 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.45 2008-10-09 13:21:30 doligez Exp $";;
 
 open Printf;;
 
@@ -167,6 +167,8 @@ let rec argspec = [
          "             print statistics";
   "-short", Arg.Set short_flag,
          "             output a less detailed proof";
+  "-use-all", Arg.Set use_all_flag,
+           "           output a proof that uses all the hypotheses";
   "-v", Arg.Unit short_version,
      "                 print version string and exit";
   "-versions", Arg.Unit cvs_version,

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.34 2008-09-04 10:13:31 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.35 2008-10-09 13:21:30 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -522,6 +522,20 @@ let print_lemma oc (name, t) =
   fprintf oc ".\n";
 ;;
 
+let use_hyp oc count p =
+  match p with
+  | Phrase.Hyp (name, _, _) when name = goal_name -> count
+  | Phrase.Hyp (name, stmt, _)
+  | Phrase.Def (DefReal (name, _, args, body))
+  -> fprintf oc "assert (%s%d := %s).\n" dummy_prefix count name;
+     count + 1
+  | _ -> count
+;;
+
+let print_use_all oc phrases =
+  if !Globals.use_all_flag then ignore (List.fold_left (use_hyp oc) 0 phrases);
+;;
+
 let print_theorem oc (name, t) phrases =
   let prefix = sprintf "Theorem %s:" name in
   begin match get_goal phrases with
@@ -529,7 +543,9 @@ let print_theorem oc (name, t) phrases =
   | None -> pr_oc oc prefix (trexpr [] efalse);
   | _ -> assert false
   end;
-  fprintf oc ".\nProof.\nexact(";
+  fprintf oc ".\nProof.\n";
+  print_use_all oc phrases;
+  fprintf oc "exact(";
   pr_oc oc "" t;
   fprintf oc ").\nQed.\n";
 ;;
