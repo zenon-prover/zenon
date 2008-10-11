@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.35 2008-10-09 13:21:30 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.36 2008-10-11 08:13:48 pessaux Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -525,8 +525,8 @@ let print_lemma oc (name, t) =
 let use_hyp oc count p =
   match p with
   | Phrase.Hyp (name, _, _) when name = goal_name -> count
-  | Phrase.Hyp (name, stmt, _)
-  | Phrase.Def (DefReal (name, _, args, body))
+  | Phrase.Hyp (name, _, _)
+  | Phrase.Def (DefReal (name, _, _, _))
   -> fprintf oc "assert (%s%d := %s).\n" dummy_prefix count name;
      count + 1
   | _ -> count
