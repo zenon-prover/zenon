@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.11 2008-09-19 13:39:36 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.12 2008-10-20 16:30:42 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -263,6 +263,17 @@ let newnodes_prop e g =
   (* TODO : notfunext -- with a lot more hypotheses *)
   | _ -> []
 ;;
+
+(*
+let newnodes_rewrite e =
+  match e with
+  | Eapp ("TLA.fapply", [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _); a], _)
+  -> let x = Expr.newvar () in
+     let fres = Expr.substitute [(v, a)] b in
+     ([s; l; a], eapp ("TLA.in", [a; s]), fres)
+  | Eapp ("TLA.fapply", [Eapp ("TLA.except", [fn; arg; val])])
+...
+*)
 
 let newnodes_expr e g =
   let mknode rule branches =

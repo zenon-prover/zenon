@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.12 2008-09-17 15:24:00 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.13 2008-10-20 16:30:42 doligez Exp $";;
 
 open Printf;;
 
@@ -272,9 +272,11 @@ let rec p_tree i dict oc proof =
      gamma "notex" true (elam (x, t, e1)) e2 (enot nconc) proof.hyps;
   | Rnotex _ -> assert false
   | Rlemma (l, a) ->
-     let pr dict oc x = fprintf oc "%s" x in
+     let pr dict oc x = fprintf oc "?%s.0=%s" x x in
+     let pr_hyp dict oc h = fprintf oc "%s" (getname h) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule %s [of %a])\n" l (p_list dict "" pr " ") a;
+     iprintf i oc "using %a\n" (p_list dict "" pr_hyp " ") proof.conc;
+     iprintf i oc "by (rule %s [where %a])\n" l (p_list dict "" pr " and ") a;
   | Rcut (e1) ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "proof (rule zenon_em [of \"%a\"])\n" (p_expr dict) e1;
@@ -287,7 +289,7 @@ let rec p_tree i dict oc proof =
           p_sub dict hs ts;
        | [], [] -> ()
        | _ -> assert false
-     in p_sub dict [[e1]; [e1]] proof.hyps;
+     in p_sub dict [[e1]; [enot e1]] proof.hyps;
   | Raxiom (e1) ->
      let n_e1 = getname e1 in
      let n_ne1 = getname (enot e1) in
@@ -316,7 +318,7 @@ let rec p_tree i dict oc proof =
      let pr d x y z = p_sub_equal (iinc i) d oc x y z in
      let dict2 = list_fold_left3 pr dict args1 args2 proof.hyps in
      let mk l = eapp (p, l) in
-     p_subst i dict2 oc mk args1 args2 [] (getname pp);
+     p_subst i dict2 oc mk args1 args2 [] pp;
   | Rpnotp _ -> assert false
   | Rnoteq e1 ->
      let neq = enot (eapp ("=", [e1; e1])) in
@@ -413,7 +415,7 @@ and p_sub_equal i dict oc e1 e2 prf =
 and p_subst i dict oc mk l1 l2 rl2 prev =
   match l1, l2 with
   | [], [] ->
-     iprintf (iinc i) oc "thus \"?%s\" .\n" prev;
+     iprintf (iinc i) oc "thus \"%a\" .\n" (p_expr dict) prev;
      iprintf i oc "qed\n";
   | h1 :: t1, h2 :: t2 ->
      let newrl2 = h2 :: rl2 in
@@ -427,8 +429,8 @@ and p_subst i dict oc mk l1 l2 rl2 prev =
        let dict2 = p_is dict oc e in
        let eq = eapp ("=", [h1; h2]) in
        iprintf (iinc i) oc "by (rule subst [OF %s], fact %s)\n" (getname eq)
-               prev;
-       p_subst i dict2 oc mk t1 t2 newrl2 n_e;
+               (getname prev);
+       p_subst i dict2 oc mk t1 t2 newrl2 e;
      end;
   | _, _ -> assert false
 ;;
@@ -441,7 +443,7 @@ let p_lemma i dict oc lem =
   iprintf i oc "proof -\n";
   List.iter (fun (x, y) -> iprintf (iinc i) oc "fix \"%s\"\n" x) lem.params;
   let p_asm dict x =
-    iprintf (iinc i) oc "assumes %s:\"%a\"" (getname x) (p_expr dict) x;
+    iprintf (iinc i) oc "assume %s:\"%a\"" (getname x) (p_expr dict) x;
     p_is dict oc x
   in
   let dict2 = List.fold_left p_asm dict lem.proof.conc in

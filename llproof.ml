@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.10 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.11 2008-10-20 16:30:42 doligez Exp $";;
 
 open Expr;;
 
@@ -73,13 +73,9 @@ let subsumes super sub =
   List.for_all (fun x -> List.exists (Expr.equal x) super) sub.conc
 ;;
 
-let lemmas = (Hashtbl.create 997 : (string, expr list) Hashtbl.t);;
-let init_lemmas ls =
-  Hashtbl.clear lemmas;
-  List.iter (fun l -> Hashtbl.add lemmas l.name l.proof.conc) ls
-;;
+let lemmas = (Hashtbl.create 997 : (string, lemma) Hashtbl.t);;
 
-let get_lemma_conc name =
+let get_lemma name =
   try Hashtbl.find lemmas name
   with Not_found -> assert false
 ;;
@@ -109,26 +105,39 @@ let reduce conc rule hyps =
     | Rnotequal (a, b) -> [enot (eapp ("=", [a; b]))]
     | Rdefinition (name, sym, fld, unf) -> [fld]
     | Rextension (name, args, cons, hyps) -> cons
-    | Rlemma (name, args) -> get_lemma_conc name
+    | Rlemma (name, args) -> (get_lemma name).proof.conc
   in
   let useful = List.fold_left (fun accu h -> h.conc @@ accu) eliminated hyps in
   List.filter (fun x -> List.exists (Expr.equal x) useful) conc
 ;;
 
 let rec opt t =
-  if t.hyps = [] then t else
   let nhyps = List.map opt t.hyps in
   try direct_close t.conc
   with Not_found ->
   let nconc = reduce t.conc t.rule nhyps in
   try List.find (subsumes nconc) nhyps
   with Not_found ->
-  { t with conc = nconc; hyps = nhyps }
+  match t.rule with
+  | Rlemma (name, _) ->
+     { conc = nconc; hyps = nhyps;
+       rule = Rlemma (name, List.map fst (get_lemma name).params) }
+  | _ -> { t with conc = nconc; hyps = nhyps }
 ;;
 
+let occurs name e = not (Expr.equal e (substitute [(evar name, etrue)] e));;
+
 let optimise p =
-  init_lemmas p;
-  List.map (fun x -> {x with proof = opt x.proof}) p
+  Hashtbl.clear lemmas;
+  let f accu lemma =
+    let newproof = opt lemma.proof in
+    let f (name, typ) = List.exists (occurs name) newproof.conc in
+    let newparams = List.filter f lemma.params in
+    let newlemma = { lemma with proof = newproof; params = newparams } in
+    Hashtbl.add lemmas newlemma.name newlemma;
+    newlemma :: accu
+  in
+  List.rev (List.fold_left f [] p)
 ;;
 
 let rec iter_tree f pt =

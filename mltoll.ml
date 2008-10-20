@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.31 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.32 2008-10-20 16:30:42 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -781,7 +781,7 @@ and translate_derived p =
                      Enot (Eapp ("=", [c; d], _), _)) ->
       let (n1, n2) = gethyps2 p in
       let ndec = enot (eapp ("=", [d; c])) in
-      let n3 = make_pnp aeb ndec [n1; n2] in
+      let n3 = make_pnp aeb ndec [n2; n1] in
       let n4 = make_direct_sym_neq c d n3 in
       to_llproof n4
   | P_NotP_sym (s, (Eapp (s1, [a; b], _) as pab),
