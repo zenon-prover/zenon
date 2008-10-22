@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.33 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.34 2008-10-22 14:53:22 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -87,7 +87,7 @@ let get_meta_type s =
 let make_tau_name p =
   match p with
   | Etau (Evar (v, _), _, _, _) ->
-     sprintf "%s%d_%s" tau_prefix (Index.get_number p) v
+     sprintf "%s%s_%s" tau_prefix v (base26 (Index.get_number p))
   | _ -> assert false
 ;;
 
