@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.24 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.25 2008-10-22 11:51:04 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -228,36 +228,47 @@ module HashedExpr = struct
     | _ -> assert false
   ;;
 
+  let intersects env l =
+    let eq x e = match e with Evar (s, _) -> s =%= x | _ -> assert false in
+    List.exists (fun v -> List.exists (eq v) env) l
+  ;;
+
   let rec equal_in_env env1 env2 e1 e2 =
-    match e1, e2 with
-    | Evar _, Evar _ -> same_binding env1 e1 env2 e2
-    | Emeta (n1, _), Emeta (n2, _) -> n1 =%= n2
-    | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
-        sym1 =%= sym2
-        && List.for_all2 (equal_in_env env1 env2) args1 args2
-    | Enot (f1, _), Enot (f2, _) -> equal_in_env env1 env2 f1 f2
-    | Eand (f1, g1, _), Eand (f2, g2, _)
-    | Eor (f1, g1, _), Eor (f2, g2, _)
-    | Eimply (f1, g1, _), Eimply (f2, g2, _)
-    | Eequiv (f1, g1, _), Eequiv (f2, g2, _)
-      -> equal_in_env env1 env2 f1 f2 && equal_in_env env1 env2 g1 g2
-    | Efalse, Efalse
-    | Etrue, Etrue
-      -> true
-    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
-    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
-    | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
-    | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
-      -> (List.mem (var_name v1) (get_fv f1))
-         =%= (List.mem (var_name v2) (get_fv f2))
-         && equal_in_env (v1::env1) (v2::env2) f1 f2
-    | _, _ -> false
+    let m1 = intersects env1 (get_fv e1) in
+    let m2 = intersects env2 (get_fv e2) in
+    not m1 && not m2 && e1 == e2
+    || m1 && m2 && begin
+      match e1, e2 with
+      | Evar _, Evar _ -> same_binding env1 e1 env2 e2
+      | Emeta (n1, _), Emeta (n2, _) -> n1 =%= n2
+      | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
+          sym1 =%= sym2
+          && List.for_all2 (equal_in_env env1 env2) args1 args2
+      | Enot (f1, _), Enot (f2, _) -> equal_in_env env1 env2 f1 f2
+      | Eand (f1, g1, _), Eand (f2, g2, _)
+      | Eor (f1, g1, _), Eor (f2, g2, _)
+      | Eimply (f1, g1, _), Eimply (f2, g2, _)
+      | Eequiv (f1, g1, _), Eequiv (f2, g2, _)
+        -> equal_in_env env1 env2 f1 f2 && equal_in_env env1 env2 g1 g2
+      | Efalse, Efalse
+      | Etrue, Etrue
+        -> true
+      | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
+      | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
+      | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
+      | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
+        -> (List.mem (var_name v1) (get_fv f1))
+           =%= (List.mem (var_name v2) (get_fv f2))
+           && equal_in_env (v1::env1) (v2::env2) f1 f2
+      | _, _ -> false
+    end
   ;;
 
   let equal_in_env1 v1 v2 f1 f2 =
-    (List.mem (var_name v1) (get_fv f1))
-    =%= (List.mem (var_name v2) (get_fv f2))
-    && equal_in_env [v1] [v2] f1 f2
+    let m1 = List.mem (var_name v1) (get_fv f1) in
+    let m2 = List.mem (var_name v2) (get_fv f2) in
+    not m1 && not m2 && f1 == f2
+    || m1 && m2 && equal_in_env [v1] [v2] f1 f2
   ;;
 
   let equal e1 e2 =
@@ -276,8 +287,13 @@ module HashedExpr = struct
     | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
     | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
     | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
-      -> t1 =%= t2
-         && (v1 == v2 && f1 == f2 || equal_in_env1 v1 v2 f1 f2)
+      when t1 =%= t2 && v1 == v2
+      -> f1 == f2
+    | Eall (v1, t1, f1, _), Eall (v2, t2, f2, _)
+    | Eex (v1, t1, f1, _), Eex (v2, t2, f2, _)
+    | Etau (v1, t1, f1, _), Etau (v2, t2, f2, _)
+    | Elam (v1, t1, f1, _), Elam (v2, t2, f2, _)
+      -> t1 =%= t2 && equal_in_env1 v1 v2 f1 f2
     | _, _ -> false
   ;;
 end;;

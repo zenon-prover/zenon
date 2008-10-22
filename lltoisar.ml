@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.13 2008-10-20 16:30:42 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.14 2008-10-22 11:51:04 doligez Exp $";;
 
 open Printf;;
 
@@ -28,21 +28,6 @@ let iprintf i oc fmt (* args *) =
 ;;
 
 let iinc i = if i >= 15 then i else i+1;;
-
-let base36 x =
-  if x = 0 then "0" else begin
-    assert (x > 0);
-    let digit x =
-      if x < 10 then Char.chr (Char.code '0' + x)
-      else if x < 36 then Char.chr (Char.code 'a' + x - 10)
-      else assert false
-    in
-    let rec conv x =
-      if x = 0 then "" else sprintf "%s%c" (conv (x/36)) (digit (x mod 36))
-    in
-    conv x
-  end
-;;
 
 let getname e = "z_H" ^ (base36 (Index.get_number e));;
 
@@ -272,7 +257,7 @@ let rec p_tree i dict oc proof =
      gamma "notex" true (elam (x, t, e1)) e2 (enot nconc) proof.hyps;
   | Rnotex _ -> assert false
   | Rlemma (l, a) ->
-     let pr dict oc x = fprintf oc "?%s.0=%s" x x in
+     let pr dict oc x = fprintf oc "?%s=%s" x x in
      let pr_hyp dict oc h = fprintf oc "%s" (getname h) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %a\n" (p_list dict "" pr_hyp " ") proof.conc;

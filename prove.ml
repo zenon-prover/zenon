@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.28 2008-09-12 14:19:57 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.29 2008-10-22 11:51:04 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -151,7 +151,7 @@ let make_notequiv st sym (p, g) (np, ng) =
         add_node st {
           nconc = [p; np];
           nrule = myrule;
-          nprio = Arity;
+          nprio = if s1 =%= "=" then Arity_eq else Arity;
           ngoal = min g ng;
           nbranches = make_inequals myargs1 args2;
         }
@@ -657,7 +657,7 @@ let mknode_trans sym (e1, g1) (e2, g2) =
   {
     nconc = [e1; e2];
     nrule = if sym then Trans_sym (e1, e2) else Trans (e1, e2);
-    nprio = Arity;
+    nprio = if r =%= "=" then Arity_eq else Arity;
     ngoal = min g1 g2;
     nbranches = branches;
   }
@@ -688,7 +688,7 @@ let mknode_transeq sym (e1, g1) (e2, g2) =
       if sym then
         if rsym then TransEq_sym (a, b, e2) else TransEq2 (a, b, e2)
       else TransEq (a, b, e2);
-    nprio = Arity;
+    nprio = if r =%= "=" then Arity_eq else Arity;
     ngoal = min g1 g2;
     nbranches = branches;
   }
@@ -1131,7 +1131,23 @@ and next_node stk st =
   incr Globals.inferences;
   match remove st.queue with
   | None ->
+      let is_logic e =
+        match e with
+        | Eand _ | Eor _ | Eimply _ | Eequiv _ | Efalse | Etrue
+        | Eall _ | Eex _ | Etau _ | Elam _ | Enot (Enot _, _)
+        -> true
+        | _ -> false
+      in
+      let f (e, _) =
+        match e with
+        | _ when is_logic e -> ()
+        | Enot (e1, _) when is_logic e1 -> ()
+        | _ -> Print.expr_soft (Print.Chan stdout) e; printf "\n";
+      in
       if !Globals.debug_flag then Step.forms "NO PROOF" (Index.get_all ());
+      printf "(* Model:\n";
+      List.iter f (Index.get_all ());
+      printf "*)\n";
       raise NoProof
   | Some (n, q1) ->
       let st1 = {(*st with*) queue = q1} in

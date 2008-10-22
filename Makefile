@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.48 2008-09-04 10:13:31 doligez Exp $
+#  $Id: Makefile,v 1.49 2008-10-22 11:51:04 doligez Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -25,7 +25,7 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           ext_coqbool.ml ext_focal.ml ext_tla.ml \
           ext_equiv.ml ext_inductive.ml coqterm.ml lltocoq.ml \
           lltoisar.ml \
-          checksum.dummy main.ml
+          checksum.dummy versionnum.ml main.ml
 
 COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_inductive.v  zenon_focal.v
 

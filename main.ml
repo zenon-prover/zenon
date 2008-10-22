@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.45 2008-10-09 13:21:30 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.46 2008-10-22 11:51:04 doligez Exp $";;
 
 open Printf;;
 
@@ -67,12 +67,12 @@ let parse_size_time s =
 ;;
 
 let short_version () =
-  printf "zenon version %s\n" Version.full;
+  printf "zenon version %s\n" Versionnum.full;
   exit 0;
 ;;
 
 let cvs_version () =
-  printf "zenon version %s\n" Version.full;
+  printf "zenon version %s\n" Versionnum.full;
   Version.print_cvs stdout;
   printf "source checksum: %s\n" Checksum.v;
   exit 0;

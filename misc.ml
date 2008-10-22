@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.9 2008-08-28 10:23:51 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.10 2008-10-22 11:51:04 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -73,3 +73,17 @@ let rec list_fold_left3 f a l1 l2 l3 =
 ;;
 
 let debug = Printf.eprintf;;
+
+let base_n s x =
+  if x = 0 then String.make 1 s.[0] else begin
+    let b = String.length s in
+    assert (x > 0);
+    let rec conv x =
+      if x = 0 then "" else Printf.sprintf "%s%c" (conv (x / b)) s.[x mod 36]
+    in
+    conv x
+  end
+;;
+
+let base36 x = base_n "0123456789abcdefghijklmnopqrstuvwxyz" x;;
+let base26 x = base_n "abcdefghijklmnopqrstuvwxyz" x;;

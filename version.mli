@@ -1,17 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: version.mli,v 1.2 2005-11-05 11:13:17 doligez Exp $  *)
-
-(* whole-program release and version numbers *)
-
-val number : int;;
-val date : string;;
-
-val major : int;;
-val minor : int;;
-val bugfix : int;;
-
-val short : string;;
-val full : string;;
+(*  $Id: version.mli,v 1.3 2008-10-22 11:51:04 doligez Exp $  *)
 
 (* file-by-file CVS version strings *)
 

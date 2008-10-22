@@ -1,7 +1,8 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_focal.v,v 1.2 2008-09-04 10:13:32 doligez Exp $  *)
+(*  $Id: zenon_focal.v,v 1.3 2008-10-22 11:51:04 doligez Exp $  *)
 
 Require Export Bool.
+Require Import ClassicalEpsilon.
 
 (* magic: this whole file depends on the following definitions:
    basics.and_b := andb
@@ -174,6 +175,11 @@ Qed.
 
 Implicit Arguments zenon_focal_ite_rel_nr [A B].
 
+Lemma zenon_focal_eqdec : forall (T : Set) (x y : T), {x = y}+{x <> y}.
+Proof.
+  intros T x y.
+  apply (excluded_middle_informative (x = y)).
+Qed.
 
 Definition zenon_focal_false_s := zenon_focal_false.
 Definition zenon_focal_nottrue_s := zenon_focal_nottrue.

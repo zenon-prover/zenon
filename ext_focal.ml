@@ -1,9 +1,17 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.2 2008-09-04 10:13:31 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.3 2008-10-22 11:51:04 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
-(* Symbols: Is_true, basics.not_b; basics.and_b; basics.or_b; basics.xor_b
-   false, true, FOCAL.ifthenelse
+(* Symbols:
+     Is_true
+     basics.and_b
+     basics.or_b
+     basics.xor_b
+     basics.not_b
+     basics.base_eq
+     false
+     true
+     FOCAL.ifthenelse
  *)
 
 open Printf;;
@@ -76,6 +84,15 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
+  | Eapp ("Is_true**basics.base_eq", [e1; e2; e3], _) ->
+     let branches = [| [eapp ("=", [e2; e3])] |] in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("focal", "base_eq", [e1; e2; e3]);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = branches;
+       }; Stop ]
   | Enot (Eapp ("Is_true**basics.and_b", [e1; e2], _), _) ->
       let branches = [| [enot (eand (istrue e1, istrue e2))] |] in
       [ Node {
@@ -112,6 +129,15 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
+  | Enot (Eapp ("Is_true**basics.base_eq", [e1; e2; e3], _), _) ->
+     let branches = [| [enot (eapp ("=", [e1; e2; e3]))] |] in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("focal", "notbase_eq", [e2; e3]);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = branches;
+       }; Stop ]
   | Eapp ("Is_true", [Evar ("true", _)], _) -> [Stop]
   | Enot (Eapp ("Is_true", [Evar ("false", _)], _), _) -> [Stop]
 
@@ -319,6 +345,12 @@ let to_llargs tr_prop tr_term r =
       let h = tr_prop (enot (istrue e1)) in
       let c = tr_prop (istrue (eapp ("basics.not_b", [e1]))) in
       ("zenon_focal_not", [tr_term e1], [c], [ [h] ])
+  | Ext (_, "base_eq", [e1; e2; e3]) ->
+      let h = tr_prop (eapp ("=", [e2; e3])) in
+      let c = tr_prop (istrue (eapp ("basics.base_eq", [e1; e2; e3]))) in
+      let eqdec = evar ("zenon_focal_eq_dec") in
+      ("coq_builtins.zenon_base_eq",
+       [tr_term e1; tr_term eqdec; tr_term e2; tr_term e3], [c], [ [h] ])
   | Ext (_, "notand", [e1; e2]) ->
       let h = tr_prop (enot (eand (istrue e1, istrue e2))) in
       let c = tr_prop (enot (istrue (eapp ("basics.and_b", [e1; e2])))) in
@@ -335,6 +367,11 @@ let to_llargs tr_prop tr_term r =
       let h = tr_prop (istrue e1) in
       let c = tr_prop (enot (istrue (eapp ("basics.not_b", [e1])))) in
       ("zenon_focal_notnot", [tr_term e1], [c], [ [h] ])
+  | Ext (_, "notbase_eq", [e1; e2; e3]) ->
+      let h = tr_prop (enot (eapp ("=", [e2; e3]))) in
+      let c = tr_prop (enot (istrue (eapp ("basics.base_eq", [e1; e2; e3])))) in
+      ("coq_builtins.zenon_notbase_eq",
+       [tr_term e1; tr_term e2; tr_term e3], [c], [ [h] ])
   | Ext (_, "false", []) ->
       let c = tr_prop (istrue (evar "false")) in
       ("zenon_focal_false", [], [c], []);

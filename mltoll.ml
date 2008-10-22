@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.32 2008-10-20 16:30:42 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.33 2008-10-22 11:51:04 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -84,7 +84,12 @@ let get_meta_type s =
   ident_to_type (String.sub s ofs (len - ofs))
 ;;
 
-let make_tau_name p = sprintf "%s%d" tau_prefix (Index.get_number p);;
+let make_tau_name p =
+  match p with
+  | Etau (Evar (v, _), _, _, _) ->
+     sprintf "%s%d_%s" tau_prefix (Index.get_number p) v
+  | _ -> assert false
+;;
 
 let term_tbl = HE.create 9997;;
 
