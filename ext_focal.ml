@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.3 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.4 2008-10-23 13:05:45 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -84,7 +84,8 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp ("Is_true**basics.base_eq", [e1; e2; e3], _) ->
+  | Eapp (("Is_true**basics.base_eq" | "Is_true**basics._focop_eq_"),
+          [e1; e2; e3], _) ->
      let branches = [| [eapp ("=", [e2; e3])] |] in
        [ Node {
          nconc = [e];
@@ -129,11 +130,12 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp ("Is_true**basics.base_eq", [e1; e2; e3], _), _) ->
-     let branches = [| [enot (eapp ("=", [e1; e2; e3]))] |] in
+  | Enot (Eapp (("Is_true**basics.base_eq" | "Is_true**basics._focop_eq_"),
+                [e1; e2; e3], _), _) ->
+     let branches = [| [enot (eapp ("=", [e2; e3]))] |] in
        [ Node {
          nconc = [e];
-         nrule = Ext ("focal", "notbase_eq", [e2; e3]);
+         nrule = Ext ("focal", "notbase_eq", [e1; e2; e3]);
          nprio = Arity;
          ngoal = g;
          nbranches = branches;
@@ -348,9 +350,9 @@ let to_llargs tr_prop tr_term r =
   | Ext (_, "base_eq", [e1; e2; e3]) ->
       let h = tr_prop (eapp ("=", [e2; e3])) in
       let c = tr_prop (istrue (eapp ("basics.base_eq", [e1; e2; e3]))) in
-      let eqdec = evar ("zenon_focal_eq_dec") in
+      let eqdec = evar ("zenon_focal_eqdec") in
       ("coq_builtins.zenon_base_eq",
-       [tr_term e1; tr_term eqdec; tr_term e2; tr_term e3], [c], [ [h] ])
+       List.map tr_term [eqdec; e1; e2; e3], [c], [ [h] ])
   | Ext (_, "notand", [e1; e2]) ->
       let h = tr_prop (enot (eand (istrue e1, istrue e2))) in
       let c = tr_prop (enot (istrue (eapp ("basics.and_b", [e1; e2])))) in
@@ -455,6 +457,9 @@ let to_llargs tr_prop tr_term r =
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
       ("zenon_focal_ite_rel_nr", List.map tr_term [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
+  | Ext (x, y, _) ->
+     Printf.eprintf "unknown extension rule %s/%s\n" x y;
+     assert false
   | _ -> assert false
 ;;
 
