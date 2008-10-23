@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.21 2008-09-11 11:57:12 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.22 2008-10-23 16:08:52 doligez Exp $";;
 
 open Printf;;
 
@@ -13,11 +13,17 @@ let rec mk_type_string e =
   match e with
   | Evar (s, _) -> s
   | Emeta _ -> assert false
+  | Eapp ("*", [e1; e2], _) ->
+     sprintf "(%s*%s)" (mk_type_string e1) (mk_type_string e2)
+  | Eapp ("%", [e1; e2], _) ->
+     sprintf "((%s)%%%s)" (mk_type_string e1) (mk_type_string e2)
   | Eapp (s, args, _) ->
      let inside =
        List.fold_left (fun s a -> sprintf "%s %s" s (mk_type_string a)) s args
      in
      sprintf "(%s)" inside
+  | Eimply (e1, e2, _) ->
+     sprintf "(%s -> %s)" (mk_type_string e1) (mk_type_string e2)
   | _ -> assert false (* FIXME TODO *)
 ;;
 
@@ -256,6 +262,10 @@ expr1:
   | LPAREN_ expr comma_expr_list RPAREN_
       { mk_apply (evar tuple_name, $2 :: $3) }
 
+  | LPAREN_ expr STAR_ expr RPAREN_
+      { eapp ("*", [$2; $4]) }
+  | LPAREN_ expr PERCENT_ IDENT RPAREN_
+      { eapp ("%", [$2; evar ($4)]) }
   | LPAREN_ expr RPAREN_
       { $2 }
   | TRUE
@@ -332,26 +342,22 @@ hyp_def:
   | DEFINITION id_or_expr COLON_EQ_ expr PERIOD_
       { let (params, expr) = get_params $4 in
         Def (DefReal ($2, $2, params, expr)) }
-/* Modif par François. A valider, Damien. */
   | DEFINITION IDENT compact_args COLON_ typ COLON_EQ_ expr PERIOD_
       {
        let compact_params = $3 in
        let (other_params, expr) = get_params $7 in
        Def (DefReal ($2, $2, (compact_params @ other_params), expr))
      }
-/* Fin modif par François. */
   | INDUCTIVE IDENT COLON_ IDENT COLON_EQ_ constr_list PERIOD_
       { (* FIXME should check that $4 = "Set" *)
         Inductive ($2, $6) }
 ;
 
 
-/* Modif par François. A valider, Damien. */
 compact_args:
     /* empty */                                          { [] }
   | LPAREN_ IDENT COLON_ typ RPAREN_ compact_args    { (evar $2) :: $6 }
 ;
-/* Fin modif par François. */
 
 
 dep_hyp_def:
