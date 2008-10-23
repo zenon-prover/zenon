@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.14 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.15 2008-10-23 09:01:20 doligez Exp $";;
 
 open Printf;;
 
@@ -208,7 +208,7 @@ let rec p_tree i dict oc proof =
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (getname e) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule %s [of %a], fact %a)\n" name
+     iprintf i oc "by (rule %s [of %a, OF %a])\n" name
              (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
   | Rextension (name, args, con, [hs]) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
@@ -216,7 +216,7 @@ let rec p_tree i dict oc proof =
      let p_hyp (dict, j) h =
        iprintf i oc "have %s: \"%a\"" (getname h) (p_expr dict) h;
        let dict2 = p_is dict oc h in
-       iprintf i oc "by (rule %s_%d [of %a], fact %a)\n" name j
+       iprintf i oc "by (rule %s_%d [of %a, OF %a])\n" name j
                (p_list dict2 "" p_arg " ") args (p_list dict2 "" p_con " ") con;
        (dict2, j+1)
      in
@@ -229,7 +229,7 @@ let rec p_tree i dict oc proof =
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (getname e) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "proof (rule %s [of %a], fact %a)\n" name
+     iprintf i oc "proof (rule %s [of %a, OF %a])\n" name
              (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
      let rec p_sub dict l1 l2 =
        match l1, l2 with
@@ -260,8 +260,9 @@ let rec p_tree i dict oc proof =
      let pr dict oc x = fprintf oc "?%s=%s" x x in
      let pr_hyp dict oc h = fprintf oc "%s" (getname h) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "using %a\n" (p_list dict "" pr_hyp " ") proof.conc;
-     iprintf i oc "by (rule %s [where %a])\n" l (p_list dict "" pr " and ") a;
+     iprintf i oc "by (rule %s [where %a, OF %a])\n" l
+             (p_list dict "" pr " and ") a
+             (p_list dict "" pr_hyp " ") proof.conc;
   | Rcut (e1) ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "proof (rule zenon_em [of \"%a\"])\n" (p_expr dict) e1;
@@ -353,7 +354,7 @@ and p_gamma i dict oc lem neg lam e conc sub =
   let n_body = getname body in
   iprintf i oc "have %s: \"%s%a\"" n_body negs (p_apply dict) (lam, e);
   let dict2 = p_is dict oc body in
-  iprintf i oc "by (rule zenon_%s_0 [of \"%a\" \"%a\"], fact %s)\n"
+  iprintf i oc "by (rule zenon_%s_0 [of \"%a\" \"%a\", OF %s])\n"
           lem (p_expr dict2) lam (p_expr dict2) e (getname conc);
   p_tree i dict2 oc t;
 

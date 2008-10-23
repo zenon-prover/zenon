@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.12 2008-10-20 16:30:42 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.13 2008-10-23 09:01:20 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -264,18 +264,55 @@ let newnodes_prop e g =
   | _ -> []
 ;;
 
-(*
-let newnodes_rewrite e =
+let apply f e =
+  match f with
+  | Elam (v, _, b, _) -> Expr.substitute [(v, e)] b
+  | _ -> assert false
+;;
+
+let rewrites ctx e mknode =
   match e with
   | Eapp ("TLA.fapply", [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _); a], _)
+  -> let fres = Expr.substitute [(v, a)] b in
+     let x = Expr.newvar () in
+     let lamctx = elam (x, "", ctx x) in
+     mknode (Ext ("tla", "fapplyfcn", [lamctx; s; l; a]))
+            [| [enot (eapp ("TLA.in", [a; s]))];
+               [ctx fres] |]
+  | Eapp ("TLA.fapply", [Eapp ("TLA.except", [f; v; e1], _); w], _)
   -> let x = Expr.newvar () in
-     let fres = Expr.substitute [(v, a)] b in
-     ([s; l; a], eapp ("TLA.in", [a; s]), fres)
-  | Eapp ("TLA.fapply", [Eapp ("TLA.except", [fn; arg; val])])
-...
-*)
+     let lamctx = elam (x, "", ctx x) in
+     let indom = eapp ("TLA.in", [w; eapp ("TLA.DOMAIN", [f])]) in
+     mknode (Ext ("tla", "fapplyexcept", [lamctx; f; v; e1; w]))
+            [| [indom; eapp ("=", [v; w]); ctx e1];
+               [indom; enot (eapp ("=", [v; w]));
+                ctx (eapp ("TLA.fapply", [f; w]))];
+               [enot indom] |]
+  | _ -> []
+;;
 
-let newnodes_expr e g =
+let rec find_rewrites ctx e mknode =
+  let local = rewrites ctx e mknode in
+  match e with
+  | _ when local <> [] -> local
+  | Eapp (p, args, _) ->
+     let rec loop leftarg rightarg =
+       match rightarg with
+       | [] -> []
+       | h::t ->
+          let newctx x = ctx (eapp (p, List.rev_append leftarg (x :: t)))
+          in
+          begin match find_rewrites newctx h mknode with
+          | [] -> loop (h::leftarg) t
+          | l -> l
+          end
+     in
+     loop [] args
+  | Enot (e1, _) -> find_rewrites (fun x -> (ctx (enot x))) e1 mknode
+  | _ -> []
+;;
+
+let newnodes_rewrites e g =
   let mknode rule branches =
     [ Node {
       nconc = [e];
@@ -285,56 +322,11 @@ let newnodes_expr e g =
       nbranches = branches;
     }]
   in
-  match e with
-  | Eapp ("=",
-          [Eapp ("TLA.fapply",
-                 [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
-                  a], _);
-           e2], _) ->
-     let x = Expr.newvar () in
-     let ctx = elam (x, "", eapp ("=", [x; e2])) in
-     let fres = Expr.substitute [(v, a)] b in
-     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
-            [| [enot (eapp ("TLA.in", [a; s]))];
-               [eapp ("=", [fres; e2])] |]
-  | Eapp ("=",
-          [e1;
-           Eapp ("TLA.fapply",
-                 [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
-                  a], _)], _) ->
-     let x = Expr.newvar () in
-     let ctx = elam (x, "", eapp ("=", [e1; x])) in
-     let fres = Expr.substitute [(v, a)] b in
-     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
-            [| [enot (eapp ("TLA.in", [a; s]))];
-               [eapp ("=", [e1; fres])] |]
-  | Enot (Eapp ("=",
-                [Eapp ("TLA.fapply",
-                       [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
-                        a], _);
-                 e2], _), _) ->
-     let x = Expr.newvar () in
-     let ctx = elam (x, "", enot (eapp ("=", [x; e2]))) in
-     let fres = Expr.substitute [(v, a)] b in
-     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
-            [| [enot (eapp ("TLA.in", [a; s]))];
-               [enot (eapp ("=", [fres; e2]))] |]
-  | Enot (Eapp ("=",
-                [e1;
-                 Eapp ("TLA.fapply",
-                       [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _);
-                        a], _)], _), _) ->
-     let x = Expr.newvar () in
-     let ctx = elam (x, "", enot (eapp ("=", [e1; x]))) in
-     let fres = Expr.substitute [(v, a)] b in
-     mknode (Ext ("tla", "fapplyfcn", [ctx; s; l; a]))
-            [| [enot (eapp ("TLA.in", [a; s]))];
-               [enot (eapp ("=", [e1; fres]))] |]
-  | _ -> []
+  find_rewrites (fun x -> x) e mknode
 ;;
 
 let newnodes e g =
-  newnodes_prop e g @ newnodes_expr e g
+  newnodes_prop e g @ newnodes_rewrites e g
 ;;
 
 let to_llargs tr_prop tr_term r =
@@ -478,10 +470,24 @@ let to_llargs tr_prop tr_term r =
      let newarg = Expr.substitute [(v, a)] b in
      let h2 = tr_prop (Expr.substitute [(cv, newarg)] cb) in
      let oldarg = eapp ("TLA.fapply", [eapp ("TLA.Fcn", [s; l]); a]) in
-     let c = tr_prop (Expr.substitute [(cv, oldarg)] cb) in
+     let c = tr_prop (substitute [(cv, oldarg)] cb) in
      ("zenon_fapplyfcn", [tr_prop ctx; tr_term s; tr_term l; tr_term a],
       [c], [[h1]; [h2]])
   | Ext (_, "fapplyfcn", _) -> assert false
+  | Ext (_, "fapplyexcept",
+         [(Elam (cv, _, cb, _) as ctx); f; v; e1; w]) ->
+     let indom = eapp ("TLA.in", [w; eapp ("TLA.DOMAIN", [f])]) in
+     let tindom = tr_prop indom in
+     let tnindom = tr_prop (enot indom) in
+     let eq = eapp ("=", [v; w]) in
+     let teq = tr_prop eq in
+     let tneq = tr_prop (enot eq) in
+     let h1 = tr_prop (substitute [(cv, e1)] cb) in
+     let h2 = tr_prop (substitute [(cv, eapp ("TLA.fapply", [f; w]))] cb) in
+     let exc = eapp ("TLA.except", [f; v; e1]) in
+     let c = tr_prop (substitute [(cv, eapp ("TLA.fapply", [exc; w]))] cb) in
+     ("zenon_fapplyexcept", tr_prop ctx :: List.map tr_term [f; v; e1; w],
+      [c], [[tindom; teq; h1]; [tindom; tneq; h2]; [tnindom]])
   | Ext (group, name, _) ->
       eprintf "unknown extension: %s_%s\n" group name;
       flush stderr;
