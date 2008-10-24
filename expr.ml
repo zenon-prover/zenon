@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.25 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.26 2008-10-24 13:36:36 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -240,7 +240,7 @@ module HashedExpr = struct
     || m1 && m2 && begin
       match e1, e2 with
       | Evar _, Evar _ -> same_binding env1 e1 env2 e2
-      | Emeta (n1, _), Emeta (n2, _) -> n1 =%= n2
+      | Emeta (n1, _), Emeta (n2, _) -> n1 == n2
       | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
           sym1 =%= sym2
           && List.for_all2 (equal_in_env env1 env2) args1 args2
@@ -274,7 +274,7 @@ module HashedExpr = struct
   let equal e1 e2 =
     match e1, e2 with
     | Evar (v1, _), Evar (v2, _) -> v1 =%= v2
-    | Emeta (f1, _), Emeta (f2, _) -> f1 =%= f2
+    | Emeta (f1, _), Emeta (f2, _) -> f1 == f2
     | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
         sym1 =%= sym2 && List.for_all2 (==) args1 args2
     | Enot (f1, _), Enot (f2, _) -> f1 == f2
@@ -309,6 +309,12 @@ let he_merge k =
     incr Globals.num_expr;
     HE.add tbl k;
     k
+;;
+
+let print_stats oc =
+  let (tbllen, entries, bucklen, least, median, largest) = HE.stats tbl in
+  Printf.fprintf oc "tbl:%d ent:%d buc:%d sml:%d med:%d lrg:%d\n"
+    tbllen entries bucklen least median largest
 ;;
 
 (* Normal table version (faster but uses more memory) *)

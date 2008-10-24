@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: progress.ml,v 1.3 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id: progress.ml,v 1.4 2008-10-24 13:36:36 doligez Exp $";;
 
 open Printf;;
 
@@ -9,10 +9,9 @@ let level = ref Bar;;
 let progress_cur = ref (-1);;
 let progress_char = ref 0;;
 let progress_anim = "/-\\|";;
-let progress_bar = '*';;
 let backspace = '\008';;
 
-let do_progress f =
+let do_progress f bar =
   match !level with
   | No -> ()
   | Bar ->
@@ -24,10 +23,13 @@ let do_progress f =
         progress_cur := 0;
       end;
       progress_char := (!progress_char + 1) mod (String.length progress_anim);
-      if cur > !progress_cur then begin
+      if cur = !progress_cur + 1 then begin
+        eprintf "%c*%c" backspace progress_anim.[!progress_char];
+        progress_cur := cur;
+      end else if cur > !progress_cur then begin
         eprintf "%c" backspace;
         for i = !progress_cur to cur - 1 do
-          eprintf "%c" progress_bar;
+          eprintf "%c" bar;
         done;
         eprintf "%c" (progress_anim.[!progress_char]);
         progress_cur := cur;

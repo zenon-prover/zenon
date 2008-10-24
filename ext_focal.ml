@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.4 2008-10-23 13:05:45 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.5 2008-10-24 13:36:36 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -12,6 +12,8 @@ Version.add "$Id: ext_focal.ml,v 1.4 2008-10-23 13:05:45 doligez Exp $";;
      false
      true
      FOCAL.ifthenelse
+     basics.crp
+     basics.pair
  *)
 
 open Printf;;
@@ -496,6 +498,19 @@ let rec fold_istrue e =
   | Elam (v, t, e, _) -> elam (v, t, fold_istrue e)
 ;;
 
+let built_in_defs =
+  let x = Expr.newvar () in
+  let y = Expr.newvar () in
+  let tx = Expr.newvar () in
+  let ty = Expr.newvar () in
+  [
+    Def (DefReal ("crp", "basics.crp", [tx; ty; x; y],
+                  eapp (Namespace.tuple_name, [x; y])));
+    Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
+                  eapp (Namespace.tuple_name, [x; y])));
+  ]
+;;
+
 let preprocess l =
   let f x =
     match x with
@@ -506,7 +521,7 @@ let preprocess l =
     | Sig _ -> x
     | Inductive _ -> x
   in
-  List.map f l
+  built_in_defs @ List.map f l
 ;;
 
 let rec process_expr e =

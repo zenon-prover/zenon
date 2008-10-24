@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.29 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.30 2008-10-24 13:36:36 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1070,7 +1070,9 @@ let progress_counter = ref !progress_period;;
 let progress_last = ref 0.0;;
 let period_base = 0.3;;
 
-let check_limits () =
+let periodic c =
+  progress_counter := !progress_period;
+  Progress.do_progress (fun () -> ()) c;
   let heap_size = (Gc.quick_stat ()).Gc.heap_words in
   let tm = Sys.time () in
   if tm > !progress_last +. 0.001 then begin
@@ -1100,7 +1102,13 @@ let check_limits () =
   end;
 ;;
 
+let progress () =
+  decr progress_counter;
+  if !progress_counter < 0 then periodic '*';
+;;
+
 let rec refute_aux stk st forms =
+  progress ();
   match forms with
   | [] ->
       if good_head st.queue then begin
@@ -1119,15 +1127,10 @@ let rec refute_aux stk st forms =
 
 and refute stk st forms =
   Step.forms "refute" forms;
-  decr progress_counter;
-  if !progress_counter < 0 then begin
-    check_limits ();
-    progress_counter := !progress_period;
-    Progress.do_progress (fun () -> ());
-  end;
   refute_aux stk st forms
 
 and next_node stk st =
+  progress ();
   incr Globals.inferences;
   match remove st.queue with
   | None ->
@@ -1175,6 +1178,7 @@ and next_branch stk n st brstate =
       unwind stk result
 
 and unwind stk res =
+  progress ();
   decr cur_depth;
   match stk with
   | [] -> res
@@ -1215,8 +1219,9 @@ let ticker finished () =
              lemma %d  size %dM  time %.0f\n"
             !cur_depth !top_depth !Globals.inferences !Globals.proof_nodes
             !Globals.stored_lemmas (heap_size / 1_000_000) tm;
-  end;
-  if not finished then check_limits ();
+    Expr.print_stats stderr;
+  end '#';
+  if not finished then periodic '#';
 ;;
 
 let rec iter_refute rl =
@@ -1225,7 +1230,7 @@ let rec iter_refute rl =
       max_depth := 2 * !max_depth;
       Progress.do_progress begin fun () ->
         eprintf "increase max_depth to %d\n" !max_depth;
-      end;
+      end '*';
       iter_refute rl;
   | x -> x
 ;;

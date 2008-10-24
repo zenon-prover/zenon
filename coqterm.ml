@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.36 2008-10-11 08:13:48 pessaux Exp $";;
+Version.add "$Id: coqterm.ml,v 1.37 2008-10-24 13:36:36 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -24,6 +24,7 @@ type coqterm =
   | Cwild
   | Cmatch of coqterm * (string * string list * coqterm) list
   | Cifthenelse of coqterm * coqterm * coqterm
+  | Ctuple of coqterm list
 ;;
 
 type coqproof =
@@ -102,6 +103,8 @@ let rec trexpr env e =
       Cmatch (trexpr env e1, trcases env cases)
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       Cifthenelse (trexpr env e1, trexpr env e2, trexpr env e3)
+  | Eapp (f, args, _) when f = tuple_name ->
+      Ctuple (List.map (trexpr env) args)
   | Eapp (f, args, _) -> Capp (Cvar f, List.map (trexpr env) args)
   | Enot (e1, _) -> Cnot (trexpr env e1)
   | Eand (e1, e2, _) -> Cand (trexpr env e1, trexpr env e2)
@@ -483,10 +486,20 @@ let pr_oc oc prefix t =
     | Cmatch (e, cl) -> bprintf b "match %a with %a end" pr e pr_cases cl;
     | Cifthenelse (e1, e2, e3) ->
        bprintf b "(if %a then %a else %a)" pr e1 pr e2 pr e3;
+    | Ctuple (l) ->
+       bprintf b "(%a)" pr_comma_list l;
 
   and pr_list b l =
     let f t = bprintf b " %a" pr t; in
     List.iter f l;
+
+  and pr_comma_list b l =
+    let f t = bprintf b ", %a" pr t; in
+    match l with
+    | [] -> assert false
+    | h::t ->
+       pr b h;
+       List.iter f t;
 
   and pr_lams b l =
     let f (v, ty) =
