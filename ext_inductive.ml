@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.4 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.5 2008-10-29 10:37:58 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -262,6 +262,6 @@ Extension.register {
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
   Extension.postprocess = postprocess;
-  Extension.to_llproof = to_llproof;
+  Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
   Extension.declare_context_coq = declare_context_coq;
 };;

@@ -1,13 +1,13 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.9 2006-02-16 09:22:45 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.10 2008-10-29 10:37:58 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
 
 type translator =
-    (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
-    -> Mlproof.proof -> (Llproof.prooftree * Expr.expr list) array
-    -> Llproof.prooftree * Expr.expr list
+    (Expr.expr -> Expr.expr) ->
+    Mlproof.proof -> (Llproof.prooftree * Expr.expr list) array ->
+    Llproof.prooftree * Expr.expr list
 ;;
 type t = {
   name : string;
@@ -65,11 +65,11 @@ let postprocess p =
   List.fold_left (fun prf ext -> ext.postprocess prf) p !active
 ;;
 
-let to_llproof tr_prop tr_term node subs =
+let to_llproof tr_expr node subs =
   match node.mlrule with
   | Ext (th, rule, args) ->
       let t = find_extension th !active in
-      t.to_llproof tr_prop tr_term node subs
+      t.to_llproof tr_expr node subs
   | _ -> assert false
 ;;
 

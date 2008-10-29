@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.6 2008-10-27 07:52:22 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.7 2008-10-29 10:37:58 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -627,6 +627,6 @@ Extension.register {
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
   Extension.postprocess = postprocess;
-  Extension.to_llproof = to_llproof;
+  Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
   Extension.declare_context_coq = declare_context_coq;
 };;

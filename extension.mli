@@ -1,10 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.8 2005-11-13 22:49:11 doligez Exp $  *)
+(*  $Id: extension.mli,v 1.9 2008-10-29 10:37:58 doligez Exp $  *)
 
 type translator =
-    (Expr.expr -> Expr.expr) -> (Expr.expr -> Expr.expr)
-    -> Mlproof.proof -> (Llproof.prooftree * Expr.expr list) array
-    -> Llproof.prooftree * Expr.expr list
+    (Expr.expr -> Expr.expr) ->
+    Mlproof.proof ->
+    (Llproof.prooftree * Expr.expr list) array ->
+    Llproof.prooftree * Expr.expr list
 ;;
 
 type t = {

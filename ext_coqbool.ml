@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.19 2008-09-08 13:47:15 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.20 2008-10-29 10:37:57 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
@@ -571,6 +571,6 @@ Extension.register {
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
   Extension.postprocess = postprocess;
-  Extension.to_llproof = to_llproof;
+  Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
   Extension.declare_context_coq = declare_context_coq;
 };;

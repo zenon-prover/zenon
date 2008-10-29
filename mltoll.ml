@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.34 2008-10-22 14:53:22 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.35 2008-10-29 10:37:58 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -861,7 +861,7 @@ and translate_derived p =
     -> assert false
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in
-      Extension.to_llproof tr_expr tr_expr p sub
+      Extension.to_llproof tr_expr p sub
 
   | Close _
   | False | NotTrue

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.30 2008-10-24 13:36:36 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.31 2008-10-29 10:37:58 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -789,10 +789,10 @@ let newnodes_match_trans st fm g =
 let newnodes_match_sym st fm g =
   let fmg = (fm, g) in
   match fm with
-  | Enot (Eapp (s, [a1; a2], _), _) when Eqrel.sym s ->
+  | Enot (Eapp (s, [a1; a2], _), _) when s <> "=" && Eqrel.sym s ->
       let do_match st pg = make_notequiv st true pg fmg in
       List.fold_left do_match st (Index.find_pos s), false
-  | Eapp (s, [a1; a2], _) when Eqrel.sym s ->
+  | Eapp (s, [a1; a2], _) when s <> "=" && Eqrel.sym s ->
       let do_match st pg = make_notequiv st true fmg pg in
       List.fold_left do_match st (Index.find_neg s), false
   | _ -> (st, false)
@@ -801,10 +801,10 @@ let newnodes_match_sym st fm g =
 let newnodes_match st fm g =
   let fmg = (fm, g) in
   match fm with
-  | Enot (Eapp (s, _, _), _) ->
+  | Enot (Eapp (s, _, _), _) when s <> "=" ->
       let do_match st pg = make_notequiv st false pg fmg in
       List.fold_left do_match st (Index.find_pos s), true
-  | Eapp (s, _, _) ->
+  | Eapp (s, _, _) when s <> "=" ->
       let do_match st pg = make_notequiv st false fmg pg in
       List.fold_left do_match st (Index.find_neg s), true
   | _ -> (st, false)
@@ -922,11 +922,11 @@ let reduce_branches n =
 ;;
 
 let sort_uniq l =
-  let l1 = List.sort Pervasives.compare l in
+  let l1 = List.sort Expr.compare l in
   let rec uniq l accu =
     match l with
     | [] | [_] -> l @ accu
-    | x :: (y :: _ as t) when x =%= y -> uniq t accu
+    | x :: (y :: _ as t) when Expr.equal x y -> uniq t accu
     | x :: t -> uniq t (x :: accu)
   in
   uniq l1 []
