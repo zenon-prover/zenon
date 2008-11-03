@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.15 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.16 2008-11-03 15:45:54 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -29,6 +29,7 @@ let tla_set_constructors = [
   "TLA.subsetOf";
   "TLA.setOfAll";
   "TLA.FuncSet";
+  "TLA.DOMAIN";
 ];;
 
 let is_set_expr e =
@@ -292,6 +293,9 @@ let rewrites in_expr ctx e mknode =
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = ctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [ctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
+  | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
+     let h1 = ctx (s) in
+     mknode "domain_fcn" [ctx e; h1; lamctx; s; l] [] [| [h1] |]
   | Enot (e1, _) when in_expr ->
      let h1a = eapp ("=", [e; etrue]) in
      let h1b = ctx (etrue) in
