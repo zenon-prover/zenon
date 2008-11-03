@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.31 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.32 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -839,7 +839,7 @@ let newnodes_useless st fm g =
   | Emeta _ | Elam _ | Enot ((Emeta _ | Elam _), _)
     ->
       if !Error.warnings_flag then begin
-        eprintf "add_nodes: unexpected formula meta or lambda";
+        eprintf "add_nodes: unexpected formula meta or lambda ";
         Print.expr (Print.Chan stderr) fm;
         eprintf "\n";
       end;

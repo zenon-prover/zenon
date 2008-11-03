@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.11 2008-08-26 13:47:41 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.12 2008-11-03 14:17:25 doligez Exp $  *)
 
 open Expr;;
 
@@ -78,8 +78,15 @@ type rule =
 
   | Rnoteq of expr
     (*
-       ------------ Rnoteq t
+       ------------ Rnoteq (t)
        Enot (t = t)
+
+     ********************)
+
+  | Reqsym of expr * expr
+    (*
+       ------------ Reqsym (t, u)
+       t = u, Enot (u = t)
 
      ********************)
 

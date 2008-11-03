@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.21 2008-09-17 11:09:25 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.22 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -455,6 +455,12 @@ let llproof_rule o r =
   | Raxiom (p) -> pr "---axiom "; llproof_prop o p;
   | Rcut (p) -> pr "---cut "; llproof_prop o p;
   | Rnoteq (t) -> pr "---noteq "; llproof_term o t;
+  | Reqsym (t, u) ->
+     pr "---eqsym (";
+     llproof_term o t;
+     pr ", ";
+     llproof_term o u;
+     pr ")";
   | Rnotnot (p) -> pr "---notnot "; llproof_prop o p;
   | Rconnect (op, p, q) ->
       pr "---connect (%s, " (binop_name op);

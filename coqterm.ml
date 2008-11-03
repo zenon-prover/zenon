@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.37 2008-10-24 13:36:36 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.38 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -164,6 +164,10 @@ let rec trtree env node =
   | Rnoteq (e) ->
       let e_neq_e = getv (enot (eapp ("=", [e; e]))) in
       Capp (Cvar "zenon_noteq", [Cwild; trexpr e; e_neq_e])
+  | Reqsym (e, f) ->
+      let e_eq_f = getv (eapp ("=", [e; f])) in
+      let f_neq_e = getv (enot (eapp ("=", [f; e]))) in
+      Capp (Cvar "zenon_eqsym", [Cwild; trexpr e; trexpr f; e_eq_f; f_neq_e])
   | Rnotnot (p) ->
       let sub = mklam p (tr_subtree_1 hyps) in
       Capp (getv (enot (enot p)), [sub])

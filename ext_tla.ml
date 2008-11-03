@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.14 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.15 2008-11-03 14:17:25 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -53,112 +53,125 @@ let is_fcn_expr e =
 ;;
 
 let newnodes_prop e g =
-  let mknode name args branches =
+  let mknode prio name args branches =
     [ Node {
       nconc = [e];
       nrule = Ext ("tla", name, args);
-      nprio = Arity;
+      nprio = prio;
       ngoal = g;
       nbranches = branches;
     } ]
   in
+  let nometa e =
+    match e with
+    | Emeta _ | Elam _ -> false
+    | _ -> true
+  in
   match e with
-  | Eapp ("=", [e1; Etrue], _) ->
-     mknode "eq_x_true" [e; e1; e1] [| [e1] |]
+  | Eapp ("=", [e1; Etrue], _) when nometa e1 ->
+     mknode Arity "eq_x_true" [e; e1; e1] [| [e1] |]
 
-  | Eapp ("=", [Etrue; e1], _) ->
-     mknode "eq_true_x" [e; e1; e1] [| [e1] |]
+  | Eapp ("=", [Etrue; e1], _) when nometa e1 ->
+     mknode Arity "eq_true_x" [e; e1; e1] [| [e1] |]
 
-  | Eapp ("=", [e1; Efalse], _) ->
+  | Enot (Eapp ("=", [e1; Etrue], _), _) when nometa e1 ->
+     let h1 = enot (e1) in
+     mknode Arity "noteq_x_true" [e; h1; e1] [| [h1] |]
+
+  | Enot (Eapp ("=", [Etrue; e1], _), _) when nometa e1 ->
+     let h1 = enot (e1) in
+     mknode Arity "noteq_true_x" [e; h1; e1] [| [h1] |]
+
+  | Eapp ("=", [e1; Efalse], _) when nometa e1 ->
      let h = enot (e1) in
-     mknode "eq_x_false" [e; h; e1] [| [h] |]
+     mknode Arity "eq_x_false" [e; h; e1] [| [h] |]
 
-  | Eapp ("=", [Efalse; e1], _) ->
+  | Eapp ("=", [Efalse; e1], _) when nometa e1 ->
      let h = enot (e1) in
-     mknode "eq_false_x" [e; h; e1] [| [h] |]
+     mknode Arity "eq_false_x" [e; h; e1] [| [h] |]
 
   | Eapp ("TLA.in", [e1; Evar ("TLA.emptyset", _)], _) ->
-    mknode "in_emptyset" [e; e1] [| |]
+    mknode Arity "in_emptyset" [e; e1] [| |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.upair", [e2; e3], _)], _) ->
     let h1 = eapp ("=", [e1; e2]) in
     let h2 = eapp ("=", [e1; e3]) in
-    mknode "in_upair" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
+    mknode Arity "in_upair" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.upair", [e2; e3], _)], _), _) ->
     let h1 = enot (eapp ("=", [e1; e2])) in
     let h2 = enot (eapp ("=", [e1; e3])) in
-    mknode "notin_upair" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
+    mknode Arity "notin_upair" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _) ->
      let h1 = eapp ("=", [e1; e2]) in
      let h2 = eapp ("TLA.in", [e1; e3]) in
-     mknode "in_add" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
+     mknode Arity "in_add" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _), _) ->
      let h1 = enot (eapp ("=", [e1; e2])) in
      let h2 = enot (eapp ("TLA.in", [e1; e3])) in
-     mknode "notin_add" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
+     mknode Arity "notin_add" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
 
   (* infinity -- needed ? *)
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _) ->
      let h1 = eapp ("TLA.subseteq", [e1; s]) in
-     mknode "in_SUBSET" [e; h1; e1; s] [| [h1] |]
+     mknode Arity "in_SUBSET" [e; h1; e1; s] [| [h1] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _), _) ->
      let h1 = enot (eapp ("TLA.subseteq", [e1; s])) in
-     mknode "notin_SUBSET" [e; h1; e1; s] [| [h1] |]
+     mknode Arity "notin_SUBSET" [e; h1; e1; s] [| [h1] |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.UNION", [s], _)], _) ->
      let b = Expr.newvar () in
      let h1 = eex (b, "", eand (eapp ("TLA.in", [b; s]),
                                 eapp ("TLA.in", [e1; b]))) in
-     mknode "in_UNION" [e; h1; e1; s] [| [h1] |]
+     mknode Arity "in_UNION" [e; h1; e1; s] [| [h1] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.UNION", [s], _)], _), _) ->
      let b = Expr.newvar () in
      let h1 = enot (eex (b, "", eand (eapp ("TLA.in", [b; s]),
                                       eapp ("TLA.in", [e1; b])))) in
-     mknode "notin_UNION" [e; h1; e1; s] [| [h1] |]
+     mknode Arity "notin_UNION" [e; h1; e1; s] [| [h1] |]
 
   (* INTER -- needed ? *)
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.cup", [e2; e3], _)], _) ->
      let h1 = eapp ("TLA.in", [e1; e2]) in
      let h2 = eapp ("TLA.in", [e1; e3]) in
-     mknode "in_cup" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
+     mknode Arity "in_cup" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.cup", [e2; e3], _)], _), _) ->
      let h1 = enot (eapp ("TLA.in", [e1; e2])) in
      let h2 = enot (eapp ("TLA.in", [e1; e3])) in
-     mknode "notin_cup" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
+     mknode Arity "notin_cup" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.cap", [e2; e3], _)], _) ->
      let h1 = eapp ("TLA.in", [e1; e2]) in
      let h2 = eapp ("TLA.in", [e1; e3]) in
-     mknode "in_cap" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
+     mknode Arity "in_cap" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.cap", [e2; e3], _)], _), _) ->
      let h1 = enot (eapp ("TLA.in", [e1; e2])) in
      let h2 = enot (eapp ("TLA.in", [e1; e3])) in
-     mknode "notin_cap" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
+     mknode Arity "notin_cap" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.setminus", [e2; e3], _)], _) ->
      let h1 = eapp ("TLA.in", [e1; e2]) in
      let h2 = enot (eapp ("TLA.in", [e1; e3])) in
-     mknode "in_setminus" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
+     mknode Arity "in_setminus" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.setminus", [e2; e3], _)], _), _) ->
      let h1 = enot (eapp ("TLA.in", [e1; e2])) in
      let h2 = eapp ("TLA.in", [e1; e3]) in
-     mknode "notin_setminus" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
+     mknode Arity "notin_setminus" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
 
   | Eapp ("TLA.in",
           [e1; Eapp ("TLA.subsetOf", [s; Elam (v, _, p, _) as pred], _)],
           _) ->
      let h1 = eapp ("TLA.in", [e1; s]) in
      let h2 = substitute [(v, e1)] p in
-     mknode "in_subsetof" [e; h1; h2; e1; s; pred] [| [h1; h2] |]
+     mknode Arity "in_subsetof" [e; h1; h2; e1; s; pred] [| [h1; h2] |]
   | Enot (Eapp ("TLA.in",
                 [e1; Eapp ("TLA.subsetOf", [s; Elam (v, _, p, _) as pred], _)],
                 _), _) ->
      let h1 = enot (eapp ("TLA.in", [e1; s])) in
      let h2 = enot (substitute [(v, e1)] p) in
-     mknode "notin_subsetof" [e; h1; h2; e1; s; pred] [| [h1]; [h2] |]
+     mknode Arity "notin_subsetof" [e; h1; h2; e1; s; pred] [| [h1]; [h2] |]
 
   | Eapp ("TLA.in",
           [e1; Eapp ("TLA.setOfAll", [s; Elam (v, _, p, _) as pred], _)],
@@ -167,7 +180,7 @@ let newnodes_prop e g =
      let h1 = eex (x, "", eand (eapp ("TLA.in", [x; s]),
                                 eapp ("=", [e1; substitute [(v, x)] p])))
      in
-     mknode "in_setofall" [e; h1; e1; s; pred] [| [h1] |]
+     mknode (Inst h1) "in_setofall" [e; h1; e1; s; pred] [| [h1] |]
   | Enot (Eapp ("TLA.in",
                 [e1; Eapp ("TLA.setOfAll", [s; Elam (v, _, p, _) as pred], _)],
                 _), _) ->
@@ -175,7 +188,7 @@ let newnodes_prop e g =
      let h1 = enot (eex (x, "", eand (eapp ("TLA.in", [x; s]),
                                       eapp ("=", [e1; substitute [(v, x)] p]))))
      in
-     mknode "notin_setofall" [e; h1; e1; s; pred] [| [h1] |]
+     mknode (Inst h1) "notin_setofall" [e; h1; e1; s; pred] [| [h1] |]
 
   | Eapp ("TLA.in", [f; Eapp ("TLA.FuncSet", [a; b], _)], _) ->
      let h1 = eapp ("TLA.isAFcn", [f]) in
@@ -185,7 +198,7 @@ let newnodes_prop e g =
                 eimply (eapp ("TLA.in", [x; a]),
                         eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
      in
-     mknode "in_funcset" [e; h1; h2; h3; f; a; b] [| [h1; h2; h3] |]
+     mknode (Inst h3) "in_funcset" [e; h1; h2; h3; f; a; b] [| [h1; h2; h3] |]
   | Enot (Eapp ("TLA.in", [f; Eapp ("TLA.FuncSet", [a; b], _)], _), _) ->
      let h1 = enot (eapp ("TLA.isAFcn", [f])) in
      let h2 = enot (eapp ("=", [eapp ("TLA.DOMAIN", [f]); a]))
@@ -196,20 +209,24 @@ let newnodes_prop e g =
                      eimply (eapp ("TLA.in", [x; a]),
                              eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b]))))
      in
-     mknode "notin_funcset" [e; h1; h2; h3; f; a; b] [| [h1; h2; h3] |]
+     mknode (Inst h3) "notin_funcset" [e; h1; h2; h3; f; a; b]
+            [| [h1]; [h2]; [h3] |]
 
   | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
      let h = eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
                                   eapp ("TLA.in", [x; e2])))
      in
-     mknode "setequal" [e; h; e1; e2] [| [h] |]
+     mknode (Inst h) "setequal" [e; h; e1; e2] [| [h] |]
   | Enot (Eapp ("=", [e1; e2], _), _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
      let h = enot (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
                                         eapp ("TLA.in", [x; e2]))))
      in
-     mknode "notsetequal" [e; h; e1; e2] [| [h] |]
+     mknode (Inst h) "notsetequal" [e; h; e1; e2] [| [h] |]
+
+  | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.except", [f; v; e1], _)], _), _) ->
+     mknode Arity "isafcn_except" [e; f; v; e1] [| |]
 
   | Eapp ("=", [e1; e2], _) when is_fcn_expr e1 || is_fcn_expr e2 ->
      let x = Expr.newvar () in
@@ -220,7 +237,7 @@ let newnodes_prop e g =
                                        eapp ("TLA.fapply", [e2; x])]))
      in
      let h = eand (eand (h1, h2), h3) in
-     mknode "funequal" [e; h; e1; e2] [| [h] |]
+     mknode (Inst h3) "funequal" [e; h; e1; e2] [| [h] |]
   | Enot (Eapp ("=", [e1; e2], _), _) when is_fcn_expr e1 || is_fcn_expr e2 ->
      let x = Expr.newvar () in
      let h0 = eapp ("TLA.isAFcn", [e1]) in
@@ -232,7 +249,7 @@ let newnodes_prop e g =
                                                eapp ("TLA.fapply", [e2; x])])))
      in
      let h = enot (eand (eand (eand (h0, h1), h2), h3)) in
-     mknode "notfunequal" [e; h; e1; e2] [| [h] |]
+     mknode (Inst h3) "notfunequal" [e; h; e1; e2] [| [h] |]
   | _ -> []
 ;;
 
@@ -242,17 +259,25 @@ let apply f e =
   | _ -> assert false
 ;;
 
-let rewrites ctx e mknode =
+let rewrites in_expr ctx e mknode =
+  let lamctx = let x = Expr.newvar () in elam (x, "", ctx x) in
+  let mk_boolcase name e1 e2 =
+    let h1a = eapp ("=", [e; etrue]) in
+    let h1b = ctx (etrue) in
+    let h2a = eapp ("=", [e; efalse]) in
+    let h2b = ctx (efalse) in
+    mknode ("boolcase_" ^ name) [ctx e; h1a; h1b; h2a; h2b; lamctx; e1; e2]
+           [] [| [h1a; h1b]; [h2a; h2b] |]
+  in
   match e with
+  | _ when in_expr && Index.member e ->
+     let h1 = ctx (etrue) in
+     mknode "trueistrue" [ctx e; e; h1; lamctx; e] [e] [| [h1] |]
   | Eapp ("TLA.fapply", [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _); a], _)
-  -> let x = Expr.newvar () in
-     let lamctx = elam (x, "", ctx x) in
-     let h1 = enot (eapp ("TLA.in", [a; s])) in
+  -> let h1 = enot (eapp ("TLA.in", [a; s])) in
      let h2 = ctx (Expr.substitute [(v, a)] b) in
-     mknode "fapplyfcn" [ctx e; h1; h2; lamctx; s; l; a] [| [h1]; [h2] |]
-  | Eapp ("TLA.fapply", [Eapp ("TLA.except", [f; v; e1], _); w], _)
-  -> let x = Expr.newvar () in
-     let lamctx = elam (x, "", ctx x) in
+     mknode "fapplyfcn" [ctx e; h1; h2; lamctx; s; l; a] [] [| [h1]; [h2] |]
+  | Eapp ("TLA.fapply", [Eapp ("TLA.except", [f; v; e1], _); w], _) ->
      let indom = eapp ("TLA.in", [w; eapp ("TLA.DOMAIN", [f])]) in
      let h1a = indom in
      let h1b = eapp ("=", [v; w]) in
@@ -263,12 +288,35 @@ let rewrites ctx e mknode =
      let h3 = enot indom in
      mknode "fapplyexcept" [ctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
                             lamctx; f; v; e1; w]
-            [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
+            [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
+  | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
+     let h1 = ctx (eapp ("TLA.DOMAIN", [f])) in
+     mknode "domain_except" [ctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
+  | Enot (e1, _) when in_expr ->
+     let h1a = eapp ("=", [e; etrue]) in
+     let h1b = ctx (etrue) in
+     let h2a = eapp ("=", [e; efalse]) in
+     let h2b = ctx (efalse) in
+     mknode ("boolcase_not") [ctx e; h1a; h1b; h2a; h2b; lamctx; e1]
+            [] [| [h1a; h1b]; [h2a; h2b] |]
+  | Eand (e1, e2, _) when in_expr -> mk_boolcase "and" e1 e2
+  | Eor (e1, e2, _) when in_expr -> mk_boolcase "or" e1 e2
+  | Eimply (e1, e2, _) when in_expr -> mk_boolcase "imply" e1 e2
+  | Eequiv (e1, e2, _) when in_expr -> mk_boolcase "equiv" e1 e2
+  | Eapp ("=", [e1; e2], _) when in_expr -> mk_boolcase "equal" e1 e2
+  (* FIXME missing : Eall, Eex *)
+
+  | Eapp ("TLA.ifthenelse", [Etrue; e2; e3], _) ->
+     let h1 = ctx (e2) in
+     mknode "iftrue" [ctx e; h1; lamctx; e2; e3] [] [| [h1] |]
+  | Eapp ("TLA.ifthenelse", [Efalse; e2; e3], _) ->
+     let h1 = ctx (e3) in
+     mknode "iffalse" [ctx e; h1; lamctx; e2; e3] [] [| [h1] |]
   | _ -> []
 ;;
 
-let rec find_rewrites ctx e mknode =
-  let local = rewrites ctx e mknode in
+let rec find_rewrites in_expr ctx e mknode =
+  let local = rewrites in_expr ctx e mknode in
   match e with
   | _ when local <> [] -> local
   | Eapp (p, args, _) ->
@@ -278,27 +326,27 @@ let rec find_rewrites ctx e mknode =
        | h::t ->
           let newctx x = ctx (eapp (p, List.rev_append leftarg (x :: t)))
           in
-          begin match find_rewrites newctx h mknode with
+          begin match find_rewrites true newctx h mknode with
           | [] -> loop (h::leftarg) t
           | l -> l
           end
      in
      loop [] args
-  | Enot (e1, _) -> find_rewrites (fun x -> (ctx (enot x))) e1 mknode
+  | Enot (e1, _) -> find_rewrites false (fun x -> (ctx (enot x))) e1 mknode
   | _ -> []
 ;;
 
 let newnodes_rewrites e g =
-  let mknode name args branches =
+  let mknode name args add_con branches =
     [ Node {
-      nconc = [e];
+      nconc = e :: add_con;
       nrule = Ext ("tla", name, args);
       nprio = Arity;
       ngoal = g;
       nbranches = branches;
     }]
   in
-  find_rewrites (fun x -> x) e mknode
+  find_rewrites false (fun x -> x) e mknode
 ;;
 
 let newnodes e g =
@@ -316,6 +364,12 @@ let to_llargs r =
     match r with
     | Ext (_, name, c :: h1 :: h2 :: args) ->
        ("zenon_" ^ name, args, [c], [ [h1]; [h2] ])
+    | _ -> assert false
+  in
+  let beta2 r =
+    match r with
+    | Ext (_, name, c :: h1a :: h1b :: h2a :: h2b :: args) ->
+       ("zenon_" ^ name, args, [c], [ [h1a; h1b]; [h2a; h2b] ])
     | _ -> assert false
   in
   let single r =
@@ -342,10 +396,20 @@ let to_llargs r =
      ("zenon_in_funcset", [f; a; b], [c], [ [h1; h2; h3] ])
   | Ext (_, "notin_funcset", [c; h1; h2; h3; f; a; b]) ->
      ("zenon_notin_funcset", [f; a; b], [c], [ [h1]; [h2]; [h3] ])
+  | Ext (_, "trueistrue", [c1; c2; h1; ctx; e1]) ->
+     ("zenon_trueistrue", [ctx; e1], [c1; c2], [ [h1] ])
   | Ext (_, "fapplyfcn", _) -> beta r
-  | Ext (_, "fapplyexcept", [c; h1a; h1b; h1c; h2a; h2b; h2c; h3; ctx; f; v; e1; w])
-  -> ("zenon_fapplyexcept", [ctx; f; v; e1; w], [c],
+  | Ext (_, "fapplyexcept", [c; h1a; h1b; h1c; h2a; h2b; h2c; h3;
+                             ctx; f; v; e1; w]) ->
+     ("zenon_fapplyexcept", [ctx; f; v; e1; w], [c],
       [ [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] ])
+  | Ext (_, "boolcase_not", _) -> beta2 r
+  | Ext (_, "boolcase_and", _) -> beta2 r
+  | Ext (_, "boolcase_or", _) -> beta2 r
+  | Ext (_, "boolcase_imply", _) -> beta2 r
+  | Ext (_, "boolcase_equiv", _) -> beta2 r
+  | Ext (_, "isafcn_except", [c; f; v; e1]) ->
+     ("zenon_isafcn_except", [f; v; e1], [c], [])
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;

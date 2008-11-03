@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.7 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.8 2008-11-03 14:17:25 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -591,6 +591,7 @@ and process_rule r =
   | Raxiom (e1) -> Raxiom (process_expr e1)
   | Rcut (e1) -> Rcut (process_expr e1)
   | Rnoteq (e1) -> Rnoteq (process_expr e1)
+  | Reqsym (e1, e2) -> Reqsym (process_expr e1, process_expr e2)
   | Rnotnot (e1) -> Rnotnot (process_expr e1)
   | Rconnect (op, e1, e2) -> Rconnect (op, process_expr e1, process_expr e2)
   | Rnotconnect (op, e1, e2) ->

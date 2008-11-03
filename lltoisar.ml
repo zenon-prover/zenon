@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.15 2008-10-23 09:01:20 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.16 2008-11-03 14:17:25 doligez Exp $";;
 
 open Printf;;
 
@@ -296,7 +296,16 @@ let rec p_tree i dict oc proof =
      iprintf i oc "by (unfold %s_%s, fact %s)\n" n_hyp n_conc (getname conc);
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      p_tree i dict3 oc t;
-  | Rnotequal _ -> assert false (* TODO *)
+  | Rnotequal (Eapp (f, args1, _) as e1, (Eapp (g, args2, _) as e2)) ->
+     assert (f = g);
+     let e = enot (eapp ("=", [e1; e2])) in
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "proof (rule zenon_noteq [of \"%a\"])\n" (p_expr dict) e2;
+     let pr d x y z = p_sub_equal (iinc i) d oc x y z in
+     let dict2 = list_fold_left3 pr dict args1 args2 proof.hyps in
+     let mk l = enot (eapp ("=", [eapp (f, l); e2])) in
+     p_subst i dict2 oc mk args1 args2 [] e;
+  | Rnotequal _ -> assert false
   | Rpnotp (Eapp (p, args1, _) as pp, (Enot (Eapp (q, args2, _), _) as np)) ->
      assert (p = q);
      iprintf i oc "show FALSE\n";
@@ -311,6 +320,13 @@ let rec p_tree i dict oc proof =
      let n_neq = getname neq in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule zenon_noteq [OF %s])\n" n_neq;
+  | Reqsym (e1, e2) ->
+     let eq = eapp ("=", [e1; e2]) in
+     let n_eq = getname eq in
+     let neq = enot (eapp ("=", [e2; e1])) in
+     let n_neq = getname neq in
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "by (rule zenon_eqsym [OF %s %s])\n" n_eq n_neq;
   | Rnottrue ->
      let nh = getname (enot etrue) in
      iprintf i oc "show FALSE\n";
@@ -437,11 +453,11 @@ let p_lemma i dict oc lem =
   iprintf i oc "qed\n";
 ;;
 
-let rec get_goal phrases =
+let rec get_ngoal phrases =
   match phrases with
-  | [] -> efalse
+  | [] -> enot (efalse)
   | Phrase.Hyp (n, e, _) :: t when n = goal_name -> e
-  | _ :: t -> get_goal t
+  | _ :: t -> get_ngoal t
 ;;
 
 module HE = Hashtbl.Make (Expr);;
@@ -458,7 +474,7 @@ let mk_hyp_table phrases =
 ;;
 
 let p_theorem oc thm phrases lemmas =
-  let ngoal = get_goal phrases in
+  let ngoal = get_ngoal phrases in
   let goal =
     match ngoal with
     | Enot (e1, _) -> e1

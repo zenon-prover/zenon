@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.37 2008-10-09 13:21:30 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.38 2008-11-03 14:17:25 doligez Exp $";;
 
 open Printf;;
 
@@ -288,6 +288,11 @@ let p_rule oc r =
   | Rpnotp _ -> assert false
   | Rnoteq e ->
       poc "apply %s. apply refl_equal.\n" (getname (enot (eapp ("=", [e; e]))));
+      0
+  | Reqsym (e, f) ->
+      poc "apply %s. apply sym_equal. exact %s.\n"
+          (getname (enot (eapp ("=", [f; e]))))
+          (getname (eapp ("=", [e; f])));
       0
   | Rnottrue ->
       poc "exact (%s I).\n" (getname (enot (etrue)));

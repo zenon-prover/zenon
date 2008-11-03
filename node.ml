@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.12 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.13 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -44,7 +44,8 @@ type queue = {
   unary : node list;
   binary : node list;
   nary : node list;
-  eq : node list;
+  eq_front : node list;
+  eq_back : node list;
   inst_state : int;
   inst_size : (int * node Heap.t) list;
   inst_front : node list;
@@ -74,7 +75,8 @@ let empty = {
   unary = [];
   binary = [];
   nary = [];
-  eq = [];
+  eq_front = [];
+  eq_back = [];
   inst_state = 0;
   inst_size = [];
   inst_front = [];
@@ -104,7 +106,7 @@ let insert q n =
       | 2 -> {q with binary = n::q.binary}
       | _ -> {q with nary = n::q.nary}
       end
-  | Arity_eq -> {q with eq = n::q.eq}
+  | Arity_eq -> {q with eq_back = n::q.eq_back}
   | Inst _ ->
       begin match n.nrule with
       | Mlproof.All _ | Mlproof.NotEx _ ->
@@ -165,7 +167,9 @@ let rec remove q =
   | { unary = h::t } -> Some (h, {q with unary = t})
   | { binary = h::t } -> Some (h, {q with binary = t})
   | { nary = h::t } -> Some (h, {q with nary = t})
-  | { eq = h::t } -> Some (h, {q with eq = t})
+  | { eq_front = h::t } -> Some (h, {q with eq_front = t})
+  | { eq_back = h::t } ->
+     remove {q with eq_front = List.rev q.eq_back; eq_back = []}
   | { inst_state = ist; inst_size = hpl } when ist < ist_small ->
       begin match remove_by_goalness ist hpl with
       | Some (x, l) -> Some (x, {q with inst_state = ist + 1; inst_size = l})
@@ -191,15 +195,17 @@ let head q =
   | { unary = h::t } -> Some h
   | { binary = h::t } -> Some h
   | { nary = h::t } -> Some h
-  | { eq = h::t } -> Some h
+  | { eq_front = h::t } -> Some h
+  | { eq_back = h::t } -> Some (last h t)
   | { inst_front = h::t} -> Some h
   | { inst_back = h::t} -> Some (last h t)
   | _ -> None
 ;;
 
 let size q =
-  sprintf "%d/%d/%d/%d/%d/%d-%d" (List.length q.nullary)
+  sprintf "%d/%d/%d/%d/%d-%d/%d-%d" (List.length q.nullary)
           (List.length q.unary) (List.length q.binary)
-          (List.length q.nary) (List.length q.eq) (List.length q.inst_front)
+          (List.length q.nary) (List.length q.eq_front) (List.length q.eq_back)
+          (List.length q.inst_front)
           (List.length q.inst_back)
 ;;

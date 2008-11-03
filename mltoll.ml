@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.35 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.36 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -129,6 +129,7 @@ let tr_rule r =
   match r with
   | Close (p) -> LL.Raxiom (tr_expr p)
   | Close_refl ("=", e) -> LL.Rnoteq (tr_expr e)
+  | Close_sym ("=", e, f) -> LL.Reqsym (tr_expr e, tr_expr f)
   | False -> LL.Rfalse
   | NotTrue -> LL.Rnottrue
   | NotNot (p) -> LL.Rnotnot (tr_expr p)
@@ -238,6 +239,7 @@ let is_derived = function
   | Close_refl ("=", _) -> false
   | Close_refl (_, _) -> true
 
+  | Close_sym ("=", _, _) -> false
   | Close_sym _ -> true
 
   | False | NotTrue
@@ -759,11 +761,7 @@ and translate_derived p =
       let n3 = make_cut exyz n2 n1 in
       to_llproof n3
   | NotExPartial _ -> assert false
-  | Close_sym ("=", a, b) ->
-      let aeb = eapp ("=", [a; b]) in
-      let n1 = make_cl aeb in
-      let n2 = make_direct_sym_neq b a n1 in
-      to_llproof n2
+  | Close_sym ("=", a, b) -> assert false
   | Close_sym (s, a, b) ->
       let sym_hyp = Eqrel.get_sym_hyp s in
       let pab = eapp (s, [a; b]) in

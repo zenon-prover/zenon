@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.9 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.10 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -35,9 +35,11 @@ type head = Sym of string | Tau of expr | Meta of expr;;
 let get_head e =
   match e with
   | Eapp (s, _, _) | Evar (s, _)
-    -> Sym s
+  -> Sym s
   | Emeta _ -> Meta e
   | Etau _ -> Tau e
+  | Etrue -> Sym "$true"
+  | Efalse -> Sym "$false"
   | _ -> raise No_head
 ;;
 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.11 2008-10-20 16:30:42 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.12 2008-11-03 14:17:25 doligez Exp $";;
 
 open Expr;;
 
@@ -16,6 +16,7 @@ type rule =
   | Raxiom of expr
   | Rcut of expr
   | Rnoteq of expr
+  | Reqsym of expr * expr
   | Rnotnot of expr
   | Rconnect of binop * expr * expr
   | Rnotconnect of binop * expr * expr
@@ -88,6 +89,7 @@ let reduce conc rule hyps =
     | Raxiom (p) -> [p; enot p]
     | Rcut (p) -> []
     | Rnoteq (a) -> [enot (eapp ("=", [a; a]))]
+    | Reqsym (a, b) -> [eapp ("=", [a; b]); enot (eapp ("=", [b; a]))]
     | Rnotnot (p) -> [enot (enot (p))]
     | Rconnect (And, p, q) -> [eand (p, q)]
     | Rconnect (Or, p, q) -> [eor (p, q)]
