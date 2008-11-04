@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.6 2006-02-16 09:22:46 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.7 2008-11-04 09:51:38 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -10,6 +10,10 @@ Proof. tauto. Qed.
 Lemma zenon_noteq : forall (T : Type) (t : T),
   ((t <> t) -> False).
 Proof. tauto. Qed.
+
+Lemma zenon_eqsym : forall (T : Type) (t u : T),
+  t = u -> u <> t -> False.
+Proof. auto. Qed.
 
 Lemma zenon_and : forall P Q : Prop,
   (P -> Q -> False) -> (P /\ Q -> False).
