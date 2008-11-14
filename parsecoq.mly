@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.22 2008-10-23 16:08:52 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.23 2008-11-14 20:28:02 doligez Exp $";;
 
 open Printf;;
 
@@ -42,6 +42,13 @@ let mk_apply (e, l) =
   | _ -> raise Parse_error
 ;;
 
+let rec mk_arobas_apply (id, l) =
+  match l with
+  | Evar ("_", _) :: t -> mk_arobas_apply (id, t)
+  | [] -> evar (id)
+  | _ -> eapp (id, l)
+;;
+
 let mk_all bindings body =
   let f (var, ty) e = eall (evar var, ty, e) in
   List.fold_right f bindings body
@@ -57,6 +64,11 @@ let mk_lam bindings body =
   List.fold_right f bindings body
 ;;
 
+let mk_fix ident bindings body =
+  let f (var, ty) e = elam (evar var, ty, e) in
+  (ident, eapp ("$fix", [ List.fold_right f ((ident, "") :: bindings) body ]))
+;;
+
 let rec get_params e =
   match e with
   | Elam (v, _, body, _) ->
@@ -66,14 +78,24 @@ let rec get_params e =
 ;;
 
 let mk_let id expr body =
-  substitute [(evar id, expr)] body
+  substitute_2nd [(evar id, expr)] body
 ;;
 
-let rec mk_pattern accu l =
-  match l with
-  | [] -> assert false
-  | [c] -> eapp (c, accu)
-  | h::t -> mk_pattern (evar h :: accu) t
+let mk_let_fix (id, def) body = mk_let id def body;;
+
+let mk_pattern (constr, args) body =
+  let bindings = List.map (fun v -> (v, "")) args in
+  mk_lam bindings (eapp ("$match-case", [evar (constr); body]))
+;;
+
+let mk_inductive name bindings constrs =
+  let args = List.map fst bindings in
+  let g (tcon, targs) =
+    if tcon = name && targs = args then Self
+    else Param (String.concat " " (tcon :: targs))
+  in
+  let f (cname, args) = (cname, List.map g args) in
+  Inductive (name, args, List.map f constrs)
 ;;
 
 %}
@@ -140,6 +162,7 @@ let rec mk_pattern accu l =
 %token END
 %token EXISTS
 %token FALSE
+%token FIX
 %token FORALL
 %token FUN
 %token IF
@@ -149,6 +172,7 @@ let rec mk_pattern accu l =
 %token MATCH
 %token ON
 %token PARAMETER
+%token STRUCT
 %token THEN
 %token THEOREM
 %token TRUE
@@ -211,6 +235,9 @@ expr:
   | FUN bindings EQ_GT_ expr
       { mk_lam $2 $4 }
 
+  | LET fix IN expr %prec let_in
+      { mk_let_fix $2 $4 }
+
   | LET IDENT COLON_EQ_ expr IN expr %prec let_in
       { mk_let $2 $4 $6 }
 
@@ -249,8 +276,16 @@ expr:
   | expr1 expr1_list  %prec apply
       { mk_apply ($1, $2) }
 
+  | AROBAS_ IDENT expr1_list %prec apply
+      { mk_arobas_apply ($2, $3) }
+
   | expr1
       { $1 }
+;
+
+fix:
+  | FIX IDENT bindings LBRACE_ STRUCT IDENT RBRACE_ COLON_ typ COLON_EQ_ expr
+      { mk_fix $2 $3 $11 }
 ;
 
 expr1:
@@ -290,16 +325,14 @@ pat_expr_list:
   | /* empty */
       { [] }
   | BAR_ pattern EQ_GT_ expr pat_expr_list
-      { (mk_pattern [] $2) :: $4 :: $5 }
+      { mk_pattern $2 $4 :: $5 }
 ;
 
 pattern:
   | LPAREN_ pattern RPAREN_
       { $2 }
-  | pattern IDENT
-      { $2 :: $1 }
-  | IDENT
-      { [$1] }
+  | IDENT idlist
+      { ($1, $2) }
 ;
 
 bindings:
@@ -348,9 +381,8 @@ hyp_def:
        let (other_params, expr) = get_params $7 in
        Def (DefReal ($2, $2, (compact_params @ other_params), expr))
      }
-  | INDUCTIVE IDENT COLON_ IDENT COLON_EQ_ constr_list PERIOD_
-      { (* FIXME should check that $4 = "Set" *)
-        Inductive ($2, $6) }
+  | INDUCTIVE IDENT binding_list COLON_ IDENT COLON_EQ_ constr_list PERIOD_
+      { mk_inductive $2 $3 $7 }
 ;
 
 
@@ -390,7 +422,7 @@ constr_type:
 
 arg_type:
   | LPAREN_ arg_type RPAREN_          { $2 }
-  | IDENT                             { $1 }
+  | IDENT idlist                      { ($1, $2) }
 ;
 
 junk:

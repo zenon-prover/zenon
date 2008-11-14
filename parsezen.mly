@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.10 2008-08-28 10:23:51 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.11 2008-11-14 20:28:02 doligez Exp $";;
 
 open Printf;;
 
@@ -36,6 +36,10 @@ let mk_elam (vars, typ, body) =
   List.fold_right f vars body
 ;;
 
+let mk_pattern constr vars body =
+  mk_elam (vars, "", eapp ("$match-case", [evar constr; body]))
+;;
+
 let hyp_counter = ref 0;;
 let gen_hyp_name () =
   incr hyp_counter;
@@ -59,6 +63,7 @@ let gen_hyp_name () =
 %token EQUIV
 %token EX
 %token FALSE
+%token FIX
 %token GOAL
 %token HYP
 %token IMPLY
@@ -71,6 +76,7 @@ let gen_hyp_name () =
 %token NOT
 %token OR
 %token RIMPLY
+%token SELF
 %token SIG
 %token TAU
 %token TRUE
@@ -94,8 +100,8 @@ phrase:
       { Zhyp (goal_name, enot $2, 0) }
   | SIG IDENT OPEN string_list CLOSE STRING
       { Zsig ($2, $4, $6) }
-  | INDSET IDENT OPEN constr_list CLOSE
-      { Zinductive ($2, $4) }
+  | INDSET IDENT OPEN ident_list CLOSE OPEN constr_list CLOSE
+      { Zinductive ($2, $4, $7) }
   | INCLUDE STRING
       { Zinclude ($2) }
 ;
@@ -120,6 +126,7 @@ expr:
   | OPEN EQUAL expr expr CLOSE           { eapp ("=", [$3; $4]) }
   | OPEN MATCH expr case_list CLOSE      { eapp ("$match", $3 :: $4) }
   | OPEN LET id_expr_list_expr CLOSE     { eapp ("$let", $3) }
+  | OPEN FIX mlambda CLOSE               { eapp ("$fix", [mk_elam $3]) }
 ;
 
 expr_list:
@@ -161,7 +168,7 @@ case_list:
   | /* empty */
       { [] }
   | OPEN IDENT ident_list CLOSE expr case_list
-      { eapp ($2, List.map evar $3) :: $5 :: $6 }
+      { mk_pattern $2 $3 $5 :: $6 }
 ;
 
 id_expr_list_expr:
@@ -174,8 +181,14 @@ id_expr_list_expr:
 constr_list:
   | /* empty */
       { [] }
-  | OPEN IDENT string_list CLOSE constr_list
+  | OPEN IDENT string_or_self_list CLOSE constr_list
       { ($2, $3) :: $5 }
+;
+
+string_or_self_list:
+  | /* empty */                 { [] }
+  | STRING string_or_self_list  { Param $1 :: $2 }
+  | SELF string_or_self_list    { Self :: $2 }
 ;
 
 %%

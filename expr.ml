@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.26 2008-10-24 13:36:36 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.27 2008-11-14 20:28:02 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -276,7 +276,8 @@ module HashedExpr = struct
     | Evar (v1, _), Evar (v2, _) -> v1 =%= v2
     | Emeta (f1, _), Emeta (f2, _) -> f1 == f2
     | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
-        sym1 =%= sym2 && List.for_all2 (==) args1 args2
+        sym1 =%= sym2 && List.length args1 =%= List.length args2
+        && List.for_all2 (==) args1 args2
     | Enot (f1, _), Enot (f2, _) -> f1 == f2
     | Eand (f1, g1, _), Eand (f2, g2, _)
     | Eor (f1, g1, _), Eor (f2, g2, _)
@@ -492,6 +493,7 @@ let rec substitute_2nd map e =
       match lam, acts with
       | Elam (v, _, body, _), [a] -> substitute [(v,a)] body
       | Evar (v, _), _ -> eapp (v, acts)
+      | Eapp (s1, args1, _), _ -> eapp (s1, args1 @ acts)
       | _ -> raise Higher_order
      with Not_found -> eapp (s, acts)
      end

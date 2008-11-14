@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.22 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.23 2008-11-14 20:28:02 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -95,8 +95,8 @@ let rec expr_soft o ex =
   match ex with
   | Evar (v, _) -> pr "%s" v;
   | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
-  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) ->
-      pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
+  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) && s.[0] != '$'
+  -> pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
   | Eapp (s, es, _) ->
       pr "(%s" s;
       List.iter (fun x -> pr " "; expr_soft o x) es;

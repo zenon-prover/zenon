@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.10 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.11 2008-11-14 20:28:02 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -14,6 +14,19 @@ let ( @@ ) = List.rev_append;;
 
 exception False;;
 exception True;;
+
+let rec string_split s i =
+  if String.length s <= i then []
+  else if s.[i] = ' ' then string_split s (i + 1)
+  else begin
+    try
+      let spc = String.index_from s i ' ' in
+      String.sub s i (spc - i) :: string_split s (spc + 1)
+    with Not_found -> [String.sub s i (String.length s - i)]
+  end
+;;
+
+let string_split s = string_split s 0;;
 
 let occurs sub str =
   let lsub = String.length sub in

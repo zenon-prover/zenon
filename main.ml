@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.46 2008-10-22 11:51:04 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.47 2008-11-14 20:28:02 doligez Exp $";;
 
 open Printf;;
 
@@ -229,7 +229,7 @@ let rec expand_includes incpath zphrases =
     | Phrase.Zhyp (s,e,i) -> [Phrase.Hyp (s,e,i)]
     | Phrase.Zdef (d) -> [Phrase.Def (d)]
     | Phrase.Zsig (s,l,t) -> [Phrase.Sig (s,l,t)]
-    | Phrase.Zinductive (s,l) -> [Phrase.Inductive (s,l)]
+    | Phrase.Zinductive (s,a,l) -> [Phrase.Inductive (s,a,l)]
     | Phrase.Zinclude f ->
        begin
          let rec loop l =

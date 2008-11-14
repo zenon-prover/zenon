@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.38 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.39 2008-11-14 20:28:02 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -100,7 +100,7 @@ let rec trexpr env e =
   | Evar (v, _) -> Cvar v
   | Emeta _ -> assert false
   | Eapp ("$match", e1 :: cases, _) ->
-      Cmatch (trexpr env e1, trcases env cases)
+      Cmatch (trexpr env e1, List.map (trcase env []) cases)
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       Cifthenelse (trexpr env e1, trexpr env e2, trexpr env e3)
   | Eapp (f, args, _) when f = tuple_name ->
@@ -121,14 +121,11 @@ let rec trexpr env e =
   | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr (v::env) e1)
   | Elam _ -> assert false
 
-and trcases env l =
-  match l with
-  | [] -> []
-  | [_] -> assert false
-  | Eapp (c, vs, _) :: e :: t ->
-      let vs1 = List.map to_var vs in
-      (c, vs1, trexpr (vs1 @ env) e) :: (trcases env t)
-  | Evar (c, _) :: e :: t -> (c, [], trexpr env e) :: (trcases env t)
+and trcase env accu e =
+  match e with
+  | Eapp ("$match-case", [Evar (constr, _); body], _) ->
+     (constr, List.rev accu, trexpr env body)
+  | Elam (Evar (v, _), _, body, _) -> trcase env (v :: accu) body
   | _ -> assert false
 ;;
 
@@ -579,7 +576,7 @@ type signature =
   | Hyp_name
 ;;
 
-let predefined = ["Type"; "Prop"; "="; "$match"];;
+let predefined = ["Type"; "Prop"; "="; "$match"; "$fix"];;
 
 let get_signatures ps ext_decl =
   let symtbl = (Hashtbl.create 97 : (string, signature) Hashtbl.t) in
@@ -620,8 +617,8 @@ let get_signatures ps ext_decl =
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig (sym, args, res) ->
         set_type sym (Declared res);
-    | Phrase.Inductive (ty, constrs) ->
-        set_type ty (Declared "Set");
+    | Phrase.Inductive (ty, args, constrs) ->
+        set_type ty (Declared "Type");  (* FIXME add arguments *)
         List.iter (fun (x, _) -> set_type x (Declared ty)) constrs;
   in
   List.iter do_phrase ps;
@@ -678,9 +675,17 @@ let print_var oc e =
   | _ -> assert false
 ;;
 
-let print_constr oc tyname (cname, tys) =
+let print_constr oc tyname args (cname, tys) =
+  let print_ty t =
+    match t with
+    | Phrase.Param s -> fprintf oc "%s -> " s;
+    | Phrase.Self ->
+       fprintf oc "%s" tyname;
+       List.iter (fprintf oc " %s") args;
+       fprintf oc " -> ";
+  in
   fprintf oc " | %s : " cname;
-  List.iter (fun ty -> fprintf oc "%s -> " ty) tys;
+  List.iter print_ty tys;
   fprintf oc "%s\n" tyname;
 ;;
 
@@ -705,9 +710,11 @@ let declare_hyp oc h =
       fprintf oc "Parameter %s : " sym;
       List.iter (fun x -> fprintf oc "%s -> " (tr_ty x)) args;
       fprintf oc "%s.\n" (tr_ty res);
-  | Phrase.Inductive (name, constrs) ->
-      fprintf oc "Inductive %s : Set :=\n" name;
-      List.iter (print_constr oc name) constrs;
+  | Phrase.Inductive (name, args, constrs) ->
+      fprintf oc "Inductive %s" name;
+      List.iter (fprintf oc " %s") args;
+      fprintf oc " : Type :=\n";
+      List.iter (print_constr oc name args) constrs;
       fprintf oc ".\n";
 ;;
 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.38 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.39 2008-11-14 20:28:02 doligez Exp $";;
 
 open Printf;;
 
@@ -23,6 +23,21 @@ let p_type oc t =
   | s -> fprintf oc "%s" s;
 ;;
 
+let rec decompose_lambda e =
+  match e with
+  | Elam (Evar (v, _), t, b, _) ->
+     let bindings, body = decompose_lambda b in
+     ((v, t) :: bindings), body
+  | Elam _ -> assert false
+  | _ -> [], e
+;;
+
+let p_binding oc (v, t) =
+  fprintf oc "(%s : %a)" v p_type t
+;;
+
+let p_id_list oc l = p_list " " (fun oc x -> fprintf oc "%s" x) "" oc l;;
+
 let rec p_expr oc e =
   let poc fmt = fprintf oc fmt in
   match e with
@@ -36,6 +51,10 @@ let rec p_expr oc e =
       p_expr oc (eapp ("@eq _", l));
   | Eapp ("$match", e1 :: l, _) ->
       poc "match %a with%a end" p_expr e1 p_cases l;
+  | Eapp ("$fix", Elam (Evar (f, _), _, body, _) :: l, _) ->
+      let bindings, expr = decompose_lambda body in
+      poc "((fix %s%a := %a)%a)" f (p_list " " p_binding "") bindings
+          p_expr expr (p_list " " p_expr "") l
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       poc "(if %a then %a else %a)" p_expr e1 p_expr e2 p_expr e3;
   | Eapp (f, l, _) ->
@@ -68,20 +87,16 @@ let rec p_expr oc e =
 
 and p_expr_list oc l = p_list " " p_expr "" oc l;
 
-and p_cases oc l =
-  match l with
-  | [] -> ()
-  | [_] -> assert false
-  | Eapp (c, vs, _) :: e :: t ->
-      fprintf oc " | %s%a => %a" c p_expr_list vs p_expr e;
-      p_cases oc t;
-  | Evar (c, _) :: e :: t ->
-      fprintf oc " | %s => %a" c p_expr e;
-      p_cases oc t;
+and p_cases oc l = p_list " " (p_case []) "" oc l;
+
+and p_case accu oc e =
+  match e with
+  | Eapp ("$match-case", [Evar (constr, _); body], _) ->
+     fprintf oc "| %s%a => %a" constr p_id_list (List.rev accu) p_expr body;
+  | Elam (Evar (v, _), _, body, _) ->
+     p_case (v :: accu) oc body
   | _ -> assert false
 ;;
-
-let p_id_list oc l = p_list " " (fun oc x -> fprintf oc "%s" x) "" oc l;;
 
 let rec p_nand oc l =
   match l with

@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.8 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.9 2008-11-14 20:28:02 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -14,6 +14,8 @@ Version.add "$Id: ext_focal.ml,v 1.8 2008-11-03 14:17:25 doligez Exp $";;
      FOCAL.ifthenelse
      basics.crp
      basics.pair
+     List.nil
+     List.cons
  *)
 
 open Printf;;
@@ -185,6 +187,22 @@ let newnodes_istrue e g =
   | Eapp ("Is_true", [Emeta _], _) -> FIXME TODO instancier par false
   | Enot (Eapp ("Is_true", [Emeta _], _) -> FIXME TODO instancier par true
 *)
+  | Eapp ("Is_true", [Eapp ("$fix", _, _) as e1], _) ->
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("focal", "istrue_true", [e1]);
+          nprio = Arity;
+          ngoal = g;
+          nbranches = [| [eapp ("=", [e1; evar "true"])] |];
+      } ]
+  | Enot (Eapp ("Is_true", [Eapp ("$fix", _, _) as e1], _), _) ->
+      [ Node {
+          nconc = [e];
+          nrule = Ext ("focal", "notistrue_true", [e1]);
+          nprio = Arity;
+          ngoal = g;
+          nbranches = [| [enot (eapp ("=", [e1; evar "true"]))] |];
+      } ]
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
       begin try
         let (d, params, body) = Index.get_def s in
@@ -510,6 +528,10 @@ let built_in_defs =
                   eapp (Namespace.tuple_name, [x; y])));
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
                   eapp (Namespace.tuple_name, [x; y])));
+    Inductive ("list", ["A"], [
+                 ("List.nil", []);
+                 ("List.cons", [Param "A"; Self]);
+               ]);
   ]
 ;;
 

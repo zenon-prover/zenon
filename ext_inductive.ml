@@ -1,10 +1,11 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.5 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.6 2008-11-14 20:28:02 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
    - injectivity
    - inductive proofs
+   - local fixpoint definitions
 *)
 
 open Printf;;
@@ -21,33 +22,37 @@ type constructor_desc = {
   cd_num : int;
   cd_name : string;
   cd_type : string;
-  cd_args : string list;
+  cd_args : inductive_arg list;
 };;
 
 let constructor_table =
   (Hashtbl.create 100 : (string, constructor_desc) Hashtbl.t)
 ;;
 
+let type_table =
+  (Hashtbl.create 100 :
+     (string, string list * (string * inductive_arg list) list) Hashtbl.t)
+;;
+
 let is_constr s = Hashtbl.mem constructor_table s;;
 
-let rec make_cases l =
-  match l with
-  | Eapp (constr, vars, _) :: body :: t ->
-      (constr, vars, body) :: (make_cases t)
-  | [] -> []
-  | _ -> Error.warn "ill-shaped pattern-matching"; raise Empty
+let rec make_case accu e =
+  match e with
+  | Eapp ("$match-case", [Evar (constr, _); body], _) ->
+     (constr, List.rev accu, body)
+  | Elam (v, _, body, _) ->
+     make_case (v :: accu) body
+  | _ -> assert false
 ;;
 
-let compare_cases c1 c2 =
-  let (cs1, _, _) = c1 in
-  let (cs2, _, _) = c2 in
-    try
-      Pervasives.compare (Hashtbl.find constructor_table cs1).cd_num
-                         (Hashtbl.find constructor_table cs2).cd_num
-    with Not_found -> raise Empty
+let compare_cases (cs1, _, _) (cs2, _, _) =
+  try
+    Pervasives.compare (Hashtbl.find constructor_table cs1).cd_num
+                       (Hashtbl.find constructor_table cs2).cd_num
+  with Not_found -> raise Empty
 ;;
 
-let normalize_cases l = List.sort compare_cases (make_cases l);;
+let normalize_cases l = List.sort compare_cases (List.map (make_case []) l);;
 
 let make_match_branches ctx m =
   match m with
@@ -154,83 +159,193 @@ let newnodes_induction e g =
   []  (* FIXME TODO *)
 ;;
 
+let apply f a =
+  match f with
+  | Elam (v, _, body, _) -> substitute [(v, a)] body
+  | _ -> raise Not_found
+;;
+
+let newnodes_fix e g =
+  let mknode unfolded ctx fix =
+    [Node {
+      nconc = [e];
+      nrule = Ext ("inductive", "fix", [e; unfolded; ctx; fix]);
+      nprio = Arity;
+      ngoal = g;
+      nbranches = [| [unfolded] |];
+    }; Stop]
+  in
+  match e with
+  | Eapp (s, [Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix;
+              e1], _)
+    when Eqrel.any s ->
+     begin try
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let e2 = List.fold_left apply xbody args in
+       let ctx = elam (f, "", eapp (s, [f; e1])) in
+       let unfolded = apply ctx e2 in
+       mknode unfolded ctx fix
+     with Not_found -> []
+     end
+  | Eapp (s, [e1; Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix],
+          _)
+    when Eqrel.any s ->
+     begin try
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let e2 = List.fold_left apply xbody args in
+       let ctx = elam (f, "", eapp (s, [e1; f])) in
+       let unfolded = apply ctx e2 in
+       mknode unfolded ctx fix
+     with Not_found -> []
+     end
+  | Enot (Eapp (s, [Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix;
+                    e1], _), _)
+    when Eqrel.any s ->
+     begin try
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let e2 = List.fold_left apply xbody args in
+       let ctx = elam (f, "", enot (eapp (s, [f; e1]))) in
+       let unfolded = apply ctx e2 in
+       mknode unfolded ctx fix
+     with Not_found -> []
+     end
+  | Enot (Eapp (s, [e1;
+                    Eapp ("$fix", (Elam (f, _, body, _) as r) :: args,_) as fix],
+                _),_)
+    when Eqrel.any s ->
+     begin try
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let e2 = List.fold_left apply xbody args in
+       let ctx = elam (f, "", enot (eapp (s, [e1; f]))) in
+       let unfolded = apply ctx e2 in
+       mknode unfolded ctx fix
+     with Not_found -> []
+     end
+  | _ -> []
+;;
+
 let newnodes e g =
-    (try newnodes_match e g with Empty -> [])
+    newnodes_fix e g
+  @ (try newnodes_match e g with Empty -> [])
   @ (try newnodes_injective e g with Empty -> [])
   @ (try newnodes_induction e g with Empty -> [])
 ;;
 
 open Llproof;;
 
-let to_llproof tr_prop tr_term mlp args =
+let parse_type t =
+  match string_split t with
+  | [] -> assert false
+  | c :: a -> (c, String.concat " " a, List.length a)
+;;
+
+let make_clauses t =
+  try
+    let (args, cstrs) = Hashtbl.find type_table t in
+    let nc_name = Expr.newname () in
+    let nc = evar (nc_name) in
+    let h = Expr.newvar () in
+    let base = elam (h, "", elam (nc, "", eapp (nc_name, [h]))) in
+    let mklam body a =
+      match a with
+      | Param _ -> elam (Expr.newvar (), "", body)
+      | Self -> elam (Expr.newvar (), "", elam (Expr.newvar (), "", body))
+    in
+    let make_clause (_, ial) = List.fold_left mklam base ial in
+    List.map make_clause cstrs
+  with Not_found -> assert false  (* FIXME : report error earlier *)
+;;
+
+let to_llproof tr_expr mlp args =
   let argl = Array.to_list args in
   let hyps = List.map fst argl in
   let add = List.flatten (List.map snd argl) in
   match mlp.mlrule with
   | Ext ("inductive", "discriminate", [e]) ->
       let node = {
-        conc = List.map tr_prop mlp.mlconc;
-        rule = Rextension ("zenon_inductive_discriminate", [], [tr_prop e], []);
+        conc = List.map tr_expr mlp.mlconc;
+        rule = Rextension ("zenon_inductive_discriminate", [], [tr_expr e], []);
         hyps = [];
       } in
       (node, add)
   | Ext ("inductive", "match-neq-left", e1 :: e2 :: branches) ->
-      let te1 = tr_prop e1 in
-      let te2 = tr_prop e2 in
+      let te1 = tr_expr e1 in
+      let te2 = tr_expr e2 in
       let node = {
-        conc = List.map tr_prop mlp.mlconc;
+        conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_inductive_match_neq_left",
                            [te1; te2],
                            [enot (eapp ("=", [te1; te2]))],
-                           List.map (fun x-> [tr_prop x]) branches);
+                           List.map (fun x-> [tr_expr x]) branches);
         hyps = hyps;
       } in
       (node, add)
   | Ext ("inductive", "match-neq-right", e1 :: e2 :: branches) ->
-      let te1 = tr_prop e1 in
-      let te2 = tr_prop e2 in
+      let te1 = tr_expr e1 in
+      let te2 = tr_expr e2 in
       let node = {
-        conc = List.map tr_prop mlp.mlconc;
+        conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_inductive_match_neq_right",
                            [te1; te2],
                            [enot (eapp ("=", [te1; te2]))],
-                           List.map (fun x-> [tr_prop x]) branches);
+                           List.map (fun x-> [tr_expr x]) branches);
         hyps = hyps;
       } in
       (node, add)
   | Ext ("inductive", "match-eq-left", e1 :: e2 :: branches) ->
-      let te1 = tr_prop e1 in
-      let te2 = tr_prop e2 in
+      let te1 = tr_expr e1 in
+      let te2 = tr_expr e2 in
       let node = {
-        conc = List.map tr_prop mlp.mlconc;
+        conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_inductive_match_eq_left",
                            [te1; te2],
                            [eapp ("=", [te1; te2])],
-                           List.map (fun x-> [tr_prop x]) branches);
+                           List.map (fun x-> [tr_expr x]) branches);
         hyps = hyps;
       } in
       (node, add)
   | Ext ("inductive", "match-eq-right", e1 :: e2 :: branches) ->
-      let te1 = tr_prop e1 in
-      let te2 = tr_prop e2 in
+      let te1 = tr_expr e1 in
+      let te2 = tr_expr e2 in
       let node = {
-        conc = List.map tr_prop mlp.mlconc;
+        conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_inductive_match_eq_right",
                            [te1; te2],
                            [eapp ("=", [te1; te2])],
-                           List.map (fun x-> [tr_prop x]) branches);
+                           List.map (fun x-> [tr_expr x]) branches);
         hyps = hyps;
       } in
       (node, add)
+  | Ext ("inductive", "fix",
+         [folded; unfolded; ctx;
+          Eapp ("$fix", (Elam (f, _, (Elam (_, t, _, _) as body), _) as r)
+                        :: a :: args,
+                _) as fix]) ->
+     let (tname, targs, ntargs) = parse_type t in
+     let nx = Expr.newvar () in
+     let h = apply ctx fix in
+     let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+     let c = apply ctx (List.fold_left apply xbody (nx :: args)) in
+     let p = elam (nx, "", eimply (h, eimply (eimply (c, efalse), efalse))) in
+     let node = {
+       conc = List.map tr_expr mlp.mlconc;
+       rule = Rextension (tname ^ "_ind " ^ targs,
+                          p :: make_clauses tname @ [a],
+                          [tr_expr folded],
+                          [ [tr_expr unfolded] ]);
+       hyps = hyps;
+     } in
+     (node, add)
   | _ -> assert false (* FIXME TODO *)
 ;;
 
-let add_inductive_def ty constrs =
-  let f i (name, args) =
-    let desc = { cd_num = i; cd_type = ty; cd_args = args; cd_name = name } in
+let add_inductive_def ty args constrs =
+  let f i (name, a) =
+    let desc = { cd_num = i; cd_type = ty; cd_args = a; cd_name = name } in
     Hashtbl.add constructor_table name desc;
   in
   list_iteri f constrs;
+  Hashtbl.add type_table ty (args, constrs);
 ;;
 
 let preprocess l =
@@ -239,7 +354,7 @@ let preprocess l =
     | Hyp _ -> ()
     | Def _ -> ()
     | Sig _ -> ()
-    | Inductive (ty, constrs) -> add_inductive_def ty constrs;
+    | Inductive (ty, args, constrs) -> add_inductive_def ty args constrs;
   in
   List.iter f l;
   l
@@ -262,6 +377,6 @@ Extension.register {
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
   Extension.postprocess = postprocess;
-  Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
+  Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
 };;

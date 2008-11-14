@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.10 2008-09-16 12:25:45 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.11 2008-11-14 20:28:02 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;
@@ -34,14 +34,16 @@ rule token = parse
     }
 
   | "$def"      { DEF }
+  | "$fix"      { FIX }
   | "$goal"     { GOAL }
   | "$hyp"      { HYP }
+  | "$include"  { INCLUDE }
   | "$indset"   { INDSET }
   | "$indprop"  { INDPROP }
   | "$let"      { LET }
   | "$match"    { MATCH }
+  | "$self"     { SELF }
   | "$sig"      { SIG }
-  | "$include"  { INCLUDE }
 
   | "-."        { NOT }
   | "/\\"       { AND }
