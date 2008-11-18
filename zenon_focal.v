@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_focal.v,v 1.3 2008-10-22 11:51:04 doligez Exp $  *)
+(*  $Id: zenon_focal.v,v 1.4 2008-11-18 12:33:29 doligez Exp $  *)
 
 Require Export Bool.
 Require Import ClassicalEpsilon.
@@ -174,6 +174,20 @@ Proof.
 Qed.
 
 Implicit Arguments zenon_focal_ite_rel_nr [A B].
+
+Lemma zenon_focal_istrue_true : forall e,
+  Is_true e -> (e = true -> False) -> False.
+Proof.
+  unfold Is_true.
+  destruct e; auto.
+Qed.
+
+Lemma zenon_focal_notistrue_false : forall e,
+  ~Is_true e -> (e = false -> False) -> False.
+Proof.
+  unfold Is_true.
+  destruct e; auto.
+Qed.
 
 Lemma zenon_focal_eqdec : forall (T : Set) (x y : T), {x = y}+{x <> y}.
 Proof.

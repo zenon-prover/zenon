@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.9 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.10 2008-11-18 12:33:29 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -198,10 +198,10 @@ let newnodes_istrue e g =
   | Enot (Eapp ("Is_true", [Eapp ("$fix", _, _) as e1], _), _) ->
       [ Node {
           nconc = [e];
-          nrule = Ext ("focal", "notistrue_true", [e1]);
+          nrule = Ext ("focal", "notistrue_false", [e1]);
           nprio = Arity;
           ngoal = g;
-          nbranches = [| [enot (eapp ("=", [e1; evar "true"]))] |];
+          nbranches = [| [eapp ("=", [e1; evar "false"])] |];
       } ]
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
       begin try
@@ -351,171 +351,182 @@ let newnodes_ifthenelse e g =
 
 let newnodes e g = newnodes_istrue e g @ newnodes_ifthenelse e g;;
 
-let to_llargs tr_prop tr_term r =
+let to_llargs tr_expr r =
   match r with
   | Ext (_, "and", [e1; e2]) ->
-      let h = tr_prop (eand (istrue e1, istrue e2)) in
-      let c = tr_prop (istrue (eapp ("basics.and_b", [e1; e2]))) in
-      ("zenon_focal_and", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let h = tr_expr (eand (istrue e1, istrue e2)) in
+      let c = tr_expr (istrue (eapp ("basics.and_b", [e1; e2]))) in
+      ("zenon_focal_and", [tr_expr e1; tr_expr e2], [c], [ [h] ])
   | Ext (_, "or", [e1; e2]) ->
-      let h = tr_prop (eor (istrue e1, istrue e2)) in
-      let c = tr_prop (istrue (eapp ("basics.or_b", [e1; e2]))) in
-      ("zenon_focal_or", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let h = tr_expr (eor (istrue e1, istrue e2)) in
+      let c = tr_expr (istrue (eapp ("basics.or_b", [e1; e2]))) in
+      ("zenon_focal_or", [tr_expr e1; tr_expr e2], [c], [ [h] ])
   | Ext (_, "xor", [e1; e2]) ->
-      let h = tr_prop (enot (eequiv (istrue e1, istrue e2))) in
-      let c = tr_prop (istrue (eapp ("basics.xor_b", [e1; e2]))) in
-      ("zenon_focal_xor", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let h = tr_expr (enot (eequiv (istrue e1, istrue e2))) in
+      let c = tr_expr (istrue (eapp ("basics.xor_b", [e1; e2]))) in
+      ("zenon_focal_xor", [tr_expr e1; tr_expr e2], [c], [ [h] ])
   | Ext (_, "not", [e1]) ->
-      let h = tr_prop (enot (istrue e1)) in
-      let c = tr_prop (istrue (eapp ("basics.not_b", [e1]))) in
-      ("zenon_focal_not", [tr_term e1], [c], [ [h] ])
+      let h = tr_expr (enot (istrue e1)) in
+      let c = tr_expr (istrue (eapp ("basics.not_b", [e1]))) in
+      ("zenon_focal_not", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "base_eq", [Evar (name, _); e1; e2; e3]) ->
-      let h = tr_prop (eapp ("=", [e2; e3])) in
-      let c = tr_prop (istrue (eapp (name, [e1; e2; e3]))) in
+      let h = tr_expr (eapp ("=", [e2; e3])) in
+      let c = tr_expr (istrue (eapp (name, [e1; e2; e3]))) in
       let eqdec = evar ("zenon_focal_eqdec") in
       ("coq_builtins.zenon_base_eq",
-       List.map tr_term [eqdec; e1; e2; e3], [c], [ [h] ])
+       List.map tr_expr [eqdec; e1; e2; e3], [c], [ [h] ])
   | Ext (_, "notand", [e1; e2]) ->
-      let h = tr_prop (enot (eand (istrue e1, istrue e2))) in
-      let c = tr_prop (enot (istrue (eapp ("basics.and_b", [e1; e2])))) in
-      ("zenon_focal_notand", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let h = tr_expr (enot (eand (istrue e1, istrue e2))) in
+      let c = tr_expr (enot (istrue (eapp ("basics.and_b", [e1; e2])))) in
+      ("zenon_focal_notand", [tr_expr e1; tr_expr e2], [c], [ [h] ])
   | Ext (_, "notor", [e1; e2]) ->
-      let h = tr_prop (enot (eor (istrue e1, istrue e2))) in
-      let c = tr_prop (enot (istrue (eapp ("basics.or_b", [e1; e2])))) in
-      ("zenon_focal_notor", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let h = tr_expr (enot (eor (istrue e1, istrue e2))) in
+      let c = tr_expr (enot (istrue (eapp ("basics.or_b", [e1; e2])))) in
+      ("zenon_focal_notor", [tr_expr e1; tr_expr e2], [c], [ [h] ])
   | Ext (_, "notxor", [e1; e2]) ->
-      let h = tr_prop (eequiv (istrue e1, istrue e2)) in
-      let c = tr_prop (enot (istrue (eapp ("basics.xor_b", [e1; e2])))) in
-      ("zenon_focal_notxor", [tr_term e1; tr_term e2], [c], [ [h] ])
+      let h = tr_expr (eequiv (istrue e1, istrue e2)) in
+      let c = tr_expr (enot (istrue (eapp ("basics.xor_b", [e1; e2])))) in
+      ("zenon_focal_notxor", [tr_expr e1; tr_expr e2], [c], [ [h] ])
   | Ext (_, "notnot", [e1]) ->
-      let h = tr_prop (istrue e1) in
-      let c = tr_prop (enot (istrue (eapp ("basics.not_b", [e1])))) in
-      ("zenon_focal_notnot", [tr_term e1], [c], [ [h] ])
+      let h = tr_expr (istrue e1) in
+      let c = tr_expr (enot (istrue (eapp ("basics.not_b", [e1])))) in
+      ("zenon_focal_notnot", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "notbase_eq", [Evar (name, _); e1; e2; e3]) ->
-      let h = tr_prop (enot (eapp ("=", [e2; e3]))) in
-      let c = tr_prop (enot (istrue (eapp (name, [e1; e2; e3])))) in
+      let h = tr_expr (enot (eapp ("=", [e2; e3]))) in
+      let c = tr_expr (enot (istrue (eapp (name, [e1; e2; e3])))) in
       ("coq_builtins.zenon_notbase_eq",
-       [tr_term e1; tr_term e2; tr_term e3], [c], [ [h] ])
+       [tr_expr e1; tr_expr e2; tr_expr e3], [c], [ [h] ])
   | Ext (_, "false", []) ->
-      let c = tr_prop (istrue (evar "false")) in
+      let c = tr_expr (istrue (evar "false")) in
       ("zenon_focal_false", [], [c], []);
   | Ext (_, "nottrue", []) ->
-      let c = tr_prop (enot (istrue (evar "true"))) in
+      let c = tr_expr (enot (istrue (evar "true"))) in
       ("zenon_focal_nottrue", [], [c], []);
   | Ext (_, "falsetrue", []) ->
-      let c = tr_prop (eapp ("=", [evar "false"; evar "true"])) in
+      let c = tr_expr (eapp ("=", [evar "false"; evar "true"])) in
       ("zenon_focal_falsetrue", [], [c], []);
   | Ext (_, "truefalse", []) ->
-      let c = tr_prop (eapp ("=", [evar "true"; evar "false"])) in
+      let c = tr_expr (eapp ("=", [evar "true"; evar "false"])) in
       ("zenon_focal_truefalse", [], [c], []);
   | Ext (_, "merge", _) -> ("zenon_focal_merge", [], [], [])
   | Ext (_, "split", _) -> ("zenon_focal_split", [], [], [])
 
   | Ext (_, "ite_bool", ([cond; thn; els] as args)) ->
-      let ht1 = tr_prop (istrue cond) in
-      let ht2 = tr_prop (istrue thn) in
-      let he1 = tr_prop (isfalse cond) in
-      let he2 = tr_prop (istrue els) in
-      let c = tr_prop (istrue (eapp ("FOCAL.ifthenelse", [cond; thn; els])))
+      let ht1 = tr_expr (istrue cond) in
+      let ht2 = tr_expr (istrue thn) in
+      let he1 = tr_expr (isfalse cond) in
+      let he2 = tr_expr (istrue els) in
+      let c = tr_expr (istrue (eapp ("FOCAL.ifthenelse", [cond; thn; els])))
       in
-      ("zenon_focal_ite_bool", List.map tr_term args, [c],
+      ("zenon_focal_ite_bool", List.map tr_expr args, [c],
        [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_bool_n", ([cond; thn; els] as args)) ->
-      let ht1 = tr_prop (istrue cond) in
-      let ht2 = tr_prop (isfalse thn) in
-      let he1 = tr_prop (isfalse cond) in
-      let he2 = tr_prop (isfalse els) in
-      let c = tr_prop (isfalse (eapp ("FOCAL.ifthenelse", [cond; thn; els])))
+      let ht1 = tr_expr (istrue cond) in
+      let ht2 = tr_expr (isfalse thn) in
+      let he1 = tr_expr (isfalse cond) in
+      let he2 = tr_expr (isfalse els) in
+      let c = tr_expr (isfalse (eapp ("FOCAL.ifthenelse", [cond; thn; els])))
       in
-      ("zenon_focal_ite_bool_n", List.map tr_term args, [c],
+      ("zenon_focal_ite_bool_n", List.map tr_expr args, [c],
        [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_l",
          [Eapp (r, [Eapp ("FOCAL.ifthenelse", [c; t; e], _); e2], _) as a])
     ->
-      let ht1 = tr_prop (istrue c) in
-      let ht2 = tr_prop (eapp (r, [t; e2])) in
-      let he1 = tr_prop (isfalse c) in
-      let he2 = tr_prop (eapp (r, [e; e2])) in
-      let concl = tr_prop a in
+      let ht1 = tr_expr (istrue c) in
+      let ht2 = tr_expr (eapp (r, [t; e2])) in
+      let he1 = tr_expr (isfalse c) in
+      let he2 = tr_expr (eapp (r, [e; e2])) in
+      let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_focal_ite_rel_l", List.map tr_term [rf; c; t; e; e2],
+      ("zenon_focal_ite_rel_l", List.map tr_expr [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_r",
          [Eapp (r, [e1; Eapp ("FOCAL.ifthenelse", [c; t; e], _)], _) as a])
     ->
-      let ht1 = tr_prop (istrue c) in
-      let ht2 = tr_prop (eapp (r, [e1; t])) in
-      let he1 = tr_prop (isfalse c) in
-      let he2 = tr_prop (eapp (r, [e1; e])) in
-      let concl = tr_prop a in
+      let ht1 = tr_expr (istrue c) in
+      let ht2 = tr_expr (eapp (r, [e1; t])) in
+      let he1 = tr_expr (isfalse c) in
+      let he2 = tr_expr (eapp (r, [e1; e])) in
+      let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_focal_ite_rel_r", List.map tr_term [rf; e1; c; t; e],
+      ("zenon_focal_ite_rel_r", List.map tr_expr [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nl",
          [Enot (Eapp (r, [Eapp ("FOCAL.ifthenelse",
                                 [c; t; e], _); e2], _), _) as a])
     ->
-      let ht1 = tr_prop (istrue c) in
-      let ht2 = tr_prop (enot (eapp (r, [t; e2]))) in
-      let he1 = tr_prop (isfalse c) in
-      let he2 = tr_prop (enot (eapp (r, [e; e2]))) in
-      let concl = tr_prop a in
+      let ht1 = tr_expr (istrue c) in
+      let ht2 = tr_expr (enot (eapp (r, [t; e2]))) in
+      let he1 = tr_expr (isfalse c) in
+      let he2 = tr_expr (enot (eapp (r, [e; e2]))) in
+      let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_focal_ite_rel_nl", List.map tr_term [rf; c; t; e; e2],
+      ("zenon_focal_ite_rel_nl", List.map tr_expr [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nr",
          [Enot (Eapp (r, [e1; Eapp ("FOCAL.ifthenelse",
                                     [c; t; e], _)], _), _) as a])
     ->
-      let ht1 = tr_prop (istrue c) in
-      let ht2 = tr_prop (enot (eapp (r, [e1; t]))) in
-      let he1 = tr_prop (isfalse c) in
-      let he2 = tr_prop (enot (eapp (r, [e1; e]))) in
-      let concl = tr_prop a in
+      let ht1 = tr_expr (istrue c) in
+      let ht2 = tr_expr (enot (eapp (r, [e1; t]))) in
+      let he1 = tr_expr (isfalse c) in
+      let he2 = tr_expr (enot (eapp (r, [e1; e]))) in
+      let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
       let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
-      ("zenon_focal_ite_rel_nr", List.map tr_term [rf; e1; c; t; e],
+      ("zenon_focal_ite_rel_nr", List.map tr_expr [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
+  | Ext (_, "istrue_true", [e1]) ->
+     let h = tr_expr (eapp ("=", [e1; evar "true"])) in
+     let c = tr_expr (istrue e1) in
+     ("zenon_focal_istrue_true", [tr_expr e1], [c], [ [h] ])
+  | Ext (_, "notistrue_false", [e1]) ->
+     let h = tr_expr (eapp ("=", [e1; evar "false"])) in
+     let c = tr_expr (enot (istrue e1)) in
+     ("zenon_focal_notistrue_true", [tr_expr e1], [c], [ [h] ])
   | Ext (x, y, _) ->
      Printf.eprintf "unknown extension rule %s/%s\n" x y;
      assert false
   | _ -> assert false
 ;;
 
-let to_llproof tr_prop tr_term mlp args =
-  let (name, meta, con, hyp) = to_llargs tr_prop tr_term mlp.mlrule in
+let to_llproof tr_expr mlp args =
+  let (name, meta, con, hyp) = to_llargs tr_expr mlp.mlrule in
   let (subs, exts) = List.split (Array.to_list args) in
   let ext = List.fold_left Expr.union [] exts in
   let extras = Expr.diff ext mlp.mlconc in
   let nn = {
-      Llproof.conc = List.map tr_prop (extras @@ mlp.mlconc);
+      Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
       Llproof.rule = Llproof.Rextension (name, meta, con, hyp);
       Llproof.hyps = subs;
     }
   in (nn, extras)
 ;;
 
-let rec fold_istrue e =
+let rec pp_expr e =
   match e with
   | Evar _ -> e
   | Emeta _ -> e
   | Eapp ("Is_true", [Eapp (s, args, _)], _) ->
-      eapp ("Is_true**" ^ s, List.map fold_istrue args)
-  | Eapp (s, args, _) -> eapp (s, List.map fold_istrue args)
-  | Enot (e1, _) -> enot (fold_istrue e1)
-  | Eand (e1, e2, _) -> eand (fold_istrue e1, fold_istrue e2)
-  | Eor (e1, e2, _) -> eor (fold_istrue e1, fold_istrue e2)
-  | Eimply (e1, e2, _) -> eimply (fold_istrue e1, fold_istrue e2)
-  | Eequiv (e1, e2, _) -> eequiv (fold_istrue e1, fold_istrue e2)
+      eapp ("Is_true**" ^ s, List.map pp_expr args)
+  | Eapp (s, args, _) -> eapp (s, List.map pp_expr args)
+  | Enot (e1, _) -> enot (pp_expr e1)
+  | Eand (e1, e2, _) -> eand (pp_expr e1, pp_expr e2)
+  | Eor (e1, e2, _) -> eor (pp_expr e1, pp_expr e2)
+  | Eimply (e1, e2, _) -> eimply (pp_expr e1, pp_expr e2)
+  | Eequiv (e1, e2, _) -> eequiv (pp_expr e1, pp_expr e2)
   | Etrue -> e
   | Efalse -> e
-  | Eall (v, t, e, _) -> eall (v, t, fold_istrue e)
-  | Eex (v, t, e, _) -> eex (v, t, fold_istrue e)
-  | Etau (v, t, e, _) -> etau (v, t, fold_istrue e)
-  | Elam (v, t, e, _) -> elam (v, t, fold_istrue e)
+  | Eall (v, t, e, _) -> eall (v, t, pp_expr e)
+  | Eex (v, t, e, _) -> eex (v, t, pp_expr e)
+  | Etau (v, t, e, _) -> etau (v, t, pp_expr e)
+  | Elam (v, t, e, _) when occurs "basics.list__t" t ->
+      let t1 = replace_first "basics.list__t" "List.list" t in
+      elam (v, t1, pp_expr e)
+  | Elam (v, t, e, _) -> elam (v, t, pp_expr e)
 ;;
 
 let built_in_defs =
@@ -528,7 +539,7 @@ let built_in_defs =
                   eapp (Namespace.tuple_name, [x; y])));
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
                   eapp (Namespace.tuple_name, [x; y])));
-    Inductive ("list", ["A"], [
+    Inductive ("List.list", ["A"], [
                  ("List.nil", []);
                  ("List.cons", [Param "A"; Self]);
                ]);
@@ -538,9 +549,9 @@ let built_in_defs =
 let preprocess l =
   let f x =
     match x with
-    | Hyp (name, e, goalness) -> Hyp (name, fold_istrue e, goalness)
+    | Hyp (name, e, goalness) -> Hyp (name, pp_expr e, goalness)
     | Def (DefReal (name, sym, formals, body)) ->
-        Def (DefReal (name, sym, formals, fold_istrue body))
+        Def (DefReal (name, sym, formals, pp_expr body))
     | Def (DefPseudo _) -> assert false
     | Sig _ -> x
     | Inductive _ -> x
@@ -650,6 +661,6 @@ Extension.register {
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
   Extension.postprocess = postprocess;
-  Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
+  Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
 };;

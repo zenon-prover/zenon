@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.10 2008-08-26 13:47:41 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.11 2008-11-18 12:33:29 doligez Exp $";;
 
 open Printf;;
 
@@ -76,6 +76,7 @@ let rec check_unused name e =
   | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
     ->
        if t <> univ_name && not (List.mem v (get_fv e1)) then begin
+       (* FIXME what about 2nd order stuff like fixpoints... *)
          Error.warn (sprintf "unused variable (%s : %s) in %s" v t name);
        end;
        check_unused name e1;

@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.23 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.24 2008-11-18 12:33:29 doligez Exp $";;
 
 open Printf;;
 
@@ -64,9 +64,9 @@ let mk_lam bindings body =
   List.fold_right f bindings body
 ;;
 
-let mk_fix ident bindings body =
+let mk_fix ident ty bindings body =
   let f (var, ty) e = elam (evar var, ty, e) in
-  (ident, eapp ("$fix", [ List.fold_right f ((ident, "") :: bindings) body ]))
+  (ident, eapp ("$fix", [ List.fold_right f ((ident, ty) :: bindings) body ]))
 ;;
 
 let rec get_params e =
@@ -285,7 +285,7 @@ expr:
 
 fix:
   | FIX IDENT bindings LBRACE_ STRUCT IDENT RBRACE_ COLON_ typ COLON_EQ_ expr
-      { mk_fix $2 $3 $11 }
+      { mk_fix $2 $9 $3 $11 }
 ;
 
 expr1:

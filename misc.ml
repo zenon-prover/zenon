@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.11 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.12 2008-11-18 12:33:29 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -42,6 +42,19 @@ let occurs sub str =
     done;
     false
   with True -> true
+;;
+
+let replace_first s1 s2 s =
+  let l = String.length s in
+  let l1 = String.length s1 in
+  let rec loop i =
+    if i + l1 > l then s
+    else if String.sub s i l1 <> s1 then loop (i + 1)
+    else begin
+      String.sub s 0 i ^ s2 ^ String.sub s (i + l1) (l - i - l1)
+    end
+  in
+  loop 0
 ;;
 
 let rec xlist_init l f accu =

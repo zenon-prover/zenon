@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.39 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.40 2008-11-18 12:33:29 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -25,6 +25,7 @@ type coqterm =
   | Cmatch of coqterm * (string * string list * coqterm) list
   | Cifthenelse of coqterm * coqterm * coqterm
   | Ctuple of coqterm list
+  | Cfix of string * string * coqterm
 ;;
 
 type coqproof =
@@ -101,6 +102,8 @@ let rec trexpr env e =
   | Emeta _ -> assert false
   | Eapp ("$match", e1 :: cases, _) ->
       Cmatch (trexpr env e1, List.map (trcase env []) cases)
+  | Eapp ("$fix", Elam (Evar (f, _), ty, e1, _) :: args, _) ->
+      Capp (Cfix (f, ty, trexpr env e1), List.map (trexpr env) args)
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       Cifthenelse (trexpr env e1, trexpr env e2, trexpr env e3)
   | Eapp (f, args, _) when f = tuple_name ->
@@ -485,6 +488,9 @@ let pr_oc oc prefix t =
     | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
     | Cwild -> bprintf b "_";
     | Cmatch (e, cl) -> bprintf b "match %a with %a end" pr e pr_cases cl;
+    | Cfix (f, ty, e1) ->
+       let (lams, body) = get_lams [] e1 in
+       bprintf b "(fix %s %a : %a := %a)" f pr_lams lams pr_ty ty pr body
     | Cifthenelse (e1, e2, e3) ->
        bprintf b "(if %a then %a else %a)" pr e1 pr e2 pr e3;
     | Ctuple (l) ->

@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.6 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.7 2008-11-18 12:33:29 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -182,7 +182,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "", eapp (s, [f; e1])) in
+       let ctx = elam (f, "?", eapp (s, [f; e1])) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Not_found -> []
@@ -193,7 +193,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "", eapp (s, [e1; f])) in
+       let ctx = elam (f, "?", eapp (s, [e1; f])) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Not_found -> []
@@ -204,7 +204,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "", enot (eapp (s, [f; e1]))) in
+       let ctx = elam (f, "?", enot (eapp (s, [f; e1]))) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Not_found -> []
@@ -216,7 +216,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "", enot (eapp (s, [e1; f]))) in
+       let ctx = elam (f, "?", enot (eapp (s, [e1; f]))) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Not_found -> []
@@ -233,8 +233,18 @@ let newnodes e g =
 
 open Llproof;;
 
+let rec remove_parens i j s =
+  if i >= j then ""
+  else if s.[i] = ' ' then remove_parens (i + 1) j s
+  else if s.[j - 1] = ' ' then remove_parens i (j - 1) s
+  else if s.[i] = '(' && s.[j - 1] = ')' then remove_parens (i + 1) (j - 1) s
+  else String.sub s i (j - i)
+;;
+
+let remove_parens s = remove_parens 0 (String.length s) s;;
+
 let parse_type t =
-  match string_split t with
+  match string_split (remove_parens t) with
   | [] -> assert false
   | c :: a -> (c, String.concat " " a, List.length a)
 ;;
@@ -245,15 +255,18 @@ let make_clauses t =
     let nc_name = Expr.newname () in
     let nc = evar (nc_name) in
     let h = Expr.newvar () in
-    let base = elam (h, "", elam (nc, "", eapp (nc_name, [h]))) in
+    let base = elam (h, "?", elam (nc, "?", eapp (nc_name, [h]))) in
     let mklam body a =
       match a with
-      | Param _ -> elam (Expr.newvar (), "", body)
-      | Self -> elam (Expr.newvar (), "", elam (Expr.newvar (), "", body))
+      | Param _ -> elam (Expr.newvar (), "?", body)
+      | Self -> elam (Expr.newvar (), "?", elam (Expr.newvar (), "?", body))
     in
     let make_clause (_, ial) = List.fold_left mklam base ial in
     List.map make_clause cstrs
-  with Not_found -> assert false  (* FIXME : report error earlier *)
+  with Not_found ->
+    Error.err ("missing definition of type " ^ t);
+    raise Exit
+    (* FIXME should warn and not apply rule earlier *)
 ;;
 
 let to_llproof tr_expr mlp args =
@@ -326,10 +339,10 @@ let to_llproof tr_expr mlp args =
      let h = apply ctx fix in
      let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
      let c = apply ctx (List.fold_left apply xbody (nx :: args)) in
-     let p = elam (nx, "", eimply (h, eimply (eimply (c, efalse), efalse))) in
+     let p = elam (nx, "?", eimply (h, eimply (eimply (c, efalse), efalse))) in
      let node = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension (tname ^ "_ind " ^ targs,
+       rule = Rextension (sprintf "(%s_ind %s)" tname targs,
                           p :: make_clauses tname @ [a],
                           [tr_expr folded],
                           [ [tr_expr unfolded] ]);
