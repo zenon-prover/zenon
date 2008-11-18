@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.16 2008-11-03 15:45:54 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.17 2008-11-18 15:03:31 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -226,8 +226,17 @@ let newnodes_prop e g =
      in
      mknode (Inst h) "notsetequal" [e; h; e1; e2] [| [h] |]
 
+  | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.Fcn", [s; l], _)], _), _) ->
+     mknode Arity "notisafcn_fcn" [e; s; l] [| |]
+
   | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.except", [f; v; e1], _)], _), _) ->
-     mknode Arity "isafcn_except" [e; f; v; e1] [| |]
+     mknode Arity "notisafcn_except" [e; f; v; e1] [| |]
+
+  | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.oneArg", [e1; e2], _)], _), _) ->
+     mknode Arity "notisafcn_onearg" [e; e1; e2] [| |]
+
+  | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.extend", [f; g], _)], _), _) ->
+     mknode Arity "notisafcn_extend" [e; f; g] [| |]
 
   | Eapp ("=", [e1; e2], _) when is_fcn_expr e1 || is_fcn_expr e2 ->
      let x = Expr.newvar () in
@@ -310,10 +319,10 @@ let rewrites in_expr ctx e mknode =
   | Eapp ("=", [e1; e2], _) when in_expr -> mk_boolcase "equal" e1 e2
   (* FIXME missing : Eall, Eex *)
 
-  | Eapp ("TLA.ifthenelse", [Etrue; e2; e3], _) ->
+  | Eapp ("TLA.cond", [Etrue; e2; e3], _) ->
      let h1 = ctx (e2) in
      mknode "iftrue" [ctx e; h1; lamctx; e2; e3] [] [| [h1] |]
-  | Eapp ("TLA.ifthenelse", [Efalse; e2; e3], _) ->
+  | Eapp ("TLA.cond", [Efalse; e2; e3], _) ->
      let h1 = ctx (e3) in
      mknode "iffalse" [ctx e; h1; lamctx; e2; e3] [] [| [h1] |]
   | _ -> []
@@ -378,8 +387,12 @@ let to_llargs r =
   in
   let single r =
     match r with
-    | Ext (_, name, c :: h :: args) ->
-       ("zenon_" ^ name, args, [c], [ [h] ])
+    | Ext (_, name, c :: h :: args) -> ("zenon_" ^ name, args, [c], [ [h] ])
+    | _ -> assert false
+  in
+  let close r =
+    match r with
+    | Ext (_, name, c :: args) -> ("zenon_" ^ name, args, [c], [])
     | _ -> assert false
   in
   match r with
@@ -412,8 +425,10 @@ let to_llargs r =
   | Ext (_, "boolcase_or", _) -> beta2 r
   | Ext (_, "boolcase_imply", _) -> beta2 r
   | Ext (_, "boolcase_equiv", _) -> beta2 r
-  | Ext (_, "isafcn_except", [c; f; v; e1]) ->
-     ("zenon_isafcn_except", [f; v; e1], [c], [])
+  | Ext (_, "notisafcn_fcn", _) -> close r
+  | Ext (_, "notisafcn_except", _) -> close r
+  | Ext (_, "notisafcn_onearg", _) -> close r
+  | Ext (_, "notisafcn_extend", _) -> close r
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
