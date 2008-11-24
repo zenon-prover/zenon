@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.40 2008-11-18 12:33:29 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.41 2008-11-24 15:28:26 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -67,6 +67,24 @@ let is_goal e =
   with Not_found -> false
 ;;
 
+let inductive_map = ref [];;
+
+let init_inductive phrases =
+  inductive_map := [];
+  let add_inductive p =
+    match p with
+    | Phrase.Inductive (name, args, cons) ->
+       inductive_map := (name, (args, cons)) :: !inductive_map;
+    | Phrase.Hyp _ | Phrase.Def _ | Phrase.Sig _ -> ()
+  in
+  List.iter add_inductive phrases;
+;;
+
+let get_inductive name =
+  try List.assoc name !inductive_map
+  with Not_found -> assert false
+;;
+
 
 let getv e = Cvar (getname e);;
 
@@ -121,6 +139,7 @@ let rec trexpr env e =
   | Eex (Evar (v, _), t, e1, _) -> Cex (v, t, trexpr (v::env) e1)
   | Eex _ -> assert false
   | Etau _ -> assert false
+  | Elam (Evar (v, _), "?", e1, _) -> Clam (v, Cwild, trexpr (v::env) e1)
   | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr (v::env) e1)
   | Elam _ -> assert false
 
@@ -137,6 +156,30 @@ let trpred env v ty p = Clam (v, Cty ty, trexpr env p);;
 
 let mklam env v t = Clam (getname v, tropt env v, t);;
 let mklams env args t = List.fold_right (mklam env) args t;;
+
+let mkcase env (c, args) hyp =
+  let xs = List.map (fun _ -> Expr.newname ()) args in
+  let f h x = Capp (Cvar ("zenon_inductive_ex_all"),
+                    [Cwild; Cwild; h; trexpr env (evar (x))]) in
+  let inner = List.fold_left f hyp xs in
+  let f h a =
+    match a with
+    | Phrase.Param _ -> h
+    | Phrase.Self -> Clam ("_", Cwild, h)
+  in
+  let with_ind = List.fold_left f inner args in
+  let f h v = Clam (v, Cwild, h) in
+  List.fold_left f with_ind (List.rev xs)
+;;
+
+let mkfixcase (c, args) =
+  let mklam e arg =
+    match arg with
+    | Phrase.Self -> Clam ("_", Cwild, Clam ("_", Cwild, e))
+    | Phrase.Param _ -> Clam ("_", Cwild, e)
+  in
+  List.fold_left mklam (Clam ("x", Cwild, Cvar "x")) args
+;;
 
 let rec common_prefix accu l1 l2 l3 =
   match l1, l2, l3 with
@@ -281,6 +324,31 @@ let rec trtree env node =
       let cas2 = ("_", [], Cvar "False") in
       let caract = Clam (x, Cwild, Cmatch (Cvar x, [cas1; cas2])) in
       Capp (Cvar "eq_ind", [trexpr a; caract; Cvar "I"; trexpr b; getv e])
+  | Rextension ("zenon_inductive_discriminate", _, _, _) -> assert false
+  | Rextension ("zenon_inductive_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
+     let (args, cstrs) = get_inductive ty in
+     let typargs = List.map (fun _ -> Cwild) args in
+     let hypargs = List.map2 (mklams env) hs (List.map (trtree env) hyps) in
+     let brs = List.map2 (mkcase env) cstrs hypargs in
+     Capp (Cvar ("zenon_inductive_eq_and"),
+           [Cwild; Cwild; Cwild;
+            Capp (Cvar (sprintf "@%s_ind" ty),
+                  typargs @ trexpr ctx :: brs @ [trexpr e1]);
+            getv c])
+  | Rextension ("zenon_inductive_cases", _, _, _) -> assert false
+  | Rextension ("zenon_inductive_fix", [Evar (ty, _); ctx; foldx; unfx; a],
+                [c], [ [h] ]) ->
+     let (args, cstrs) = get_inductive ty in
+     let typargs = List.map (fun _ -> Cwild) args in
+     let x = Expr.newvar () in
+     let p = elam (x, "?", eimply (eimply (apply ctx (apply unfx x), efalse),
+                                   eimply (apply ctx (apply foldx x), efalse)))
+     in
+     let brs = List.map mkfixcase cstrs in
+     let th = mklam h (tr_subtree_1 hyps) in
+     Capp (Cvar (sprintf "@%s_ind" ty),
+           typargs @ trexpr p :: brs @ [trexpr a; th; getv c])
+  | Rextension ("zenon_inductive_fix", _, _, _) -> assert false
   | Rextension (name, args, c, hs) ->
       let metargs = List.map trexpr args in
       let hypargs = List.map2 (mklams env) hs (List.map (trtree env) hyps) in
@@ -370,10 +438,11 @@ let rec get_th_name lemmas =
   | _ :: t -> get_th_name t
 ;;
 
-let trproof phrases l =
+let trproof phrases ppphrases l =
   try
     Hashtbl.clear lemma_env;
     init_mapping phrases;
+    init_inductive ppphrases;
     let (lemmas, raw, th_name, formals) = trp l in
     match get_goal phrases with
     | Some goal ->
@@ -405,7 +474,9 @@ let test_cut j c =
   | ' ' -> raise (Cut_at j)
   | _ -> ()
 ;;
+
 let init_buf () = rem_len := line_len;;
+
 let flush_buf oc =
   let s = Buffer.contents buf in
   let len = String.length s in
@@ -459,25 +530,41 @@ let tr_ty t =
   match t with
   | t when t = univ_name -> t
   | "?" -> "_"
-  | s -> sprintf "(%s)" s
+  | s -> sprintf "%s" s
 ;;
 
 let pr_oc oc prefix t =
+  let rec pr_list p b l =
+    let f t = bprintf b " %a" p t; in
+    List.iter f l;
+  in
+  let pr_comma_list p b l =
+    let f t = bprintf b ",%a" p t; in
+    match l with
+    | [] -> assert false
+    | h::t ->
+       p b h;
+       List.iter f t;
+  in
+  let pr_id b x = bprintf b "%s" x;
+  in
+  let pr_ty b t = bprintf b "%s" (tr_ty t);
+  in
   let rec pr b t =
     match t with
     | Cvar "" -> assert false
     | Cvar s -> bprintf b "%s" s; flush_buf oc;
     | Cty s -> bprintf b "%a" pr_ty s;
-    | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
     | Clam (_, _, Clam _) ->
         let (lams, body) = get_lams [] t in
         bprintf b "(fun%a=>%a)" pr_lams lams pr body;
+    | Clam (s, Cwild, t2) -> bprintf b "(fun %s=>%a)" s pr t2;
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
-    | Capp (Cvar "=", [e1; e2]) -> bprintf b "(%a = %a)" pr e1 pr e2;
-    | Capp (Cvar "=", args) -> bprintf b "(@eq _%a)" pr_list args;
+    | Capp (Cvar "=", [e1; e2]) -> bprintf b "(%a=%a)" pr e1 pr e2;
+    | Capp (Cvar "=", args) -> bprintf b "(@eq _%a)" (pr_list pr) args;
     | Capp (t1, []) -> pr b t1;
     | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));
-    | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 pr_list args;
+    | Capp (t1, args) -> bprintf b "(%a%a)" pr t1 (pr_list pr) args;
     | Cnot (t1) -> bprintf b "(~%a)" pr t1;
     | Cand (t1,t2) -> bprintf b "(%a/\\%a)" pr t1 pr t2;
     | Cor (t1,t2) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
@@ -487,26 +574,14 @@ let pr_oc oc prefix t =
     | Cex (v, ty, t1) -> bprintf b "(exists %s:%a,%a)" v pr_ty ty pr t1;
     | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
     | Cwild -> bprintf b "_";
-    | Cmatch (e, cl) -> bprintf b "match %a with %a end" pr e pr_cases cl;
+    | Cmatch (e, cl) -> bprintf b "match %a with%a end" pr e pr_cases cl;
     | Cfix (f, ty, e1) ->
        let (lams, body) = get_lams [] e1 in
-       bprintf b "(fix %s %a : %a := %a)" f pr_lams lams pr_ty ty pr body
+       bprintf b "(fix %s %a:%a:=%a)" f pr_lams lams pr_ty ty pr body
     | Cifthenelse (e1, e2, e3) ->
        bprintf b "(if %a then %a else %a)" pr e1 pr e2 pr e3;
     | Ctuple (l) ->
-       bprintf b "(%a)" pr_comma_list l;
-
-  and pr_list b l =
-    let f t = bprintf b " %a" pr t; in
-    List.iter f l;
-
-  and pr_comma_list b l =
-    let f t = bprintf b ", %a" pr t; in
-    match l with
-    | [] -> assert false
-    | h::t ->
-       pr b h;
-       List.iter f t;
+       bprintf b "(%a)" (pr_comma_list pr) l;
 
   and pr_lams b l =
     let f (v, ty) =
@@ -516,15 +591,15 @@ let pr_oc oc prefix t =
     in
     List.iter f l;
 
-  and pr_ty b t = bprintf b "%s" (tr_ty t);
-
   and pr_cases b l =
-    let f (constr, args, rhs) =
-      bprintf b "|%s%a=>%a" constr pr_ids args pr rhs;
+    let f case =
+      match case with
+      | (constr, args, rhs) when constr = tuple_name ->
+         bprintf b "|(%a)=>%a" (pr_comma_list pr_id) args pr rhs;
+      | (constr, args, rhs) ->
+         bprintf b "|%s%a=>%a" constr (pr_list pr_id) args pr rhs;
     in
     List.iter f l;
-
-  and pr_ids b l = List.iter (fun x -> bprintf b " %s" x) l;
 
   in
 
@@ -535,11 +610,11 @@ let pr_oc oc prefix t =
 ;;
 
 let print_lemma oc (name, t) =
-  let prefix = sprintf "Let %s:" name in
+  let prefix = sprintf "let %s:" name in
   pr_oc oc prefix (make_lemma_type t);
-  fprintf oc ".\n";
-  pr_oc oc "Proof " t;
-  fprintf oc ".\n";
+  fprintf oc ":=\n";
+  pr_oc oc "" t;
+  fprintf oc "in\n";
 ;;
 
 let use_hyp oc count p =
@@ -556,7 +631,7 @@ let print_use_all oc phrases =
   if !Globals.use_all_flag then ignore (List.fold_left (use_hyp oc) 0 phrases);
 ;;
 
-let print_theorem oc (name, t) phrases =
+let print_theorem oc lemmas (name, t) phrases =
   let prefix = sprintf "Theorem %s:" name in
   begin match get_goal phrases with
   | Some (Enot (g, _)) -> pr_oc oc prefix (trexpr [] g);
@@ -565,7 +640,8 @@ let print_theorem oc (name, t) phrases =
   end;
   fprintf oc ".\nProof.\n";
   print_use_all oc phrases;
-  fprintf oc "exact(";
+  fprintf oc "exact(\n";
+  List.iter (print_lemma oc) lemmas;
   pr_oc oc "" t;
   fprintf oc ").\nQed.\n";
 ;;
@@ -582,7 +658,16 @@ type signature =
   | Hyp_name
 ;;
 
-let predefined = ["Type"; "Prop"; "="; "$match"; "$fix"];;
+let predefined = ["Type"; "Prop"; "="; "$match"; "$match-case"; "$fix"];;
+
+let is_nat s =
+  try
+    for i = 0 to String.length s - 1 do
+      if not (Misc.isdigit s.[i]) then raise Exit;
+    done;
+    true
+  with Exit -> false
+;;
 
 let get_signatures ps ext_decl =
   let symtbl = (Hashtbl.create 97 : (string, signature) Hashtbl.t) in
@@ -593,6 +678,8 @@ let get_signatures ps ext_decl =
   in
   let rec get_sig r env e =
     match e with
+    | Evar ("_", _) -> ()
+    | Evar (s, _) when is_nat s -> ()
     | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 r;
     | Emeta _ | Etrue | Efalse -> ()
     | Eapp (s, args, _) ->
@@ -741,7 +828,6 @@ let declare_context oc phrases =
 let print oc (phrases, lemmas, thname, thproof) =
   if !Globals.ctx_flag then declare_context oc phrases;
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-  List.iter (print_lemma oc) lemmas;
-  print_theorem oc (thname, thproof) phrases;
+  print_theorem oc lemmas (thname, thproof) phrases;
   if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
 ;;

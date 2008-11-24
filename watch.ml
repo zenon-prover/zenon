@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.11 2008-11-18 12:33:29 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.12 2008-11-24 15:28:27 doligez Exp $";;
 
 open Printf;;
 
@@ -68,6 +68,8 @@ let rec check_unused name e =
   match e with
   | Evar _ | Emeta _ | Etrue | Efalse
     -> ()
+  | Eapp ("$fix", Elam (f, _, body, _) :: args, _) ->
+     List.iter (check_unused name) (body :: args)
   | Eapp (f, args, _) -> List.iter (check_unused name) args;
   | Enot (e1, _) -> check_unused name e1;
   | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
@@ -75,8 +77,7 @@ let rec check_unused name e =
   | Eall (Evar (v, _), t, e1, _) | Eex (Evar (v, _), t, e1, _)
   | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
     ->
-       if t <> univ_name && not (List.mem v (get_fv e1)) then begin
-       (* FIXME what about 2nd order stuff like fixpoints... *)
+       if t <> univ_name && v <> "_" && not (List.mem v (get_fv e1)) then begin
          Error.warn (sprintf "unused variable (%s : %s) in %s" v t name);
        end;
        check_unused name e1;

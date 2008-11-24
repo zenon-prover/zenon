@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.47 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.48 2008-11-24 15:28:27 doligez Exp $";;
 
 open Printf;;
 
@@ -107,7 +107,7 @@ let rec argspec = [
   "-I", Arg.String (fun x -> include_path := x :: !include_path),
      " <dir>           add <dir> to the include path";
   "-I-", Arg.Unit (fun () -> include_path := []),
-     " <dir>           clear the include path";
+      "                clear the include path";
   "-icoq", Arg.Unit (fun () -> input_format := I_focal),
         "              read input file in Coq format";
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
@@ -322,6 +322,7 @@ let main () =
   begin try
     let phrases = List.map fst phrases_dep in
     let ppphrases = Extension.preprocess phrases in
+    List.iter Extension.add_phrase ppphrases;
     let (defs, hyps) = Phrase.separate ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
@@ -354,14 +355,14 @@ let main () =
         Print.llproof (Print.Chan stdout) lxp;
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
     | Proof_coq ->
-        let u = Lltocoq.output stdout phrases (Lazy.force llp) in
+        let u = Lltocoq.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
     | Proof_coqterm ->
-        let (p, u) = Coqterm.trproof phrases (Lazy.force llp) in
+        let (p, u) = Coqterm.trproof phrases ppphrases (Lazy.force llp) in
         Coqterm.print stdout p;
         Watch.warn phrases_dep llp u;
     | Proof_isar ->
-        let u = Lltoisar.output stdout phrases (Lazy.force llp) in
+        let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
     end;
   with Prove.NoProof ->

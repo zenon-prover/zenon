@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.10 2008-11-18 12:33:29 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.11 2008-11-24 15:28:27 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -486,7 +486,7 @@ let to_llargs tr_expr r =
   | Ext (_, "notistrue_false", [e1]) ->
      let h = tr_expr (eapp ("=", [e1; evar "false"])) in
      let c = tr_expr (enot (istrue e1)) in
-     ("zenon_focal_notistrue_true", [tr_expr e1], [c], [ [h] ])
+     ("zenon_focal_notistrue_false", [tr_expr e1], [c], [ [h] ])
   | Ext (x, y, _) ->
      Printf.eprintf "unknown extension rule %s/%s\n" x y;
      assert false
@@ -532,17 +532,25 @@ let rec pp_expr e =
 let built_in_defs =
   let x = Expr.newvar () in
   let y = Expr.newvar () in
+  let xy = Expr.newvar () in
   let tx = Expr.newvar () in
   let ty = Expr.newvar () in
+  let case = eapp ("$match-case", [evar (Namespace.tuple_name); x]) in
   [
     Def (DefReal ("crp", "basics.crp", [tx; ty; x; y],
                   eapp (Namespace.tuple_name, [x; y])));
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
                   eapp (Namespace.tuple_name, [x; y])));
+    Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
+                  eapp ("$match", [xy; elam (x, "?", elam (y, "?", case))])));
+    Def (DefReal ("snd", "basics.snd", [tx; ty; xy],
+                  eapp ("$match", [xy; elam (y, "?", elam (x, "?", case))])));
     Inductive ("List.list", ["A"], [
                  ("List.nil", []);
                  ("List.cons", [Param "A"; Self]);
                ]);
+    Inductive ("prod", ["A"; "B"],
+               [ (Namespace.tuple_name, [Param "A"; Param "B"]) ]);
   ]
 ;;
 
@@ -558,6 +566,8 @@ let preprocess l =
   in
   built_in_defs @ List.map f l
 ;;
+
+let add_phrase p = ();;
 
 let rec process_expr e =
   match e with
@@ -648,9 +658,13 @@ let postprocess p = List.map process_lemma p;;
 
 let declare_context_coq oc =
   fprintf oc "Require Import zenon_focal.\n";
+  fprintf oc "Require Import basics.\n";
   ["bool"; "Is_true"; "basics.not_b"; "basics.and_b"; "basics.or_b";
-   "basics.xor_b";
+   "basics.xor_b"; "basics._focop_eq_";
+   "basics.pair"; "basics.fst"; "basics.snd";
+   "basics.crp"; "basics.first"; "basics.scnd";
    "true"; "false"; "FOCAL.ifthenelse" ;
+   "List.cons"; "List.nil";
   ]
 ;;
 
@@ -660,6 +674,7 @@ Extension.register {
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
+  Extension.add_phrase = add_phrase;
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.27 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.28 2008-11-24 15:28:27 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -531,6 +531,12 @@ let rec substitute_2nd map e =
         elam (nv, t, substitute_2nd ((v, nv) :: map1) f)
       else
         elam (v, t, substitute_2nd map1 f)
+;;
+
+let apply f a =
+  match f with
+  | Elam (v, _, body, _) -> substitute [(v, a)] body
+  | _ -> raise Higher_order
 ;;
 
 type goalness = int;;

@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.16 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.17 2008-11-24 15:28:27 doligez Exp $";;
 
 open Printf;;
 
@@ -507,7 +507,7 @@ let rec p_lemmas oc llp phrases lemmas =
   | h::t -> p_lemmas oc t phrases (h::lemmas);
 ;;
 
-let output oc phrases llp =
+let output oc phrases ppphrases llp =
   if !Globals.ctx_flag then begin
     fprintf oc "(* BEGIN-CONTEXT *)\n";
     fprintf oc "theory zenon_tmp_theory imports Constant Zenon begin\n";

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.39 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.40 2008-11-24 15:28:27 doligez Exp $";;
 
 open Printf;;
 
@@ -357,9 +357,10 @@ let rec p_lemmas oc phrases l =
       p_lemmas oc phrases t;
 ;;
 
-let output oc phrases llp =
+let output oc phrases ppphrases llp =
   try
     Coqterm.init_mapping phrases;
+    Coqterm.init_inductive ppphrases;
     if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
     p_lemmas oc phrases llp;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.23 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.24 2008-11-24 15:28:27 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -368,12 +368,12 @@ let rec llproof_term o t =
   let pr f = oprintf o f in
   match t with
   | Evar (v, _) -> pr "%s" v;
-  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) ->
-      pr "(";
-      llproof_term o e1;
-      pr " %s " s;
-      llproof_term o e2;
-      pr ")";
+  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0])  && s.[0] <> '$'
+  -> pr "(";
+     llproof_term o e1;
+     pr " %s " s;
+     llproof_term o e2;
+     pr ")";
   | Eapp (s, args, _) -> pr "%s(" s; llproof_term_list o args; pr ")";
   | Elam (v, t, b, _) ->
      pr "(lambda %a, " print_vartype (v, t);

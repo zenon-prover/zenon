@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.24 2008-11-18 12:33:29 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.25 2008-11-24 15:28:27 doligez Exp $";;
 
 open Printf;;
 
@@ -333,6 +333,13 @@ pattern:
       { $2 }
   | IDENT idlist
       { ($1, $2) }
+  | LPAREN_ IDENT COMMA_ IDENT comma_ident_list RPAREN_
+      { (tuple_name, $2 :: $4 :: $5) }
+;
+
+comma_ident_list:
+  | /* empty */                    { [] }
+  | COMMA_ IDENT comma_ident_list  { $2 :: $3 }
 ;
 
 bindings:
@@ -353,7 +360,7 @@ binding_list:
   | /* empty */
       { [] }
   | IDENT binding_list
-      { ($1, "_") :: $2 }
+      { ($1, "?") :: $2 }
   | LPAREN_ simplebinding RPAREN_ binding_list
       { $2 @ $4 }
 ;

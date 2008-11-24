@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.36 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.37 2008-11-24 15:28:27 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -86,6 +86,8 @@ let get_meta_type s =
 
 let make_tau_name p =
   match p with
+  | Etau (Evar (v, _), _, _, _) when is_prefix "zenon_" v ->
+     sprintf "%s_%s" tau_prefix (base26 (Index.get_number p))
   | Etau (Evar (v, _), _, _, _) ->
      sprintf "%s%s_%s" tau_prefix v (base26 (Index.get_number p))
   | _ -> assert false
@@ -964,7 +966,7 @@ let discharge_extra ll e =
 
 let translate th_name phrases p =
   lemma_num := 0;
-  lemma_suffix := th_name;
+  (*lemma_suffix := th_name;*)
   lemma_list := [];
   let (ll, extras) = to_llproof p in
   let ext = List.filter (charged_extra phrases) extras in

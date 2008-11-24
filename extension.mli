@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.9 2008-10-29 10:37:58 doligez Exp $  *)
+(*  $Id: extension.mli,v 1.10 2008-11-24 15:28:27 doligez Exp $  *)
 
 type translator =
     (Expr.expr -> Expr.expr) ->
@@ -14,6 +14,7 @@ type t = {
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   preprocess : Phrase.phrase list -> Phrase.phrase list;
+  add_phrase : Phrase.phrase -> unit;
   postprocess : Llproof.proof -> Llproof.proof;
   to_llproof : translator;
   declare_context_coq : out_channel -> string list;
@@ -28,6 +29,7 @@ val newnodes : Expr.expr -> Expr.goalness -> Node.node_item list list;;
 val add_formula : Expr.expr -> unit;;
 val remove_formula : Expr.expr -> unit;;
 val preprocess : Phrase.phrase list -> Phrase.phrase list;;
+val add_phrase : Phrase.phrase -> unit;;
 val postprocess : Llproof.proof -> Llproof.proof;;
 val to_llproof : translator;;
 val declare_context_coq : out_channel -> string list;;

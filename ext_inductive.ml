@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.7 2008-11-18 12:33:29 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.8 2008-11-24 15:28:27 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -56,8 +56,9 @@ let normalize_cases l = List.sort compare_cases (List.map (make_case []) l);;
 
 let make_match_branches ctx m =
   match m with
-  | [] | [_] -> Error.warn "empty pattern-matching"; raise Empty
-  | e :: cases ->
+  | Eapp ("$match", ([] | [_]), _) ->
+     Error.warn "empty pattern-matching"; raise Empty
+  | Eapp ("$match", e :: cases, _) ->
       let c = normalize_cases cases in
       let f (constr, vars, body) =
         let pattern =
@@ -69,60 +70,130 @@ let make_match_branches ctx m =
         ex_list vars (eand (shape, ctx body))
       in
       List.map f c
+  | _ -> assert false
 ;;
 
-let mkbr l = Array.map (fun x -> [x]) (Array.of_list l);;
-
-let newnodes_match e g =
-  match e with
-  | Eapp ("=", [Eapp ("$match", m, _) as e1; e2], _) ->
-      let branches = make_match_branches (fun x -> eapp ("=", [x; e2])) m in
-      [ Node {
-        nconc = [e];
-        nrule = Ext ("inductive", "match-eq-left", e1 :: e2 :: branches);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = mkbr branches;
-      }; Stop ]
-  | Eapp ("=", [e1; Eapp ("$match", m, _) as e2], _) ->
-      let branches = make_match_branches (fun x -> eapp ("=", [e1; x])) m in
-      [ Node {
-        nconc = [e];
-        nrule = Ext ("inductive", "match-eq-right", e1 :: e2 :: branches);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = mkbr branches;
-      }; Stop ]
-  | Enot (Eapp ("=", [Eapp ("$match", m, _) as e1; e2], _), _) ->
-      let branches = make_match_branches (fun x -> enot (eapp ("=", [x; e2]))) m
-      in
-      [ Node {
-        nconc = [e];
-        nrule = Ext ("inductive", "match-neq-left", e1 :: e2 :: branches);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = mkbr branches;
-      }; Stop ]
-  | Enot (Eapp ("=", [e1; Eapp ("$match", m, _) as e2], _), _) ->
-      let branches = make_match_branches (fun x -> enot (eapp ("=", [e1; x]))) m
-      in
-      [ Node {
-        nconc = [e];
-        nrule = Ext ("inductive", "match-neq-right", e1 :: e2 :: branches);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = mkbr branches;
-      }; Stop ]
-  | Eapp ("$match", m, _) ->
-      let branches = make_match_branches (fun x -> x) m in
-      [ Node {
-        nconc = [e];
-        nrule = Ext ("inductive", "match-prop", e :: branches);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = mkbr branches;
-      }; Stop ]
+let make_match_redex e g ctx m =
+  match m with
+  | Eapp ("$match", Eapp (c, a, _) :: cases, _) when is_constr c ->
+     let cs = List.map (make_case []) cases in
+     let goodcase (c1, a1, b1) =
+       c1 = "_" || c1 = c && List.length a1 = List.length a
+     in
+     begin try
+       let (constr, args, body) = List.find goodcase cs in
+       let subs =
+         if constr = "_" then []
+         else List.map2 (fun v x -> (v, x)) args a
+       in
+       let newbody = substitute subs body in
+       let hyp = ctx newbody in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("inductive", "match_redex", [e; hyp]);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [hyp] |];
+       } ]
+     with Not_found | Higher_order -> []
+     end
+  | Eapp ("$match", Evar (c, _) :: cases, _) when is_constr c ->
+     let cs = List.map (make_case []) cases in
+     let goodcase (c1, a1, b1) = a1 = [] && (c1 = c || c1 = "_") in
+     begin try
+       let (constr, _, body) = List.find goodcase cs in
+       let hyp = ctx body in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("inductive", "match_redex", [e; hyp]);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [hyp] |];
+       } ]
+     with Not_found | Higher_order -> []
+     end
   | _ -> []
+;;
+
+let newnodes_match_redex e g =
+  match e with
+  | Eapp (s, [Eapp ("$match", _, _) as m; e2], _) when Eqrel.any s ->
+     make_match_redex e g (fun x -> eapp (s, [x; e2])) m
+  | Eapp (s, [e2; Eapp ("$match", _, _) as m], _) when Eqrel.any s ->
+     make_match_redex e g (fun x -> eapp (s, [e2; x])) m
+  | Enot (Eapp (s, [Eapp ("$match", _, _) as m; e2], _), _) when Eqrel.any s ->
+     make_match_redex e g (fun x -> enot (eapp (s, [x; e2]))) m
+  | Enot (Eapp (s, [e2; Eapp ("$match", _, _) as m], _), _) when Eqrel.any s ->
+     make_match_redex e g (fun x -> enot (eapp (s, [e2; x]))) m
+  | Eapp ("$match", _, _) ->
+     make_match_redex e g (fun x -> x) e
+  | Enot (Eapp ("$match", _, _) as m, _) ->
+     make_match_redex e g (fun x -> enot (x)) m
+  | _ -> []
+;;
+
+let get_type m =
+  match m with
+  | Eapp ("$match", e :: case :: _, _) ->
+     let (constr, _, _) = make_case [] case in
+     (Hashtbl.find constructor_table constr).cd_type
+  | _ -> raise Empty
+;;
+
+let mkbr br =
+  Array.map (fun x -> [x]) (Array.of_list br)
+;;
+
+let newnodes_match_cases e g =
+  let mknode ctx m =
+    let br = make_match_branches ctx m in
+    let tycon = get_type m in
+    let (args, cons) = Hashtbl.find type_table tycon in
+    let tyargs = List.fold_left (fun s _ -> " _" ^ s) "" args in
+    let (mctx, e1) = match m with
+      | Eapp ("$match", e1 :: cases, _) ->
+         let x = Expr.newvar () in
+         let mctx = elam (x, sprintf "(%s%s)" tycon tyargs,
+                          eimply (eand (eapp ("=", [e1; x]),
+                                        ctx (eapp ("$match", x :: cases))),
+                                  efalse))
+         in
+         (mctx ,e1)
+      | _ -> assert false
+    in
+    let ty = evar tycon in
+    [ Node {
+      nconc = [e];
+      nrule = Ext ("inductive", "cases", e :: ty :: mctx :: e1 :: br);
+      nprio = Arity;
+      ngoal = g;
+      nbranches = mkbr br;
+    }; Stop ]
+  in
+  match e with
+  | Eapp (s, [Eapp ("$match", _, _) as m; e2], _) when Eqrel.any s ->
+     let ctx x = eapp (s, [x; e2]) in
+     mknode ctx m
+  | Eapp (s, [e1; Eapp ("$match", _, _) as m], _) when Eqrel.any s ->
+     let ctx x = eapp (s, [e1; x]) in
+     mknode ctx m
+  | Enot (Eapp (s, [Eapp ("$match", _, _) as m; e2], _), _) when Eqrel.any s ->
+     let ctx x = enot (eapp (s, [x; e2])) in
+     mknode ctx m
+  | Enot (Eapp (s, [e1; Eapp ("$match", _, _) as m], _), _) when Eqrel.any s ->
+     let ctx x = enot (eapp (s, [e1; x])) in
+     mknode ctx m
+  | Eapp ("$match", _, _) ->
+     let ctx x = x in
+     mknode ctx e
+  | Enot (Eapp ("$match", _, _) as m, _) ->
+     let ctx x = enot (x) in
+     mknode ctx m
+  | _ -> []
+;;
+
+let newnodes_induction e g =
+  []  (* FIXME TODO *)
 ;;
 
 let newnodes_injective e g =
@@ -130,10 +201,11 @@ let newnodes_injective e g =
   | Eapp ("=", [Eapp (f1, args1, _); Eapp (f2, args2, _)], _)
     when f1 = f2 && is_constr f1 ->
       begin try
+        let ty = evar ((Hashtbl.find constructor_table f1).cd_type) in
         let branch = List.map2 (fun x y -> eapp ("=", [x; y])) args1 args2 in
         [ Node {
           nconc = [e];
-          nrule = Ext ("inductive", "injection", [e]);
+          nrule = Ext ("inductive", "injection", [e; ty]);
           nprio = Arity;
           ngoal = g;
           nbranches = [| branch |];
@@ -153,16 +225,6 @@ let newnodes_injective e g =
         nbranches = [| |];
       }; Stop ]
   | _ -> []
-;;
-
-let newnodes_induction e g =
-  []  (* FIXME TODO *)
-;;
-
-let apply f a =
-  match f with
-  | Elam (v, _, body, _) -> substitute [(v, a)] body
-  | _ -> raise Not_found
 ;;
 
 let newnodes_fix e g =
@@ -185,7 +247,7 @@ let newnodes_fix e g =
        let ctx = elam (f, "?", eapp (s, [f; e1])) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
-     with Not_found -> []
+     with Higher_order -> []
      end
   | Eapp (s, [e1; Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix],
           _)
@@ -196,7 +258,7 @@ let newnodes_fix e g =
        let ctx = elam (f, "?", eapp (s, [e1; f])) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
-     with Not_found -> []
+     with Higher_order -> []
      end
   | Enot (Eapp (s, [Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix;
                     e1], _), _)
@@ -207,7 +269,7 @@ let newnodes_fix e g =
        let ctx = elam (f, "?", enot (eapp (s, [f; e1]))) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
-     with Not_found -> []
+     with Higher_order -> []
      end
   | Enot (Eapp (s, [e1;
                     Eapp ("$fix", (Elam (f, _, body, _) as r) :: args,_) as fix],
@@ -219,14 +281,23 @@ let newnodes_fix e g =
        let ctx = elam (f, "?", enot (eapp (s, [e1; f]))) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
-     with Not_found -> []
+     with Higher_order -> []
      end
   | _ -> []
 ;;
 
 let newnodes e g =
+  let r = newnodes_match_redex e g in
+  let m =
+    if r = [] then begin
+      try newnodes_match_cases e g
+      with Empty -> []
+    end else begin
+      r
+    end
+  in
     newnodes_fix e g
-  @ (try newnodes_match e g with Empty -> [])
+  @ m
   @ (try newnodes_injective e g with Empty -> [])
   @ (try newnodes_induction e g with Empty -> [])
 ;;
@@ -246,27 +317,9 @@ let remove_parens s = remove_parens 0 (String.length s) s;;
 let parse_type t =
   match string_split (remove_parens t) with
   | [] -> assert false
-  | c :: a -> (c, String.concat " " a, List.length a)
-;;
-
-let make_clauses t =
-  try
-    let (args, cstrs) = Hashtbl.find type_table t in
-    let nc_name = Expr.newname () in
-    let nc = evar (nc_name) in
-    let h = Expr.newvar () in
-    let base = elam (h, "?", elam (nc, "?", eapp (nc_name, [h]))) in
-    let mklam body a =
-      match a with
-      | Param _ -> elam (Expr.newvar (), "?", body)
-      | Self -> elam (Expr.newvar (), "?", elam (Expr.newvar (), "?", body))
-    in
-    let make_clause (_, ial) = List.fold_left mklam base ial in
-    List.map make_clause cstrs
-  with Not_found ->
-    Error.err ("missing definition of type " ^ t);
-    raise Exit
-    (* FIXME should warn and not apply rule earlier *)
+  | c :: a ->
+     (* TODO check type arity vs declaration *)
+     (c, String.concat " " a, List.length a)
 ;;
 
 let to_llproof tr_expr mlp args =
@@ -274,82 +327,99 @@ let to_llproof tr_expr mlp args =
   let hyps = List.map fst argl in
   let add = List.flatten (List.map snd argl) in
   match mlp.mlrule with
+  | Ext ("inductive", "injection",
+         [Eapp ("=", [Eapp (g, args1, _) as xx;
+                      Eapp (_, args2, _) as yy], _) as con;
+          Evar (ty, _)]) ->
+     let tc = List.map tr_expr mlp.mlconc in
+     let subproof =
+       match hyps with
+       | [sub] -> sub
+       | _ -> assert false
+     in
+     let rec f args1 args2 i accu =
+       match args1, args2 with
+       | [], [] -> accu
+       | a1 :: t1, a2 :: t2 ->
+          let hyp = tr_expr (eapp ("=", [a1; a2])) in
+          if List.exists (Expr.equal hyp) accu.conc then begin
+            let (_, cons) =
+              try Hashtbl.find type_table ty with Not_found -> assert false
+            in
+            let mk_case (name, args) =
+              let params = List.map (fun _ -> Expr.newvar ()) args in
+              let result = if name <> g then a1 else List.nth params i in
+              let body = eapp ("$match-case", [evar (name); result]) in
+              List.fold_right (fun v e -> elam (v, "?", e)) params body
+            in
+            let cases = List.map mk_case cons in
+            let x = Expr.newvar () in
+            let proj = elam (x, "?", eapp ("$match", x :: cases)) in
+            let node = {
+              conc = union tc (diff [hyp] accu.conc);
+              rule = Rextension ("zenon_inductive_f_equal",
+                                 [tr_expr xx; tr_expr yy; tr_expr proj],
+                                 [tr_expr con], [ [hyp] ]);
+              hyps = [accu];
+            } in
+            f t1 t2 (i + 1) node
+          end else f t1 t2 (i + 1) accu
+       | _ -> assert false
+     in
+     (f args1 args2 0 subproof, add)
+  | Ext ("inductive", "injection", _) -> assert false
   | Ext ("inductive", "discriminate", [e]) ->
+      assert (hyps = []);
       let node = {
         conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_inductive_discriminate", [], [tr_expr e], []);
-        hyps = [];
-      } in
-      (node, add)
-  | Ext ("inductive", "match-neq-left", e1 :: e2 :: branches) ->
-      let te1 = tr_expr e1 in
-      let te2 = tr_expr e2 in
-      let node = {
-        conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_inductive_match_neq_left",
-                           [te1; te2],
-                           [enot (eapp ("=", [te1; te2]))],
-                           List.map (fun x-> [tr_expr x]) branches);
         hyps = hyps;
       } in
       (node, add)
-  | Ext ("inductive", "match-neq-right", e1 :: e2 :: branches) ->
-      let te1 = tr_expr e1 in
-      let te2 = tr_expr e2 in
-      let node = {
-        conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_inductive_match_neq_right",
-                           [te1; te2],
-                           [enot (eapp ("=", [te1; te2]))],
-                           List.map (fun x-> [tr_expr x]) branches);
-        hyps = hyps;
-      } in
-      (node, add)
-  | Ext ("inductive", "match-eq-left", e1 :: e2 :: branches) ->
-      let te1 = tr_expr e1 in
-      let te2 = tr_expr e2 in
-      let node = {
-        conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_inductive_match_eq_left",
-                           [te1; te2],
-                           [eapp ("=", [te1; te2])],
-                           List.map (fun x-> [tr_expr x]) branches);
-        hyps = hyps;
-      } in
-      (node, add)
-  | Ext ("inductive", "match-eq-right", e1 :: e2 :: branches) ->
-      let te1 = tr_expr e1 in
-      let te2 = tr_expr e2 in
-      let node = {
-        conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_inductive_match_eq_right",
-                           [te1; te2],
-                           [eapp ("=", [te1; te2])],
-                           List.map (fun x-> [tr_expr x]) branches);
-        hyps = hyps;
-      } in
-      (node, add)
-  | Ext ("inductive", "fix",
-         [folded; unfolded; ctx;
-          Eapp ("$fix", (Elam (f, _, (Elam (_, t, _, _) as body), _) as r)
-                        :: a :: args,
-                _) as fix]) ->
-     let (tname, targs, ntargs) = parse_type t in
-     let nx = Expr.newvar () in
-     let h = apply ctx fix in
-     let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
-     let c = apply ctx (List.fold_left apply xbody (nx :: args)) in
-     let p = elam (nx, "?", eimply (h, eimply (eimply (c, efalse), efalse))) in
+  | Ext ("inductive", "match_redex", [c; h]) ->
+     let tc = tr_expr c in
+     let th = tr_expr h in
      let node = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension (sprintf "(%s_ind %s)" tname targs,
-                          p :: make_clauses tname @ [a],
-                          [tr_expr folded],
-                          [ [tr_expr unfolded] ]);
+       rule = Rextension ("zenon_inductive_match_redex",
+                          [tc; th], [tc], [ [th] ]);
        hyps = hyps;
      } in
      (node, add)
-  | _ -> assert false (* FIXME TODO *)
+  | Ext ("inductive", "fix",
+         [folded; unfolded; ctx;
+          Eapp ("$fix", (Elam (f, _, (Elam (_, t, _, _) as body), _) as r)
+                        :: a :: args, _)]) ->
+     begin try
+       let (tname, targs, ntargs) = parse_type t in
+       let nx = Expr.newvar () in
+       let foldx = elam (nx, "?", eapp ("$fix", [r; nx] @ args)) in
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let unfx = elam (nx, "?", List.fold_left apply xbody (nx :: args)) in
+       let node = {
+         conc = List.map tr_expr mlp.mlconc;
+         rule = Rextension ("zenon_inductive_fix",
+                            List.map tr_expr [evar (tname); ctx; foldx; unfx; a],
+                            [tr_expr folded],
+                            [ [tr_expr unfolded] ]);
+         hyps = hyps;
+       } in
+       (node, add)
+     with Higher_order -> assert false
+     end
+  | Ext ("inductive", "cases", c :: ty :: ctx :: m :: branches) ->
+      let tc = tr_expr c in
+      let tctx = tr_expr ctx in
+      let tm = tr_expr m in
+      let node = {
+        conc = List.map tr_expr mlp.mlconc;
+        rule = Rextension ("zenon_inductive_cases",
+                           [ty; tctx; tm], [tc],
+                           List.map (fun x-> [tr_expr x]) branches);
+        hyps = hyps;
+      } in
+      (node, add)
+  | _ -> assert false
 ;;
 
 let add_inductive_def ty args constrs =
@@ -361,16 +431,14 @@ let add_inductive_def ty args constrs =
   Hashtbl.add type_table ty (args, constrs);
 ;;
 
-let preprocess l =
-  let f x =
-    match x with
-    | Hyp _ -> ()
-    | Def _ -> ()
-    | Sig _ -> ()
-    | Inductive (ty, args, constrs) -> add_inductive_def ty args constrs;
-  in
-  List.iter f l;
-  l
+let preprocess l = l;;
+
+let add_phrase x =
+  match x with
+  | Hyp _ -> ()
+  | Def _ -> ()
+  | Sig _ -> ()
+  | Inductive (ty, args, constrs) -> add_inductive_def ty args constrs;
 ;;
 
 let postprocess p = p;;
@@ -389,6 +457,7 @@ Extension.register {
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
+  Extension.add_phrase = add_phrase;
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;

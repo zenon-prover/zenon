@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: misc.mli,v 1.13 2008-11-18 12:33:29 doligez Exp $  *)
+(*  $Id: misc.mli,v 1.14 2008-11-24 15:28:27 doligez Exp $  *)
 
 val index : int -> 'a -> 'a list -> int;;
 val ( @@ ) : 'a list -> 'a list -> 'a list;;
@@ -16,8 +16,10 @@ val list_fold_left3 :
 
 val string_split : string -> string list;;
 val occurs : string -> string -> bool;;
+val is_prefix : string -> string -> bool;;
 val replace_first : string -> string -> string -> string;;
 val isalnum : char -> bool;;
+val isdigit : char -> bool;;
 
 val debug : ('a, out_channel, unit) format -> 'a;;
 

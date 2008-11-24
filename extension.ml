@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.10 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.11 2008-11-24 15:28:27 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -15,6 +15,7 @@ type t = {
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   preprocess : Phrase.phrase list -> Phrase.phrase list;
+  add_phrase : Phrase.phrase -> unit;
   postprocess : Llproof.proof -> Llproof.proof;
   to_llproof : translator;
   declare_context_coq : out_channel -> string list;
@@ -59,6 +60,10 @@ let remove_formula e =
 
 let preprocess l =
   List.fold_left (fun hyps ext -> ext.preprocess hyps) l (List.rev !active)
+;;
+
+let add_phrase p =
+  List.iter (fun ext -> ext.add_phrase p) (List.rev !active)
 ;;
 
 let postprocess p =

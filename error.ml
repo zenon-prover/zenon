@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: error.ml,v 1.5 2006-02-06 17:56:06 doligez Exp $";;
+Version.add "$Id: error.ml,v 1.6 2008-11-24 15:28:26 doligez Exp $";;
 
 open Printf;;
 
@@ -23,13 +23,13 @@ let print kind msg =
     if !print_header then fprintf !err_oc "%s\n" !header;
     err_inited := true;
   end;
-  fprintf !err_oc "%s%s%s\n" kind (if kind = "" then "" else ": ") msg;
+  fprintf !err_oc "%s%s\n" kind msg;
   flush !err_oc;
 ;;
 
-let warn msg = if !warnings_flag then print "Warning" msg;;
+let warn msg = if !warnings_flag then print "Zenon warning: " msg;;
 
-let err msg = print "Error" msg;;
+let err msg = print "Zenon error: " msg;;
 
 let errpos pos msg =
   let s = sprintf "File \"%s\", line %d, character %d:"
@@ -37,7 +37,7 @@ let errpos pos msg =
                   (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
   in
   print "" s;
-  print "Error" msg;
+  print "Zenon error: " msg;
 ;;
 
 exception Lex_error of string;;

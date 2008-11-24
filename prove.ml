@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.32 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.33 2008-11-24 15:28:27 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1084,19 +1084,19 @@ let periodic c =
   progress_last := tm;
   if tm > !Globals.time_limit then begin
     Progress.end_progress "";
-    Error.err "max time exceeded";
+    Error.err "could not find a proof within the time limit";
     flush stderr;
     raise NoProof;
   end;
   if float heap_size > !Globals.size_limit then begin
     Progress.end_progress "";
-    Error.err "max size exceeded";
+    Error.err "could not find a proof within the memory size limit";
     flush stderr;
     raise NoProof;
   end;
   if !steps > !Globals.step_limit then begin
     Progress.end_progress "";
-    Error.err "max step exceeded";
+    Error.err "could not find a proof within the inference steps limit";
     flush stderr;
     raise NoProof;
   end;
@@ -1148,6 +1148,8 @@ and next_node stk st =
         | _ -> Print.expr_soft (Print.Chan stdout) e; printf "\n";
       in
       if !Globals.debug_flag then Step.forms "NO PROOF" (Index.get_all ());
+      Error.err "exhausted search space without finding a proof";
+      flush stderr;
       printf "(* Model:\n";
       List.iter f (Index.get_all ());
       printf "*)\n";
@@ -1256,6 +1258,6 @@ let prove defs l =
         p
     | Open | Backtrack -> assert false
   with NoProof ->
-    Progress.end_progress " search failed";
+    Progress.end_progress " no proof";
     raise NoProof
 ;;

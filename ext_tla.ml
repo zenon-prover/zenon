@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.17 2008-11-18 15:03:31 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.18 2008-11-24 15:28:27 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -451,6 +451,8 @@ let to_llproof tr_expr mlp args =
 
 let preprocess l = l;;
 
+let add_phrase p = ();;
+
 let postprocess p = p;;
 
 let declare_context_coq oc = [];;
@@ -461,6 +463,7 @@ Extension.register {
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
+  Extension.add_phrase = add_phrase;
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;

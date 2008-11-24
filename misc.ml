@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.12 2008-11-18 12:33:29 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.13 2008-11-24 15:28:27 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -44,6 +44,11 @@ let occurs sub str =
   with True -> true
 ;;
 
+let is_prefix sub str =
+  String.length str >= String.length sub
+  && String.sub str 0 (String.length sub) = sub
+;;
+
 let replace_first s1 s2 s =
   let l = String.length s in
   let l1 = String.length s1 in
@@ -66,6 +71,12 @@ let list_init l f = xlist_init l f [];;
 let isalnum c =
   match c with
   | 'A'..'Z' | 'a'..'z' | '0'..'9' -> true
+  | _ -> false
+;;
+
+let isdigit c =
+  match c with
+  | '0'..'9' -> true
   | _ -> false
 ;;
 

@@ -1,8 +1,9 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_focal.v,v 1.4 2008-11-18 12:33:29 doligez Exp $  *)
+(*  $Id: zenon_focal.v,v 1.5 2008-11-24 15:28:27 doligez Exp $  *)
 
 Require Export Bool.
 Require Import ClassicalEpsilon.
+Require List.
 
 (* magic: this whole file depends on the following definitions:
    basics.and_b := andb
@@ -176,14 +177,14 @@ Qed.
 Implicit Arguments zenon_focal_ite_rel_nr [A B].
 
 Lemma zenon_focal_istrue_true : forall e,
-  Is_true e -> (e = true -> False) -> False.
+  (e = true -> False) -> (Is_true e -> False).
 Proof.
   unfold Is_true.
   destruct e; auto.
 Qed.
 
 Lemma zenon_focal_notistrue_false : forall e,
-  ~Is_true e -> (e = false -> False) -> False.
+  (e = false -> False) -> (~Is_true e -> False).
 Proof.
   unfold Is_true.
   destruct e; auto.

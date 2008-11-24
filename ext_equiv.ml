@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.6 2008-10-29 10:37:58 doligez Exp $";;
+Version.add "$Id: ext_equiv.ml,v 1.7 2008-11-24 15:28:27 doligez Exp $";;
 
 (* Extension for trees of equivalences and negations. *)
 
@@ -244,6 +244,7 @@ Extension.register {
   Extension.add_formula = (fun _ -> ());
   Extension.remove_formula = (fun _ -> ());
   Extension.preprocess = (fun x -> x);
+  Extension.add_phrase = (fun _ -> ());
   Extension.postprocess = (fun x -> x);
   Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
   Extension.declare_context_coq = declare_context_coq;
