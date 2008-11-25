@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.33 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.34 2008-11-25 14:08:11 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -135,7 +135,7 @@ let arity_warning s =
 ;;
 
 let higher_order_warning s =
-  Error.warn (sprintf "symbol %s is used higher-order substitution" s);
+  Error.warn (sprintf "symbol %s is used in higher-order substitution" s);
 ;;
 
 let make_notequiv st sym (p, g) (np, ng) =
@@ -413,185 +413,75 @@ let newnodes_gamma st fm g =
 ;;
 
 let newnodes_unfold st fm g =
+  let mk_unfold ctx p args =
+    try
+      let (d, params, body) = Index.get_def p in
+      match params, body with
+      | [], Evar (b, _) ->
+         let unfolded = ctx (eapp (b, args)) in
+         add_node st {
+           nconc = [fm];
+           nrule = Definition (d, fm, unfolded);
+           nprio = Arity;
+           ngoal = g;
+           nbranches = [| [unfolded] |];
+         }, true
+      | _, _ ->
+         let subst = List.map2 (fun x y -> (x,y)) params args in
+         let unfolded = ctx (substitute_2nd subst body) in
+         add_node st {
+           nconc = [fm];
+           nrule = Definition (d, fm, unfolded);
+           nprio = Arity;
+           ngoal = g;
+           nbranches = [| [unfolded] |];
+         }, true
+    with
+    | Higher_order -> higher_order_warning p; (st, false)
+    | Invalid_argument "List.map2" -> arity_warning p; (st, false)
+    | Not_found -> assert false
+  in
   match fm with
   | Eapp (p, args, _) when Index.has_def p ->
-      begin try
-        let (d, params, body) = Index.get_def p in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = substitute_2nd subst body in
-        add_node st {
-            nconc = [fm];
-            nrule = Definition (d, fm, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = [| [unfolded] |];
-        }, true
-      with
-      | Higher_order -> higher_order_warning p; (st, false)
-      | Invalid_argument "List.map2" -> arity_warning p; (st, false)
-      | Not_found -> assert false
-      end
+     let ctx x = x in
+     mk_unfold ctx p args
   | Enot (Eapp (p, args, _), _) when Index.has_def p ->
-      begin try
-        let (d, params, body) = Index.get_def p in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (substitute_2nd subst body) in
-        add_node st {
-            nconc = [fm];
-            nrule = Definition (d, fm, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = [| [unfolded] |];
-        }, true
-      with
-      | Higher_order -> higher_order_warning p; (st, false)
-      | Invalid_argument "List.map2" -> arity_warning p; (st, false)
-      | Not_found -> assert false
-      end
+     let ctx x = enot (x) in
+     mk_unfold ctx p args
   | Eapp (s, [Eapp (p, args, _); e], _) when Eqrel.any s && Index.has_def p ->
-      begin try
-        let (d, params, body) = Index.get_def p in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = eapp (s, [substitute_2nd subst body; e]) in
-        add_node st {
-            nconc = [fm];
-            nrule = Definition (d, fm, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = [| [unfolded] |];
-        }, true
-      with
-      | Higher_order -> higher_order_warning p; (st, false)
-      | Invalid_argument "List.map2" -> arity_warning p; (st, false)
-      | Not_found -> assert false
-      end
+     let ctx x = eapp (s, [x; e]) in
+     mk_unfold ctx p args
   | Eapp (s, [e; Eapp (p, args, _)], _) when Eqrel.any s && Index.has_def p ->
-      begin try
-        let (d, params, body) = Index.get_def p in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = eapp (s, [e; substitute_2nd subst body]) in
-        add_node st {
-            nconc = [fm];
-            nrule = Definition (d, fm, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = [| [unfolded] |];
-        }, true
-      with
-      | Higher_order -> higher_order_warning p; (st, false)
-      | Invalid_argument "List.map2" -> arity_warning p; (st, false)
-      | Not_found -> assert false
-      end
+     let ctx x = eapp (s, [e; x]) in
+     mk_unfold ctx p args
   | Enot (Eapp (s, [Eapp (p, args, _); e], _), _)
     when Eqrel.any s && Index.has_def p ->
-      begin try
-        let (d, params, body) = Index.get_def p in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (eapp (s, [substitute_2nd subst body; e])) in
-        add_node st {
-            nconc = [fm];
-            nrule = Definition (d, fm, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = [| [unfolded] |];
-        }, true
-      with
-      | Higher_order -> higher_order_warning p; (st, false)
-      | Invalid_argument "List.map2" -> arity_warning p; (st, false)
-      | Not_found -> assert false
-      end
+     let ctx x = enot (eapp (s, [x; e])) in
+     mk_unfold ctx p args
   | Enot (Eapp (s, [e; Eapp (p, args, _)], _), _)
     when Eqrel.any s && Index.has_def p ->
-      begin try
-        let (d, params, body) = Index.get_def p in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (eapp (s, [e; substitute_2nd subst body])) in
-        add_node st {
-            nconc = [fm];
-            nrule = Definition (d, fm, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = [| [unfolded] |];
-        }, true
-      with
-      | Higher_order -> higher_order_warning p; (st, false)
-      | Invalid_argument "List.map2" -> arity_warning p; (st, false)
-      | Not_found -> assert false
-      end
-
+     let ctx x = enot (eapp (s, [e; x])) in
+     mk_unfold ctx p args
   | Evar (v, _) when Index.has_def v ->
-      let (d, params, body) = Index.get_def v in
-      if params <> [] then (arity_warning v; (st, false))
-      else
-        add_node st {
-          nconc = [fm];
-          nrule = Definition (d, fm, body);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| [body] |];
-        }, true
+     let ctx x = x in
+     mk_unfold ctx v []
   | Enot (Evar (v, _), _) when Index.has_def v ->
-      let (d, params, body) = Index.get_def v in
-      let unfolded = enot body in
-      if params <> [] then (arity_warning v; (st, false))
-      else
-        add_node st {
-          nconc = [fm];
-          nrule = Definition (d, fm, unfolded);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| [unfolded] |];
-        }, true
+     let ctx x = enot (x) in
+     mk_unfold ctx v []
   | Eapp (s, [Evar (v, _); e], _) when Eqrel.any s && Index.has_def v ->
-      let (d, params, body) = Index.get_def v in
-      let unfolded = eapp (s, [body; e]) in
-      if params <> [] then (arity_warning v; (st, false))
-      else
-        add_node st {
-          nconc = [fm];
-          nrule = Definition (d, fm, unfolded);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| [unfolded] |];
-        }, true
+     let ctx x = eapp (s, [x; e]) in
+     mk_unfold ctx v []
   | Eapp (s, [e; Evar (v, _)], _) when Eqrel.any s && Index.has_def v ->
-      let (d, params, body) = Index.get_def v in
-      let unfolded = eapp (s, [e; body]) in
-      if params <> [] then (arity_warning v; (st, false))
-      else
-        add_node st {
-          nconc = [fm];
-          nrule = Definition (d, fm, unfolded);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| [unfolded] |];
-        }, true
+     let ctx x = eapp (s, [e; x]) in
+     mk_unfold ctx v []
   | Enot (Eapp (s, [Evar (v, _); e], _), _)
     when Eqrel.any s && Index.has_def v ->
-      let (d, params, body) = Index.get_def v in
-      let unfolded = enot (eapp (s, [body; e])) in
-      if params <> [] then (arity_warning v; (st, false))
-      else
-        add_node st {
-          nconc = [fm];
-          nrule = Definition (d, fm, unfolded);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| [unfolded] |];
-        }, true
+     let ctx x = enot (eapp (s, [x; e])) in
+     mk_unfold ctx v []
   | Enot (Eapp (s, [e; Evar (v, _)], _), _)
     when Eqrel.any s && Index.has_def v ->
-      let (d, params, body) = Index.get_def v in
-      let unfolded = enot (eapp (s, [e; body])) in
-      if params <> [] then (arity_warning v; (st, false))
-      else
-        add_node st {
-          nconc = [fm];
-          nrule = Definition (d, fm, unfolded);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| [unfolded] |];
-        }, true
+     let ctx x = enot (eapp (s, [e; x])) in
+     mk_unfold ctx v []
   | _ -> st, false
 ;;
 

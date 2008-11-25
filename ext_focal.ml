@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.11 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.12 2008-11-25 14:08:11 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -43,14 +43,46 @@ let chop_prefix s1 s2 =
 let add_formula e = ();;
 let remove_formula e = ();;
 
-let wrong_arity s =
+let arity_warning s =
   Error.warn (sprintf "defined symbol %s is used with wrong arity" s)
+;;
+
+let higher_order_warning s =
+  Error.warn (sprintf "symbol %s is used in higher-order substitution" s);
 ;;
 
 let istrue e = eapp ("Is_true", [e]);;
 let isfalse e = enot (eapp ("Is_true", [e]));;
 
 let newnodes_istrue e g =
+  let mk_unfold ctx p args =
+    try
+      let (d, params, body) = Index.get_def p in
+      match params, body with
+      | [], Evar (b, _) ->
+         let unfolded = ctx (eapp (b, args)) in
+         [ Node {
+           nconc = [e];
+           nrule = Definition (d, e, unfolded);
+           nprio = Arity;
+           ngoal = g;
+           nbranches = [| [unfolded] |];
+         }; Stop ]
+      | _, _ ->
+         let subst = List.map2 (fun x y -> (x,y)) params args in
+         let unfolded = ctx (substitute_2nd subst body) in
+         [ Node {
+           nconc = [e];
+           nrule = Definition (d, e, unfolded);
+           nprio = Arity;
+           ngoal = g;
+           nbranches = [| [unfolded] |];
+         }; Stop ]
+    with
+    | Higher_order -> higher_order_warning p; []
+    | Invalid_argument "List.map2" -> arity_warning p; []
+    | Not_found -> assert false
+  in
   match e with
   | Eapp ("Is_true**basics.and_b", [e1; e2], _) ->
       let branches = [| [eand (istrue e1, istrue e2)] |] in
@@ -204,39 +236,11 @@ let newnodes_istrue e g =
           nbranches = [| [eapp ("=", [e1; evar "false"])] |];
       } ]
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
-      begin try
-        let (d, params, body) = Index.get_def s in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = eapp ("Is_true", [substitute subst body]) in
-        let branches = [| [unfolded] |] in
-        [ Node {
-          nconc = [e];
-          nrule = Definition (d, e, unfolded);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = branches;
-        }; Stop ]
-      with
-        | Invalid_argument "List.map2" -> wrong_arity s; []
-        | Not_found -> assert false
-      end
+     let ctx x = eapp ("Is_true", [x]) in
+     mk_unfold ctx s args
   | Enot (Eapp ("Is_true", [Eapp (s, args, _)], _), _) when Index.has_def s ->
-      begin try
-        let (d, params, body) = Index.get_def s in
-        let subst = List.map2 (fun x y -> (x,y)) params args in
-        let unfolded = enot (eapp ("Is_true", [substitute subst body])) in
-        let branches = [| [unfolded] |] in
-        [ Node {
-            nconc = [e];
-            nrule = Definition (d, e, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = branches;
-        }; Stop ]
-      with
-        | Invalid_argument "List.map2" -> wrong_arity s; []
-        | Not_found -> assert false
-      end
+     let ctx x = enot (eapp ("Is_true", [x])) in
+     mk_unfold ctx s args
   | Eapp ("Is_true", [Eapp (s, args, _)], _) ->
       let branches = [| [eapp ("Is_true**" ^ s, args)] |] in
       [ Node {
@@ -537,8 +541,6 @@ let built_in_defs =
   let ty = Expr.newvar () in
   let case = eapp ("$match-case", [evar (Namespace.tuple_name); x]) in
   [
-    Def (DefReal ("crp", "basics.crp", [tx; ty; x; y],
-                  eapp (Namespace.tuple_name, [x; y])));
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
                   eapp (Namespace.tuple_name, [x; y])));
     Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
@@ -662,7 +664,6 @@ let declare_context_coq oc =
   ["bool"; "Is_true"; "basics.not_b"; "basics.and_b"; "basics.or_b";
    "basics.xor_b"; "basics._focop_eq_";
    "basics.pair"; "basics.fst"; "basics.snd";
-   "basics.crp"; "basics.first"; "basics.scnd";
    "true"; "false"; "FOCAL.ifthenelse" ;
    "List.cons"; "List.nil";
   ]

@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.8 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.9 2008-11-25 14:08:11 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -209,7 +209,7 @@ let newnodes_injective e g =
           nprio = Arity;
           ngoal = g;
           nbranches = [| branch |];
-        }; Stop ]
+        } ]
       with Invalid_argument "List.map2" -> raise Empty
       end
   | Eapp ("=", [Eapp (f1, _, _); Eapp (f2, _, _)], _)

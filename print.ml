@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.24 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.25 2008-11-25 14:08:11 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -364,11 +364,15 @@ open Llproof;;
 
 let indent o i = for j = 0 to i do oprintf o "  "; done;;
 
+let is_infix_op s =
+  s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_'
+;;
+
 let rec llproof_term o t =
   let pr f = oprintf o f in
   match t with
   | Evar (v, _) -> pr "%s" v;
-  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0])  && s.[0] <> '$'
+  | Eapp (s, [e1; e2], _) when is_infix_op s
   -> pr "(";
      llproof_term o e1;
      pr " %s " s;
