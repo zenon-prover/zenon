@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.12 2008-11-25 14:08:11 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.13 2008-11-25 15:21:45 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -58,9 +58,9 @@ let newnodes_istrue e g =
   let mk_unfold ctx p args =
     try
       let (d, params, body) = Index.get_def p in
-      match params, body with
-      | [], Evar (b, _) ->
-         let unfolded = ctx (eapp (b, args)) in
+      match params, args, body with
+      | [], Some aa, Evar (b, _) ->
+         let unfolded = ctx (eapp (b, aa)) in
          [ Node {
            nconc = [e];
            nrule = Definition (d, e, unfolded);
@@ -68,8 +68,9 @@ let newnodes_istrue e g =
            ngoal = g;
            nbranches = [| [unfolded] |];
          }; Stop ]
-      | _, _ ->
-         let subst = List.map2 (fun x y -> (x,y)) params args in
+      | _ ->
+         let aa = match args with None -> [] | Some l -> l in
+         let subst = List.map2 (fun x y -> (x,y)) params aa in
          let unfolded = ctx (substitute_2nd subst body) in
          [ Node {
            nconc = [e];
@@ -237,10 +238,16 @@ let newnodes_istrue e g =
       } ]
   | Eapp ("Is_true", [Eapp (s, args, _)], _) when Index.has_def s ->
      let ctx x = eapp ("Is_true", [x]) in
-     mk_unfold ctx s args
+     mk_unfold ctx s (Some args)
   | Enot (Eapp ("Is_true", [Eapp (s, args, _)], _), _) when Index.has_def s ->
      let ctx x = enot (eapp ("Is_true", [x])) in
-     mk_unfold ctx s args
+     mk_unfold ctx s (Some args)
+  | Eapp ("Is_true", [Evar (s, _)], _) when Index.has_def s ->
+     let ctx x = eapp ("Is_true", [x]) in
+     mk_unfold ctx s None
+  | Enot (Eapp ("Is_true", [Evar (s, _)], _), _) when Index.has_def s ->
+     let ctx x = enot (eapp ("Is_true", [x])) in
+     mk_unfold ctx s None
   | Eapp ("Is_true", [Eapp (s, args, _)], _) ->
       let branches = [| [eapp ("Is_true**" ^ s, args)] |] in
       [ Node {

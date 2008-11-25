@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.34 2008-11-25 14:08:11 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.35 2008-11-25 15:21:45 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -416,9 +416,9 @@ let newnodes_unfold st fm g =
   let mk_unfold ctx p args =
     try
       let (d, params, body) = Index.get_def p in
-      match params, body with
-      | [], Evar (b, _) ->
-         let unfolded = ctx (eapp (b, args)) in
+      match params, args, body with
+      | [], Some aa, Evar (b, _) ->
+         let unfolded = ctx (eapp (b, aa)) in
          add_node st {
            nconc = [fm];
            nrule = Definition (d, fm, unfolded);
@@ -426,8 +426,9 @@ let newnodes_unfold st fm g =
            ngoal = g;
            nbranches = [| [unfolded] |];
          }, true
-      | _, _ ->
-         let subst = List.map2 (fun x y -> (x,y)) params args in
+      | _ ->
+         let aa = match args with None -> [] | Some l -> l in
+         let subst = List.map2 (fun x y -> (x,y)) params aa in
          let unfolded = ctx (substitute_2nd subst body) in
          add_node st {
            nconc = [fm];
@@ -444,44 +445,44 @@ let newnodes_unfold st fm g =
   match fm with
   | Eapp (p, args, _) when Index.has_def p ->
      let ctx x = x in
-     mk_unfold ctx p args
+     mk_unfold ctx p (Some args)
   | Enot (Eapp (p, args, _), _) when Index.has_def p ->
      let ctx x = enot (x) in
-     mk_unfold ctx p args
+     mk_unfold ctx p (Some args)
   | Eapp (s, [Eapp (p, args, _); e], _) when Eqrel.any s && Index.has_def p ->
      let ctx x = eapp (s, [x; e]) in
-     mk_unfold ctx p args
+     mk_unfold ctx p (Some args)
   | Eapp (s, [e; Eapp (p, args, _)], _) when Eqrel.any s && Index.has_def p ->
      let ctx x = eapp (s, [e; x]) in
-     mk_unfold ctx p args
+     mk_unfold ctx p (Some args)
   | Enot (Eapp (s, [Eapp (p, args, _); e], _), _)
     when Eqrel.any s && Index.has_def p ->
      let ctx x = enot (eapp (s, [x; e])) in
-     mk_unfold ctx p args
+     mk_unfold ctx p (Some args)
   | Enot (Eapp (s, [e; Eapp (p, args, _)], _), _)
     when Eqrel.any s && Index.has_def p ->
      let ctx x = enot (eapp (s, [e; x])) in
-     mk_unfold ctx p args
+     mk_unfold ctx p (Some args)
   | Evar (v, _) when Index.has_def v ->
      let ctx x = x in
-     mk_unfold ctx v []
+     mk_unfold ctx v None
   | Enot (Evar (v, _), _) when Index.has_def v ->
      let ctx x = enot (x) in
-     mk_unfold ctx v []
+     mk_unfold ctx v None
   | Eapp (s, [Evar (v, _); e], _) when Eqrel.any s && Index.has_def v ->
      let ctx x = eapp (s, [x; e]) in
-     mk_unfold ctx v []
+     mk_unfold ctx v None
   | Eapp (s, [e; Evar (v, _)], _) when Eqrel.any s && Index.has_def v ->
      let ctx x = eapp (s, [e; x]) in
-     mk_unfold ctx v []
+     mk_unfold ctx v None
   | Enot (Eapp (s, [Evar (v, _); e], _), _)
     when Eqrel.any s && Index.has_def v ->
      let ctx x = enot (eapp (s, [x; e])) in
-     mk_unfold ctx v []
+     mk_unfold ctx v None
   | Enot (Eapp (s, [e; Evar (v, _)], _), _)
     when Eqrel.any s && Index.has_def v ->
      let ctx x = enot (eapp (s, [e; x])) in
-     mk_unfold ctx v []
+     mk_unfold ctx v None
   | _ -> st, false
 ;;
 
