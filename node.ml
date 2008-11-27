@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.13 2008-11-03 14:17:25 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.14 2008-11-27 14:19:05 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -46,6 +46,7 @@ type queue = {
   nary : node list;
   eq_front : node list;
   eq_back : node list;
+  eq_count : int;
   inst_state : int;
   inst_size : (int * node Heap.t) list;
   inst_front : node list;
@@ -59,6 +60,7 @@ let use_goalness = true;;
 let ist_small = 16;;         (* ist_small must be even *)
 let ist_old = 2;;
 let ist_max = ist_small + ist_old;;
+let num_eq = 10;;
 
 let compare_nodes n1 n2 =
   let get_size n =
@@ -77,6 +79,7 @@ let empty = {
   nary = [];
   eq_front = [];
   eq_back = [];
+  eq_count = num_eq;
   inst_state = 0;
   inst_size = [];
   inst_front = [];
@@ -161,26 +164,45 @@ let rec is_empty l =
   | (i, h) :: t -> Heap.is_empty h && is_empty t
 ;;
 
+let rec remove_eq q =
+  match q with
+  | { eq_front = h :: t } -> Some (h, { q with eq_front = t })
+  | { eq_back = _ :: _ } -> remove_eq { q with eq_front = List.rev q.eq_back }
+  | _ -> None
+;;
+
+let rec remove_inst q =
+  match q with
+  | { inst_state = ist; inst_size = hpl } when ist < ist_small ->
+      begin match remove_by_goalness ist hpl with
+      | Some (x, l) ->
+         Some (x, {q with inst_state = ist + 1; inst_size = l})
+      | None -> remove_inst {q with inst_state = ist_small}
+      end
+  | { inst_state = ist; inst_front = h::t } ->
+      Some (h, {q with inst_front = t; inst_state = (ist + 1) mod ist_max})
+  | { inst_back = []; inst_size = hpl } ->
+      if is_empty hpl then None
+      else remove_inst {q with inst_state = 0}
+  | { inst_back = l } ->
+     remove_inst {q with inst_front = List.rev l; inst_back = []}
+;;
+
+let chain r1 r2 q =
+  match r1 q with
+  | None -> r2 q
+  | x -> x
+;;
+
 let rec remove q =
   match q with
   | { nullary = h::t } -> Some (h, {q with nullary = t})
   | { unary = h::t } -> Some (h, {q with unary = t})
   | { binary = h::t } -> Some (h, {q with binary = t})
   | { nary = h::t } -> Some (h, {q with nary = t})
-  | { eq_front = h::t } -> Some (h, {q with eq_front = t})
-  | { eq_back = h::t } ->
-     remove {q with eq_front = List.rev q.eq_back; eq_back = []}
-  | { inst_state = ist; inst_size = hpl } when ist < ist_small ->
-      begin match remove_by_goalness ist hpl with
-      | Some (x, l) -> Some (x, {q with inst_state = ist + 1; inst_size = l})
-      | None -> remove {q with inst_state = ist_small}
-      end
-  | { inst_state = ist; inst_front = h::t } ->
-      Some (h, {q with inst_front = t; inst_state = (ist + 1) mod ist_max})
-  | { inst_back = []; inst_size = hpl } ->
-      if is_empty hpl then None
-      else remove {q with inst_state = 0}
-  | { inst_back = l } -> remove {q with inst_front = List.rev l; inst_back = []}
+  | { eq_count = count } when count > 0 ->
+     chain remove_eq remove_inst { q with eq_count = count - 1 }
+  | _ -> chain remove_inst remove_eq { q with eq_count = num_eq }
 ;;
 
 let rec last x l =

@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.18 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.19 2008-11-27 14:19:05 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -319,12 +319,19 @@ let rewrites in_expr ctx e mknode =
   | Eapp ("=", [e1; e2], _) when in_expr -> mk_boolcase "equal" e1 e2
   (* FIXME missing : Eall, Eex *)
 
-  | Eapp ("TLA.cond", [Etrue; e2; e3], _) ->
+  | Eapp ("TLA.cond", [Etrue; e1; e2], _) ->
+     let h1 = ctx (e1) in
+     mknode "iftrue" [ctx e; h1; lamctx; e1; e2] [] [| [h1] |]
+  | Eapp ("TLA.cond", [Efalse; e1; e2], _) ->
      let h1 = ctx (e2) in
-     mknode "iftrue" [ctx e; h1; lamctx; e2; e3] [] [| [h1] |]
-  | Eapp ("TLA.cond", [Efalse; e2; e3], _) ->
-     let h1 = ctx (e3) in
-     mknode "iffalse" [ctx e; h1; lamctx; e2; e3] [] [| [h1] |]
+     mknode "iffalse" [ctx e; h1; lamctx; e1; e2] [] [| [h1] |]
+  | Eapp ("TLA.cond", [e0; e1; e2], _) ->
+     let h1a = e0 in
+     let h1b = ctx (e1) in
+     let h2a = enot (e0) in
+     let h2b = ctx (e2) in
+     mknode "ifthenelse" [ctx e; h1a; h1b; h2a; h2b; lamctx; e0; e1; e2] []
+            [| [h1a; h1b]; [h2a; h2b] |]
   | _ -> []
 ;;
 
@@ -429,6 +436,7 @@ let to_llargs r =
   | Ext (_, "notisafcn_except", _) -> close r
   | Ext (_, "notisafcn_onearg", _) -> close r
   | Ext (_, "notisafcn_extend", _) -> close r
+  | Ext (_, "ifthenelse", _) -> beta2 r
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
