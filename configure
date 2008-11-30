@@ -1,17 +1,23 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.23 2008-09-17 11:09:12 doligez Exp $
+#  $Id: configure,v 1.24 2008-11-30 11:58:07 weis Exp $
 
 check(){
   type "$1" >/dev/null 2>&1
 }
 
-exec_prefix=/usr/local
-prefix=
-bindir=/usr/local/bin
-libdir=/usr/local/lib/zenon
+# Default settings
+prefix=/usr/local
+
+set_dirs () {
+  bindir="${prefix}/bin"
+  libdir="${prefix}/lib/zenon"
+}
+
+set_dirs
 debug=true
+
 if check convert; then convert=convert; else convert=:; fi
 if check coqc; then coqc=coqc; else coqc=:; fi
 if check gs; then gs=gs; else gs=:; fi
@@ -24,30 +30,44 @@ done
 while : ; do
   case $# in 0) break;; esac
   case "$1" in
+    -prefix | --prefix) prefix="$2"; set_dirs; shift 2;;
     -bindir | --bindir) bindir="$2"; shift 2;;
+    -libdir | --libdir) libdir="$2"; shift 2;;
     -convert | --convert) convert="$2"; shift 2;;
     -coqc | --coqc) coqc="$2"; shift 2;;
     -debug | --debug | --enable-debug) debug=true; shift;;
-    -exec_prefix | --exec_prefix) exec_prefix="$2"; shift 2;;
     -gs | --gs) gs="$2"; shift 2;;
-    -libdir | --libdir) libdir="$2"; shift 2;;
     -nodebug | --nodebug | --disable-debug) debug=false; shift;;
-    -prefix | --prefix) prefix="$2"; shift 2;;
     -sum | --sum) sum="$2"; shift 2;;
-    *) echo 'usage: ./configure [options]' >&2
-       echo 'options are:' >&2
-       echo '  [-]-bindir <directory>' >&2
-       echo '  [-]-convert <exec-file>' >&2
-       echo '  [-]-coq <exec-file>' >&2
-       echo '  [-]-debug | --enable-debug' >&2
-       echo '  [-]-exec_prefix <directory>' >&2
-       echo '  [-]-gs <exec-file>' >&2
-       echo '  [-]-libdir <directory>' >&2
-       echo '  [-]-nodebug | --disable-debug' >&2
-       echo '  [-]-prefix <directory>' >&2
-       echo '  [-]-sum <exec-file>' >&2
+    -help | --help)
+       echo "usage: ./configure [options]"
+       echo "options are:"
+       echo "  [-]-bindir <directory>"
+       echo "    set the binary directory for installation (default ${bindir})"
+       echo "  [-]-libdir <directory>"
+       echo "    set the library directory for installation (default ${libdir})"
+       echo "  [-]-prefix <directory>"
+       echo "    set the directory prefix for installation (default ${prefix})"
+       echo "  [-]-convert <executable-file>"
+       echo "    set absolute path for the command convert."
+       echo "  [-]-coq <executable-file>"
+       echo "    set absolute path for the command coqc."
+       echo "  [-]-debug | [-]-enable-debug"
+       echo "    enable debugging"
+       echo "  [-]-gs <executable-file>"
+       echo "    set absolute path for the command gs."
+       echo "  [-]-nodebug | --disable-debug"
+       echo "    disable debugging"
+       echo "  [-]-sum <executable-file>"
+       echo "    set absolute path for the check-sum command."
+       echo "  [-]-help";
+       echo "    display help and exit"
+       exit 0
+       ;;
+    *) echo "./configure: bad option '$1'" >&2
+       echo "For help, use ./configure -help" >&2
        exit 2
-    ;;
+       ;;
   esac
 done
 
@@ -59,16 +79,16 @@ else
   optdebugflags=
 fi
 
-sed -e "s,@BINDIR@,$prefix$bindir," \
+sed -e "s,@BINDIR@,$bindir," \
+    -e "s,@LIBDIR@,$libdir," \
+    -e "s,@prefix@,$prefix," \
     -e "s,@BYTDEBUGFLAGS@,$bytdebugflags," \
+    -e "s,@OPTDEBUGFLAGS@,$optdebugflags," \
     -e "s,@CONVERT@,$convert," \
     -e "s,@COQC@,$coqc," \
-    -e "s,@exec_prefix@,$exec_prefix," \
     -e "s,@GS@,$gs," \
-    -e "s,@LIBDIR@,$prefix$libdir," \
-    -e "s,@OPTDEBUGFLAGS@,$optdebugflags," \
     -e "s,@SUM@,$sum," \
     <.config_var.in >.config_var
 
-echo Configuration summary for zenon:
+echo "Configuration summary for zenon:"
 cat .config_var
