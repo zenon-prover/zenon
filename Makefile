@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.53 2008-11-30 11:54:05 weis Exp $
+#  $Id: Makefile,v 1.54 2008-11-30 21:51:49 weis Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -59,8 +59,9 @@ COQOBJ = ${COQSRC:%.v=%.vo}
 
 include .config_var
 
-.PHONY: all
-all: byt opt coq zenon
+.PHONY: all coq byt opt
+
+all: byt opt coq
 
 coq: ${COQOBJ}
 
