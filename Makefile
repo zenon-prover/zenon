@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.52 2008-11-27 14:19:05 doligez Exp $
+#  $Id: Makefile,v 1.53 2008-11-30 11:54:05 weis Exp $
 
 CAMLFLAGS = -warn-error A
 
@@ -84,16 +84,16 @@ zenon: zenon.byt
 
 .PHONY: install
 install:
-	mkdir -p "${DESTDIR}${BINDIR}"
-	cp zenon "${DESTDIR}${BINDIR}"/
-	mkdir -p "${DESTDIR}${LIBDIR}"
-	cp ${COQSRC} "${DESTDIR}${LIBDIR}"/
-	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${DESTDIR}${LIBDIR}";done
+	mkdir -p "${BINDIR}"
+	cp zenon "${BINDIR}"/
+	mkdir -p "${LIBDIR}"
+	cp ${COQSRC} "${LIBDIR}"/
+	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${LIBDIR}";done
 
 .PHONY: uninstall
 uninstall:
 	rm -f "${BINDIR}"/zenon
-	cd "${LIBDIR}" && rm -f ${COQSRC} ${COQOBJ}
+	rm -rf "${LIBDIR}"
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
