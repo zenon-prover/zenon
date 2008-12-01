@@ -1,53 +1,53 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.25 2008-11-30 21:51:49 weis Exp $
+#  $Id: configure,v 1.26 2008-12-01 15:12:59 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
 }
 
 # Default settings
-prefix=/usr/local
+PREFIX=/usr/local
 
 set_dirs () {
-  bindir="${prefix}/bin"
-  libdir="${prefix}/lib/zenon"
+  BINDIR="${PREFIX}/bin"
+  LIBDIR="${PREFIX}/lib/zenon"
 }
 
 set_dirs
-debug=true
+DEBUG=true
 
-if check convert; then convert=convert; else convert=:; fi
-if check coqc; then coqc=coqc; else coqc=:; fi
-if check gs; then gs=gs; else gs=:; fi
+if check convert; then CONVERT=convert; else CONVERT=:; fi
+if check coqc; then COQC=coqc; else COQC=:; fi
+if check gs; then GS=gs; else GS=:; fi
 
-sum=:
+SUM=:
 for i in sum md5 md5sum md5deep sha1deep sha256deep; do
-  if check $i; then sum=$i; break; fi
+  if check $i; then SUM=$i; break; fi
 done
 
 while : ; do
   case $# in 0) break;; esac
   case "$1" in
-    -prefix | --prefix) prefix="$2"; set_dirs; shift 2;;
-    -bindir | --bindir) bindir="$2"; shift 2;;
-    -libdir | --libdir) libdir="$2"; shift 2;;
-    -convert | --convert) convert="$2"; shift 2;;
-    -coqc | --coqc) coqc="$2"; shift 2;;
-    -debug | --debug | --enable-debug) debug=true; shift;;
-    -gs | --gs) gs="$2"; shift 2;;
-    -nodebug | --nodebug | --disable-debug) debug=false; shift;;
-    -sum | --sum) sum="$2"; shift 2;;
+    -prefix | --prefix) PREFIX="$2"; set_dirs; shift 2;;
+    -bindir | --bindir) BINDIR="$2"; shift 2;;
+    -libdir | --libdir) LIBDIR="$2"; shift 2;;
+    -convert | --convert) CONVERT="$2"; shift 2;;
+    -coqc | --coqc) COQC="$2"; shift 2;;
+    -debug | --debug | --enable-debug) DEBUG=true; shift;;
+    -gs | --gs) GS="$2"; shift 2;;
+    -nodebug | --nodebug | --disable-debug) DEBUG=false; shift;;
+    -sum | --sum) SUM="$2"; shift 2;;
     -help | --help)
        echo "usage: ./configure [options]"
        echo "options are:"
        echo "  [-]-bindir <directory>"
-       echo "    set the binary directory for installation (default ${bindir})"
+       echo "    set the binary directory for installation (default ${BINDIR})"
        echo "  [-]-libdir <directory>"
-       echo "    set the library directory for installation (default ${libdir})"
+       echo "    set the library directory for installation (default ${LIBDIR})"
        echo "  [-]-prefix <directory>"
-       echo "    set the directory prefix for installation (default ${prefix})"
+       echo "    set the directory prefix for installation (default ${PREFIX})"
        echo "  [-]-convert <executable-file>"
        echo "    set absolute path for the command convert."
        echo "  [-]-coq <executable-file>"
@@ -71,23 +71,23 @@ while : ; do
   esac
 done
 
-if $debug; then
-  bytdebugflags="-g"
-  optdebugflags="-dtypes"
+if $DEBUG; then
+  BYTDEBUGFLAGS="-g"
+  OPTDEBUGFLAGS="-dtypes"
 else
-  bytdebugflags=
-  optdebugflags=
+  BYTDEBUGFLAGS=
+  OPTDEBUGFLAGS=
 fi
 
-sed -e "s,@BINDIR@,$bindir," \
-    -e "s,@LIBDIR@,$libdir," \
-    -e "s,@prefix@,$prefix," \
-    -e "s,@BYTDEBUGFLAGS@,$bytdebugflags," \
-    -e "s,@OPTDEBUGFLAGS@,$optdebugflags," \
-    -e "s,@CONVERT@,$convert," \
-    -e "s,@COQC@,$coqc," \
-    -e "s,@GS@,$gs," \
-    -e "s,@SUM@,$sum," \
+sed -e "s,@BINDIR@,$BINDIR," \
+    -e "s,@LIBDIR@,$LIBDIR," \
+    -e "s,@PREFIX@,$PREFIX," \
+    -e "s,@BYTDEBUGFLAGS@,$BYTDEBUGFLAGS," \
+    -e "s,@OPTDEBUGFLAGS@,$OPTDEBUGFLAGS," \
+    -e "s,@CONVERT@,$CONVERT," \
+    -e "s,@COQC@,$COQC," \
+    -e "s,@GS@,$GS," \
+    -e "s,@SUM@,$SUM," \
     <.config_var.in >.config_var
 
 echo "Configuration summary for zenon:"
