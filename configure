@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.26 2008-12-01 15:12:59 weis Exp $
+#  $Id: configure,v 1.27 2008-12-01 18:42:58 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
@@ -9,20 +9,27 @@ check () {
 
 # Default settings
 PREFIX=/usr/local
+DEBUG=true
+
+SUM=:
+CONVERT=:
+COQC=:
+GS=:
+
+BYT_DEBUG_FLAGS=
+BIN_DEBUG_FLAGS=
 
 set_dirs () {
-  BINDIR="${PREFIX}/bin"
-  LIBDIR="${PREFIX}/lib/zenon"
+  BIN_DIR="${PREFIX}/bin"
+  LIB_DIR="${PREFIX}/lib/zenon"
 }
 
 set_dirs
-DEBUG=true
 
 if check convert; then CONVERT=convert; else CONVERT=:; fi
 if check coqc; then COQC=coqc; else COQC=:; fi
 if check gs; then GS=gs; else GS=:; fi
 
-SUM=:
 for i in sum md5 md5sum md5deep sha1deep sha256deep; do
   if check $i; then SUM=$i; break; fi
 done
@@ -31,8 +38,8 @@ while : ; do
   case $# in 0) break;; esac
   case "$1" in
     -prefix | --prefix) PREFIX="$2"; set_dirs; shift 2;;
-    -bindir | --bindir) BINDIR="$2"; shift 2;;
-    -libdir | --libdir) LIBDIR="$2"; shift 2;;
+    -bindir | --bindir) BIN_DIR="$2"; shift 2;;
+    -libdir | --libdir) LIB_DIR="$2"; shift 2;;
     -convert | --convert) CONVERT="$2"; shift 2;;
     -coqc | --coqc) COQC="$2"; shift 2;;
     -debug | --debug | --enable-debug) DEBUG=true; shift;;
@@ -43,9 +50,9 @@ while : ; do
        echo "usage: ./configure [options]"
        echo "options are:"
        echo "  [-]-bindir <directory>"
-       echo "    set the binary directory for installation (default ${BINDIR})"
+       echo "    set the binary directory for installation (default ${BIN_DIR})"
        echo "  [-]-libdir <directory>"
-       echo "    set the library directory for installation (default ${LIBDIR})"
+       echo "    set the library directory for installation (default ${LIB_DIR})"
        echo "  [-]-prefix <directory>"
        echo "    set the directory prefix for installation (default ${PREFIX})"
        echo "  [-]-convert <executable-file>"
@@ -72,18 +79,18 @@ while : ; do
 done
 
 if $DEBUG; then
-  BYTDEBUGFLAGS="-g"
-  OPTDEBUGFLAGS="-dtypes"
+  BYT_DEBUG_FLAGS="-g"
+  BIN_DEBUG_FLAGS="-dtypes"
 else
-  BYTDEBUGFLAGS=
-  OPTDEBUGFLAGS=
+  BYT_DEBUG_FLAGS=
+  BIN_DEBUG_FLAGS=
 fi
 
-sed -e "s,@BINDIR@,$BINDIR," \
-    -e "s,@LIBDIR@,$LIBDIR," \
+sed -e "s,@BIN_DIR@,$BIN_DIR," \
+    -e "s,@LIB_DIR@,$LIB_DIR," \
     -e "s,@PREFIX@,$PREFIX," \
-    -e "s,@BYTDEBUGFLAGS@,$BYTDEBUGFLAGS," \
-    -e "s,@OPTDEBUGFLAGS@,$OPTDEBUGFLAGS," \
+    -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
+    -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
     -e "s,@CONVERT@,$CONVERT," \
     -e "s,@COQC@,$COQC," \
     -e "s,@GS@,$GS," \
