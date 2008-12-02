@@ -1,5 +1,8 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.57 2008-12-01 20:39:35 weis Exp $
+#  $Id: Makefile,v 1.58 2008-12-02 16:30:22 doligez Exp $
+
+# staging directory for package managers
+DESTDIR = ""
 
 CAMLFLAGS = -warn-error A
 
@@ -85,16 +88,18 @@ zenon: zenon.byt
 
 .PHONY: install
 install:
-	mkdir -p "${BIN_DIR}"
-	cp zenon "${BIN_DIR}"/
-	mkdir -p "${LIB_DIR}"/zenon
-	cp ${COQSRC} "${LIB_DIR}"/zenon/
-	for i in ${COQOBJ}; do [ ! -f $$i ] || cp $$i "${LIB_DIR}/zenon";done
+	mkdir -p "${DESTDIR}${BIN_DIR}"
+	cp zenon "${DESTDIR}${BIN_DIR}"/
+	mkdir -p "${DESTDIR}${LIB_DIR}"/zenon
+	cp ${COQSRC} "${DESTDIR}${LIB_DIR}"/zenon/
+	for i in ${COQOBJ}; \
+	  do [ ! -f $$i ] || cp $$i "${DESTDIR}${LIB_DIR}/zenon"; \
+	done
 
 .PHONY: uninstall
 uninstall:
-	rm -f "${BIN_DIR}"/zenon
-	rm -rf "${LIB_DIR}"/zenon
+	rm -f "${DESTDIR}${BIN_DIR}"/zenon
+	rm -rf "${DESTDIR}${LIB_DIR}"/zenon
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
@@ -153,7 +158,7 @@ dist: ${ALLSRC}
 
 .PHONY: clean
 clean:
-	rm -f .#* config_var
+	rm -f .#* .config_var
 	rm -f *.cmo *.cmi *.cmx *.o *.vo *.annot *.output
 	rm -f parsezen.ml parsezen.mli lexzen.ml
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml

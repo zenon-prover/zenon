@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.9 2008-11-25 14:08:11 doligez Exp $";;
+Version.add "$Id: ext_inductive.ml,v 1.10 2008-12-02 16:30:22 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -168,7 +168,7 @@ let newnodes_match_cases e g =
       nprio = Arity;
       ngoal = g;
       nbranches = mkbr br;
-    }; Stop ]
+    }]
   in
   match e with
   | Eapp (s, [Eapp ("$match", _, _) as m; e2], _) when Eqrel.any s ->

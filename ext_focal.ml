@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.13 2008-11-25 15:21:45 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.14 2008-12-02 16:30:22 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -8,7 +8,6 @@ Version.add "$Id: ext_focal.ml,v 1.13 2008-11-25 15:21:45 doligez Exp $";;
      basics.or_b
      basics.xor_b
      basics.not_b
-     basics.base_eq
      false
      true
      FOCAL.ifthenelse
@@ -16,7 +15,12 @@ Version.add "$Id: ext_focal.ml,v 1.13 2008-11-25 15:21:45 doligez Exp $";;
      basics.pair
      List.nil
      List.cons
+     equality under its many names...
  *)
+
+let names_of_equality = ["basics.syntactic_equal"; "basics._equal_"];;
+let name_of_equality_lemma = "coq_builtins.zenon_syntactic_equal";;
+let name_of_notequality_lemma = "coq_builtins.zenon_not_syntactic_equal";;
 
 open Printf;;
 
@@ -53,6 +57,10 @@ let higher_order_warning s =
 
 let istrue e = eapp ("Is_true", [e]);;
 let isfalse e = enot (eapp ("Is_true", [e]));;
+
+let is_true_equal x =
+  List.exists (fun y -> x = "Is_true**" ^ y) names_of_equality
+;;
 
 let newnodes_istrue e g =
   let mk_unfold ctx p args =
@@ -121,13 +129,12 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Eapp (("Is_true**basics.base_eq" | "Is_true**basics._focop_eq_") as op,
-          [e1; e2; e3], _) ->
+  | Eapp (op, [e1; e2; e3], _) when is_true_equal op ->
      let branches = [| [eapp ("=", [e2; e3])] |] in
      let name = chop_prefix "Is_true**" op in
        [ Node {
          nconc = [e];
-         nrule = Ext ("focal", "base_eq", [evar (name); e1; e2; e3]);
+         nrule = Ext ("focal", "equal", [evar (name); e1; e2; e3]);
          nprio = Arity;
          ngoal = g;
          nbranches = branches;
@@ -168,13 +175,12 @@ let newnodes_istrue e g =
         ngoal = g;
         nbranches = branches;
       }; Stop ]
-  | Enot (Eapp (("Is_true**basics.base_eq" | "Is_true**basics._focop_eq_") as op,
-                [e1; e2; e3], _), _) ->
+  | Enot (Eapp (op, [e1; e2; e3], _), _) when is_true_equal op ->
      let branches = [| [enot (eapp ("=", [e2; e3]))] |] in
      let name = chop_prefix "Is_true**" op in
        [ Node {
          nconc = [e];
-         nrule = Ext ("focal", "notbase_eq", [evar (name); e1; e2; e3]);
+         nrule = Ext ("focal", "notequal", [evar (name); e1; e2; e3]);
          nprio = Arity;
          ngoal = g;
          nbranches = branches;
@@ -380,11 +386,11 @@ let to_llargs tr_expr r =
       let h = tr_expr (enot (istrue e1)) in
       let c = tr_expr (istrue (eapp ("basics.not_b", [e1]))) in
       ("zenon_focal_not", [tr_expr e1], [c], [ [h] ])
-  | Ext (_, "base_eq", [Evar (name, _); e1; e2; e3]) ->
+  | Ext (_, "equal", [Evar (name, _); e1; e2; e3]) ->
       let h = tr_expr (eapp ("=", [e2; e3])) in
       let c = tr_expr (istrue (eapp (name, [e1; e2; e3]))) in
       let eqdec = evar ("zenon_focal_eqdec") in
-      ("coq_builtins.zenon_base_eq",
+      (name_of_equality_lemma,
        List.map tr_expr [eqdec; e1; e2; e3], [c], [ [h] ])
   | Ext (_, "notand", [e1; e2]) ->
       let h = tr_expr (enot (eand (istrue e1, istrue e2))) in
@@ -402,10 +408,10 @@ let to_llargs tr_expr r =
       let h = tr_expr (istrue e1) in
       let c = tr_expr (enot (istrue (eapp ("basics.not_b", [e1])))) in
       ("zenon_focal_notnot", [tr_expr e1], [c], [ [h] ])
-  | Ext (_, "notbase_eq", [Evar (name, _); e1; e2; e3]) ->
+  | Ext (_, "notequal", [Evar (name, _); e1; e2; e3]) ->
       let h = tr_expr (enot (eapp ("=", [e2; e3]))) in
       let c = tr_expr (enot (istrue (eapp (name, [e1; e2; e3])))) in
-      ("coq_builtins.zenon_notbase_eq",
+      (name_of_notequality_lemma,
        [tr_expr e1; tr_expr e2; tr_expr e3], [c], [ [h] ])
   | Ext (_, "false", []) ->
       let c = tr_expr (istrue (evar "false")) in

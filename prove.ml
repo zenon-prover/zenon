@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.35 2008-11-25 15:21:45 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.36 2008-12-02 16:30:22 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -387,6 +387,59 @@ let newnodes_delta st fm g =
   | _ -> st, false
 ;;
 
+let rec get_values accu s =
+  match s with
+  | Eapp ("TLA.add", [v; s1], _) -> get_values (v::accu) s1
+  | _ -> (accu, s)
+;;
+
+let newnodes_gamma_bounded st fm g =
+  match fm with
+  | Eall (v, t,
+          (Eimply (Eapp ("TLA.in",
+                         [vv; Eapp ("TLA.add", _, _) as s], _), _, _) as p), _)
+    when Extension.is_active "tla" ->
+     let (elems, set) = get_values [] s in
+     let mknode st elem =
+       add_node st {
+         nconc = [fm];
+         nrule = All (fm, elem);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [Expr.substitute [(v, elem)] p] |];
+       }
+     in
+     let stop =
+       match set with
+       | Evar ("TLA.emptyset", _) -> true
+       | _ -> false
+     in
+     (List.fold_left mknode st elems, stop)
+  | Enot (Eex (v, t,
+               (Eand (Eapp ("TLA.in",
+                            [vv;
+                             Eapp ("TLA.add", _, _) as s], _), _, _)
+                  as p), _), _)
+    when Extension.is_active "tla" ->
+     let (elems, set) = get_values [] s in
+     let mknode st elem =
+       add_node st {
+         nconc = [fm];
+         nrule = NotEx (fm, elem);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [enot (Expr.substitute [(v, elem)] p)] |];
+       }
+     in
+     let stop =
+       match set with
+       | Evar ("TLA.emptyset", _) -> true
+       | _ -> false
+     in
+     (List.fold_left mknode st elems, stop)
+  | _ -> (st, false)
+;;
+
 let newnodes_gamma st fm g =
   match fm with
   | Eall (v, t, p, _) ->
@@ -759,6 +812,7 @@ let add_nodes st fm g =
       newnodes_alpha;
       newnodes_beta;
       newnodes_delta;
+(*      newnodes_gamma_bounded;*)
       newnodes_gamma;
       newnodes_unfold;
       newnodes_refl;
