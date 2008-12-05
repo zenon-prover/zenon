@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.58 2008-12-02 16:30:22 doligez Exp $
+#  $Id: Makefile,v 1.59 2008-12-05 15:23:08 doligez Exp $
 
 # staging directory for package managers
 DESTDIR = ""
@@ -26,11 +26,11 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
           parsecoq.mly lexcoq.mll tptp.ml \
           ext_coqbool.ml ext_focal.ml ext_tla.ml \
-          ext_equiv.ml ext_inductive.ml coqterm.ml lltocoq.ml \
+          ext_equiv.ml ext_induct.ml coqterm.ml lltocoq.ml \
           lltoisar.ml \
           checksum.dummy versionnum.ml main.ml
 
-COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_inductive.v zenon_focal.v
+COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
 
 DOCSRC = 
 

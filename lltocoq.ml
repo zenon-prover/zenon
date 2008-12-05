@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.40 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.41 2008-12-05 15:23:08 doligez Exp $";;
 
 open Printf;;
 
@@ -224,13 +224,44 @@ let p_rule oc r =
   | Rnotconnect (Equiv, e1, e2) ->
       apply_beta2 oc "notequiv" (enot (eequiv (e1, e2)))
                   (enot e1) e2 e1 (enot e2)
-  | Rextension ("zenon_inductive_discriminate", [], [conc], []) ->
+  | Rextension ("zenon_induct_discriminate", [], [conc], []) ->
       poc "discriminate %s.\n" (getname conc);
       0
-(*
-  | Rextension ("zenon_inductive_match_neq_right", [e1; e2], [conc], hyps) ->
-      ...
-*)
+  | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
+     poc "case_eq (%a); [\n    " p_expr e1;
+     let get_params case =
+       match case with
+       | [Eapp ("=", [_; Evar (v, _) as a], _) as eq; e2] ->
+          (eq, a, v, [], e2)
+       | [Eapp ("=", [_; Eapp (v, ts, _) as a], _) as eq; e2] ->
+          (eq, a, v, ts, e2)
+       | _ -> assert false
+     in
+     let params = List.map get_params hs in
+     let p_case oc (eq, a, constr, taus, h2) =
+       let eq_name = getname eq in
+       let rwhyp = apply ctx a in
+       fprintf oc "intros %a %s; assert (%s : %a);"
+               (p_list "" p_expr " ") taus eq_name (getname h2) p_expr rwhyp;
+       fprintf oc " [rewrite %s in *; apply %s | idtac]\n" eq_name (getname c);
+     in
+     p_list "" p_case "  | " oc params;
+     poc "].\n";
+     0
+  | Rextension ("zenon_induct_cases", _, _, _) -> assert false
+  | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
+                [c], [ [h] ]) ->
+     let (_, cstrs) = Coqterm.get_induct ty in
+     poc "assert (%s : %a).\n" (getname h) p_expr h;
+     poc "case_eq (%a); [\n    " p_expr a;
+     let p_case oc (c, args) =
+       List.iter (fun _ -> fprintf oc "intro; ") args;
+       fprintf oc "intro zenon_tmp; rewrite zenon_tmp in *; auto\n";
+     in
+     p_list "" p_case "  | " oc cstrs;
+     poc "].\n";
+     0
+  | Rextension ("zenon_induct_fix", _, _, _) -> assert false
   | Rextension (name, args, conc, hyps) ->
       poc "apply (%s_s%a%a)" name p_expr_list args p_name_list conc;
       begin match hyps with
@@ -360,7 +391,7 @@ let rec p_lemmas oc phrases l =
 let output oc phrases ppphrases llp =
   try
     Coqterm.init_mapping phrases;
-    Coqterm.init_inductive ppphrases;
+    Coqterm.init_induct ppphrases;
     if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
     p_lemmas oc phrases llp;

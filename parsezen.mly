@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.11 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.12 2008-12-05 15:23:08 doligez Exp $";;
 
 open Printf;;
 
@@ -126,7 +126,7 @@ expr:
   | OPEN EQUAL expr expr CLOSE           { eapp ("=", [$3; $4]) }
   | OPEN MATCH expr case_list CLOSE      { eapp ("$match", $3 :: $4) }
   | OPEN LET id_expr_list_expr CLOSE     { eapp ("$let", $3) }
-  | OPEN FIX mlambda CLOSE               { eapp ("$fix", [mk_elam $3]) }
+  | OPEN FIX mlambda expr_list CLOSE     { eapp ("$fix", mk_elam $3 :: $4) }
 ;
 
 expr_list:

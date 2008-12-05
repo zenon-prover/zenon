@@ -90,10 +90,10 @@ ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     extension.cmi expr.cmi ext_equiv.cmi 
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
     extension.cmx expr.cmx ext_equiv.cmi 
-ext_inductive.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
-    llproof.cmi extension.cmi expr.cmi error.cmi eqrel.cmi ext_inductive.cmi 
-ext_inductive.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
-    llproof.cmx extension.cmx expr.cmx error.cmx eqrel.cmx ext_inductive.cmi 
+ext_induct.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+    llproof.cmi extension.cmi expr.cmi error.cmi eqrel.cmi ext_induct.cmi 
+ext_induct.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+    llproof.cmx extension.cmx expr.cmx error.cmx eqrel.cmx ext_induct.cmi 
 coqterm.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
     llproof.cmi index.cmi globals.cmi extension.cmi expr.cmi error.cmi \
     coqterm.cmi 
@@ -122,15 +122,6 @@ main.cmx: watch.cmx versionnum.cmx version.cmx tptp.cmx prove.cmx \
     namespace.cmx mltoll.cmx lltoisar.cmx lltocoq.cmx llproof.cmx lexzen.cmx \
     lextptp.cmx lexcoq.cmx globals.cmx extension.cmx error.cmx eqrel.cmx \
     coqterm.cmx config.cmx checksum.cmx main.cmi 
-version.cmi: 
-config.cmi: 
-misc.cmi: 
-heap.cmi: 
-globals.cmi: 
-error.cmi: 
-progress.cmi: 
-namespace.cmi: 
-expr.cmi: 
 phrase.cmi: expr.cmi 
 llproof.cmi: expr.cmi 
 mlproof.cmi: expr.cmi 
@@ -150,19 +141,11 @@ lextptp.cmi: parsetptp.cmi
 parsecoq.cmi: phrase.cmi 
 lexcoq.cmi: parsecoq.cmi 
 tptp.cmi: phrase.cmi 
-ext_coqbool.cmi: 
-ext_focal.cmi: 
-ext_tla.cmi: 
-ext_equiv.cmi: 
-ext_inductive.cmi: 
 coqterm.cmi: phrase.cmi llproof.cmi expr.cmi 
 lltocoq.cmi: phrase.cmi llproof.cmi 
 lltoisar.cmi: phrase.cmi llproof.cmi 
-checksum.cmi: 
-versionnum.cmi: 
-main.cmi: 
 zenon.vo: zenon.v
 zenon_coqbool.vo: zenon_coqbool.v
 zenon_equiv.vo: zenon_equiv.v zenon.vo
-zenon_inductive.vo: zenon_inductive.v
+zenon_induct.vo: zenon_induct.v
 zenon_focal.vo: zenon_focal.v

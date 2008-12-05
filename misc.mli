@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: misc.mli,v 1.14 2008-11-24 15:28:27 doligez Exp $  *)
+(*  $Id: misc.mli,v 1.15 2008-12-05 15:23:08 doligez Exp $  *)
 
 val index : int -> 'a -> 'a list -> int;;
 val ( @@ ) : 'a list -> 'a list -> 'a list;;
@@ -12,6 +12,13 @@ val list_iter3 :
 val list_fold_left3 :
   ('accu -> 'a -> 'b -> 'c -> 'accu) -> 'accu -> 'a list -> 'b list -> 'c list
   -> 'accu
+;;
+val list_map3 :
+  ('a -> 'b -> 'c -> 'd) -> 'a list -> 'b list -> 'c list -> 'd list
+;;
+val list_map4 :
+  ('a -> 'b -> 'c -> 'd -> 'e)
+  -> 'a list -> 'b list -> 'c list -> 'd list -> 'e list
 ;;
 
 val string_split : string -> string list;;

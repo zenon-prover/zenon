@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.14 2008-11-27 14:19:05 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.15 2008-12-05 15:23:08 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -167,7 +167,8 @@ let rec is_empty l =
 let rec remove_eq q =
   match q with
   | { eq_front = h :: t } -> Some (h, { q with eq_front = t })
-  | { eq_back = _ :: _ } -> remove_eq { q with eq_front = List.rev q.eq_back }
+  | { eq_back = _ :: _ } ->
+     remove_eq { q with eq_front = List.rev q.eq_back; eq_back = [] }
   | _ -> None
 ;;
 

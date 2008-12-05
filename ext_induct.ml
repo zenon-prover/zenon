@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_inductive.ml,v 1.10 2008-12-02 16:30:22 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.1 2008-12-05 15:23:08 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -54,25 +54,6 @@ let compare_cases (cs1, _, _) (cs2, _, _) =
 
 let normalize_cases l = List.sort compare_cases (List.map (make_case []) l);;
 
-let make_match_branches ctx m =
-  match m with
-  | Eapp ("$match", ([] | [_]), _) ->
-     Error.warn "empty pattern-matching"; raise Empty
-  | Eapp ("$match", e :: cases, _) ->
-      let c = normalize_cases cases in
-      let f (constr, vars, body) =
-        let pattern =
-          match vars with
-          | [] -> evar (constr)
-          | _ -> eapp (constr, vars)
-        in
-        let shape = eapp ("=", [e; pattern]) in
-        ex_list vars (eand (shape, ctx body))
-      in
-      List.map f c
-  | _ -> assert false
-;;
-
 let make_match_redex e g ctx m =
   match m with
   | Eapp ("$match", Eapp (c, a, _) :: cases, _) when is_constr c ->
@@ -90,7 +71,7 @@ let make_match_redex e g ctx m =
        let hyp = ctx newbody in
        [ Node {
          nconc = [e];
-         nrule = Ext ("inductive", "match_redex", [e; hyp]);
+         nrule = Ext ("induct", "match_redex", [e; hyp]);
          nprio = Arity;
          ngoal = g;
          nbranches = [| [hyp] |];
@@ -105,7 +86,7 @@ let make_match_redex e g ctx m =
        let hyp = ctx body in
        [ Node {
          nconc = [e];
-         nrule = Ext ("inductive", "match_redex", [e; hyp]);
+         nrule = Ext ("induct", "match_redex", [e; hyp]);
          nprio = Arity;
          ngoal = g;
          nbranches = [| [hyp] |];
@@ -132,16 +113,44 @@ let newnodes_match_redex e g =
   | _ -> []
 ;;
 
+let make_match_branches ctx m =
+  match m with
+  | Eapp ("$match", ([] | [_]), _) ->
+     Error.warn "empty pattern-matching"; raise Empty
+  | Eapp ("$match", e :: cases, _) ->
+      let c = normalize_cases cases in
+      let f (constr, vars, body) =
+        let (pattern, rvars, rbody) =
+          match vars with
+          | [] -> (evar (constr), [], body)
+          | _ ->
+             let rv = List.map (fun _ -> Expr.newvar ()) vars in
+             let sub = List.map2 (fun x y -> (x, y)) vars rv in
+             (eapp (constr, rv), rv, Expr.substitute sub body)
+        in
+        let shape = eapp ("=", [e; pattern]) in
+        let ex = ex_list rvars shape in
+        let f (ex, accu) v =
+          match ex with
+          | Eex (x, ty, b, _) ->
+             let tau = etau (x, ty, b) in
+             let tb = substitute [(x, tau)] b in
+             (tb, (v, tau) :: accu)
+          | _ -> assert false
+        in
+        let (taushape, subs) = List.fold_left f (ex, []) rvars in
+        [taushape; (ctx (substitute subs rbody))]
+      in
+      List.map f c
+  | _ -> assert false
+;;
+
 let get_type m =
   match m with
   | Eapp ("$match", e :: case :: _, _) ->
      let (constr, _, _) = make_case [] case in
      (Hashtbl.find constructor_table constr).cd_type
   | _ -> raise Empty
-;;
-
-let mkbr br =
-  Array.map (fun x -> [x]) (Array.of_list br)
 ;;
 
 let newnodes_match_cases e g =
@@ -154,9 +163,7 @@ let newnodes_match_cases e g =
       | Eapp ("$match", e1 :: cases, _) ->
          let x = Expr.newvar () in
          let mctx = elam (x, sprintf "(%s%s)" tycon tyargs,
-                          eimply (eand (eapp ("=", [e1; x]),
-                                        ctx (eapp ("$match", x :: cases))),
-                                  efalse))
+                          ctx (eapp ("$match", x :: cases)))
          in
          (mctx ,e1)
       | _ -> assert false
@@ -164,10 +171,11 @@ let newnodes_match_cases e g =
     let ty = evar tycon in
     [ Node {
       nconc = [e];
-      nrule = Ext ("inductive", "cases", e :: ty :: mctx :: e1 :: br);
+      nrule = Ext ("induct", "cases",
+                   e :: ty :: mctx :: e1 :: List.flatten br);
       nprio = Arity;
       ngoal = g;
-      nbranches = mkbr br;
+      nbranches = Array.of_list br;
     }]
   in
   match e with
@@ -205,7 +213,7 @@ let newnodes_injective e g =
         let branch = List.map2 (fun x y -> eapp ("=", [x; y])) args1 args2 in
         [ Node {
           nconc = [e];
-          nrule = Ext ("inductive", "injection", [e; ty]);
+          nrule = Ext ("induct", "injection", [e; ty]);
           nprio = Arity;
           ngoal = g;
           nbranches = [| branch |];
@@ -219,7 +227,7 @@ let newnodes_injective e g =
     when f1 <> f2 && is_constr f1 && is_constr f2 ->
       [ Node {
         nconc = [e];
-        nrule = Ext ("inductive", "discriminate", [e]);
+        nrule = Ext ("induct", "discriminate", [e]);
         nprio = Arity;
         ngoal = g;
         nbranches = [| |];
@@ -231,7 +239,7 @@ let newnodes_fix e g =
   let mknode unfolded ctx fix =
     [Node {
       nconc = [e];
-      nrule = Ext ("inductive", "fix", [e; unfolded; ctx; fix]);
+      nrule = Ext ("induct", "fix", [e; unfolded; ctx; fix]);
       nprio = Arity;
       ngoal = g;
       nbranches = [| [unfolded] |];
@@ -327,7 +335,7 @@ let to_llproof tr_expr mlp args =
   let hyps = List.map fst argl in
   let add = List.flatten (List.map snd argl) in
   match mlp.mlrule with
-  | Ext ("inductive", "injection",
+  | Ext ("induct", "injection",
          [Eapp ("=", [Eapp (g, args1, _) as xx;
                       Eapp (_, args2, _) as yy], _) as con;
           Evar (ty, _)]) ->
@@ -357,7 +365,7 @@ let to_llproof tr_expr mlp args =
             let proj = elam (x, "?", eapp ("$match", x :: cases)) in
             let node = {
               conc = union tc (diff [hyp] accu.conc);
-              rule = Rextension ("zenon_inductive_f_equal",
+              rule = Rextension ("zenon_induct_f_equal",
                                  [tr_expr xx; tr_expr yy; tr_expr proj],
                                  [tr_expr con], [ [hyp] ]);
               hyps = [accu];
@@ -367,26 +375,26 @@ let to_llproof tr_expr mlp args =
        | _ -> assert false
      in
      (f args1 args2 0 subproof, add)
-  | Ext ("inductive", "injection", _) -> assert false
-  | Ext ("inductive", "discriminate", [e]) ->
+  | Ext ("induct", "injection", _) -> assert false
+  | Ext ("induct", "discriminate", [e]) ->
       assert (hyps = []);
       let node = {
         conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_inductive_discriminate", [], [tr_expr e], []);
+        rule = Rextension ("zenon_induct_discriminate", [], [tr_expr e], []);
         hyps = hyps;
       } in
       (node, add)
-  | Ext ("inductive", "match_redex", [c; h]) ->
+  | Ext ("induct", "match_redex", [c; h]) ->
      let tc = tr_expr c in
      let th = tr_expr h in
      let node = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension ("zenon_inductive_match_redex",
+       rule = Rextension ("zenon_induct_match_redex",
                           [tc; th], [tc], [ [th] ]);
        hyps = hyps;
      } in
      (node, add)
-  | Ext ("inductive", "fix",
+  | Ext ("induct", "fix",
          [folded; unfolded; ctx;
           Eapp ("$fix", (Elam (f, _, (Elam (_, t, _, _) as body), _) as r)
                         :: a :: args, _)]) ->
@@ -398,7 +406,7 @@ let to_llproof tr_expr mlp args =
        let unfx = elam (nx, "?", List.fold_left apply xbody (nx :: args)) in
        let node = {
          conc = List.map tr_expr mlp.mlconc;
-         rule = Rextension ("zenon_inductive_fix",
+         rule = Rextension ("zenon_induct_fix",
                             List.map tr_expr [evar (tname); ctx; foldx; unfx; a],
                             [tr_expr folded],
                             [ [tr_expr unfolded] ]);
@@ -407,22 +415,27 @@ let to_llproof tr_expr mlp args =
        (node, add)
      with Higher_order -> assert false
      end
-  | Ext ("inductive", "cases", c :: ty :: ctx :: m :: branches) ->
+  | Ext ("induct", "cases", c :: ty :: ctx :: m :: branches) ->
       let tc = tr_expr c in
       let tctx = tr_expr ctx in
       let tm = tr_expr m in
+      let rec mk_branches l =
+        match l with
+        | [] -> []
+        | h1 :: h2 :: t -> [tr_expr h1; tr_expr h2] :: mk_branches t
+        | _ -> assert false
+      in
       let node = {
         conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_inductive_cases",
-                           [ty; tctx; tm], [tc],
-                           List.map (fun x-> [tr_expr x]) branches);
+        rule = Rextension ("zenon_induct_cases", [ty; tctx; tm], [tc],
+                           mk_branches branches);
         hyps = hyps;
       } in
       (node, add)
   | _ -> assert false
 ;;
 
-let add_inductive_def ty args constrs =
+let add_induct_def ty args constrs =
   let f i (name, a) =
     let desc = { cd_num = i; cd_type = ty; cd_args = a; cd_name = name } in
     Hashtbl.add constructor_table name desc;
@@ -438,7 +451,7 @@ let add_phrase x =
   | Hyp _ -> ()
   | Def _ -> ()
   | Sig _ -> ()
-  | Inductive (ty, args, constrs) -> add_inductive_def ty args constrs;
+  | Inductive (ty, args, constrs) -> add_induct_def ty args constrs;
 ;;
 
 let postprocess p = p;;
@@ -447,12 +460,12 @@ let add_formula e = ();;
 let remove_formula e = ();;
 
 let declare_context_coq oc =
-  fprintf oc "Require Import zenon_inductive.\n";
+  fprintf oc "Require Import zenon_induct.\n";
   []
 ;;
 
 Extension.register {
-  Extension.name = "inductive";
+  Extension.name = "induct";
   Extension.newnodes = newnodes;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
