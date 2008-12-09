@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.59 2008-12-05 15:23:08 doligez Exp $
+#  $Id: Makefile,v 1.60 2008-12-09 09:46:07 doligez Exp $
 
 # staging directory for package managers
 DESTDIR = ""
@@ -158,6 +158,8 @@ dist: ${ALLSRC}
 
 .PHONY: clean
 clean:
+	cd doc; make clean
+	cd test; make clean
 	rm -f .#* .config_var
 	rm -f *.cmo *.cmi *.cmx *.o *.vo *.annot *.output
 	rm -f parsezen.ml parsezen.mli lexzen.ml
@@ -166,8 +168,6 @@ clean:
 	rm -f checksum.ml
 	rm -f zenon zenon.opt zenon.byt
 	rm -rf dist zenon.tar.gz
-	cd doc; make clean
-	cd test; make clean
 
 .PHONY: distclean
 distclean: clean
