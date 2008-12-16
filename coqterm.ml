@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.44 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.45 2008-12-16 15:07:24 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -332,9 +332,11 @@ let rec trtree env node =
      in
      let tauargs = List.map get_taus hs in
      let make_hyp hyps prf taus (c, cargs) =
-       let p = mklams env hyps (trtree env prf) in
+       let stronglam v t = Clam (getname v, trexpr v, t) in
+       let stronglams args t = List.fold_right stronglam args t in
+       let p = stronglams hyps (trtree env prf) in
        let sh = Capp (Cvar ("zenon_induct_case_subs"),
-                      [Cwild; tropt e1; Cwild; tropt ctx; p])
+                      [Cwild; tropt e1; Cwild; trexpr ctx; p])
        in
        let abstract_induct arg body =
          match arg with
