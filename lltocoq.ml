@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.41 2008-12-05 15:23:08 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.42 2008-12-16 14:31:24 doligez Exp $";;
 
 open Printf;;
 
@@ -346,6 +346,7 @@ let p_rule oc r =
   | Rfalse ->
       poc "exact %s.\n" (getname efalse);
       0
+  | Rcongruence _ -> assert false (* FIXME TODO *)
 ;;
 
 let rec drop n l =

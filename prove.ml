@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.36 2008-12-02 16:30:22 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.37 2008-12-16 14:31:24 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -365,32 +365,161 @@ let newnodes_beta st fm g =
   | _ -> st, false
 ;;
 
+let get_var_name e =
+  match e with
+  | Evar (name, _) -> name
+  | _ -> assert false
+;;
+
+let orelse f1 x1 f2 x2 =
+  match f1 x1 with
+  | None -> f2 x2
+  | x -> x
+;;
+
+let andalso f1 x1 f2 x2 =
+  match f1 x1 with
+  | None -> None
+  | Some r1 ->
+     match f2 x2 with
+     | None -> None
+     | Some r2 -> Some (Expr.union r1 r2)
+;;
+
+(* TODO : traiter TLA.cond et TLA.case *)
+(* Trop naif.  Ne pas s'arreter au premier /\, ni meme au premier $scope *)
+let rec add_scope_p v tau e =
+  if not (List.mem (get_var_name v) (get_fv e)) then e else
+  match e with
+  | Enot (e1, _) -> enot (add_scope_n v tau e1)
+  | Eor (e1, e2, _) -> eor (add_scope_p v tau e1, add_scope_p v tau e2)
+  | Eimply (e1, e2, _) -> eimply (add_scope_n v tau e1, add_scope_n v tau e2)
+  | Eex (w, t, e1, _) -> eex (w, t, add_scope_p v tau e1)
+  | _ ->
+     match get_values_p v e with
+     | None -> substitute [(v, tau)] e
+     | Some vs -> eapp ("$scope", elam (v, "?", e) :: tau :: vs)
+
+and add_scope_n v tau e =
+  if not (List.mem (get_var_name v) (get_fv e)) then e else
+  match e with
+  | Enot (e1, _) -> enot (add_scope_p v tau e1)
+  | Eand (e1, e2, _) -> eand (add_scope_n v tau e1, add_scope_n v tau e2)
+  | Eall (w, t, e1, _) -> eall (w, t, add_scope_n v tau e1)
+  | _ ->
+     match get_values_n v e with
+     | None -> substitute [(v, tau)] e
+     | Some vs -> eapp ("$scope", elam (v, "?", e) :: tau :: vs)
+
+and get_values_p v e =
+  if not (List.mem (get_var_name v) (get_fv e)) then None else
+  match e with
+  | Eapp ("=", [v1; e1], _) when Expr.equal v1 v -> Some [e1]
+  | Eapp ("=", [e1; v1], _) when Expr.equal v1 v -> Some [e1]
+  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_p v (apply lam tau)
+  | Eapp ("TLA.in", [v1; s], _) when Expr.equal v1 v ->
+     begin match get_values_set [] s with
+     | (_, true) -> None
+     | (vs, false) -> Some vs
+     end
+  | Enot (e1, _) -> get_values_n v e1
+  | Eand (e1, e2, _) -> orelse (get_values_p v) e1 (get_values_p v) e2
+  | Eor (e1, e2, _) -> andalso (get_values_p v) e1 (get_values_p v) e2
+  | Eimply (e1, e2, _) -> andalso (get_values_n v) e1 (get_values_p v) e2
+  | Eequiv (e1, e2, _) -> None
+  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 v -> None
+  | Eall (Evar (nv1, _), t, e1, _)
+  | Eex (Evar (nv1, _), t, e1, _)
+  -> let p ee = List.mem nv1 (get_fv ee) in
+     begin match get_values_p v e1 with
+     | None -> None
+     | Some vs when List.exists p vs -> None
+     | x -> x
+     end
+  | _ -> None
+
+and get_values_n v e =
+  if not (List.mem (get_var_name v) (get_fv e)) then None else
+  match e with
+  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_n v (apply lam tau)
+  | Enot (e1, _) -> get_values_p v e1
+  | Eand (e1, e2, _) -> andalso (get_values_n v) e1 (get_values_n v) e2
+  | Eor (e1, e2, _) -> orelse (get_values_n v) e1 (get_values_n v) e2
+  | Eimply (e1, e2, _) -> orelse (get_values_p v) e1 (get_values_n v) e2
+  | Eequiv (e1, e2, _) -> None
+  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 v -> None
+  | Eall (Evar (nv1, _), t, e1, _)
+  | Eex (Evar (nv1, _), t, e1, _)
+  -> let p ee = not (List.mem nv1 (get_fv ee)) in
+     begin match get_values_n v e1 with
+     | None -> None
+     | Some vs when List.exists p vs -> None
+     | x -> x
+     end
+  | _ -> None
+
+and get_values_set accu e =
+  match e with
+  | Eapp ("TLA.upair", [e1; e2], _) -> (e1 :: e2 :: accu, false)
+  | Eapp ("TLA.add", [e1; e2], _) -> get_values_set (e1 :: accu) e2
+  | Eapp ("TLA.union", [e1; e2], _) ->
+     let (vs1, rest1) = get_values_set accu e1 in
+     let (vs2, rest2) = get_values_set vs1 e2 in
+     (vs2, rest1 || rest2)
+(*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
+  | _ -> ([], true)
+;;
+
 let newnodes_delta st fm g =
   match fm with
   | Eex (v, t, p, _) ->
-      add_node st {
-        nconc = [fm];
-        nrule = Ex (fm);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = [| [Expr.substitute [(v, etau (v, t, p))] p] |];
-      }, true
+     let p1 = remove_scope p in
+     let tau = etau (v, t, p1) in
+     let h = add_scope_p v tau p in
+     add_node st {
+       nconc = [fm];
+       nrule = Ex (fm);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [h] |];
+     }, true
   | Enot (Eall (v, t, p, _), _) ->
-      let np = enot (p) in
-      add_node st {
-        nconc = [fm];
-        nrule = NotAll (fm);
-        nprio = Arity;
-        ngoal = g;
-        nbranches = [| [Expr.substitute [(v, etau (v, t, np))] np] |];
-      }, true
+     let np1 = enot (remove_scope p) in
+     let tau = etau (v, t, np1) in
+     let h = enot (add_scope_n v tau p) in
+     add_node st {
+       nconc = [fm];
+       nrule = NotAll (fm);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [h] |];
+     }, true
+  | Eapp ("$scope", lam :: tau :: vals, _) ->
+     let f1 va = [apply lam va] in
+     let heqs = List.map f1 vals in
+     let f2 va = enot (eapp ("=", [tau; va])) in
+     let hneq = remove_scope (apply lam tau) :: List.map f2 vals in
+     add_node st {
+       nconc = [fm];
+       nrule = Miniscope (lam, tau, vals);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = Array.of_list (hneq :: heqs);
+     }, true
+  | Enot (Eapp ("$scope", Elam (x, ty, e, _) :: tau :: vals, _), _) ->
+     let ne = enot (e) in
+     let f1 va = [substitute [(x, va)] ne] in
+     let heqs = List.map f1 vals in
+     let f2 va = enot (eapp ("=", [tau; va])) in
+     let hneq = remove_scope (substitute [(x, tau)] ne) :: List.map f2 vals in
+     add_node st {
+       nconc = [fm];
+       nrule = Miniscope (elam (x, ty, ne), tau, vals);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = Array.of_list (hneq :: heqs);
+     }, true
   | _ -> st, false
-;;
-
-let rec get_values accu s =
-  match s with
-  | Eapp ("TLA.add", [v; s1], _) -> get_values (v::accu) s1
-  | _ -> (accu, s)
 ;;
 
 let newnodes_gamma_bounded st fm g =
@@ -399,7 +528,7 @@ let newnodes_gamma_bounded st fm g =
           (Eimply (Eapp ("TLA.in",
                          [vv; Eapp ("TLA.add", _, _) as s], _), _, _) as p), _)
     when Extension.is_active "tla" ->
-     let (elems, set) = get_values [] s in
+     let (elems, rest) = get_values_set [] s in
      let mknode st elem =
        add_node st {
          nconc = [fm];
@@ -409,19 +538,14 @@ let newnodes_gamma_bounded st fm g =
          nbranches = [| [Expr.substitute [(v, elem)] p] |];
        }
      in
-     let stop =
-       match set with
-       | Evar ("TLA.emptyset", _) -> true
-       | _ -> false
-     in
-     (List.fold_left mknode st elems, stop)
+     (List.fold_left mknode st elems, not rest)
   | Enot (Eex (v, t,
                (Eand (Eapp ("TLA.in",
                             [vv;
                              Eapp ("TLA.add", _, _) as s], _), _, _)
                   as p), _), _)
     when Extension.is_active "tla" ->
-     let (elems, set) = get_values [] s in
+     let (elems, rest) = get_values_set [] s in
      let mknode st elem =
        add_node st {
          nconc = [fm];
@@ -431,12 +555,7 @@ let newnodes_gamma_bounded st fm g =
          nbranches = [| [enot (Expr.substitute [(v, elem)] p)] |];
        }
      in
-     let stop =
-       match set with
-       | Evar ("TLA.emptyset", _) -> true
-       | _ -> false
-     in
-     (List.fold_left mknode st elems, stop)
+     (List.fold_left mknode st elems, not rest)
   | _ -> (st, false)
 ;;
 
@@ -812,7 +931,7 @@ let add_nodes st fm g =
       newnodes_alpha;
       newnodes_beta;
       newnodes_delta;
-(*      newnodes_gamma_bounded;*)
+      newnodes_gamma_bounded;
       newnodes_gamma;
       newnodes_unfold;
       newnodes_refl;

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.28 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.29 2008-12-16 14:31:24 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -537,6 +537,21 @@ let apply f a =
   match f with
   | Elam (v, _, body, _) -> substitute [(v, a)] body
   | _ -> raise Higher_order
+;;
+
+let rec remove_scope e =
+  match e with
+  | Eapp ("$scope", e1 :: t :: vals, _) -> apply e1 t
+  | Eapp (f, args, _) -> e
+  | Enot (e1, _) -> enot (remove_scope e1)
+  | Eand (e1, e2, _) -> eand (remove_scope e1, remove_scope e2)
+  | Eor (e1, e2, _) -> eor (remove_scope e1, remove_scope e2)
+  | Eimply (e1, e2, _) -> eimply (remove_scope e1, remove_scope e2)
+  | Eequiv (e1, e2, _) -> eequiv (remove_scope e1, remove_scope e2)
+  | Eall (v, t, e1, _) -> eall (v, t, remove_scope e1)
+  | Eex (v, t, e1, _) -> eex (v, t, remove_scope e1)
+  | Evar _ | Emeta _ | Etrue | Efalse | Etau _ | Elam _
+  -> e
 ;;
 
 type goalness = int;;

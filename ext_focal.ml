@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.14 2008-12-02 16:30:22 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.15 2008-12-16 14:31:24 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -552,10 +552,10 @@ let built_in_defs =
   let xy = Expr.newvar () in
   let tx = Expr.newvar () in
   let ty = Expr.newvar () in
-  let case = eapp ("$match-case", [evar (Namespace.tuple_name); x]) in
+  let case = eapp ("$match-case", [evar ("Datatypes.pair"); x]) in
   [
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
-                  eapp (Namespace.tuple_name, [x; y])));
+                  eapp ("Datatypes.pair", [x; y])));
     Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
                   eapp ("$match", [xy; elam (x, "?", elam (y, "?", case))])));
     Def (DefReal ("snd", "basics.snd", [tx; ty; xy],
@@ -564,8 +564,8 @@ let built_in_defs =
                  ("List.nil", []);
                  ("List.cons", [Param "A"; Self]);
                ]);
-    Inductive ("prod", ["A"; "B"],
-               [ (Namespace.tuple_name, [Param "A"; Param "B"]) ]);
+    Inductive ("Datatypes.prod", ["A"; "B"],
+               [ ("Datatypes.pair", [Param "A"; Param "B"]) ]);
   ]
 ;;
 
@@ -660,6 +660,8 @@ and process_rule r =
   | Rnotall (e1, v) -> Rnotall (process_expr e1, v)
   | Rpnotp (e1, e2) -> Rpnotp (process_expr e1, process_expr e2)
   | Rnotequal (e1, e2) -> Rnotequal (process_expr e1, process_expr e2)
+  | Rcongruence (e1, e2, e3) ->
+     Rcongruence (process_expr e1, process_expr e2, process_expr e3)
   | Rdefinition (n, s, e1, e2) ->
       Rdefinition (n, s, process_expr e1, process_expr e2)
   | Rextension (s, el1, el2, ell) ->
@@ -678,7 +680,7 @@ let declare_context_coq oc =
    "basics.xor_b"; "basics._focop_eq_";
    "basics.pair"; "basics.fst"; "basics.snd";
    "true"; "false"; "FOCAL.ifthenelse" ;
-   "List.cons"; "List.nil";
+   "List.cons"; "List.nil"; "Datatypes.pair";
   ]
 ;;
 

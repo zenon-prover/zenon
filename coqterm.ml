@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.43 2008-12-05 15:23:08 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.44 2008-12-16 14:31:24 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -24,7 +24,6 @@ type coqterm =
   | Cwild
   | Cmatch of coqterm * (string * string list * coqterm) list
   | Cifthenelse of coqterm * coqterm * coqterm
-  | Ctuple of coqterm list
   | Cfix of string * string * coqterm
 ;;
 
@@ -124,8 +123,6 @@ let rec trexpr env e =
       Capp (Cfix (f, ty, trexpr env e1), List.map (trexpr env) args)
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       Cifthenelse (trexpr env e1, trexpr env e2, trexpr env e3)
-  | Eapp (f, args, _) when f = tuple_name ->
-      Ctuple (List.map (trexpr env) args)
   | Eapp (f, args, _) -> Capp (Cvar f, List.map (trexpr env) args)
   | Enot (e1, _) -> Cnot (trexpr env e1)
   | Eand (e1, e2, _) -> Cand (trexpr env e1, trexpr env e2)
@@ -181,11 +178,14 @@ let mkfixcase (c, args) =
   List.fold_left mklam (Clam ("x", Cwild, Cvar "x")) args
 ;;
 
-let rec common_prefix accu l1 l2 l3 =
-  match l1, l2, l3 with
-  | h1::t1, h2::t2, h3::t3 when Expr.equal h1 h2 ->
-      common_prefix (h1::accu) t1 t2 t3
-  | _, _, _ -> (List.rev accu, l1, l2, l3)
+let rec mk_eq_args gen pre post1 post2 =
+  match post1, post2 with
+  | [], [] -> []
+  | h1 :: t1, h2 :: t2 ->
+     let args x = List.rev_append pre (x :: t1) in
+     let ctx x = gen (args x) in
+     (ctx, h1, h2) :: mk_eq_args gen (h2 :: pre) t1 t2
+  | _ -> assert false
 ;;
 
 let rec trtree env node =
@@ -287,27 +287,23 @@ let rec trtree env node =
       Capp (Cvar "zenon_notex", [Cty ty; p; trexpr t; lam; concl])
   | Rnotex _ -> assert false
   | Rpnotp ((Eapp (p, args1, _) as pp),
-            (Enot (Eapp (q, args2, _) as qq, _) as nqq)) ->
-      assert (p = q);
-      let (common, args1, args2, hyps) = common_prefix [] args1 args2 hyps in
-      let pref = Capp (Cvar p, List.map trexpr common) in
-      let peq = Capp (Cvar "zenon_equal_base", [Cwild; pref]) in
-      let ppeqq = make_equals env peq pref args1 pref args2 hyps in
-      let vp = getv pp in
-      let vnq = getv nqq in
-      Capp (Cvar "zenon_pnotp", [tropt pp; tropt qq; ppeqq; vp; vnq])
+            (Enot (Eapp (q, args2, _), _) as nqq)) ->
+     assert (p = q);
+     let args = mk_eq_args (fun x -> eapp (p, x)) [] args1 args2 in
+     let base = getv nqq in
+     Capp (List.fold_right2 (mk_eq_node env) args hyps base, [getv pp])
   | Rpnotp _ -> assert false
   | Rnotequal ((Eapp (f, args1, _) as ff), (Eapp (g, args2, _) as gg)) ->
-      assert (f = g);
-      let (common, args1, args2, hyps) = common_prefix [] args1 args2 hyps in
-      let pref = Capp (Cvar f, List.map trexpr common) in
-      let feg = Capp (Cvar "zenon_equal_base", [Cwild; pref]) in
-      let ffegg = make_equals env feg pref args1 pref args2 hyps in
-      let fdg = getv (enot (eapp ("=", [ff; gg]))) in
-      let optf = tropt ff in
-      let optg = tropt gg in
-      Capp (Cvar "zenon_notequal", [Cwild; optf; optg; ffegg; fdg])
+     assert (f = g);
+     let gen x = enot (eapp ("=", [eapp (f, x); gg])) in
+     let args = mk_eq_args gen [] args1 args2 in
+     let base = Capp (Cvar "zenon_notnot",
+                      [Cwild; Capp (Cvar "refl_equal", [trexpr gg])])
+     in
+     let neq = enot (eapp ("=", [ff; gg])) in
+     Capp (List.fold_right2 (mk_eq_node env) args hyps base, [getv neq])
   | Rnotequal _ -> assert false
+  | Rcongruence _ -> assert false (* FIXME TODO *)
   | Rdefinition (name, sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
@@ -394,20 +390,15 @@ and tr_subtree_2 env l =
   | [t1; t2] -> (trtree env t1, trtree env t2)
   | _ -> assert false
 
-and make_equals env peq p argsp q argsq hyps =
-  match argsp, argsq, hyps with
-  | [], [], [] -> peq
-  | hp::tp, hq::tq, hh::th ->
-      let thp = trexpr env hp in
-      let thq = trexpr env hq in
-      let lam = mklam env (enot (eapp ("=", [hp; hq]))) (trtree env hh) in
-      let neweq = Capp (Cvar "zenon_equal_step",
-                        [Cwild; Cwild; p; q; thp; thq; peq; lam])
-      in
-      let newp = Capp (p, [thp]) in
-      let newq = Capp (q, [thq]) in
-      make_equals env neweq newp tp newq tq th
-  | _, _, _ -> assert false
+and mk_eq_node env (ctx, a, b) h sub =
+  if Expr.equal a b then sub else begin
+    let x = Expr.newname () in
+    let c = Clam (x, Cwild, trexpr env (ctx (evar x))) in
+    let aneb = enot (eapp ("=", [a; b])) in
+    let thyp = mklam env aneb (trtree env h) in
+    Capp (Cvar "zenon_subst",
+          [Cwild; c; trexpr env a; trexpr env b; thyp; sub])
+  end
 ;;
 
 let rec make_lambdas l term =
@@ -607,8 +598,6 @@ let pr_oc oc prefix t =
        bprintf b "(fix %s %a:%a:=%a)" f pr_lams lams pr_ty ty pr body
     | Cifthenelse (e1, e2, e3) ->
        bprintf b "(if %a then %a else %a)" pr e1 pr e2 pr e3;
-    | Ctuple (l) ->
-       bprintf b "(%a)" (pr_comma_list pr) l;
 
   and pr_lams b l =
     let f (v, ty) =

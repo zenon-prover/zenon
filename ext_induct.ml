@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.1 2008-12-05 15:23:08 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.2 2008-12-16 14:31:24 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -364,7 +364,7 @@ let to_llproof tr_expr mlp args =
             let x = Expr.newvar () in
             let proj = elam (x, "?", eapp ("$match", x :: cases)) in
             let node = {
-              conc = union tc (diff [hyp] accu.conc);
+              conc = union tc (diff accu.conc [hyp]);
               rule = Rextension ("zenon_induct_f_equal",
                                  [tr_expr xx; tr_expr yy; tr_expr proj],
                                  [tr_expr con], [ [hyp] ]);

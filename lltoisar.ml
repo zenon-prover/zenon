@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.17 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.18 2008-12-16 14:31:24 doligez Exp $";;
 
 open Printf;;
 
@@ -49,11 +49,11 @@ let rec p_list dict init printer sep oc l =
 let tr_infix s =
   match s with
   | "=" -> "="
-  | "TLA.cup" -> "\\\\cup"
-  | "TLA.cap" -> "\\\\cap"
-  | "TLA.setminus" -> "\\\\"
-  | "TLA.in" -> "\\\\in"
-  | "TLA.subseteq" -> "\\\\subseteq"
+  | "TLA.cup" -> "\\\\cup "
+  | "TLA.cap" -> "\\\\cap "
+  | "TLA.setminus" -> "\\\\ "
+  | "TLA.in" -> "\\\\in "
+  | "TLA.subseteq" -> "\\\\subseteq "
   | _ -> ""
 ;;
 
@@ -82,7 +82,7 @@ let rec p_expr dict oc e =
   | Evar (v, _) ->
       poc "%s" (tr_constant v);
   | Eapp (f, [e1; e2], _) when is_infix f ->
-      poc "(%a %s %a)" (p_expr dict) e1 (tr_infix f) (p_expr dict) e2;
+      poc "(%a%s%a)" (p_expr dict) e1 (tr_infix f) (p_expr dict) e2;
   | Eapp (f, l, _) ->
       poc "%s(%a)" (tr_prefix f) (p_expr_list dict) l;
   | Enot (e, _) ->
@@ -100,16 +100,16 @@ let rec p_expr dict oc e =
   | Efalse ->
       poc "FALSE";
   | Eall (Evar (x, _), _, e, _) ->
-      poc "(\\\\A %s : %a)" x (p_expr dict) e;
+      poc "(\\\\A %s:%a)" x (p_expr dict) e;
   | Eall _ -> assert false
   | Eex (Evar (x, _), _, e, _) ->
-      poc "(\\\\E %s : %a)" x (p_expr dict) e;
+      poc "(\\\\E %s:%a)" x (p_expr dict) e;
   | Eex _ -> assert false
   | Elam (Evar (x, _), _, e, _) ->
       poc "(\\<lambda>%s. %a)" x (p_expr dict) e;
   | Elam _ -> assert false
   | Etau (Evar (x, _), _, e, _) ->
-      poc "(CHOOSE %s : %a)" x (p_expr dict) e;
+      poc "(CHOOSE %s:%a)" x (p_expr dict) e;
   | Etau _ -> assert false
   | Emeta _ -> assert false
 
@@ -334,6 +334,17 @@ let rec p_tree i dict oc proof =
   | Rfalse ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s)\n" (getname efalse);
+  | Rcongruence (p, a, b) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let h0 = eapp ("=", [a; b]) in
+     let h1 = apply p a in
+     let c = apply p b in
+     iprintf i oc "have %s: \"%a\"" (getname c) (p_expr dict) c;
+     let dict2 = p_is dict oc c in
+     iprintf i oc "by (rule subst [of \"%a\" \"%a\" \"%a\", OF %s %s])\n"
+             (p_expr dict2) a (p_expr dict2) b (p_expr dict2) p
+             (getname h0) (getname h1);
+     p_tree i dict2 oc t;
 
 and p_alpha i dict oc lem h0 hs sub =
   let t = match sub with [t] -> t | _ -> assert false in

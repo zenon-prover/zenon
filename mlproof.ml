@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.9 2007-08-02 14:25:25 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.10 2008-12-16 14:31:24 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -42,6 +42,8 @@ type rule =
   | TransEq_sym of expr * expr * expr
 
   | Cut of expr
+  | Congruence of expr * expr * expr
+  | Miniscope of expr * expr * expr list
 
   | Ext of string * string * expr list
 ;;
@@ -223,6 +225,11 @@ let make_neql fa fb ns =
 
 let make_def d folded unfolded n0 =
   make_node [folded] (Definition (d, folded, unfolded)) [[unfolded]] [n0]
+;;
+
+let make_congr p a b n0 =
+  make_node [apply p a; eapp ("=", [a; b])] (Congruence (p, a, b))
+            [[apply p b]] [n0]
 ;;
 
 let make_cut p n0 n1 =

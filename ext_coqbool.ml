@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_coqbool.ml,v 1.22 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: ext_coqbool.ml,v 1.23 2008-12-16 14:31:24 doligez Exp $";;
 
 (* Extension for Coq's "bool" type. *)
 (* Symbols: Is_true, __g_and_b, __g_or_b, __g_not_b, __g_xor_b,
@@ -549,6 +549,8 @@ and process_rule r =
   | Rnotall (e1, v) -> Rnotall (process_expr e1, v)
   | Rpnotp (e1, e2) -> Rpnotp (process_expr e1, process_expr e2)
   | Rnotequal (e1, e2) -> Rnotequal (process_expr e1, process_expr e2)
+  | Rcongruence (e1, e2, e3) ->
+     Rcongruence (process_expr e1, process_expr e2, process_expr e3)
   | Rdefinition (n, s, e1, e2) ->
       Rdefinition (n, s, process_expr e1, process_expr e2)
   | Rextension (s, el1, el2, ell) ->

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.12 2008-11-03 14:17:25 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.13 2008-12-16 14:31:24 doligez Exp $  *)
 
 open Expr;;
 
@@ -193,6 +193,13 @@ type rule =
        Rx = Rnotequal (Eapp (f, [t1...tn]), Eapp (f, [u1...un]))
 
      ********************)
+
+  | Rcongruence of expr * expr * expr
+    (*
+           apply P b
+       ------------------ Rcongruence (P, a, b)
+         apply P a, a=b
+    *)
 
   | Rdefinition of string * string * expr * expr
     (*

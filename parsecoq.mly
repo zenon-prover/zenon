@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.25 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.26 2008-12-16 14:31:24 doligez Exp $";;
 
 open Printf;;
 
@@ -96,6 +96,11 @@ let mk_inductive name bindings constrs =
   in
   let f (cname, args) = (cname, List.map g args) in
   Inductive (name, args, List.map f constrs)
+;;
+
+let mk_pairs e l =
+  let f x y = eapp ("Datatypes.pair", [x; y]) in
+  List.fold_left f e l
 ;;
 
 %}
@@ -295,7 +300,7 @@ expr1:
       { eapp ($1, []) }
 
   | LPAREN_ expr comma_expr_list RPAREN_
-      { mk_apply (evar tuple_name, $2 :: $3) }
+      { mk_pairs $2 $3 }
 
   | LPAREN_ expr STAR_ expr RPAREN_
       { eapp ("*", [$2; $4]) }
@@ -333,13 +338,8 @@ pattern:
       { $2 }
   | IDENT idlist
       { ($1, $2) }
-  | LPAREN_ IDENT COMMA_ IDENT comma_ident_list RPAREN_
-      { (tuple_name, $2 :: $4 :: $5) }
-;
-
-comma_ident_list:
-  | /* empty */                    { [] }
-  | COMMA_ IDENT comma_ident_list  { $2 :: $3 }
+  | LPAREN_ IDENT COMMA_ IDENT RPAREN_
+      { ("Datatypes.pair", [$2; $4]) }
 ;
 
 bindings:

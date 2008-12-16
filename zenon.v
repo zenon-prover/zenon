@@ -1,7 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.7 2008-11-04 09:51:38 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.8 2008-12-16 14:31:24 doligez Exp $  *)
 
 Require Export Classical.
+
+Lemma zenon_notnot : forall P : Prop,
+  P -> (~ P -> False).
+Proof. tauto. Qed.
 
 Lemma zenon_nottrue :
   (~True -> False).
@@ -63,13 +67,10 @@ Lemma zenon_notall : forall (T : Type) (P : T -> Prop),
   (forall z : T, (~(P z) -> False)) -> (~(forall x : T, (P x)) -> False).
 Proof. intros T P Ha Hb. apply Hb. intro. apply NNPP. exact (Ha x). Qed.
 
-Lemma zenon_equal_base : forall (T : Type) (f : T), f = f.
-Proof. auto. Qed.
-
-Lemma zenon_equal_step :
-  forall (S T : Type) (fa fb : S -> T) (a b : S),
-  (fa = fb) -> (a <> b -> False) -> ((fa a) = (fb b)).
-Proof. intros. rewrite (NNPP (a = b)). congruence. auto. Qed.
+Lemma zenon_subst :
+  forall (T : Type) (P : T -> Prop) (a b : T),
+  (a <> b -> False) -> (P b -> False) -> (P a -> False).
+Proof. intros T P a b heq h1 h2. rewrite (NNPP (a = b)) in h2; auto. Qed.
 
 Lemma zenon_pnotp : forall P Q : Prop,
   (P = Q) -> (P -> ~Q -> False).
@@ -83,16 +84,25 @@ Ltac zenon_intro id :=
   intro id || let nid := fresh in (intro nid; clear nid)
 .
 
-Definition zenon_and_s := fun P Q a b => zenon_and P Q b a.
-Definition zenon_or_s := fun P Q a b c => zenon_or P Q b c a.
-Definition zenon_imply_s := fun P Q a b c => zenon_imply P Q b c a.
-Definition zenon_equiv_s := fun P Q a b c => zenon_equiv P Q b c a.
-Definition zenon_notand_s := fun P Q a b c => zenon_notand P Q b c a.
-Definition zenon_notor_s := fun P Q a b => zenon_notor P Q b a.
-Definition zenon_notimply_s := fun P Q a b => zenon_notimply P Q b a.
-Definition zenon_notequiv_s := fun P Q a b c => zenon_notequiv P Q b c a.
-Definition zenon_ex_s := fun T P a b => zenon_ex T P b a.
-Definition zenon_notall_s := fun T P a b => zenon_notall T P b a.
+Definition zenon_and_s := fun P Q c h => zenon_and P Q h c.
+Definition zenon_or_s := fun P Q c h i => zenon_or P Q h i c.
+Definition zenon_imply_s := fun P Q c h i => zenon_imply P Q h i c.
+Definition zenon_equiv_s := fun P Q c h i => zenon_equiv P Q h i c.
+Definition zenon_notand_s := fun P Q c h i => zenon_notand P Q h i c.
+Definition zenon_notor_s := fun P Q c h => zenon_notor P Q h c.
+Definition zenon_notimply_s := fun P Q c h => zenon_notimply P Q h c.
+Definition zenon_notequiv_s := fun P Q c h i => zenon_notequiv P Q h i c.
+Definition zenon_ex_s := fun T P c h => zenon_ex T P h c.
+Definition zenon_notall_s := fun T P c h => zenon_notall T P h c.
 
-Definition zenon_pnotp_s := fun P Q a b c => zenon_pnotp P Q c a b.
-Definition zenon_notequal_s := fun T a b x y => zenon_notequal T a b y x.
+Definition zenon_subst_s := fun T P x y c h i => zenon_subst T P x y h i c.
+Definition zenon_pnotp_s := fun P Q c h i => zenon_pnotp P Q h i c.
+Definition zenon_notequal_s := fun T x y c h => zenon_notequal T x y h c.
+
+Lemma zenon_equal_base : forall (T : Type) (f : T), f = f.
+Proof. auto. Qed.
+
+Lemma zenon_equal_step :
+  forall (S T : Type) (fa fb : S -> T) (a b : S),
+  (fa = fb) -> (a <> b -> False) -> ((fa a) = (fb b)).
+Proof. intros. rewrite (NNPP (a = b)). congruence. auto. Qed.

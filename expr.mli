@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.18 2008-11-24 15:28:27 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.19 2008-12-16 14:31:24 doligez Exp $  *)
 
 type private_info;;
 
@@ -88,6 +88,7 @@ val substitute : (expr * expr) list -> expr -> expr;;
 val substitute_2nd : (expr * expr) list -> expr -> expr;;
 val apply : expr -> expr -> expr;;
 exception Higher_order;;
+val remove_scope : expr -> expr;;
 
 val newvar : unit -> expr;;
 val newname : unit -> string;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.37 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.38 2008-12-16 14:31:24 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -109,6 +109,7 @@ let rec xtr_expr a =
   match a with
   | Evar (v, _) -> a
   | Emeta (e, _) -> evar (make_meta_name e)
+  | Eapp ("$scope", lam :: tau :: vals, _) -> tr_expr (apply lam tau)
   | Eapp (s, args, _) -> eapp (s, List.map tr_expr args)
 
   | Enot (p, _) -> enot (tr_expr p)
@@ -139,10 +140,10 @@ let tr_rule r =
   | NotOr (p, q) -> LL.Rnotconnect (LL.Or, tr_expr p, tr_expr q)
   | NotImpl (p, q) -> LL.Rnotconnect (LL.Imply, tr_expr p, tr_expr q)
   | NotAll (Enot (Eall (v, t, p, _) as pp, _)) ->
-      LL.Rnotall (tr_expr pp, make_tau_name (etau (v, t, enot (p))))
+      LL.Rnotall (tr_expr pp, make_tau_name (etau (v, t, enot (remove_scope p))))
   | NotAll _ -> assert false
   | Ex (Eex (v, t, p, _) as pp) ->
-      LL.Rex (tr_expr pp, make_tau_name (etau (v, t, p)))
+      LL.Rex (tr_expr pp, make_tau_name (etau (v, t, remove_scope p)))
   | Ex _ -> assert false
   | All (p, t) -> LL.Rall (tr_expr p, tr_expr t)
   | NotEx (Enot (p, _), t) -> LL.Rnotex (tr_expr p, tr_expr t)
@@ -159,6 +160,7 @@ let tr_rule r =
       LL.Rdefinition (name, sym, tr_expr folded, tr_expr unfolded)
 
   | Cut (p) -> LL.Rcut (tr_expr p)
+  | Congruence (p, a, b) -> LL.Rcongruence (tr_expr p, tr_expr a, tr_expr b)
 
   (* derived rules, handled by translate_derived: *)
   | ConjTree _
@@ -175,6 +177,7 @@ let tr_rule r =
   | TransEq2 _
   | TransEq_sym _
   | Definition (DefPseudo _, _, _)
+  | Miniscope _
     -> assert false
 
   | Close_refl (s, _) (* when s <> "=" *) -> assert false
@@ -268,6 +271,8 @@ let is_derived = function
     -> true
 
   | Cut _ -> false
+  | Congruence _ -> false
+  | Miniscope _ -> true
   | Ext _ -> true
 ;;
 
@@ -859,6 +864,18 @@ and translate_derived p =
       (n, union [Eqrel.get_trans_hyp s] ext)
   | Trans _ | Trans_sym _ | TransEq _ | TransEq2 _ | TransEq_sym _
     -> assert false
+  | Miniscope (lam, tau, vals) ->
+     let n_neq, n_eqs =
+       match Array.to_list p.mlhyps with
+       | h :: t -> (h, t)
+       | _ -> assert false
+     in
+     let f va n_eq n0 =
+       let n1 = make_congr lam tau va n_eq in
+       make_cut (eapp ("=", [tau; va])) n1 n0
+     in
+     let n2 = List.fold_right2 f vals n_eqs n_neq in
+     to_llproof n2
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in
       Extension.to_llproof tr_expr p sub
@@ -872,6 +889,7 @@ and translate_derived p =
   | NotEqual _
   | Definition (DefReal _, _, _)
   | Cut _
+  | Congruence _
     -> assert false
 
 and translate_pseudo_def p def_hyp s args body folded unfolded =

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.25 2008-11-25 14:08:11 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.26 2008-12-16 14:31:24 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -210,6 +210,8 @@ let get_rule_name = function
   | TransEq2 (e1, e2, e3) -> "TransEq2", [e1; e2; e3]
   | TransEq_sym (e1, e2, e3) -> "TransEq-sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
+  | Congruence (p, a, b) -> "Congruence", [p; a; b]
+  | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
 ;;
 
@@ -297,6 +299,8 @@ let hlrule_name = function
   | TransEq2 (e1, e2, e3) -> "TransEq2", [e1; e2; e3]
   | TransEq_sym (e1, e2, e3) -> "TransEq-sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
+  | Congruence (p, a, b) -> "Congruence", [p; a; b]
+  | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> ("Extension/"^th^"/"^ru), args
 ;;
 
@@ -368,80 +372,55 @@ let is_infix_op s =
   s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_'
 ;;
 
-let rec llproof_term o t =
-  let pr f = oprintf o f in
-  match t with
-  | Evar (v, _) -> pr "%s" v;
-  | Eapp (s, [e1; e2], _) when is_infix_op s
-  -> pr "(";
-     llproof_term o e1;
-     pr " %s " s;
-     llproof_term o e2;
-     pr ")";
-  | Eapp (s, args, _) -> pr "%s(" s; llproof_term_list o args; pr ")";
-  | Elam (v, t, b, _) ->
-     pr "(lambda %a, " print_vartype (v, t);
-     llproof_term o b;
-     pr ")";
-  | Efalse -> pr "false";
-  | Etrue -> pr "true";
-  | _ -> assert false
-
-and llproof_term_list o l =
-  match l with
-  | [] -> ()
-  | [t] -> llproof_term o t;
-  | t::ts -> llproof_term o t; oprintf o ", "; llproof_term_list o ts;
-;;
-
-let rec llproof_prop o pr =
+let rec llproof_expr o e =
   let pro f = oprintf o f in
-  match pr with
+  match e with
   | Efalse -> pro "false";
   | Etrue -> pro "true";
-  | Enot (p, _) -> pro "~"; llproof_prop o p;
+  | Enot (p, _) -> pro "~"; llproof_expr o p;
   | Eand (p1, p2, _) ->
       pro "(";
-      llproof_prop o p1;
+      llproof_expr o p1;
       pro " /\\ ";
-      llproof_prop o p2;
+      llproof_expr o p2;
       pro ")";
   | Eor (p1, p2, _) ->
       pro "(";
-      llproof_prop o p1;
+      llproof_expr o p1;
       pro " \\/ ";
-      llproof_prop o p2;
+      llproof_expr o p2;
       pro ")";
   | Eimply (p1, p2, _) ->
       pro "(";
-      llproof_prop o p1;
+      llproof_expr o p1;
       pro " => ";
-      llproof_prop o p2;
+      llproof_expr o p2;
       pro ")";
   | Eequiv (p1, p2, _) ->
       pro "(";
-      llproof_prop o p1;
+      llproof_expr o p1;
       pro " <=> ";
-      llproof_prop o p2;
+      llproof_expr o p2;
       pro ")";
   | Eall (v, t, p, _) ->
-      pro "All %a, " print_vartype (v, t); llproof_prop o p;
+      pro "All %a, " print_vartype (v, t); llproof_expr o p;
   | Eex (v, t, p, _) ->
-      pro "Ex %a, " print_vartype (v, t); llproof_prop o p;
+      pro "Ex %a, " print_vartype (v, t); llproof_expr o p;
   | Elam (v, t, p, _) ->
-      pro "(lambda %a, " print_vartype (v, t); llproof_prop o p;
-      pro ")";
-  | Eapp ("=", [t1; t2], _) ->
-      pro "(";
-      llproof_term o t1;
-      pro " = ";
-      llproof_term o t2;
-      pro ")";
+      pro "(lambda %a, " print_vartype (v, t); llproof_expr o p; pro ")";
+  | Eapp (s, [e1; e2], _) when is_infix_op s ->
+     pro "("; llproof_expr o e1; pro " %s " s; llproof_expr o e2; pro ")";
   | Eapp (s, [], _) -> pro "%s" s;
-  | Eapp (s, args, _) -> pro "%s(" s; llproof_term_list o args; pro ")";
+  | Eapp (s, args, _) -> pro "%s(" s; llproof_expr_list o args; pro ")";
   | Evar (s, _) -> pro "%s" s;
   | Emeta _ | Etau _
     -> assert false;
+
+and llproof_expr_list o l =
+  match l with
+  | [] -> ()
+  | [t] -> llproof_expr o t;
+  | t::ts -> llproof_expr o t; oprintf o ", "; llproof_expr_list o ts;
 ;;
 
 let binop_name = function
@@ -456,59 +435,67 @@ let llproof_rule o r =
   match r with
   | Rfalse -> pr "---false";
   | Rnottrue -> pr "---nottrue";
-  | Raxiom (p) -> pr "---axiom "; llproof_prop o p;
-  | Rcut (p) -> pr "---cut "; llproof_prop o p;
-  | Rnoteq (t) -> pr "---noteq "; llproof_term o t;
+  | Raxiom (p) -> pr "---axiom "; llproof_expr o p;
+  | Rcut (p) -> pr "---cut "; llproof_expr o p;
+  | Rnoteq (t) -> pr "---noteq "; llproof_expr o t;
   | Reqsym (t, u) ->
      pr "---eqsym (";
-     llproof_term o t;
+     llproof_expr o t;
      pr ", ";
-     llproof_term o u;
+     llproof_expr o u;
      pr ")";
-  | Rnotnot (p) -> pr "---notnot "; llproof_prop o p;
+  | Rnotnot (p) -> pr "---notnot "; llproof_expr o p;
   | Rconnect (op, p, q) ->
       pr "---connect (%s, " (binop_name op);
-      llproof_prop o p;
+      llproof_expr o p;
       pr ", ";
-      llproof_prop o q;
+      llproof_expr o q;
       pr ")";
   | Rnotconnect (op, p, q) ->
       pr "---notconnect (%s, " (binop_name op);
-      llproof_prop o p;
+      llproof_expr o p;
       pr ", ";
-      llproof_prop o q;
+      llproof_expr o q;
       pr ")";
-  | Rex (p, v) -> pr "---ex ("; llproof_prop o p; pr ", %s)" v;
+  | Rex (p, v) -> pr "---ex ("; llproof_expr o p; pr ", %s)" v;
   | Rall (p, t) ->
       pr "---all (";
-      llproof_prop o p;
+      llproof_expr o p;
       pr ", ";
-      llproof_term o t;
+      llproof_expr o t;
       pr ")";
   | Rnotex (p, t) ->
       pr "---notex (";
-      llproof_prop o p;
+      llproof_expr o p;
       pr ", ";
-      llproof_term o t;
+      llproof_expr o t;
       pr ")";
-  | Rnotall (p, v) -> pr "---notall ("; llproof_prop o p; pr ", %s)" v;
+  | Rnotall (p, v) -> pr "---notall ("; llproof_expr o p; pr ", %s)" v;
   | Rpnotp (p, q) ->
       pr "---pnotp (";
-      llproof_prop o p;
+      llproof_expr o p;
       pr ", ";
-      llproof_prop o q;
+      llproof_expr o q;
       pr ")";
   | Rnotequal (t, u) ->
       pr "---notequal (";
-      llproof_term o t;
+      llproof_expr o t;
       pr ", ";
-      llproof_term o u;
+      llproof_expr o u;
+      pr ")";
+  | Rcongruence (p, a, b) ->
+      pr "---congruence (";
+      llproof_expr o p;
+      pr ", ";
+      llproof_expr o a;
+      pr ", ";
+      llproof_expr o a;
       pr ")";
   | Rdefinition (name, sym, folded, unfolded) ->
       pr "---definition \"%s\" (%s)" name sym;
   | Rextension (name, args, c, hyps) ->
       pr "---extension (%s" name;
-      List.iter (fun x -> pr " "; llproof_prop o x) args;
+      List.iter (fun x -> pr " "; llproof_expr o x) args;
       pr ")";
   | Rlemma (name, args) ->
       pr "---lemma %s [ " name;
@@ -520,7 +507,7 @@ let nodes = ref 0;;
 
 let rec llproof_tree o i t =
   let pr = oprintf o in
-  let prop_space p = llproof_prop o p; pr "   "; in
+  let prop_space p = llproof_expr o p; pr "   "; in
   indent o i; List.iter prop_space t.conc; pr "\n";
   indent o i; llproof_rule o t.rule; pr "\n";
   List.iter (llproof_tree o (i+1)) t.hyps;
