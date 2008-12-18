@@ -76,11 +76,11 @@ ext_coqbool.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
 ext_coqbool.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
     llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
     ext_coqbool.cmi 
-ext_focal.cmo: version.cmi phrase.cmi node.cmi namespace.cmi mlproof.cmi \
-    misc.cmi llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
+ext_focal.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
     ext_focal.cmi 
-ext_focal.cmx: version.cmx phrase.cmx node.cmx namespace.cmx mlproof.cmx \
-    misc.cmx llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
+ext_focal.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
     ext_focal.cmi 
 ext_tla.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     index.cmi extension.cmi expr.cmi ext_tla.cmi 
@@ -110,8 +110,8 @@ lltoisar.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
     llproof.cmx index.cmx globals.cmx expr.cmx coqterm.cmx lltoisar.cmi 
 checksum.cmo: checksum.cmi 
 checksum.cmx: checksum.cmi 
-versionnum.cmo: versionnum.cmi 
-versionnum.cmx: versionnum.cmi 
+versionnum.cmo: version.cmi versionnum.cmi 
+versionnum.cmx: version.cmx versionnum.cmi 
 main.cmo: watch.cmi versionnum.cmi version.cmi tptp.cmi prove.cmi \
     progress.cmi print.cmi phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi \
     namespace.cmi mltoll.cmi lltoisar.cmi lltocoq.cmi llproof.cmi lexzen.cmi \
