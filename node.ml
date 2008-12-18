@@ -1,10 +1,11 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.15 2008-12-05 15:23:08 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.16 2008-12-18 17:00:41 doligez Exp $";;
 
 open Expr;;
 open Printf;;
 
 type priority =
+  | Prop
   | Arity
   | Arity_eq
   | Inst of expr
@@ -40,7 +41,8 @@ let relevant l = xrelevant [] l [];;
 *)
 
 type queue = {
-  nullary : node list;
+  prop1 : node list;
+  prop2 : node list;
   unary : node list;
   binary : node list;
   nary : node list;
@@ -73,7 +75,8 @@ let compare_nodes n1 n2 =
 ;;
 
 let empty = {
-  nullary = [];
+  prop1 = [];
+  prop2 = [];
   unary = [];
   binary = [];
   nary = [];
@@ -102,9 +105,13 @@ let insert_by_goalness l n =
 
 let insert q n =
   match n.nprio with
+  | Prop ->
+     if Array.length n.nbranches < 2
+     then {q with prop1 = n :: q.prop1}
+     else {q with prop2 = n :: q.prop2}
   | Arity ->
       begin match Array.length n.nbranches with
-      | 0 -> {q with nullary = n::q.nullary}
+      | 0 -> {q with prop1 = n::q.prop1}
       | 1 -> {q with unary = n::q.unary}
       | 2 -> {q with binary = n::q.binary}
       | _ -> {q with nary = n::q.nary}
@@ -197,7 +204,8 @@ let chain r1 r2 q =
 
 let rec remove q =
   match q with
-  | { nullary = h::t } -> Some (h, {q with nullary = t})
+  | { prop1 = h::t } -> Some (h, {q with prop1 = t})
+  | { prop2 = h::t } -> Some (h, {q with prop2 = t})
   | { unary = h::t } -> Some (h, {q with unary = t})
   | { binary = h::t } -> Some (h, {q with binary = t})
   | { nary = h::t } -> Some (h, {q with nary = t})
@@ -214,7 +222,8 @@ let rec last x l =
 
 let head q =
   match q with
-  | { nullary = h::t } -> Some h
+  | { prop1 = h::t } -> Some h
+  | { prop2 = h::t } -> Some h
   | { unary = h::t } -> Some h
   | { binary = h::t } -> Some h
   | { nary = h::t } -> Some h
@@ -226,7 +235,8 @@ let head q =
 ;;
 
 let size q =
-  sprintf "%d/%d/%d/%d/%d-%d/%d-%d" (List.length q.nullary)
+  sprintf "p1:%d p2:%d a1:%d a2:%d an:%d eq:%d-%d inst:%d-%d"
+          (List.length q.prop1) (List.length q.prop2)
           (List.length q.unary) (List.length q.binary)
           (List.length q.nary) (List.length q.eq_front) (List.length q.eq_back)
           (List.length q.inst_front)

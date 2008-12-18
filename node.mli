@@ -1,9 +1,10 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: node.mli,v 1.8 2008-10-22 11:51:04 doligez Exp $  *)
+(*  $Id: node.mli,v 1.9 2008-12-18 17:00:41 doligez Exp $  *)
 
 open Expr;;
 
 type priority =
+  | Prop
   | Arity
   | Arity_eq
   | Inst of expr

@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.14 2008-12-05 15:23:08 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.15 2008-12-18 17:00:41 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -131,7 +131,7 @@ let base_n s x =
     let b = String.length s in
     assert (x > 0);
     let rec conv x =
-      if x = 0 then "" else Printf.sprintf "%s%c" (conv (x / b)) s.[x mod 36]
+      if x = 0 then "" else Printf.sprintf "%s%c" (conv (x / b)) s.[x mod b]
     in
     conv x
   end

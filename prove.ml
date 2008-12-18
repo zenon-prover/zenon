@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.37 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.38 2008-12-18 17:00:41 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -151,7 +151,7 @@ let make_notequiv st sym (p, g) (np, ng) =
         add_node st {
           nconc = [p; np];
           nrule = myrule;
-          nprio = if s1 =%= "=" then Arity_eq else Arity;
+          nprio = Arity_eq;
           ngoal = min g ng;
           nbranches = make_inequals myargs1 args2;
         }
@@ -199,14 +199,14 @@ let newnodes_absurd st fm g =
   | Enot (p, _) when Index.member p -> add_node st {
       nconc = [fm; p];
       nrule = Close (p);
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
   | p when Index.member (enot p) -> add_node st {
       nconc = [p; enot p];
       nrule = Close (p);
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
@@ -218,14 +218,14 @@ let newnodes_closure st fm g =
   | Efalse -> add_node st {
       nconc = [fm];
       nrule = False;
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
   | Enot (Etrue, _) -> add_node st {
       nconc = [fm];
       nrule = NotTrue;
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
@@ -233,7 +233,7 @@ let newnodes_closure st fm g =
     add_node st {
       nconc = [fm];
       nrule = Close_refl (s, a);
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
@@ -242,7 +242,7 @@ let newnodes_closure st fm g =
     add_node st {
       nconc = [fm; (enot (eapp (s, [e2; e1])))];
       nrule = Close_sym (s, e1, e2);
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
@@ -251,7 +251,7 @@ let newnodes_closure st fm g =
     add_node st {
       nconc = [fm; (eapp (s, [e2; e1]))];
       nrule = Close_sym (s, e2, e1);
-      nprio = Arity;
+      nprio = Prop;
       ngoal = g;
       nbranches = [| |];
     }, true
@@ -265,7 +265,7 @@ let newnodes_jtree st fm g =
       add_node st {
         nconc = [fm];
         nrule = ConjTree fm;
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| decomp_conj false [] fm |];
       }, true
@@ -276,7 +276,7 @@ let newnodes_jtree st fm g =
       add_node st {
         nconc = [fm];
         nrule = DisjTree fm;
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = branches;
       }, true
@@ -289,7 +289,7 @@ let newnodes_alpha st fm g =
       add_node st {
         nconc = [fm];
         nrule = NotNot (a);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [a] |];
       }, true
@@ -297,7 +297,7 @@ let newnodes_alpha st fm g =
       add_node st {
         nconc = [fm];
         nrule = And (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [a; b] |];
       }, true
@@ -305,7 +305,7 @@ let newnodes_alpha st fm g =
       add_node st {
         nconc = [fm];
         nrule = NotOr (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [enot (a); enot (b)] |];
       }, true
@@ -313,7 +313,7 @@ let newnodes_alpha st fm g =
       add_node st {
         nconc = [fm];
         nrule = NotImpl (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [a; enot (b)] |];
       }, true
@@ -326,7 +326,7 @@ let newnodes_beta st fm g =
       add_node st {
         nconc = [fm];
         nrule = Or (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [a]; [b] |];
       }, true
@@ -334,7 +334,7 @@ let newnodes_beta st fm g =
       add_node st {
         nconc = [fm];
         nrule = Impl (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [enot (a)]; [b] |];
       }, true
@@ -342,7 +342,7 @@ let newnodes_beta st fm g =
       add_node st {
         nconc = [fm];
         nrule = NotAnd (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [enot (a)]; [enot (b)] |];
       }, true
@@ -350,7 +350,7 @@ let newnodes_beta st fm g =
       add_node st {
         nconc = [fm];
         nrule = Equiv (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [enot (a); enot (b)]; [a; b] |];
       }, true
@@ -358,7 +358,7 @@ let newnodes_beta st fm g =
       add_node st {
         nconc = [fm];
         nrule = NotEquiv (a, b);
-        nprio = Arity;
+        nprio = Prop;
         ngoal = g;
         nbranches = [| [enot (a); b]; [a; enot (b)] |];
       }, true
@@ -386,86 +386,110 @@ let andalso f1 x1 f2 x2 =
      | Some r2 -> Some (Expr.union r1 r2)
 ;;
 
-(* TODO : traiter TLA.cond et TLA.case *)
-(* Trop naif.  Ne pas s'arreter au premier /\, ni meme au premier $scope *)
+let interferes env vs =
+  let p ee =
+    let fv = get_fv ee in
+    List.exists (fun x -> List.mem x fv) env
+  in
+  List.exists p vs
+;;
+
+let has_free_var v e = List.mem v (get_fv e);;
+
+(* TODO : traiter TLA.cond et TLA.case ? *)
 let rec add_scope_p v tau e =
-  if not (List.mem (get_var_name v) (get_fv e)) then e else
   match e with
+  | _ when not (has_free_var v e) -> e
   | Enot (e1, _) -> enot (add_scope_n v tau e1)
   | Eor (e1, e2, _) -> eor (add_scope_p v tau e1, add_scope_p v tau e2)
   | Eimply (e1, e2, _) -> eimply (add_scope_n v tau e1, add_scope_n v tau e2)
   | Eex (w, t, e1, _) -> eex (w, t, add_scope_p v tau e1)
+  | Eand (e1, e2, _) when not (has_free_var v e1) ->
+     eand (e1, add_scope_p v tau e2)
+  | Eand (e1, e2, _) when not (has_free_var v e2) ->
+     eand (add_scope_p v tau e1, e2)
+  | Eapp ("$scope", Elam (w, t, e1, _) :: rest, _)
+    when not (List.exists (has_free_var v) rest) ->
+     eapp ("$scope", elam (w, t, add_scope_p v tau e1) :: rest)
   | _ ->
-     match get_values_p v e with
-     | None -> substitute [(v, tau)] e
-     | Some vs -> eapp ("$scope", elam (v, "?", e) :: tau :: vs)
+     match get_values_p [] v e with
+     | None -> substitute [(evar v, tau)] e
+     | Some vs -> eapp ("$scope", elam (evar v, "?", e) :: tau :: vs)
 
 and add_scope_n v tau e =
-  if not (List.mem (get_var_name v) (get_fv e)) then e else
   match e with
+  | _ when not (has_free_var v e) -> e
   | Enot (e1, _) -> enot (add_scope_p v tau e1)
   | Eand (e1, e2, _) -> eand (add_scope_n v tau e1, add_scope_n v tau e2)
   | Eall (w, t, e1, _) -> eall (w, t, add_scope_n v tau e1)
+  | Eor (e1, e2, _) when not (has_free_var v e1) ->
+     eor (e1, add_scope_n v tau e2)
+  | Eor (e1, e2, _) when not (has_free_var v e2) ->
+     eor (add_scope_n v tau e1, e2)
+  | Eimply (e1, e2, _) when not (has_free_var v e1) ->
+     eimply (e1, add_scope_n v tau e2)
+  | Eimply (e1, e2, _) when not (has_free_var v e2) ->
+     eimply (add_scope_p v tau e1, e2)
+  | Eapp ("$scope", Elam (w, t, e1, _) :: rest, _)
+    when not (List.exists (has_free_var v) rest) ->
+     eapp ("$scope", elam (w, t, add_scope_n v tau e1) :: rest)
   | _ ->
-     match get_values_n v e with
-     | None -> substitute [(v, tau)] e
-     | Some vs -> eapp ("$scope", elam (v, "?", e) :: tau :: vs)
+     match get_values_n [] v e with
+     | None -> substitute [(evar v, tau)] e
+     | Some vs -> eapp ("$scope", elam (evar v, "?", e) :: tau :: vs)
 
-and get_values_p v e =
-  if not (List.mem (get_var_name v) (get_fv e)) then None else
+and get_values_p env v e =
   match e with
-  | Eapp ("=", [v1; e1], _) when Expr.equal v1 v -> Some [e1]
-  | Eapp ("=", [e1; v1], _) when Expr.equal v1 v -> Some [e1]
-  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_p v (apply lam tau)
-  | Eapp ("TLA.in", [v1; s], _) when Expr.equal v1 v ->
-     begin match get_values_set [] s with
+  | _ when not (has_free_var v e) -> None
+  | Eapp ("=", [v1; e1], _) when Expr.equal v1 (evar v) ->
+     if interferes env [e1] then None else Some [e1]
+  | Eapp ("=", [e1; v1], _) when Expr.equal v1 (evar v) ->
+     if interferes env [e1] then None else Some [e1]
+  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_p env v (apply lam tau)
+  | Eapp ("TLA.in", [v1; s], _) when Expr.equal v1 (evar v) ->
+     begin match get_values_set s with
      | (_, true) -> None
+     | (vs, false) when interferes env vs -> None
      | (vs, false) -> Some vs
      end
-  | Enot (e1, _) -> get_values_n v e1
-  | Eand (e1, e2, _) -> orelse (get_values_p v) e1 (get_values_p v) e2
-  | Eor (e1, e2, _) -> andalso (get_values_p v) e1 (get_values_p v) e2
-  | Eimply (e1, e2, _) -> andalso (get_values_n v) e1 (get_values_p v) e2
+  | Enot (e1, _) -> get_values_n env v e1
+  | Eand (e1, e2, _) -> orelse (get_values_p env v) e1 (get_values_p env v) e2
+  | Eor (e1, e2, _) -> andalso (get_values_p env v) e1 (get_values_p env v) e2
+  | Eimply (e1, e2, _) ->
+     andalso (get_values_n env v) e1 (get_values_p env v) e2
   | Eequiv (e1, e2, _) -> None
-  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 v -> None
+  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 (evar v) -> None
   | Eall (Evar (nv1, _), t, e1, _)
   | Eex (Evar (nv1, _), t, e1, _)
-  -> let p ee = List.mem nv1 (get_fv ee) in
-     begin match get_values_p v e1 with
-     | None -> None
-     | Some vs when List.exists p vs -> None
-     | x -> x
-     end
+  -> get_values_p (nv1 :: env) v e1
   | _ -> None
 
-and get_values_n v e =
-  if not (List.mem (get_var_name v) (get_fv e)) then None else
+and get_values_n env v e =
   match e with
-  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_n v (apply lam tau)
-  | Enot (e1, _) -> get_values_p v e1
-  | Eand (e1, e2, _) -> andalso (get_values_n v) e1 (get_values_n v) e2
-  | Eor (e1, e2, _) -> orelse (get_values_n v) e1 (get_values_n v) e2
-  | Eimply (e1, e2, _) -> orelse (get_values_p v) e1 (get_values_n v) e2
+  | _ when not (has_free_var v e) -> None
+  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_n env v (apply lam tau)
+  | Enot (e1, _) -> get_values_p env v e1
+  | Eand (e1, e2, _) -> andalso (get_values_n env v) e1 (get_values_n env v) e2
+  | Eor (e1, e2, _) -> orelse (get_values_n env v) e1 (get_values_n env v) e2
+  | Eimply (e1, e2, _) -> orelse (get_values_p env v) e1 (get_values_n env v) e2
   | Eequiv (e1, e2, _) -> None
-  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 v -> None
+  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 (evar v) -> None
   | Eall (Evar (nv1, _), t, e1, _)
   | Eex (Evar (nv1, _), t, e1, _)
-  -> let p ee = not (List.mem nv1 (get_fv ee)) in
-     begin match get_values_n v e1 with
-     | None -> None
-     | Some vs when List.exists p vs -> None
-     | x -> x
-     end
+  -> get_values_n (nv1 :: env) v e1
   | _ -> None
 
-and get_values_set accu e =
+and get_values_set e =
   match e with
-  | Eapp ("TLA.upair", [e1; e2], _) -> (e1 :: e2 :: accu, false)
-  | Eapp ("TLA.add", [e1; e2], _) -> get_values_set (e1 :: accu) e2
+  | Eapp ("TLA.upair", [e1; e2], _) -> ([e1; e2], false)
+  | Eapp ("TLA.add", [e1; e2], _) ->
+     let (vs, rest) = get_values_set e2 in
+     (e1 :: vs, rest)
+  | Evar ("TLA.emptyset", _) -> ([], false)
   | Eapp ("TLA.union", [e1; e2], _) ->
-     let (vs1, rest1) = get_values_set accu e1 in
-     let (vs2, rest2) = get_values_set vs1 e2 in
-     (vs2, rest1 || rest2)
+     let (vs1, rest1) = get_values_set e1 in
+     let (vs2, rest2) = get_values_set e2 in
+     (vs1 @ vs2, rest1 || rest2)
 (*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
   | _ -> ([], true)
 ;;
@@ -475,49 +499,58 @@ let newnodes_delta st fm g =
   | Eex (v, t, p, _) ->
      let p1 = remove_scope p in
      let tau = etau (v, t, p1) in
-     let h = add_scope_p v tau p in
+     let h = add_scope_p (get_var_name v) tau p in
      add_node st {
        nconc = [fm];
        nrule = Ex (fm);
-       nprio = Arity;
+       nprio = Prop;
        ngoal = g;
        nbranches = [| [h] |];
      }, true
   | Enot (Eall (v, t, p, _), _) ->
      let np1 = enot (remove_scope p) in
      let tau = etau (v, t, np1) in
-     let h = enot (add_scope_n v tau p) in
+     let h = enot (add_scope_n (get_var_name v) tau p) in
      add_node st {
        nconc = [fm];
        nrule = NotAll (fm);
-       nprio = Arity;
+       nprio = Prop;
        ngoal = g;
        nbranches = [| [h] |];
      }, true
-  | Eapp ("$scope", lam :: tau :: vals, _) ->
-     let f1 va = [apply lam va] in
-     let heqs = List.map f1 vals in
-     let f2 va = enot (eapp ("=", [tau; va])) in
-     let hneq = remove_scope (apply lam tau) :: List.map f2 vals in
+  | Eapp ("$scope", [lam; tau; v1], _) ->
      add_node st {
        nconc = [fm];
-       nrule = Miniscope (lam, tau, vals);
-       nprio = Arity;
+       nrule = Miniscope (lam, tau, [v1]);
+       nprio = Prop;
        ngoal = g;
-       nbranches = Array.of_list (hneq :: heqs);
+       nbranches = [| [apply lam v1] |];
      }, true
-  | Enot (Eapp ("$scope", Elam (x, ty, e, _) :: tau :: vals, _), _) ->
-     let ne = enot (e) in
-     let f1 va = [substitute [(x, va)] ne] in
-     let heqs = List.map f1 vals in
-     let f2 va = enot (eapp ("=", [tau; va])) in
-     let hneq = remove_scope (substitute [(x, tau)] ne) :: List.map f2 vals in
+  | Eapp ("$scope", lam :: tau :: _, _) ->
      add_node st {
        nconc = [fm];
-       nrule = Miniscope (elam (x, ty, ne), tau, vals);
-       nprio = Arity;
+       nrule = Miniscope (lam, tau, []);
+       nprio = Prop;
        ngoal = g;
-       nbranches = Array.of_list (hneq :: heqs);
+       nbranches = [| [apply lam tau] |];
+     }, true
+  | Enot (Eapp ("$scope", [Elam (x, ty, e1, _); tau; v1], _), _) ->
+     let lam = elam (x, ty, enot (e1)) in
+     add_node st {
+       nconc = [fm];
+       nrule = Miniscope (lam, tau, [v1]);
+       nprio = Prop;
+       ngoal = g;
+       nbranches = [| [apply lam v1] |];
+     }, true
+  | Enot (Eapp ("$scope", Elam (x, ty, e1, _) :: tau :: _, _), _) ->
+     let lam = elam (x, ty, enot (e1)) in
+     add_node st {
+       nconc = [fm];
+       nrule = Miniscope (lam, tau, []);
+       nprio = Prop;
+       ngoal = g;
+       nbranches = [| [apply lam tau] |];
      }, true
   | _ -> st, false
 ;;
@@ -528,7 +561,7 @@ let newnodes_gamma_bounded st fm g =
           (Eimply (Eapp ("TLA.in",
                          [vv; Eapp ("TLA.add", _, _) as s], _), _, _) as p), _)
     when Extension.is_active "tla" ->
-     let (elems, rest) = get_values_set [] s in
+     let (elems, rest) = get_values_set s in
      let mknode st elem =
        add_node st {
          nconc = [fm];
@@ -545,7 +578,7 @@ let newnodes_gamma_bounded st fm g =
                              Eapp ("TLA.add", _, _) as s], _), _, _)
                   as p), _), _)
     when Extension.is_active "tla" ->
-     let (elems, rest) = get_values_set [] s in
+     let (elems, rest) = get_values_set s in
      let mknode st elem =
        add_node st {
          nconc = [fm];
@@ -688,7 +721,7 @@ let newnodes_match_congruence st fm g =
         add_node st {
           nconc = [fm];
           nrule = NotEqual (e1, e2);
-          nprio = Arity;
+          nprio = Arity_eq;
           ngoal = g;
           nbranches = make_inequals a1 a2;
         }, false

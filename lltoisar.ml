@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.18 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.19 2008-12-18 17:00:41 doligez Exp $";;
 
 open Printf;;
 
@@ -17,6 +17,7 @@ let rec dict_addlist l d =
 ;;
 
 let dict_add x d = Dict.add x d;;
+let dict_rm x d = Dict.remove x d;;
 
 let dict_mem x d = Dict.mem x d;;
 
@@ -29,7 +30,7 @@ let iprintf i oc fmt (* args *) =
 
 let iinc i = if i >= 15 then i else i+1;;
 
-let getname e = "z_H" ^ (base36 (Index.get_number e));;
+let getname e = "z_H" ^ (base26 (Index.get_number e));;
 
 let apply lam arg =
   match lam with
@@ -73,14 +74,17 @@ let tr_prefix s =
 ;;
 
 let rec p_expr dict oc e =
+  (* Note: do not use naming for plain variables, it's not shorter.
+     Also, by not naming variables we don't need to worry about
+     bound variables in Eall, Eex, Elam and Etau *)
   let poc fmt = fprintf oc fmt in
-  if dict_mem (getname e) dict then
-    poc "?%s" (getname e)
-  else match e with
+  match e with
   | Evar (v, _) when Mltoll.is_meta v ->
       poc "(CHOOSE x : TRUE)";
   | Evar (v, _) ->
       poc "%s" (tr_constant v);
+  | _ when dict_mem (getname e) dict ->
+      poc "?%s" (getname e)
   | Eapp (f, [e1; e2], _) when is_infix f ->
       poc "(%a%s%a)" (p_expr dict) e1 (tr_infix f) (p_expr dict) e2;
   | Eapp (f, l, _) ->

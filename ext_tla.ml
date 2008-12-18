@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.19 2008-11-27 14:19:05 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.20 2008-12-18 17:00:41 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -53,6 +53,15 @@ let is_fcn_expr e =
   | _ -> false
 ;;
 
+let mkbranches hs = Array.of_list (List.map (fun x -> [x]) hs);;
+
+let rec decompose_add e =
+  match e with
+  | Eapp ("TLA.add", [e1; e2], _) ->
+     let (l, rest) = decompose_add e2 in (e1 :: l, rest)
+  | _ -> ([], e)
+;;
+
 let newnodes_prop e g =
   let mknode prio name args branches =
     [ Node {
@@ -103,14 +112,22 @@ let newnodes_prop e g =
     let h2 = enot (eapp ("=", [e1; e3])) in
     mknode Arity "notin_upair" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
 
-  | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _) ->
-     let h1 = eapp ("=", [e1; e2]) in
-     let h2 = eapp ("TLA.in", [e1; e3]) in
-     mknode Arity "in_add" [e; h1; h2; e1; e2; e3] [| [h1]; [h2] |]
-  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _), _) ->
-     let h1 = enot (eapp ("=", [e1; e2])) in
-     let h2 = enot (eapp ("TLA.in", [e1; e3])) in
-     mknode Arity "notin_add" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _) as s], _) ->
+     let (elems, rest) = decompose_add s in
+     let helems = List.map (fun x -> eapp ("=", [e1; x])) elems in
+     let hs =
+       if Expr.equal rest (evar "TLA.emptyset") then helems
+       else helems @ [eapp ("TLA.in", [e1; rest])]
+     in
+     mknode Arity "in_add" [e; e1; s] (mkbranches hs)
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _) as s], _), _) ->
+     let (elems, rest) = decompose_add s in
+     let helems = List.map (fun x -> enot (eapp ("=", [e1; x]))) elems in
+     let hs =
+       if Expr.equal rest (evar "TLA.emptyset") then helems
+       else enot (eapp ("TLA.in", [e1; rest])) :: helems
+     in
+     mknode Arity "notin_add" [e; e1; s] [| hs |]
 
   (* infinity -- needed ? *)
 
@@ -406,8 +423,6 @@ let to_llargs r =
   | Ext (_, "in_emptyset", [c; e1]) -> ("zenon_in_emptyset", [e1], [c], [])
   | Ext (_, "in_upair", _) -> beta r
   | Ext (_, "notin_upair", _) -> alpha r
-  | Ext (_, "in_add", _) -> beta r
-  | Ext (_, "notin_add", _) -> alpha r
   | Ext (_, "in_cup", _) -> beta r
   | Ext (_, "notin_cup", _) -> alpha r
   | Ext (_, "in_cap", _) -> alpha r
@@ -441,20 +456,89 @@ let to_llargs r =
   | _ -> assert false
 ;;
 
+let is_simple r =
+  match r with
+  | Ext (_, "in_add", _) -> false
+  | Ext (_, "notin_add", _) -> false
+  | _ -> true
+;;
+
 let to_llproof tr_expr mlp args =
-  let (name, meta, con, hyps) = to_llargs mlp.mlrule in
-  let tmeta = List.map tr_expr meta in
-  let tcon = List.map tr_expr con in
-  let thyps = List.map (List.map tr_expr) hyps in
-  let (subs, exts) = List.split (Array.to_list args) in
-  let ext = List.fold_left Expr.union [] exts in
-  let extras = Expr.diff ext mlp.mlconc in
-  let nn = {
-      Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
-      Llproof.rule = Llproof.Rextension (name, tmeta, tcon, thyps);
-      Llproof.hyps = subs;
-    }
-  in (nn, extras)
+  match mlp.mlrule with
+  | Ext (_, "in_add", [c; x; s]) ->
+     let subexts = Array.to_list args in
+     let tre = tr_expr in
+     let trl l = List.map tr_expr l in
+     let rec mkproof s subexts myconc =
+       match s, subexts with
+       | Evar ("TLA.emptyset", _), _ ->
+         let tconc = tre (eapp ("TLA.in", [x; s])) in
+         let n0 = {
+           Llproof.conc = trl myconc;
+           Llproof.rule = Llproof.Rextension ("zenon_in_emptyset",
+                                              [tre x], [tconc], []);
+           Llproof.hyps = [];
+         } in
+         (n0, [])
+       | Eapp ("TLA.add", [y; s1], _), ((sub, ext) :: t) ->
+          let concl = eapp ("TLA.in", [x; s]) in
+          let h1 = eapp ("=", [x; y]) in
+          let h2 = eapp ("TLA.in", [x; s1]) in
+          let (sub1, ext1) = mkproof s1 t (h2 :: myconc) in
+          let extras = Expr.diff (Expr.union ext ext1) myconc in
+          let n0 = {
+            Llproof.conc = trl (extras @@ myconc);
+            Llproof.rule = Llproof.Rextension ("zenon_in_add",
+                                               trl [x; y; s1], [tre concl],
+                                               [ [tre h1]; [tre h2] ]);
+            Llproof.hyps = [sub; sub1];
+          } in
+          (n0, extras)
+        | _, [subext] -> subext
+        | _ -> assert false
+     in
+     mkproof s subexts mlp.mlconc
+  | Ext (_, "notin_add", [c; x; s]) ->
+     let (sub, ext) =
+       match args with
+       | [| (sub, ext) |] -> (sub, ext)
+       | _ -> assert false
+     in
+     let tre = tr_expr in
+     let trl l = List.map tr_expr l in
+     let rec mkproof s myconc =
+       match s with
+       | Eapp ("TLA.add", [y; s1], _) ->
+          let concl = enot (eapp ("TLA.in", [x; s])) in
+          let h1 = enot (eapp ("=", [x; y])) in
+          let h2 = enot (eapp ("TLA.in", [x; s1])) in
+          let (sub1, ext1) = mkproof s1 (h1 :: h2 :: myconc) in
+          let extras = Expr.diff ext1 myconc in
+          let n0 = {
+            Llproof.conc = trl (extras @@ myconc);
+            Llproof.rule = Llproof.Rextension ("zenon_notin_add",
+                                               trl [x; y; s1], [tre concl],
+                                               [ trl [h1; h2] ]);
+            Llproof.hyps = [sub1];
+          } in
+          (n0, extras)
+       | _ -> (sub, ext)
+     in
+     mkproof s mlp.mlconc
+  | _ ->
+     let (name, meta, con, hyps) = to_llargs mlp.mlrule in
+     let tmeta = List.map tr_expr meta in
+     let tcon = List.map tr_expr con in
+     let thyps = List.map (List.map tr_expr) hyps in
+     let (subs, exts) = List.split (Array.to_list args) in
+     let ext = List.fold_left Expr.union [] exts in
+     let extras = Expr.diff ext mlp.mlconc in
+     let nn = {
+         Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
+         Llproof.rule = Llproof.Rextension (name, tmeta, tcon, thyps);
+         Llproof.hyps = subs;
+       }
+     in (nn, extras)
 ;;
 
 let preprocess l = l;;

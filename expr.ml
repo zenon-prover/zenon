@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.29 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.30 2008-12-18 17:00:41 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -541,7 +541,7 @@ let apply f a =
 
 let rec remove_scope e =
   match e with
-  | Eapp ("$scope", e1 :: t :: vals, _) -> apply e1 t
+  | Eapp ("$scope", e1 :: t :: vals, _) -> remove_scope (apply e1 t)
   | Eapp (f, args, _) -> e
   | Enot (e1, _) -> enot (remove_scope e1)
   | Eand (e1, e2, _) -> eand (remove_scope e1, remove_scope e2)

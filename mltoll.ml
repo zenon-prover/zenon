@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.38 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.39 2008-12-18 17:00:41 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -698,6 +698,57 @@ let expand_trans_equal a b c d n1 n2 =
   n4
 ;;
 
+let orelse f1 a1 f2 a2 =
+  match f1 a1 with
+  | None -> f2 a2
+  | x -> x
+;;
+
+let option_map f o =
+  match o with
+  | Some x -> Some (f x)
+  | None -> None
+;;
+
+let rec refute_scope e tau va =
+  match e with
+  | Eand (e1, e2, _) ->
+     let n0 = orelse (refute_scope e1 tau) va (refute_scope e2 tau) va in
+     option_map (make_and e1 e2) n0
+  | Enot (Enot (e1, _), _) ->
+     let n0 = refute_scope e1 tau va in
+     option_map (make_nn e1) n0
+  | Enot (Eor (e1, e2, _), _) ->
+     let n0 = orelse (refute_scope (enot e1) tau) va
+                     (refute_scope (enot e2) tau) va
+     in
+     option_map (make_nor e1 e2) n0
+  | Enot (Eimply (e1, e2, _), _) ->
+     let n0 = orelse (refute_scope e1 tau) va
+                     (refute_scope (enot e2) tau) va
+     in
+     option_map (make_nimpl e1 e2) n0
+  | Eex (v, t, e1, _) ->
+     let e2 = substitute [(v, etau (v, t, e1))] e1 in
+     let n0 = refute_scope e2 tau va in
+     option_map (make_ex e) n0
+  | Enot (Eall (v, t, e1, _), _) ->
+     let e2 = enot (substitute [(v, etau (v, t, enot e1))] e1) in
+     let n0 = refute_scope e2 tau va in
+     option_map (make_nall e) n0
+  | Eapp ("=", [e1; e2], _) when Expr.equal e1 tau && Expr.equal e2 va ->
+     Some (make_cl e)
+  | Eapp ("=", [e1; e2], _) when Expr.equal e1 va && Expr.equal e2 tau ->
+     Some (make_cls "=" e1 e2)
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _)
+    when Expr.equal e1 tau && Expr.equal e2 va ->
+     let n0 = refute_scope (eapp ("TLA.in", [e1; e3])) tau va in
+     assert false (* FIXME TODO *)
+  | Eapp ("TLA.in", [e1; Evar ("TLA.emptyset", _)], _) when Expr.equal e1 tau ->
+     Some (make_node [e] (Ext ("tla", "in_emptyset", [e; tau])) [] [])
+  | _ -> None
+;;
+
 let rec to_llproof p =
   if p.mlrefc < 0 then
     get_lemma p
@@ -864,18 +915,27 @@ and translate_derived p =
       (n, union [Eqrel.get_trans_hyp s] ext)
   | Trans _ | Trans_sym _ | TransEq _ | TransEq2 _ | TransEq_sym _
     -> assert false
-  | Miniscope (lam, tau, vals) ->
-     let n_neq, n_eqs =
-       match Array.to_list p.mlhyps with
-       | h :: t -> (h, t)
+  | Miniscope (Elam (v, ty, e1, _) as lam, tau, [va]) ->
+     let n_eq =
+       match p.mlhyps with
+       | [| h |] -> h
        | _ -> assert false
      in
-     let f va n_eq n0 =
-       let n1 = make_congr lam tau va n_eq in
-       make_cut (eapp ("=", [tau; va])) n1 n0
+     let n0 =
+       let body = remove_scope (substitute [(v, tau)] e1) in
+       match refute_scope body tau va with
+       | Some n0 -> n0
+       | _ -> assert false
      in
-     let n2 = List.fold_right2 f vals n_eqs n_neq in
+     let n1 = make_congr lam tau va n_eq in
+     let n2 = make_cut (eapp ("=", [tau; va])) n1 n0 in
      to_llproof n2
+  | Miniscope (lam, tau, []) ->
+     begin match p.mlhyps with
+     | [| h1 |] -> to_llproof h1
+     | _ -> assert false
+     end
+  | Miniscope _ -> assert false
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in
       Extension.to_llproof tr_expr p sub
