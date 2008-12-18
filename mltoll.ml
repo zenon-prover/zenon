@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.39 2008-12-18 17:00:41 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.40 2008-12-18 17:07:53 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -742,7 +742,7 @@ let rec refute_scope e tau va =
      Some (make_cls "=" e1 e2)
   | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _)], _)
     when Expr.equal e1 tau && Expr.equal e2 va ->
-     let n0 = refute_scope (eapp ("TLA.in", [e1; e3])) tau va in
+     let _n0 = refute_scope (eapp ("TLA.in", [e1; e3])) tau va in
      assert false (* FIXME TODO *)
   | Eapp ("TLA.in", [e1; Evar ("TLA.emptyset", _)], _) when Expr.equal e1 tau ->
      Some (make_node [e] (Ext ("tla", "in_emptyset", [e; tau])) [] [])
