@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.32 2008-12-19 10:41:21 weis Exp $
+#  $Id: configure,v 1.33 2008-12-19 11:43:49 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
@@ -11,33 +11,36 @@ check () {
 PREFIX=/usr/local
 DEBUG=true
 
-SUM=sum
-CONVERT=convert
-COQC=coqc
-GS=gs
+DEFAULT_SUM=sum
+DEFAULT_CONVERT=convert
+DEFAULT_COQC=coqc
+DEFAULT_GS=gs
 
 BYT_DEBUG_FLAGS="-g -dtypes"
 BIN_DEBUG_FLAGS="-dtypes"
+
+DEFAULT_CAML_BYT=ocamlc
+DEFAULT_CAML_BIN=ocamlopt
+DEFAULT_CAML_YAC=ocamlyacc
+DEFAULT_CAML_LEX=ocamllex
+
+DEFAULT_USE_COQC=false
+DEFAULT_COQRC="$HOME/.coqrc"
 
 set_dirs () {
   BIN_DIR="${PREFIX}/bin"
   LIB_DIR="${PREFIX}/lib"
 }
 
-set_dirs
-
-set_external_tools () {
-  if check $SUM; then :; else SUM=:; fi
-  if check $CONVERT; then :; else CONVERT=:; fi
-  if check $COQC; then :; else COQC=:; fi
-  if check $GS; then :; else GS=:; fi
+set_sum_default () {
+ for i in sum md5 md5sum md5deep sha1deep sha256deep; do
+   if check $i; then DEFAULT_SUM=$i; break; fi
+ done
 }
 
-for i in sum md5 md5sum md5deep sha1deep sha256deep; do
-  if check $i; then SUM=$i; break; fi
-done
+set_dirs
 
-set_external_tools
+set_sum_default
 
 while : ; do
   case $# in 0) break;; esac
@@ -45,6 +48,8 @@ while : ; do
     -prefix | --prefix) PREFIX="$2"; set_dirs; shift 2;;
     -bindir | --bindir) BIN_DIR="$2"; shift 2;;
     -libdir | --libdir) LIB_DIR="$2"; shift 2;;
+    -caml_byt | --caml_byt) CAML_BYT="$2"; shift 2;;
+    -caml_bin | --caml_bin) CAML_BIN="$2"; shift 2;;
     -coqc | --coqc) COQC="$2"; shift 2;;
     -coqrc | --coqrc) COQRC="$2"; shift 2;;
     -use_coqc | --use_coqc) USE_COQC="$2"; shift 2;;
@@ -62,12 +67,20 @@ while : ; do
        echo "    set the library directory for installation (default ${LIB_DIR})"
        echo "  [-]-prefix <directory>"
        echo "    set the directory prefix for installation (default ${PREFIX})"
-       echo "  [-]-convert <executable-file>"
-       echo "    set absolute path for the command convert."
+       echo "  [-]-caml_byt <executable-file>"
+       echo "    set absolute path for the Caml byte code compiler."
+       echo "  [-]-caml_bin <executable-file>"
+       echo "    set absolute path for the Caml binary compiler."
+       echo "  [-]-use_coqc <boolean>"
+       echo "    set if coqc must be used to verify the proofs given by zenon."
        echo "  [-]-coqc <executable-file>"
        echo "    set absolute path for the command coqc."
+       echo "  [-]-coqrc <file>"
+       echo "    set absolute path for coqrc, the startup file for coqc."
        echo "  [-]-debug | [-]-enable-debug"
        echo "    enable debugging"
+       echo "  [-]-convert <executable-file>"
+       echo "    set absolute path for the command convert."
        echo "  [-]-gs <executable-file>"
        echo "    set absolute path for the command gs."
        echo "  [-]-nodebug | --disable-debug"
@@ -93,15 +106,34 @@ else
   BIN_DEBUG_FLAGS=
 fi
 
+set_external_tools () {
+  if check $SUM; then :; else SUM="${DEFAULT_SUM}"; fi
+  if check $CONVERT; then :; else CONVERT="${DEFAULT_CONVERT}"; fi
+  if check $GS; then :; else GS="${DEFAULT_GS}"; fi
+  if test -z $CAML_BYT; then CAML_BYT="${DEFAULT_CAML_BYT}"; fi
+  if test -z $CAML_BIN; then CAML_BIN="${DEFAULT_CAML_BIN}"; fi
+  if test -z $CAML_LEX; then CAML_LEX="${DEFAULT_CAML_LEX}"; fi
+  if test -z $CAML_YAC; then CAML_YAC="${DEFAULT_CAML_YAC}"; fi
+  if test -z $COQC; then COQC="${DEFAULT_COQC}"; fi
+  if test -z $COQRC; then COQRC="${DEFAULT_COQRC}"; fi
+  if test -z $USE_COQC; then USE_COQC="${DEFAULT_USE_COQC}"; fi
+}
+
 set_external_tools
 
 sed -e "s,@PREFIX@,$PREFIX," \
     -e "s,@BIN_DIR@,$BIN_DIR," \
     -e "s,@LIB_DIR@,$LIB_DIR," \
+    -e "s,@CAML_BYT@,$CAML_BYT," \
+    -e "s,@CAML_BIN@,$CAML_BIN," \
+    -e "s,@CAML_LEX@,$CAML_LEX," \
+    -e "s,@CAML_YAC@,$CAML_YAC," \
     -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
     -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
-    -e "s,@CONVERT@,$CONVERT," \
     -e "s,@COQC@,$COQC," \
+    -e "s,@COQRC@,$COQRC," \
+    -e "s,@USE_COQC@,$USE_COQC," \
+    -e "s,@CONVERT@,$CONVERT," \
     -e "s,@GS@,$GS," \
     -e "s,@SUM@,$SUM," \
     <.config_var.in >.config_var
