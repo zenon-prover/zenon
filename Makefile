@@ -1,19 +1,19 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.60 2008-12-09 09:46:07 doligez Exp $
+#  $Id: Makefile,v 1.61 2008-12-22 09:02:15 weis Exp $
+
+# Reading configuration settings.
+include .config_var
 
 # staging directory for package managers
 DESTDIR = ""
 
 CAMLFLAGS = -warn-error A
 
-CAMLOPT = ocamlopt
+# Variables CAMLC, CAMLOPT, CAMLLEX, CAMLYACC are defined at configuration time
+# their value is recorded in .config_var
 CAMLOPTFLAGS = ${CAMLFLAGS} ${BIN_DEBUG_FLAGS}
 
-CAMLC = ocamlc
 CAMLCFLAGS = ${CAMLFLAGS} ${BYT_DEBUG_FLAGS}
-
-CAMLLEX = ocamllex
-CAMLYACC = ocamlyacc
 
 
 # SOURCES specifies both the list of source files and the set of
@@ -59,8 +59,6 @@ OBJBYT = ${MODULES:%=%.cmo}
 OBJOPT = ${MODULES:%=%.cmx}
 
 COQOBJ = ${COQSRC:%.v=%.vo}
-
-include .config_var
 
 .PHONY: all coq byt opt
 
