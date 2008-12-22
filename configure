@@ -1,51 +1,70 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.33 2008-12-19 11:43:49 weis Exp $
+#  $Id: configure,v 1.34 2008-12-22 09:01:19 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
 }
 
 # Default settings
-PREFIX=/usr/local
-DEBUG=true
 
-DEFAULT_SUM=sum
-DEFAULT_CONVERT=convert
-DEFAULT_COQC=coqc
-DEFAULT_GS=gs
+DEFAULT_DEBUG=true
 
-BYT_DEBUG_FLAGS="-g -dtypes"
-BIN_DEBUG_FLAGS="-dtypes"
+# General defaults for the package installation.
+DEFAULT_PREFIX=/usr/local
 
+DEFAULT_LIB_DIR="${DEFAULT_PREFIX}/lib"
+DEFAULT_BIN_DIR="${DEFAULT_PREFIX}/bin"
+
+# Defaults for Caml.
 DEFAULT_CAML_BYT=ocamlc
 DEFAULT_CAML_BIN=ocamlopt
 DEFAULT_CAML_YAC=ocamlyacc
 DEFAULT_CAML_LEX=ocamllex
+DEFAULT_BYT_DEBUG_FLAGS="-g -dtypes"
+DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
 
+# Defaults for Coq.
 DEFAULT_USE_COQC=false
 DEFAULT_COQRC="$HOME/.coqrc"
+DEFAULT_COQC=coqc
 
-set_dirs () {
-  BIN_DIR="${PREFIX}/bin"
-  LIB_DIR="${PREFIX}/lib"
-}
+# Defaults external commands
+DEFAULT_SUM=sum
+DEFAULT_CONVERT=convert
+DEFAULT_GS=gs
 
-set_sum_default () {
+set_default_sum () {
  for i in sum md5 md5sum md5deep sha1deep sha256deep; do
    if check $i; then DEFAULT_SUM=$i; break; fi
  done
 }
 
-set_dirs
+set_default_convert () {
+  if check ${DEFAULT_CONVERT}; then :;
+  else DEFAULT_CONVERT=:;
+  fi
+}
 
-set_sum_default
+set_default_gs () {
+  if check ${DEFAULT_GS}; then :;
+  else DEFAULT_GS=:;
+  fi
+}
+
+set_command_defaults () {
+  set_default_sum;
+  set_default_convert;
+  set_default_gs;
+}
+
+set_command_defaults
 
 while : ; do
   case $# in 0) break;; esac
   case "$1" in
-    -prefix | --prefix) PREFIX="$2"; set_dirs; shift 2;;
+    -prefix | --prefix) PREFIX="$2"; shift 2;;
     -bindir | --bindir) BIN_DIR="$2"; shift 2;;
     -libdir | --libdir) LIB_DIR="$2"; shift 2;;
     -caml_byt | --caml_byt) CAML_BYT="$2"; shift 2;;
@@ -99,17 +118,17 @@ while : ; do
 done
 
 if $DEBUG; then
-  BYT_DEBUG_FLAGS="-g -dtypes"
-  BIN_DEBUG_FLAGS="-dtypes"
+  BYT_DEBUG_FLAGS=${DEFAULT_BYT_DEBUG_FLAGS}
+  BIN_DEBUG_FLAGS=${DEFAULT_BIN_DEBUG_FLAGS}
 else
   BYT_DEBUG_FLAGS=
   BIN_DEBUG_FLAGS=
 fi
 
 set_external_tools () {
-  if check $SUM; then :; else SUM="${DEFAULT_SUM}"; fi
-  if check $CONVERT; then :; else CONVERT="${DEFAULT_CONVERT}"; fi
-  if check $GS; then :; else GS="${DEFAULT_GS}"; fi
+  if test -z $PREFIX; then PREFIX="${DEFAULT_PREFIX}"; fi
+  if test -z $LIB_DIR; then LIB_DIR="${DEFAULT_LIB_DIR}"; fi
+  if test -z $BIN_DIR; then BIN_DIR="${DEFAULT_BIN_DIR}"; fi
   if test -z $CAML_BYT; then CAML_BYT="${DEFAULT_CAML_BYT}"; fi
   if test -z $CAML_BIN; then CAML_BIN="${DEFAULT_CAML_BIN}"; fi
   if test -z $CAML_LEX; then CAML_LEX="${DEFAULT_CAML_LEX}"; fi
@@ -117,6 +136,15 @@ set_external_tools () {
   if test -z $COQC; then COQC="${DEFAULT_COQC}"; fi
   if test -z $COQRC; then COQRC="${DEFAULT_COQRC}"; fi
   if test -z $USE_COQC; then USE_COQC="${DEFAULT_USE_COQC}"; fi
+  if test -z $SUM; then SUM="${DEFAULT_SUM}"; else
+    if check $SUM; then :; else echo "Configure: unavailable command $SUM."; exit 2; fi
+  fi
+  if test -z $CONVERT; then CONVERT="$DEFAULT_CONVERT"; else
+    if check $CONVERT; then :; else echo "Configure: unavailable command $CONVERT."; exit 2; fi
+  fi
+  if test -z $GS; then GS="$DEFAULT_GS"; else
+    if check $GS; then :; else echo "Configure: unavailable command $GS."; exit 2; fi
+  fi
 }
 
 set_external_tools
@@ -133,9 +161,9 @@ sed -e "s,@PREFIX@,$PREFIX," \
     -e "s,@COQC@,$COQC," \
     -e "s,@COQRC@,$COQRC," \
     -e "s,@USE_COQC@,$USE_COQC," \
+    -e "s,@SUM@,$SUM," \
     -e "s,@CONVERT@,$CONVERT," \
     -e "s,@GS@,$GS," \
-    -e "s,@SUM@,$SUM," \
     <.config_var.in >.config_var
 
 echo
