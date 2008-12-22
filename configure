@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.34 2008-12-22 09:01:19 weis Exp $
+#  $Id: configure,v 1.35 2008-12-22 17:41:01 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
@@ -90,6 +90,10 @@ while : ; do
        echo "    set absolute path for the Caml byte code compiler."
        echo "  [-]-caml_bin <executable-file>"
        echo "    set absolute path for the Caml binary compiler."
+       echo "  [-]-caml_lex <executable-file>"
+       echo "    set absolute path for the Caml Lex compiler."
+       echo "  [-]-caml_yac <executable-file>"
+       echo "    set absolute path for the Caml Yacc compiler."
        echo "  [-]-use_coqc <boolean>"
        echo "    set if coqc must be used to verify the proofs given by zenon."
        echo "  [-]-coqc <executable-file>"
