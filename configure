@@ -1,7 +1,7 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.37 2008-12-23 14:55:08 weis Exp $
+#  $Id: configure,v 1.38 2008-12-23 16:02:58 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
@@ -345,7 +345,7 @@ while : ; do
     -caml_byt | --caml_byt) CAML_BYT="$2"; shift 2;;
     -caml_bin | --caml_bin) CAML_BIN="$2"; shift 2;;
     -caml_lex | --caml_lex) CAML_LEX="$2"; shift 2;;
-    -caml_yac | --caml_yac) CAML_BIN="$2"; shift 2;;
+    -caml_yac | --caml_yac) CAML_YAC="$2"; shift 2;;
     # Coq options
     -coqc | --coqc) COQC="$2"; shift 2;;
     -coqrc | --coqrc) COQRC="$2"; shift 2;;
