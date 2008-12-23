@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.39 2008-12-23 12:45:29 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.40 2008-12-23 13:00:32 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -152,7 +152,7 @@ let make_notequiv st sym (p, g) (np, ng) =
         add_node st {
           nconc = [p; np];
           nrule = myrule;
-          nprio = Arity_eq;
+          nprio = if s1 =%= "=" then Arity_eq else Arity;
           ngoal = min g ng;
           nbranches = make_inequals myargs1 args2;
         }
