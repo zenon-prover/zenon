@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.42 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.43 2008-12-23 12:43:22 doligez Exp $";;
 
 open Printf;;
 
@@ -168,31 +168,14 @@ let p_rev_app oc (f, args) =
   fprintf oc "(%s%a)" f p_expr_list (List.rev args)
 ;;
 
-let rec p_equal_steps oc f l0 l1 =
-  match l0, l1 with
-  | _, _ when List.for_all2 Expr.equal l0 l1 ->
-      fprintf oc "auto";
-      List.length l0
-  | e0 :: t0 , e1 :: t1 ->
-      let e0nee1 = enot (eapp ("=", [e0; e1])) in
-      fprintf oc "apply (zenon_equal_step _ _ %a %a %a %a); [ "
-              p_rev_app (f, t0) p_rev_app (f, t1) p_expr e0 p_expr e1;
-      let useless = p_equal_steps oc f t0 t1 in
-      fprintf oc " | zenon_intro %s ]" (getname e0nee1);
-      useless
-  | _, _ -> assert false
-;;
-
 let apply_alpha oc lem h0 h1 h2 =
   fprintf oc "apply (zenon_%s_s _ _ %s). zenon_intro %s. zenon_intro %s.\n"
              lem (getname h0) (getname h1) (getname h2);
-  0
 ;;
 
 let apply_beta oc lem h0 h1 h2 =
   fprintf oc "apply (zenon_%s_s _ _ %s); [ zenon_intro %s | zenon_intro %s ].\n"
              lem (getname h0) (getname h1) (getname h2);
-  0
 ;;
 
 let apply_beta2 oc lem h0 h1a h1b h2a h2b =
@@ -201,7 +184,6 @@ let apply_beta2 oc lem h0 h1a h1b h2a h2b =
                 | zenon_intro %s; zenon_intro %s ].\n"
              lem (getname h0) (getname h1a) (getname h1b)
              (getname h2a) (getname h2b);
-  0
 ;;
 
 let p_rule oc r =
@@ -226,7 +208,6 @@ let p_rule oc r =
                   (enot e1) e2 e1 (enot e2)
   | Rextension ("zenon_induct_discriminate", [], [conc], []) ->
       poc "discriminate %s.\n" (getname conc);
-      0
   | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      poc "case_eq (%a); [\n    " p_expr e1;
      let get_params case =
@@ -247,7 +228,6 @@ let p_rule oc r =
      in
      p_list "" p_case "  | " oc params;
      poc "].\n";
-     0
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
@@ -260,7 +240,6 @@ let p_rule oc r =
      in
      p_list "" p_case "  | " oc cstrs;
      poc "].\n";
-     0
   | Rextension ("zenon_induct_fix", _, _, _) -> assert false
   | Rextension (name, args, conc, hyps) ->
       poc "apply (%s_s%a%a)" name p_expr_list args p_name_list conc;
@@ -268,97 +247,83 @@ let p_rule oc r =
       | [] -> poc ".\n";
       | _ -> poc "; [ %a ].\n" (p_list "" p_intros " | ") hyps;
       end;
-      0
   | Rnotnot (p as e) ->
       poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
-      0
   | Rex (Eex (x, _, e, _) as p, v) ->
       let h0 = getname p in
       let h1 = getname (substitute [(x, evar v)] e) in
       poc "elim %s. zenon_intro %s. zenon_intro %s.\n" h0 v h1;
-      0
   | Rex _ -> assert false
   | Rnotall (Eall (x, _, e, _) as p, v) ->
       let h0 = getname (enot p) in
       let h1 = getname (enot (substitute [(x, evar v)] e)) in
       poc "apply %s. zenon_intro %s. apply NNPP. zenon_intro %s.\n" h0 v h1;
-      0
   | Rnotall _ -> assert false
   | Rall (Eall (x, _, e, _) as p, t) ->
       let h0 = getname p in
       let h1 = getname (substitute [(x, t)] e) in
       poc "generalize (%s %a). zenon_intro %s.\n" h0 p_expr t h1;
-      0
   | Rall _ -> assert false
   | Rnotex (Eex (x, _, e, _) as p, t) ->
       let h0 = getname (enot p) in
       let h1 = getname (enot (substitute [(x, t)] e)) in
       poc "apply %s. exists %a. apply NNPP. zenon_intro %s.\n" h0 p_expr t h1;
-      0
   | Rnotex _ -> assert false
   | Rlemma (name, args) ->
       let args1 = List.filter (fun x -> not (Mltoll.is_meta x)) args in
       poc "apply (%s%a); trivial.\n" name p_id_list args1;
-      0
   | Rcut (e) ->
       let h0 = getname e in
       let h1 = getname (enot e) in
       poc "elim (classic %a); [ zenon_intro %s | zenon_intro %s ].\n"
           p_expr e h0 h1;
-      0
   | Raxiom (e) ->
       let h0 = getname e in
       let h1 = getname (enot e) in
       poc "exact (%s %s).\n" h1 h0;
-      0
   | Rdefinition (_, s, c, h) ->
       poc "assert (%s : %a). exact %s.\n" (getname h) p_expr h (getname c);
-      0
-  | Rnotequal ((Eapp (f, l0, _) as e0), (Eapp (g, l1, _) as e1)) ->
-      assert (f = g);
-      let h0 = getname (enot (eapp ("=", [e0; e1]))) in
-      poc "apply (zenon_notequal_s _ _ _ %s); " h0;
-      let useless = p_equal_steps oc f (List.rev l0) (List.rev l1) in
-      poc ".\n";
-      useless
+  | Rnotequal (Eapp (f, args1, _), Eapp (g, args2, _)) ->
+     assert (f = g);
+     let f a1 a2 =
+       let eq = eapp ("=", [a1; a2]) in
+       let neq = enot eq in
+       poc "cut (%a); [idtac | apply NNPP; intro %s].\n" p_expr eq (getname neq);
+     in
+     List.iter2 f (List.rev args1) (List.rev args2);
+     poc "congruence.\n";
   | Rnotequal _ -> assert false
-  | Rpnotp ((Eapp (f, l0, _) as e0), (Enot (Eapp (g, l1, _), _) as e1)) ->
-      assert (f = g);
-      let f1 = if f = "=" then "@eq _" else f in
-      let h0 = getname e0 in
-      let h1 = getname e1 in
-      poc "apply (zenon_pnotp_s _ _ %s %s); " h0 h1;
-      let useless = p_equal_steps oc f1 (List.rev l0) (List.rev l1) in
-      poc ".\n";
-      useless
+  | Rpnotp ((Eapp (f, args1, _) as ff), Enot ((Eapp (g, args2, _) as gg), _)) ->
+     assert (f = g);
+     poc "cut (%a = %a).\n" p_expr ff p_expr gg;
+     poc "intro %s_pnotp.\n" Namespace.dummy_prefix;
+     poc "apply %s.\n" (getname (enot gg));
+     poc "rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
+     poc "exact %s.\n" (getname ff);
+     let f a1 a2 =
+       let eq = eapp ("=", [a1; a2]) in
+       let neq = enot eq in
+       poc "cut (%a); [idtac | apply NNPP; intro %s].\n" p_expr eq (getname neq);
+     in
+     List.iter2 f (List.rev args1) (List.rev args2);
+     poc "congruence.\n";
   | Rpnotp _ -> assert false
   | Rnoteq e ->
       poc "apply %s. apply refl_equal.\n" (getname (enot (eapp ("=", [e; e]))));
-      0
   | Reqsym (e, f) ->
       poc "apply %s. apply sym_equal. exact %s.\n"
           (getname (enot (eapp ("=", [f; e]))))
           (getname (eapp ("=", [e; f])));
-      0
   | Rnottrue ->
       poc "exact (%s I).\n" (getname (enot (etrue)));
-      0
   | Rfalse ->
       poc "exact %s.\n" (getname efalse);
-      0
   | Rcongruence _ -> assert false (* FIXME TODO *)
 ;;
 
-let rec drop n l =
-  match n, l with
-  | 0, l -> l
-  | n, h::t -> assert (n > 0); drop (n-1) t
-  | _, _ -> assert false
-;;
-
 let rec p_tree oc proof =
-  let useless = p_rule oc proof.rule in
-  List.iter (p_tree oc) (drop useless proof.hyps);
+  p_rule oc proof.rule;
+  List.iter (p_tree oc) proof.hyps;
 ;;
 
 let p_script_lemma oc nvars proof =
