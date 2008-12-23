@@ -1,5 +1,7 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.6 2008-12-19 11:43:49 weis Exp $
+#  $Id: .config_var.in,v 1.7 2008-12-23 14:55:08 weis Exp $
+
+DEBUG=@DEBUG@
 
 PREFIX=@PREFIX@
 BIN_DIR=@BIN_DIR@

@@ -1,40 +1,13 @@
 #!/bin/sh
 
 #  Copyright 2004 INRIA
-#  $Id: configure,v 1.36 2008-12-22 17:50:06 weis Exp $
+#  $Id: configure,v 1.37 2008-12-23 14:55:08 weis Exp $
 
 check () {
   type "$1" >/dev/null 2>&1
 }
 
 # Default settings
-
-DEFAULT_DEBUG=true
-
-# General defaults for the package installation.
-DEFAULT_PREFIX=/usr/local
-
-DEFAULT_LIB_DIR="${DEFAULT_PREFIX}/lib"
-DEFAULT_BIN_DIR="${DEFAULT_PREFIX}/bin"
-
-# Defaults for Caml.
-DEFAULT_CAML_DIR="${DEFAULT_LIB_DIR}/ocaml"
-DEFAULT_CAML_BYT=ocamlc
-DEFAULT_CAML_BIN=ocamlopt
-DEFAULT_CAML_YAC=ocamlyacc
-DEFAULT_CAML_LEX=ocamllex
-DEFAULT_BYT_DEBUG_FLAGS="-g -dtypes"
-DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
-
-# Defaults for Coq.
-DEFAULT_USE_COQC=false
-DEFAULT_COQRC="$HOME/.coqrc"
-DEFAULT_COQC=coqc
-
-# Defaults external commands
-DEFAULT_SUM=sum
-DEFAULT_CONVERT=convert
-DEFAULT_GS=gs
 
 set_default_sum () {
  for i in sum md5 md5sum md5deep sha1deep sha256deep; do
@@ -60,25 +33,332 @@ set_command_defaults () {
   set_default_gs;
 }
 
-set_command_defaults
+# Defining intrinsic defaults (default values for default values!).
+set_intrinsic_defaults () {
 
+  # Intrinsic defaults for the software.
+  DEFAULT_MAKE_EXTERNAL=true
+
+  DEFAULT_DEBUG=true
+
+  # Intrinsic defaults for the package installation.
+  DEFAULT_PREFIX="/usr/local"
+
+  # Intrinsic defaults for Caml
+  DEFAULT_BYT_DEBUG_FLAGS="-g -dtypes"
+  DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
+
+  # Intrinsic defaults for Coq.
+  DEFAULT_COQRC="$HOME/.coqrc"
+  DEFAULT_COQ_MAKE="gmake"
+
+  # Intrinsic defaults for Zenon.
+  DEFAULT_USE_COQC=false
+  DEFAULT_SUM=:
+  DEFAULT_CONVERT=:
+  DEFAULT_GS=:
+
+  # Intrinsic defaults for Zvtov.
+  DEFAULT_USE_XMLRPC=false
+  DEFAULT_XMLRPC=xmlrpc
+  DEFAULT_XMLRPC_FLAGS=""
+  DEFAULT_XMLRPC_LINK=""
+
+}
+
+# Setting intrinsic values.
+set_intrinsic () {
+
+  # Intrinsic settings for the software.
+  if test -z "${MAKE_EXTERNAL}"; then
+  MAKE_EXTERNAL="${DEFAULT_MAKE_EXTERNAL}"; fi
+
+  if test -z ${DEBUG}; then
+  DEBUG=${DEFAULT_DEBUG}; fi
+ 
+  # Intrinsic settings for the package installation.
+  DEFAULT_PREFIX="/usr/local"
+
+  # Intrinsic settings for Caml
+  if test ${DEBUG}; then
+    BYT_DEBUG_FLAGS="${DEFAULT_BYT_DEBUG_FLAGS}";
+    BIN_DEBUG_FLAGS="${DEFAULT_BIN_DEBUG_FLAGS}";
+  fi
+
+  # Intrinsic settings for Coq.
+  if test -z "${COQRC}"; then
+  COQRC="${DEFAULT_COQRC}"; fi
+
+  # Setting coq make command.
+  if test -z "${COQ_MAKE}"; then
+    # To compile Coq, prefer gmake, if GNU make is available with that name.
+    if check "${DEFAULT_COQ_MAKE}"; then COQ_MAKE="${DEFAULT_COQ_MAKE}";
+    # Otherwise, use make (which is GNU make anyway on 
+    # boxes with GNU make as default!).
+    else COQ_MAKE="make";
+    fi
+  fi
+
+  # Intrinsic settings for Zenon.
+  if test -z "${USE_COQC}"; then USE_COQC="${DEFAULT_USE_COQC}"; fi
+  if test -z "${SUM}"; then SUM="${DEFAULT_SUM}"; else
+    if check $SUM; then :; else
+      echo "Configure: unavailable command $SUM."; exit 2;
+    fi
+  fi
+  if test -z $CONVERT; then CONVERT="$DEFAULT_CONVERT"; else
+    if check $CONVERT; then :; else
+      echo "Configure: unavailable command $CONVERT."; exit 2;
+    fi
+  fi
+  if test -z $GS; then GS="$DEFAULT_GS"; else
+    if check $GS; then :; else
+      echo "Configure: unavailable command $GS."; exit 2;
+    fi
+  fi
+
+  # Intrinsic settings for Zvtov.
+  if test -z "$USE_XMLRPC"; then USE_XMLRPC=${DEFAULT_USE_XMLRPC}; fi
+  if test $USE_XMLRPC; then
+    # set_XMLRPC;
+    if test -z "$XMLRPC"; then XMLRPC="$DEFAULT_XMLRPC"; else
+      if check $XMLRPC; then :; else
+        echo "Configure: unavailable command $XMLRPC."; exit 2;
+      fi
+    fi
+    # set_XMLRPC_FLAGS;
+    if test -z "$XMLRPC_FLAGS"; then
+      if check "ocamlfind"; then
+          XMLRPC_FLAGS="`ocamlfind query -r -i-format xmlrpc | tr '\012' ' '`"
+      else
+          XMLRPC_FLAGS="${DEFAULT_XMLRPC_FLAGS}"
+      fi
+    fi
+    # set_XMLRPC_LINK;
+    if test -z "$XMLRPC_LINK"; then
+      if check "ocamlfind"; then
+          XMLRPC_LINK="`ocamlfind query -r -predicates byte -a-format xmlrpc | tr '\012' ' '`"
+      else
+          XMLRPC_LINK="${DEFAULT_XMLRPC_LINK}"
+      fi
+    fi
+  fi;
+
+}
+
+# Setting (or defining) variables that depend upon $DEFAULT_PREFIX.
+set_prefix_defaults () {
+
+  DEFAULT_BIN_DIR="${DEFAULT_PREFIX}/bin"
+  DEFAULT_LIB_DIR="${DEFAULT_PREFIX}/lib"
+  DEFAULT_MAN_DIR="${DEFAULT_PREFIX}/man"
+  DEFAULT_DOC_DIR="${DEFAULT_PREFIX}/doc"
+
+  # General defaults for the installation of the external tools of the package.
+  # Normal setting is:
+  # DEFAULT_SHARE_PROJECT_PREFIX="${DEFAULT_PREFIX}/share"
+  # For Zenon the DEFAULT_SHARE_PROJECT_PREFIX should be the DEFAULT_PREFIX.
+  DEFAULT_SHARE_PROJECT_PREFIX="${DEFAULT_PREFIX}"
+
+}
+
+# Setting variables that depend upon $PREFIX.
+set_prefix () {
+
+  if test -z "${PREFIX}"; then PREFIX="${DEFAULT_PREFIX}"; fi
+
+  if test -z "${BIN_DIR}"; then BIN_DIR="${PREFIX}/bin"; fi
+  if test -z "${LIB_DIR}"; then LIB_DIR="${PREFIX}/lib"; fi
+  if test -z "${MAN_DIR}"; then MAN_DIR="${PREFIX}/man"; fi
+  if test -z "${DOC_DIR}"; then DOC_DIR="${PREFIX}/doc"; fi
+
+  if test -z "${SHARE_PROJECT_PREFIX}"; then
+    SHARE_PROJECT_PREFIX="${DEFAULT_SHARE_PROJECT_PREFIX}"; fi
+
+}
+
+# Setting (or defining) variables that depend upon $DEFAULT_SHARE_PREFIX.
+set_share_defaults () {
+
+  # Normally should be
+  # DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+  # For zenon, there is no /zenon sub directory, we directly use the
+  # DEFAULT_SHARE_PROJECT_PREFIX.
+  DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}"
+
+  DEFAULT_SHARE_PROJECT_BIN_DIR="${DEFAULT_SHARE_PROJECT_DIR}/bin"
+  DEFAULT_SHARE_PROJECT_LIB_DIR="${DEFAULT_SHARE_PROJECT_DIR}/lib"
+  DEFAULT_SHARE_PROJECT_MAN_DIR="${DEFAULT_SHARE_PROJECT_DIR}/man"
+  DEFAULT_SHARE_PROJECT_DOC_DIR="${DEFAULT_SHARE_PROJECT_DIR}/doc"
+
+  # Defaults for Caml.
+  DEFAULT_CAML_LIB_DIR="${DEFAULT_SHARE_PROJECT_LIB_DIR}/ocaml"
+  DEFAULT_CAML_BIN_DIR="${DEFAULT_SHARE_PROJECT_BIN_DIR}"
+
+  DEFAULT_CAML_BYT="${DEFAULT_CAML_BIN_DIR}/ocamlc"
+  DEFAULT_CAML_BIN="${DEFAULT_CAML_BIN_DIR}/ocamlopt"
+  DEFAULT_CAML_YAC="${DEFAULT_CAML_BIN_DIR}/ocamlyacc"
+  DEFAULT_CAML_LEX="${DEFAULT_CAML_BIN_DIR}/ocamllex"
+
+  # Default for Camlp5
+  DEFAULT_CAMLP5_LIB_DIR="${DEFAULT_CAML_LIB_DIR}/camlp5"
+
+  # Defaults for Coq.
+  DEFAULT_COQ_LIB_DIR="${DEFAULT_SHARE_PROJECT_LIB_DIR}/coq"
+  DEFAULT_COQ_CAML_DIR="${DEFAULT_CAML_BIN_DIR}"
+
+  DEFAULT_COQC="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqc"
+
+  # Defaults for Zenon.
+  DEFAULT_ZENON_LIB_DIR="${DEFAULT_SHARE_PROJECT_LIB_DIR}/zenon"
+
+  DEFAULT_ZENON="${DEFAULT_SHARE_PROJECT_BIN_DIR}/zenon"
+
+  # Defaults for Zvtov.
+  DEFAULT_ZVTOV_LIB_DIR="${DEFAULT_SHARE_PROJECT_LIB_DIR}/zvtov"
+
+  DEFAULT_ZVTOV="${DEFAULT_SHARE_PROJECT_BIN_DIR}/zvtov"
+
+}
+
+# Setting variables that depend upon $SHARE_PREFIX.
+set_share () {
+
+  # Normal setting is:
+  #SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+  # For Zenon the SHARE_PROJECT_DIR must be SHARE_PROJECT_PREFIX.
+  SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}"
+
+  SHARE_PROJECT_BIN_DIR="${SHARE_PROJECT_DIR}/bin"
+  SHARE_PROJECT_LIB_DIR="${SHARE_PROJECT_DIR}/lib"
+  SHARE_PROJECT_MAN_DIR="${SHARE_PROJECT_DIR}/man"
+  SHARE_PROJECT_DOC_DIR="${SHARE_PROJECT_DIR}/doc"
+
+  # Settings for Caml.
+  if test -z "${CAML_LIB_DIR}"; then
+  CAML_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/ocaml"; fi
+  if test -z "${CAML_BIN_DIR}"; then
+  CAML_BIN_DIR="${SHARE_PROJECT_BIN_DIR}"; fi
+
+  if test -z "${CAML_BYT}"; then
+  CAML_BYT="${SHARE_PROJECT_BIN_DIR}"/ocamlc; fi
+  if test -z "${CAML_BIN}"; then
+  CAML_BIN="${SHARE_PROJECT_BIN_DIR}/ocamlopt"; fi
+  if test -z "${CAML_LEX}"; then
+  CAML_LEX="${SHARE_PROJECT_BIN_DIR}/ocamllex"; fi
+  if test -z "${CAML_YAC}"; then
+  CAML_YAC="${SHARE_PROJECT_BIN_DIR}/ocamlyacc"; fi
+
+  # Settings for Camlp5
+  if test -z "${CAMLP5_LIB_DIR}"; then
+  CAMLP5_LIB_DIR="${CAML_LIB_DIR}/camlp5"; fi
+
+  # Settings for Coq.
+  if test -z "${COQ_LIB_DIR}"; then
+  COQ_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/coq"; fi
+  if test -z "${COQ_CAML_DIR}"; then
+  COQ_CAML_DIR="${CAML_BIN_DIR}"; fi
+
+  if test -z "${COQC}"; then
+  COQC="${SHARE_PROJECT_BIN_DIR}/coqc"; fi
+
+  # Settings for Zenon.
+  if test -z "${ZENON_LIB_DIR}"; then
+  ZENON_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/zenon"; fi
+
+  if test -z "${ZENON}"; then
+  ZENON="${SHARE_PROJECT_BIN_DIR}/zenon"; fi
+
+  # Settings for Zvtov.
+  if test -z "${ZVTOV_LIB_DIR}"; then
+  ZVTOV_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/zvtov"; fi
+
+  if test -z "${ZVTOV}"; then
+  ZVTOV="${SHARE_PROJECT_BIN_DIR}/zvtov"; fi
+
+}
+
+# Setting all variables defaults
+set_defaults () {
+  set_intrinsic_defaults;
+  set_command_defaults;
+  set_prefix_defaults;
+  set_share_defaults;
+}
+
+# Setting all variables after option parsing has been completed.
+set_variables () {
+  set_intrinsic;
+  set_prefix;
+  set_share;
+}
+
+#
+# Generic aborting procedures.
+#
+abort_configuration () {
+  echo;
+  echo "configure: ABORTING CONFIGURATION!";
+  echo;
+  echo "$1";
+}
+
+abort_remedy () {
+  echo;
+  echo "$1";
+  echo "(See configure -help for details).";
+  exit 1;
+}
+
+abort_configuration_not_writable_share_prefix_directory () {
+  abort_configuration \
+    "You cannot install external tools in the directory $1: it is not writable for you.";
+  abort_remedy \
+    "Please, use configure with the \"-share_prefix\" option set to a writable directory.";
+}
+
+
+#
+# Beginning execution.
+#
+
+# Setting default values (for help in particular).
+set_defaults
+
+#
+# Parsing arguments
+#
 while : ; do
   case $# in 0) break;; esac
+
   case "$1" in
+    # Software specific options
+    -share_prefix | --share_prefix | -share_project_prefix | --share_project_prefix)
+      SHARE_PROJECT_PREFIX="$2"; shift 2;;
     -prefix | --prefix) PREFIX="$2"; shift 2;;
     -bindir | --bindir) BIN_DIR="$2"; shift 2;;
     -libdir | --libdir) LIB_DIR="$2"; shift 2;;
-    -camldir | --camldir) CAML_DIR="$2"; shift 2;;
+    -docdir | --docdir) DOC_DIR="$2"; shift 2;;
+    -mandir | --mandir) MAN_DIR="$2"; shift 2;;
+    # Caml options
+    -caml_lib_dir | --caml_lib_dir) CAML_LIB_DIR="$2"; shift 2;;
     -caml_byt | --caml_byt) CAML_BYT="$2"; shift 2;;
     -caml_bin | --caml_bin) CAML_BIN="$2"; shift 2;;
+    -caml_lex | --caml_lex) CAML_LEX="$2"; shift 2;;
+    -caml_yac | --caml_yac) CAML_BIN="$2"; shift 2;;
+    # Coq options
     -coqc | --coqc) COQC="$2"; shift 2;;
     -coqrc | --coqrc) COQRC="$2"; shift 2;;
     -use_coqc | --use_coqc) USE_COQC="$2"; shift 2;;
-    -convert | --convert) CONVERT="$2"; shift 2;;
+    # Zenon options
     -sum | --sum) SUM="$2"; shift 2;;
+    -convert | --convert) CONVERT="$2"; shift 2;;
     -gs | --gs) GS="$2"; shift 2;;
-    -debug | --debug | --enable-debug) DEBUG=true; shift;;
-    -nodebug | --nodebug | --disable-debug) DEBUG=false; shift;;
+    # Generic options
+    -debug | --debug) DEBUG=$2; shift 2;;
+    -enable_debug | --enable_debug) DEBUG=true; shift;;
+    -nodebug | --nodebug | -disable_debug | --disable_debug)
+     DEBUG=false; shift;;
     -help | --help)
        echo "usage: ./configure [options]"
        echo "options are:"
@@ -88,7 +368,7 @@ while : ; do
        echo "    set the library directory for installation (default ${LIB_DIR})"
        echo "  [-]-prefix <directory>"
        echo "    set the directory prefix for installation (default ${PREFIX})"
-       echo "  [-]-caml_dir <directory>"
+       echo "  [-]-caml_lib_dir <directory>"
        echo "  [-]-caml_byt <executable-file>"
        echo "    set absolute path for the Caml byte code compiler."
        echo "  [-]-caml_bin <executable-file>"
@@ -124,58 +404,48 @@ while : ; do
   esac
 done
 
-if $DEBUG; then
-  BYT_DEBUG_FLAGS=${DEFAULT_BYT_DEBUG_FLAGS}
-  BIN_DEBUG_FLAGS=${DEFAULT_BIN_DEBUG_FLAGS}
-else
-  BYT_DEBUG_FLAGS=
-  BIN_DEBUG_FLAGS=
-fi
+#
+# Editing ./.config_var.in with what we learnt here.
+#
+build_config_var () {
 
-set_external_tools () {
-  if test -z $PREFIX; then PREFIX="${DEFAULT_PREFIX}"; fi
-  if test -z $LIB_DIR; then LIB_DIR="${DEFAULT_LIB_DIR}"; fi
-  if test -z $BIN_DIR; then BIN_DIR="${DEFAULT_BIN_DIR}"; fi
-  if test -z $CAML_DIR; then CAML_DIR="${DEFAULT_CAML_DIR}"; fi
-  if test -z $CAML_BYT; then CAML_BYT="${DEFAULT_CAML_BYT}"; fi
-  if test -z $CAML_BIN; then CAML_BIN="${DEFAULT_CAML_BIN}"; fi
-  if test -z $CAML_LEX; then CAML_LEX="${DEFAULT_CAML_LEX}"; fi
-  if test -z $CAML_YAC; then CAML_YAC="${DEFAULT_CAML_YAC}"; fi
-  if test -z $COQC; then COQC="${DEFAULT_COQC}"; fi
-  if test -z $COQRC; then COQRC="${DEFAULT_COQRC}"; fi
-  if test -z $USE_COQC; then USE_COQC="${DEFAULT_USE_COQC}"; fi
-  if test -z $SUM; then SUM="${DEFAULT_SUM}"; else
-    if check $SUM; then :; else echo "Configure: unavailable command $SUM."; exit 2; fi
-  fi
-  if test -z $CONVERT; then CONVERT="$DEFAULT_CONVERT"; else
-    if check $CONVERT; then :; else echo "Configure: unavailable command $CONVERT."; exit 2; fi
-  fi
-  if test -z $GS; then GS="$DEFAULT_GS"; else
-    if check $GS; then :; else echo "Configure: unavailable command $GS."; exit 2; fi
-  fi
+  sed \
+      -e "s,@DEBUG@,$DEBUG," \
+      -e "s,@PREFIX@,$PREFIX," \
+      -e "s,@BIN_DIR@,$BIN_DIR," \
+      -e "s,@LIB_DIR@,$LIB_DIR," \
+      -e "s,@CAML_LIB_DIR@,$CAML_LIB_DIR," \
+      -e "s,@CAML_BYT@,$CAML_BYT," \
+      -e "s,@CAML_BIN@,$CAML_BIN," \
+      -e "s,@CAML_LEX@,$CAML_LEX," \
+      -e "s,@CAML_YAC@,$CAML_YAC," \
+      -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
+      -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
+      -e "s,@COQC@,$COQC," \
+      -e "s,@COQRC@,$COQRC," \
+      -e "s,@USE_COQC@,$USE_COQC," \
+      -e "s,@SUM@,$SUM," \
+      -e "s,@CONVERT@,$CONVERT," \
+      -e "s,@GS@,$GS," \
+      <.config_var.in >.config_var
+
 }
 
-set_external_tools
+summarize_configuration () {
+  echo
+  echo "Configuration summary for zenon:"
+  echo
+  cat .config_var
+}
 
-sed -e "s,@PREFIX@,$PREFIX," \
-    -e "s,@BIN_DIR@,$BIN_DIR," \
-    -e "s,@LIB_DIR@,$LIB_DIR," \
-    -e "s,@CAML_DIR@,$CAML_DIR," \
-    -e "s,@CAML_BYT@,$CAML_BYT," \
-    -e "s,@CAML_BIN@,$CAML_BIN," \
-    -e "s,@CAML_LEX@,$CAML_LEX," \
-    -e "s,@CAML_YAC@,$CAML_YAC," \
-    -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
-    -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
-    -e "s,@COQC@,$COQC," \
-    -e "s,@COQRC@,$COQRC," \
-    -e "s,@USE_COQC@,$USE_COQC," \
-    -e "s,@SUM@,$SUM," \
-    -e "s,@CONVERT@,$CONVERT," \
-    -e "s,@GS@,$GS," \
-    <.config_var.in >.config_var
+#
+# The main procedure.
+#
+main () {
+  set_variables;
+  build_config_var;
+  chmod g+w ./.config_var;
+  summarize_configuration;
+}
 
-echo
-echo "Configuration summary for zenon:"
-echo
-cat .config_var
+main; exit 0
