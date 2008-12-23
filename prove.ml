@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.38 2008-12-18 17:00:41 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.39 2008-12-23 12:45:29 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -131,7 +131,8 @@ let rec make_inequals_aux l1 l2 =
 let make_inequals l1 l2 = Array.of_list (make_inequals_aux l1 l2);;
 
 let arity_warning s =
-  Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
+  if s <> "TLA.set" then
+    Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
 ;;
 
 let higher_order_warning s =
@@ -396,7 +397,22 @@ let interferes env vs =
 
 let has_free_var v e = List.mem v (get_fv e);;
 
-(* TODO : traiter TLA.cond et TLA.case ? *)
+let rec get_values_set e =
+  match e with
+  | Eapp ("TLA.upair", [e1; e2], _) -> ([e1; e2], false)
+  | Eapp ("TLA.add", [e1; e2], _) ->
+     let (vs, rest) = get_values_set e2 in
+     (e1 :: vs, rest)
+  | Evar ("TLA.emptyset", _) -> ([], false)
+  | Eapp ("TLA.union", [e1; e2], _) ->
+     let (vs1, rest1) = get_values_set e1 in
+     let (vs2, rest2) = get_values_set e2 in
+     (vs1 @ vs2, rest1 || rest2)
+(*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
+  | _ -> ([], true)
+;;
+
+(*****************
 let rec add_scope_p v tau e =
   match e with
   | _ when not (has_free_var v e) -> e
@@ -478,28 +494,18 @@ and get_values_n env v e =
   | Eex (Evar (nv1, _), t, e1, _)
   -> get_values_n (nv1 :: env) v e1
   | _ -> None
-
-and get_values_set e =
-  match e with
-  | Eapp ("TLA.upair", [e1; e2], _) -> ([e1; e2], false)
-  | Eapp ("TLA.add", [e1; e2], _) ->
-     let (vs, rest) = get_values_set e2 in
-     (e1 :: vs, rest)
-  | Evar ("TLA.emptyset", _) -> ([], false)
-  | Eapp ("TLA.union", [e1; e2], _) ->
-     let (vs1, rest1) = get_values_set e1 in
-     let (vs2, rest2) = get_values_set e2 in
-     (vs1 @ vs2, rest1 || rest2)
-(*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
-  | _ -> ([], true)
 ;;
+*****************)
 
 let newnodes_delta st fm g =
   match fm with
   | Eex (v, t, p, _) ->
+     let h = substitute [(v, etau (v, t, p))] p in
+(*
      let p1 = remove_scope p in
      let tau = etau (v, t, p1) in
      let h = add_scope_p (get_var_name v) tau p in
+*)
      add_node st {
        nconc = [fm];
        nrule = Ex (fm);
@@ -508,9 +514,12 @@ let newnodes_delta st fm g =
        nbranches = [| [h] |];
      }, true
   | Enot (Eall (v, t, p, _), _) ->
+     let h = substitute [(v, etau (v, t, enot p))] (enot p) in
+(*
      let np1 = enot (remove_scope p) in
      let tau = etau (v, t, np1) in
      let h = enot (add_scope_n (get_var_name v) tau p) in
+*)
      add_node st {
        nconc = [fm];
        nrule = NotAll (fm);
@@ -518,6 +527,7 @@ let newnodes_delta st fm g =
        ngoal = g;
        nbranches = [| [h] |];
      }, true
+(*
   | Eapp ("$scope", [lam; tau; v1], _) ->
      add_node st {
        nconc = [fm];
@@ -552,6 +562,7 @@ let newnodes_delta st fm g =
        ngoal = g;
        nbranches = [| [apply lam tau] |];
      }, true
+*)
   | _ -> st, false
 ;;
 
@@ -572,6 +583,20 @@ let newnodes_gamma_bounded st fm g =
        }
      in
      (List.fold_left mknode st elems, not rest)
+  | Eall (v, t,
+          (Eimply (Eapp ("TLA.in",
+                         [vv; Eapp ("TLA.set", elems, _)], _), _, _) as p), _)
+    when Extension.is_active "tla" ->
+     let mknode st elem =
+       add_node st {
+         nconc = [fm];
+         nrule = All (fm, elem);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [Expr.substitute [(v, elem)] p] |];
+       }
+     in
+     (List.fold_left mknode st elems, true)
   | Enot (Eex (v, t,
                (Eand (Eapp ("TLA.in",
                             [vv;
@@ -589,6 +614,21 @@ let newnodes_gamma_bounded st fm g =
        }
      in
      (List.fold_left mknode st elems, not rest)
+  | Enot (Eex (v, t,
+               (Eand (Eapp ("TLA.in",
+                            [vv; Eapp ("TLA.set", elems, _)], _), _, _)
+                  as p), _), _)
+    when Extension.is_active "tla" ->
+     let mknode st elem =
+       add_node st {
+         nconc = [fm];
+         nrule = NotEx (fm, elem);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [enot (Expr.substitute [(v, elem)] p)] |];
+       }
+     in
+     (List.fold_left mknode st elems, true)
   | _ -> (st, false)
 ;;
 
@@ -627,7 +667,7 @@ let newnodes_unfold st fm g =
          add_node st {
            nconc = [fm];
            nrule = Definition (d, fm, unfolded);
-           nprio = Arity;
+           nprio = Prop;
            ngoal = g;
            nbranches = [| [unfolded] |];
          }, true
@@ -638,7 +678,7 @@ let newnodes_unfold st fm g =
          add_node st {
            nconc = [fm];
            nrule = Definition (d, fm, unfolded);
-           nprio = Arity;
+           nprio = Prop;
            ngoal = g;
            nbranches = [| [unfolded] |];
          }, true
