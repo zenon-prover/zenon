@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.15 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.16 2008-12-23 12:44:05 doligez Exp $";;
 
 open Expr;;
 
@@ -70,12 +70,12 @@ let rec is_def env e =
   | Eequiv (Evar (s, _), body, _)
   | Eequiv (body, Evar (s, _), _)
     -> env = [] && check_body [] s body
-  | Eapp ("=", [Eapp (s, args, _); body], _)
-  | Eapp ("=", [body; Eapp (s, args, _)], _)
-    -> check_args env args && check_body [] s body
   | Eapp ("=", [Evar (s, _); body], _)
   | Eapp ("=", [body; Evar (s, _)], _)
     -> env = [] && check_body [] s body
+  | Eapp ("=", [Eapp (s, args, _); body], _)
+  | Eapp ("=", [body; Eapp (s, args, _)], _)
+    -> check_args env args && check_body [] s body
   | _ -> false
 ;;
 
@@ -90,14 +90,14 @@ let rec make_def orig env e =
       DefPseudo (orig, s, [], body)
   | Eequiv (body, Evar (s, _), _) ->
       DefPseudo (orig, s, [], body)
-  | Eapp ("=", [Eapp (s, args, _); body], _) when check_args env args ->
-      DefPseudo (orig, s, extract_args args, body)
-  | Eapp ("=", [body; Eapp (s, args, _)], _) when check_args env args ->
-      DefPseudo (orig, s, extract_args args, body)
   | Eapp ("=", [Evar (s, _); body], _) ->
       DefPseudo (orig, s, [], body)
   | Eapp ("=", [body; Evar (s, _)], _) ->
       DefPseudo (orig, s, [], body)
+  | Eapp ("=", [Eapp (s, args, _); body], _) when check_args env args ->
+      DefPseudo (orig, s, extract_args args, body)
+  | Eapp ("=", [body; Eapp (s, args, _)], _) when check_args env args ->
+      DefPseudo (orig, s, extract_args args, body)
   | _ -> assert false
 ;;
 
