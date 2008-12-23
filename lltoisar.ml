@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.19 2008-12-18 17:00:41 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.20 2008-12-23 12:43:41 doligez Exp $";;
 
 open Printf;;
 
@@ -17,11 +17,14 @@ let rec dict_addlist l d =
 ;;
 
 let dict_add x d = Dict.add x d;;
-let dict_rm x d = Dict.remove x d;;
-
 let dict_mem x d = Dict.mem x d;;
-
 let dict_empty = Dict.empty;;
+
+module Int = struct
+  type t = int;;
+  let compare = Pervasives.compare;;
+end;;
+module Hypdict = Map.Make (Int);;
 
 let iprintf i oc fmt (* args *) =
   fprintf oc "%s" (String.make i ' ');
@@ -30,7 +33,12 @@ let iprintf i oc fmt (* args *) =
 
 let iinc i = if i >= 15 then i else i+1;;
 
-let getname e = "z_H" ^ (base26 (Index.get_number e));;
+let vname e = "?z_h" ^ (base26 (Index.get_number e));;
+let hname hyps e =
+  let n = Index.get_number e in
+  try Hypdict.find n hyps
+  with Not_found -> "z_H" ^ (base26 n)
+;;
 
 let apply lam arg =
   match lam with
@@ -73,86 +81,89 @@ let tr_prefix s =
   else s
 ;;
 
-let rec p_expr dict oc e =
-  (* Note: do not use naming for plain variables, it's not shorter.
-     Also, by not naming variables we don't need to worry about
-     bound variables in Eall, Eex, Elam and Etau *)
+let disjoint l1 l2 = not (List.exists (fun x -> List.mem x l1) l2);;
+
+let rec p_expr env dict oc e =
   let poc fmt = fprintf oc fmt in
   match e with
+  | _ when dict_mem (vname e) dict && disjoint env (get_fv e) ->
+      poc "%s" (vname e)
   | Evar (v, _) when Mltoll.is_meta v ->
       poc "(CHOOSE x : TRUE)";
   | Evar (v, _) ->
       poc "%s" (tr_constant v);
-  | _ when dict_mem (getname e) dict ->
-      poc "?%s" (getname e)
+  | Eapp ("TLA.set", l, _) ->
+      poc "{%a}" (p_expr_list env dict) l;
   | Eapp (f, [e1; e2], _) when is_infix f ->
-      poc "(%a%s%a)" (p_expr dict) e1 (tr_infix f) (p_expr dict) e2;
+      poc "(%a%s%a)" (p_expr env dict) e1 (tr_infix f) (p_expr env dict) e2;
   | Eapp (f, l, _) ->
-      poc "%s(%a)" (tr_prefix f) (p_expr_list dict) l;
+      poc "%s(%a)" (tr_prefix f) (p_expr_list env dict) l;
   | Enot (e, _) ->
-      poc "(~%a)" (p_expr dict) e;
+      poc "(~%a)" (p_expr env dict) e;
   | Eand (e1, e2, _) ->
-      poc "(%a&%a)" (p_expr dict) e1 (p_expr dict) e2;
+      poc "(%a&%a)" (p_expr env dict) e1 (p_expr env dict) e2;
   | Eor (e1, e2, _) ->
-      poc "(%a|%a)" (p_expr dict) e1 (p_expr dict) e2;
+      poc "(%a|%a)" (p_expr env dict) e1 (p_expr env dict) e2;
   | Eimply (e1, e2, _) ->
-      poc "(%a=>%a)" (p_expr dict) e1 (p_expr dict) e2;
+      poc "(%a=>%a)" (p_expr env dict) e1 (p_expr env dict) e2;
   | Eequiv (e1, e2, _) ->
-      poc "(%a<=>%a)" (p_expr dict) e1 (p_expr dict) e2;
+      poc "(%a<=>%a)" (p_expr env dict) e1 (p_expr env dict) e2;
   | Etrue ->
       poc "TRUE";
   | Efalse ->
       poc "FALSE";
   | Eall (Evar (x, _), _, e, _) ->
-      poc "(\\\\A %s:%a)" x (p_expr dict) e;
+      poc "(\\\\A %s:%a)" x (p_expr (x::env) dict) e;
   | Eall _ -> assert false
   | Eex (Evar (x, _), _, e, _) ->
-      poc "(\\\\E %s:%a)" x (p_expr dict) e;
+      poc "(\\\\E %s:%a)" x (p_expr (x::env) dict) e;
   | Eex _ -> assert false
   | Elam (Evar (x, _), _, e, _) ->
-      poc "(\\<lambda>%s. %a)" x (p_expr dict) e;
+      poc "(\\<lambda>%s. %a)" x (p_expr (x::env) dict) e;
   | Elam _ -> assert false
   | Etau (Evar (x, _), _, e, _) ->
-      poc "(CHOOSE %s:%a)" x (p_expr dict) e;
+      poc "(CHOOSE %s:%a)" x (p_expr (x::env) dict) e;
   | Etau _ -> assert false
   | Emeta _ -> assert false
 
 
-and p_expr_list dict oc l = p_list dict "" p_expr ", " oc l;
+and p_expr_list env dict oc l = p_list dict "" (p_expr env) ", " oc l;
 ;;
 
+let p_expr dict oc e = p_expr [] dict oc e;;
+let p_expr_list dict oc l = p_expr_list [] dict oc l;;
+
 let p_apply dict oc (lam, arg) =
-  let n_lam = getname lam in
+  let n_lam = vname lam in
   if dict_mem n_lam dict then
-    fprintf oc "?%s(%a)" n_lam (p_expr dict) arg
+    fprintf oc "%s(%a)" n_lam (p_expr dict) arg
   else
     p_expr dict oc (apply lam arg)
 ;;
 
-let mk_pat dict n = if dict_mem n dict then "_" else ("?"^n);;
+let mk_pat dict e =
+  match e with
+  | Evar (v, _) when not (Mltoll.is_meta v) -> ("_", dict)
+  | _ ->
+     let n = vname e in
+     if dict_mem n dict then ("_", dict) else (n, dict_add n dict)
+;;
 
 let p_is dict oc h =
   let binary pre e1 op e2 post =
-    let n1 = getname e1 in
-    let n2 = getname e2 in
-    if dict_mem n1 dict && dict_mem n2 dict then begin
-      fprintf oc "\n";
-      dict
-    end else begin
-      fprintf oc " (is \"%s%s%s%s%s\")\n"
-              pre (mk_pat dict n1) op (mk_pat dict n2) post;
-      dict_addlist [n1; n2] dict
-    end
+    let (p1, dict1) = mk_pat dict e1 in
+    let (p2, dict2) = mk_pat dict1 e2 in
+    if p1 = "_" && p2 = "_"
+    then fprintf oc "\n"
+    else fprintf oc " (is \"%s%s%s%s%s\")\n" pre p1 op p2 post;
+    dict2
   in
   let unary pre e post =
-    let n = getname e in
-    if dict_mem n dict then begin
-      fprintf oc "\n";
-      dict
-    end else begin
-      fprintf oc " (is \"%s%s%s\")\n" pre (mk_pat dict n) post;
-      dict_add n dict
-    end
+    let (p, dict1) = mk_pat dict e in
+    if p = "_"
+    then fprintf oc "\n"
+    else fprintf oc " (is \"%s%s%s\")\n" pre p post;
+    dict1
   in
   match h with
   | Eand (e1, e2, _) -> binary "" e1 "&" e2 ""
@@ -174,21 +185,20 @@ let p_is dict oc h =
   | _ -> unary "" h ""
 ;;
 
-let p_assume i dict oc h =
-  iprintf i oc "assume %s:\"%a\"" (getname h) (p_expr dict) h;
+let p_assume hyps i dict oc h =
+  iprintf i oc "assume %s:\"%a\"" (hname hyps h) (p_expr dict) h;
   p_is dict oc h
 ;;
 
-let p_sequent i dict oc hs =
-  let dict2 = List.fold_left (fun dict h -> p_assume i dict oc h) dict hs in
-  dict2
+let p_sequent hyps i dict oc hs =
+  List.fold_left (fun dict h -> p_assume hyps i dict oc h) dict hs
 ;;
 
-let rec p_tree i dict oc proof =
-  let alpha = p_alpha i dict oc in
-  let beta = p_beta i dict oc in
-  let gamma = p_gamma i dict oc in
-  let delta = p_delta i dict oc in
+let rec p_tree hyps i dict oc proof =
+  let alpha = p_alpha hyps i dict oc in
+  let beta = p_beta hyps i dict oc in
+  let gamma = p_gamma hyps i dict oc in
+  let delta = p_delta hyps i dict oc in
   match proof.rule with
   | Rconnect (And, e1, e2) ->
      alpha "and" (eand (e1, e2)) [e1; e2] proof.hyps;
@@ -210,15 +220,15 @@ let rec p_tree i dict oc proof =
           [[enot (e1); e2]; [e1; enot (e2)]] proof.hyps;
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
-     let p_con dict oc e = fprintf oc "%s" (getname e) in
+     let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s [of %a, OF %a])\n" name
              (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
   | Rextension (name, args, con, [hs]) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
-     let p_con dict oc e = fprintf oc "%s" (getname e) in
+     let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
      let p_hyp (dict, j) h =
-       iprintf i oc "have %s: \"%a\"" (getname h) (p_expr dict) h;
+       iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
        let dict2 = p_is dict oc h in
        iprintf i oc "by (rule %s_%d [of %a, OF %a])\n" name j
                (p_list dict2 "" p_arg " ") args (p_list dict2 "" p_con " ") con;
@@ -226,20 +236,20 @@ let rec p_tree i dict oc proof =
      in
      let (dict3, _) = List.fold_left p_hyp (dict, 0) hs in
      begin match proof.hyps with
-     | [t] -> p_tree i dict3 oc t;
+     | [t] -> p_tree hyps i dict3 oc t;
      | _ -> assert false
      end;
   | Rextension (name, args, con, hs) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
-     let p_con dict oc e = fprintf oc "%s" (getname e) in
+     let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "proof (rule %s [of %a, OF %a])\n" name
              (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
      let rec p_sub dict l1 l2 =
        match l1, l2 with
        | h::hs, t::ts ->
-          let dict2 = p_sequent (iinc i) dict oc h in
-          p_tree (iinc i) dict2 oc t;
+          let dict2 = p_sequent hyps (iinc i) dict oc h in
+          p_tree hyps (iinc i) dict2 oc t;
           iprintf i oc "%s\n" (if hs = [] then "qed" else "next");
           p_sub dict hs ts;
        | [], [] -> ()
@@ -262,7 +272,7 @@ let rec p_tree i dict oc proof =
   | Rnotex _ -> assert false
   | Rlemma (l, a) ->
      let pr dict oc x = fprintf oc "?%s=%s" x x in
-     let pr_hyp dict oc h = fprintf oc "%s" (getname h) in
+     let pr_hyp dict oc h = fprintf oc "%s" (hname hyps h) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s [where %a, OF %a])\n" l
              (p_list dict "" pr " and ") a
@@ -273,104 +283,102 @@ let rec p_tree i dict oc proof =
      let rec p_sub dict l1 l2 =
        match l1, l2 with
        | h::hs, t::ts ->
-          let dict2 = p_sequent (iinc i) dict oc h in
-          p_tree (iinc i) dict2 oc t;
+          let dict2 = p_sequent hyps (iinc i) dict oc h in
+          p_tree hyps (iinc i) dict2 oc t;
           iprintf i oc "%s\n" (if hs = [] then "qed" else "next");
           p_sub dict hs ts;
        | [], [] -> ()
        | _ -> assert false
      in p_sub dict [[e1]; [enot e1]] proof.hyps;
   | Raxiom (e1) ->
-     let n_e1 = getname e1 in
-     let n_ne1 = getname (enot e1) in
+     let n_e1 = hname hyps e1 in
+     let n_ne1 = hname hyps (enot e1) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule notE [OF %s %s])\n" n_ne1 n_e1;
   | Rdefinition (name, s, conc, hyp) ->
-     let n_conc = getname conc in
-     let n_hyp = getname hyp in
-     let n_h = getname hyp in
-     let n_c = getname conc in
+     let n_conc = hname hyps conc in
+     let n_hyp = hname hyps hyp in
      iprintf i oc "have %s_%s: \"%a == %a\"" n_hyp n_conc
              (p_expr dict) hyp (p_expr dict) conc;
-     fprintf oc " (is \"%s == %s\")\n" (mk_pat dict n_h) (mk_pat dict n_c);
-     let dict2 = dict_addlist [n_h; n_c] dict in
+     let (p_h, dict1) = mk_pat dict hyp in
+     let (p_c, dict2) = mk_pat dict1 conc in
+     fprintf oc " (is \"%s == %s\")\n" p_h p_c;
      iprintf i oc "by (unfold %s)\n" name;
      iprintf i oc "have %s: \"%a\"" n_hyp (p_expr dict2) hyp;
      let dict3 = p_is dict2 oc hyp in
-     iprintf i oc "by (unfold %s_%s, fact %s)\n" n_hyp n_conc (getname conc);
+     iprintf i oc "by (unfold %s_%s, fact %s)\n" n_hyp n_conc n_conc;
      let t = match proof.hyps with [t] -> t | _ -> assert false in
-     p_tree i dict3 oc t;
+     p_tree hyps i dict3 oc t;
   | Rnotequal (Eapp (f, args1, _) as e1, (Eapp (g, args2, _) as e2)) ->
      assert (f = g);
      let e = enot (eapp ("=", [e1; e2])) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "proof (rule zenon_noteq [of \"%a\"])\n" (p_expr dict) e2;
-     let pr d x y z = p_sub_equal (iinc i) d oc x y z in
+     let pr d x y z = p_sub_equal hyps (iinc i) d oc x y z in
      let dict2 = list_fold_left3 pr dict args1 args2 proof.hyps in
      let mk l = enot (eapp ("=", [eapp (f, l); e2])) in
-     p_subst i dict2 oc mk args1 args2 [] e;
+     p_subst hyps i dict2 oc mk args1 args2 [] e;
   | Rnotequal _ -> assert false
   | Rpnotp (Eapp (p, args1, _) as pp, (Enot (Eapp (q, args2, _), _) as np)) ->
      assert (p = q);
      iprintf i oc "show FALSE\n";
-     iprintf i oc "proof (rule notE [OF %s])\n" (getname np);
-     let pr d x y z = p_sub_equal (iinc i) d oc x y z in
+     iprintf i oc "proof (rule notE [OF %s])\n" (hname hyps np);
+     let pr d x y z = p_sub_equal hyps (iinc i) d oc x y z in
      let dict2 = list_fold_left3 pr dict args1 args2 proof.hyps in
      let mk l = eapp (p, l) in
-     p_subst i dict2 oc mk args1 args2 [] pp;
+     p_subst hyps i dict2 oc mk args1 args2 [] pp;
   | Rpnotp _ -> assert false
   | Rnoteq e1 ->
      let neq = enot (eapp ("=", [e1; e1])) in
-     let n_neq = getname neq in
+     let n_neq = hname hyps neq in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule zenon_noteq [OF %s])\n" n_neq;
   | Reqsym (e1, e2) ->
      let eq = eapp ("=", [e1; e2]) in
-     let n_eq = getname eq in
+     let n_eq = hname hyps eq in
      let neq = enot (eapp ("=", [e2; e1])) in
-     let n_neq = getname neq in
+     let n_neq = hname hyps neq in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule zenon_eqsym [OF %s %s])\n" n_eq n_neq;
   | Rnottrue ->
-     let nh = getname (enot etrue) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule zenon_nottrue [OF %s])\n" nh;
+     iprintf i oc "by (rule zenon_nottrue [OF %s])\n" (hname hyps (enot etrue))
   | Rfalse ->
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule %s)\n" (getname efalse);
+     iprintf i oc "by (rule %s)\n" (hname hyps efalse);
   | Rcongruence (p, a, b) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let h0 = eapp ("=", [a; b]) in
      let h1 = apply p a in
      let c = apply p b in
-     iprintf i oc "have %s: \"%a\"" (getname c) (p_expr dict) c;
+     iprintf i oc "have %s: \"%a\"" (hname hyps c) (p_expr dict) c;
      let dict2 = p_is dict oc c in
      iprintf i oc "by (rule subst [of \"%a\" \"%a\" \"%a\", OF %s %s])\n"
              (p_expr dict2) a (p_expr dict2) b (p_expr dict2) p
-             (getname h0) (getname h1);
-     p_tree i dict2 oc t;
+             (hname hyps h0) (hname hyps h1);
+     p_tree hyps i dict2 oc t;
 
-and p_alpha i dict oc lem h0 hs sub =
+and p_alpha hyps i dict oc lem h0 hs sub =
   let t = match sub with [t] -> t | _ -> assert false in
-  let n_h0 = getname h0 in
+  let n_h0 = hname hyps h0 in
   let pr_h (dict, j) h =
-    iprintf i oc "have %s: \"%a\"" (getname h) (p_expr dict) h;
+    iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
     let dict2 = p_is dict oc h in
     iprintf i oc "by (rule zenon_%s_%d [OF %s])\n" lem j n_h0;
     (dict2, j+1)
   in
   let (dict3, _) = List.fold_left pr_h (dict, 0) hs in
-  p_tree i dict3 oc t;
+  p_tree hyps i dict3 oc t;
 
-and p_beta i dict oc lem h0 hs sub =
-  let n0 = getname h0 in
+and p_beta hyps i dict oc lem h0 hs sub =
+  let n0 = hname hyps h0 in
   iprintf i oc "show FALSE\n";
   iprintf i oc "proof (rule zenon_%s [OF %s])\n" lem n0;
   let rec p_sub dict l1 l2 =
     match l1, l2 with
     | h::hs, t::ts ->
-       let dict2 = p_sequent (iinc i) dict oc h in
-       p_tree (iinc i) dict2 oc t;
+       let dict2 = p_sequent hyps (iinc i) dict oc h in
+       p_tree hyps (iinc i) dict2 oc t;
        iprintf i oc "%s\n" (if hs = [] then "qed" else "next");
        p_sub dict hs ts;
     | [], [] -> ()
@@ -378,22 +386,22 @@ and p_beta i dict oc lem h0 hs sub =
   in
   p_sub dict hs sub;
 
-and p_gamma i dict oc lem neg lam e conc sub =
+and p_gamma hyps i dict oc lem neg lam e conc sub =
   let t = match sub with [t] -> t | _ -> assert false in
   let (ng, negs) = if neg then (enot, "~") else ((fun x -> x), "") in
   let body = ng (apply lam e) in
-  let n_body = getname body in
+  let n_body = hname hyps body in
   iprintf i oc "have %s: \"%s%a\"" n_body negs (p_apply dict) (lam, e);
   let dict2 = p_is dict oc body in
   iprintf i oc "by (rule zenon_%s_0 [of \"%a\" \"%a\", OF %s])\n"
-          lem (p_expr dict2) lam (p_expr dict2) e (getname conc);
-  p_tree i dict2 oc t;
+          lem (p_expr dict2) lam (p_expr dict2) e (hname hyps conc);
+  p_tree hyps i dict2 oc t;
 
-and p_delta i dict oc lem h0 v neg lam sub =
+and p_delta hyps i dict oc lem h0 v neg lam sub =
   let t = match sub with [t] -> t | _ -> assert false in
   let (ng, negs) = if neg then (enot, "~") else ((fun x -> x), "") in
   let h00 = ng h0 in
-  let n00 = getname h00 in
+  let n00 = hname hyps h00 in
   iprintf i oc "show FALSE\n";
   iprintf i oc "proof (rule zenon_%s [OF %s])\n" lem n00;
   iprintf (iinc i) oc "fix %s\n" v;
@@ -402,34 +410,34 @@ and p_delta i dict oc lem h0 v neg lam sub =
     | Elam (x, _, e1, _) -> ng (substitute [(x, evar (v))] e1)
     | _ -> assert false
   in
-  let n_h = getname h in
+  let n_h = hname hyps h in
   iprintf (iinc i) oc "assume %s: \"%s%a\"" n_h negs
           (p_apply dict) (lam, evar (v));
   let dict2 = p_is dict oc h in
-  p_tree (iinc i) dict2 oc t;
+  p_tree hyps (iinc i) dict2 oc t;
   iprintf i oc "qed\n";
 
-and p_sub_equal i dict oc e1 e2 prf =
+and p_sub_equal hyps i dict oc e1 e2 prf =
   let eq = eapp ("=", [e1; e2]) in
   if Expr.equal e1 e2 || List.exists (Expr.equal eq) prf.conc
   then dict
   else begin
     let n_eq = enot (eq) in
-    iprintf i oc "have %s: \"%a\"" (getname eq) (p_expr dict) eq;
+    iprintf i oc "have %s: \"%a\"" (hname hyps eq) (p_expr dict) eq;
     let dict2 = p_is dict oc eq in
     let rev_eq = eapp ("=", [e2; e1]) in
     if List.exists (Expr.equal rev_eq) prf.conc then begin
-      iprintf i oc "by (rule sym [OF %s])\n" (getname rev_eq);
+      iprintf i oc "by (rule sym [OF %s])\n" (hname hyps rev_eq);
     end else begin
       iprintf i oc "proof (rule zenon_nnpp [of \"%a\"])\n" (p_expr dict2) eq;
-      let dict3 = p_sequent (iinc i) dict2 oc [n_eq] in
-      p_tree (iinc i) dict3 oc prf;
+      let dict3 = p_sequent hyps (iinc i) dict2 oc [n_eq] in
+      p_tree hyps (iinc i) dict3 oc prf;
       iprintf i oc "qed\n";
     end;
     dict2
   end
 
-and p_subst i dict oc mk l1 l2 rl2 prev =
+and p_subst hyps i dict oc mk l1 l2 rl2 prev =
   match l1, l2 with
   | [], [] ->
      iprintf (iinc i) oc "thus \"%a\" .\n" (p_expr dict) prev;
@@ -437,22 +445,22 @@ and p_subst i dict oc mk l1 l2 rl2 prev =
   | h1 :: t1, h2 :: t2 ->
      let newrl2 = h2 :: rl2 in
      if Expr.equal h1 h2 then
-       p_subst i dict oc mk t1 t2 newrl2 prev
+       p_subst hyps i dict oc mk t1 t2 newrl2 prev
      else begin
        let args = List.rev_append newrl2 t1 in
        let e = mk args in
-       let n_e = getname e in
+       let n_e = hname hyps e in
        iprintf (iinc i) oc "have %s: \"%a\"" n_e (p_expr dict) e;
        let dict2 = p_is dict oc e in
        let eq = eapp ("=", [h1; h2]) in
-       iprintf (iinc i) oc "by (rule subst [OF %s], fact %s)\n" (getname eq)
-               (getname prev);
-       p_subst i dict2 oc mk t1 t2 newrl2 e;
+       iprintf (iinc i) oc "by (rule subst [OF %s], fact %s)\n" (hname hyps eq)
+               (hname hyps prev);
+       p_subst hyps i dict2 oc mk t1 t2 newrl2 e;
      end;
   | _, _ -> assert false
 ;;
 
-let p_lemma i dict oc lem =
+let p_lemma hyps i dict oc lem =
   iprintf i oc "have %s: \"" lem.name;
   List.iter (fun (x, y) -> fprintf oc "!!%s." x) lem.params;
   List.iter (fun x -> fprintf oc " %a ==>" (p_expr dict) x) lem.proof.conc;
@@ -460,11 +468,11 @@ let p_lemma i dict oc lem =
   iprintf i oc "proof -\n";
   List.iter (fun (x, y) -> iprintf (iinc i) oc "fix \"%s\"\n" x) lem.params;
   let p_asm dict x =
-    iprintf (iinc i) oc "assume %s:\"%a\"" (getname x) (p_expr dict) x;
+    iprintf (iinc i) oc "assume %s:\"%a\"" (hname hyps x) (p_expr dict) x;
     p_is dict oc x
   in
   let dict2 = List.fold_left p_asm dict lem.proof.conc in
-  p_tree (iinc i) dict2 oc lem.proof;
+  p_tree hyps (iinc i) dict2 oc lem.proof;
   iprintf i oc "qed\n";
 ;;
 
@@ -477,15 +485,14 @@ let rec get_ngoal phrases =
 
 module HE = Hashtbl.Make (Expr);;
 
-let mk_hyp_table phrases =
-  let tbl = HE.create 7 in
-  let f p =
+let mk_hyp_dict phrases =
+  let f hyps p =
     match p with
-    | Phrase.Hyp (name, e, _) -> HE.add tbl e name;
-    | _ -> ()
+    | Phrase.Hyp ("", _, _) -> hyps
+    | Phrase.Hyp (name, e, _) -> Hypdict.add (Index.get_number e) name hyps;
+    | _ -> hyps
   in
-  List.iter f phrases;
-  tbl
+  List.fold_left f Hypdict.empty phrases
 ;;
 
 let p_theorem oc thm phrases lemmas =
@@ -496,22 +503,21 @@ let p_theorem oc thm phrases lemmas =
     | _ -> assert false
   in
   let hyps = List.filter (fun x -> x <> ngoal) thm.proof.conc in
-  let hypnames = mk_hyp_table phrases in
+  let hypnames = mk_hyp_dict phrases in
   iprintf 0 oc "proof (rule zenon_nnpp)\n";
   let i = iinc 0 in
   let p_asm dict x =
-    iprintf i oc "have %s:\"%a\"" (getname x) (p_expr dict) x;
-    let dict2 = p_is dict oc x in
-    begin match HE.find hypnames x with
-    | "" -> iprintf i oc "by fact\n"
-    | n -> iprintf i oc "using %s by safe\n" n
-    end;
-    dict2
+    if Hypdict.mem (Index.get_number x) hypnames then dict else begin
+      iprintf i oc "have %s:\"%a\"" (hname hypnames x) (p_expr dict) x;
+      let dict2 = p_is dict oc x in
+      iprintf i oc "by fact\n";
+      dict2
+    end
   in
   let dict3 = List.fold_left p_asm dict_empty hyps in
-  List.iter (p_lemma i dict_empty oc) lemmas;
-  let dict4 = p_sequent i dict3 oc [enot (goal)] in
-  p_tree i dict4 oc thm.proof;
+  List.iter (p_lemma hypnames i dict3 oc) lemmas;
+  let dict4 = p_sequent hypnames i dict3 oc [enot (goal)] in
+  p_tree hypnames i dict4 oc thm.proof;
   iprintf 0 oc "qed\n";
 ;;
 
