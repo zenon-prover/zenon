@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-#  $Id: configure,v 1.39 2008-12-24 15:51:11 weis Exp $
+#  $Id: configure,v 1.40 2008-12-24 16:00:30 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -485,7 +485,6 @@ build_config_var () {
   \
       -e "s,@COQC@,$COQC," \
       -e "s,@COQRC@,$COQRC," \
-
   \
       -e "s,@USE_COQC@,$USE_COQC," \
       -e "s,@SUM@,$SUM," \
