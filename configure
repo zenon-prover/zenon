@@ -1,30 +1,58 @@
 #!/bin/sh
 
-#  Copyright 2004 INRIA
-#  $Id: configure,v 1.38 2008-12-23 16:02:58 weis Exp $
+#**********************************************************************#
+#                                                                      #
+#                        FoCaLize compiler                             #
+#                                                                      #
+#            François Pessaux                                          #
+#            Pierre Weis                                               #
+#            Damien Doligez                                            #
+#                                                                      #
+#                               LIP6  --  INRIA Rocquencourt           #
+#                                                                      #
+#  Copyright 2008 INRIA                                                #
+#  Distributed only by permission.                                     #
+#                                                                      #
+#**********************************************************************#
+
+#  $Id: configure,v 1.39 2008-12-24 15:51:11 weis Exp $
+
+# Fix the name and version of the software
+PROJECT_NAME=zenon
+#MAIN_VERSION_NUMBER=0
+#SUB_VERSION_NUMBER=1
+#PATCH_VERSION_NUMBER=rc0
+#FULL_VERSION_NUMBER=${MAIN_VERSION_NUMBER}.${SUB_VERSION_NUMBER}.${PATCH_VERSION_NUMBER}
+#FULL_PROJECT_NAME=${PROJECT_NAME}-${FULL_VERSION_NUMBER}
+
+# The absolute path of this set of source files.
+ABSOLUTE_ROOT_DIR=`pwd`
 
 check () {
   type "$1" >/dev/null 2>&1
 }
 
-# Default settings
+# Default settings.
 
+#
+# Finding acceptable defaults for various unusual commands
+#
 set_default_sum () {
- for i in sum md5 md5sum md5deep sha1deep sha256deep; do
-   if check $i; then DEFAULT_SUM=$i; break; fi
- done
+  for i in sum md5 md5sum md5deep sha1deep sha256deep; do
+    if check $i; then DEFAULT_SUM=$i; break; fi
+  done
 }
 
 set_default_convert () {
-  if check ${DEFAULT_CONVERT}; then :;
-  else DEFAULT_CONVERT=:;
-  fi
+  for i in convert; do
+    if check $i; then DEFAULT_CONVERT=$i; break; fi
+  done
 }
 
 set_default_gs () {
-  if check ${DEFAULT_GS}; then :;
-  else DEFAULT_GS=:;
-  fi
+  for i in gs; do
+    if check $i; then DEFAULT_GS=$i; break; fi
+  done
 }
 
 set_command_defaults () {
@@ -33,11 +61,16 @@ set_command_defaults () {
   set_default_gs;
 }
 
+#
+# Defining all default variables
+#
+
 # Defining intrinsic defaults (default values for default values!).
 set_intrinsic_defaults () {
 
   # Intrinsic defaults for the software.
   DEFAULT_MAKE_EXTERNAL=true
+  DEFAULT_MAGIC_MAKE_EXTERNAL=false
 
   DEFAULT_DEBUG=true
 
@@ -72,10 +105,12 @@ set_intrinsic () {
   # Intrinsic settings for the software.
   if test -z "${MAKE_EXTERNAL}"; then
   MAKE_EXTERNAL="${DEFAULT_MAKE_EXTERNAL}"; fi
+  if test -z "${MAGIC_MAKE_EXTERNAL}"; then
+  MAGIC_MAKE_EXTERNAL="${DEFAULT_MAGIC_MAKE_EXTERNAL}"; fi
 
   if test -z ${DEBUG}; then
   DEBUG=${DEFAULT_DEBUG}; fi
- 
+
   # Intrinsic settings for the package installation.
   DEFAULT_PREFIX="/usr/local"
 
@@ -93,7 +128,7 @@ set_intrinsic () {
   if test -z "${COQ_MAKE}"; then
     # To compile Coq, prefer gmake, if GNU make is available with that name.
     if check "${DEFAULT_COQ_MAKE}"; then COQ_MAKE="${DEFAULT_COQ_MAKE}";
-    # Otherwise, use make (which is GNU make anyway on 
+    # Otherwise, use make (which is GNU make anyway on
     # boxes with GNU make as default!).
     else COQ_MAKE="make";
     fi
@@ -103,17 +138,20 @@ set_intrinsic () {
   if test -z "${USE_COQC}"; then USE_COQC="${DEFAULT_USE_COQC}"; fi
   if test -z "${SUM}"; then SUM="${DEFAULT_SUM}"; else
     if check $SUM; then :; else
-      echo "Configure: unavailable command $SUM."; exit 2;
+      abort_configuration "unavailable command $SUM.";
+      abort_remedy "Choose an executable check sum command."
     fi
   fi
   if test -z $CONVERT; then CONVERT="$DEFAULT_CONVERT"; else
     if check $CONVERT; then :; else
-      echo "Configure: unavailable command $CONVERT."; exit 2;
+      abort_configuration "unavailable command $CONVERT.";
+      abort_remedy "Choose an executable convert command."
     fi
   fi
   if test -z $GS; then GS="$DEFAULT_GS"; else
     if check $GS; then :; else
-      echo "Configure: unavailable command $GS."; exit 2;
+      abort_configuration "unavailable command $GS.";
+      abort_remedy "Choose an executable gs command."
     fi
   fi
 
@@ -123,7 +161,8 @@ set_intrinsic () {
     # set_XMLRPC;
     if test -z "$XMLRPC"; then XMLRPC="$DEFAULT_XMLRPC"; else
       if check $XMLRPC; then :; else
-        echo "Configure: unavailable command $XMLRPC."; exit 2;
+        abort_configuration "unavailable command $XMLRPC.";
+        abort_remedy "Choose an executable xmlrpc command."
       fi
     fi
     # set_XMLRPC_FLAGS;
@@ -180,10 +219,10 @@ set_prefix () {
 # Setting (or defining) variables that depend upon $DEFAULT_SHARE_PREFIX.
 set_share_defaults () {
 
-  # Normally should be
+  # The normal binding is
   # DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
-  # For zenon, there is no /zenon sub directory, we directly use the
-  # DEFAULT_SHARE_PROJECT_PREFIX.
+  # For for traditional projects (e.g. zenon), there is no FULL_PROJECT_NAME sub directory,
+  # we directly use the DEFAULT_SHARE_PROJECT_PREFIX.
   DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}"
 
   DEFAULT_SHARE_PROJECT_BIN_DIR="${DEFAULT_SHARE_PROJECT_DIR}/bin"
@@ -224,9 +263,10 @@ set_share_defaults () {
 # Setting variables that depend upon $SHARE_PREFIX.
 set_share () {
 
-  # Normal setting is:
-  #SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
-  # For Zenon the SHARE_PROJECT_DIR must be SHARE_PROJECT_PREFIX.
+  # The normal setting is:
+  # SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+  # For traditional project (e.g. zenon) the SHARE_PROJECT_DIR must
+  # be SHARE_PROJECT_PREFIX.
   SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}"
 
   SHARE_PROJECT_BIN_DIR="${SHARE_PROJECT_DIR}/bin"
@@ -241,7 +281,7 @@ set_share () {
   CAML_BIN_DIR="${SHARE_PROJECT_BIN_DIR}"; fi
 
   if test -z "${CAML_BYT}"; then
-  CAML_BYT="${SHARE_PROJECT_BIN_DIR}"/ocamlc; fi
+  CAML_BYT="${SHARE_PROJECT_BIN_DIR}/ocamlc"; fi
   if test -z "${CAML_BIN}"; then
   CAML_BIN="${SHARE_PROJECT_BIN_DIR}/ocamlopt"; fi
   if test -z "${CAML_LEX}"; then
@@ -296,17 +336,22 @@ set_variables () {
 #
 # Generic aborting procedures.
 #
+
+BOLD_TAG="\033[1m"
+UNDERLINE_TAG="\033[4m"
+NORMAL_TAG="\033[0m"
+
 abort_configuration () {
-  echo;
-  echo "configure: ABORTING CONFIGURATION!";
-  echo;
-  echo "$1";
+  echo >&2
+  echo "./configure: " $BOLD_TAG"ABORTING CONFIGURATION!"$NORMAL_TAG  >&2
+  echo >&2
+  echo "$1" >&2
 }
 
 abort_remedy () {
-  echo;
-  echo "$1";
-  echo "(See configure -help for details).";
+  echo >&2
+  echo "$1" >&2
+  echo "(See configure -help for details)." >&2
   exit 1;
 }
 
@@ -349,8 +394,8 @@ while : ; do
     # Coq options
     -coqc | --coqc) COQC="$2"; shift 2;;
     -coqrc | --coqrc) COQRC="$2"; shift 2;;
-    -use_coqc | --use_coqc) USE_COQC="$2"; shift 2;;
     # Zenon options
+    -use_coqc | --use_coqc) USE_COQC="$2"; shift 2;;
     -sum | --sum) SUM="$2"; shift 2;;
     -convert | --convert) CONVERT="$2"; shift 2;;
     -gs | --gs) GS="$2"; shift 2;;
@@ -361,14 +406,40 @@ while : ; do
      DEBUG=false; shift;;
     -help | --help)
        echo "usage: ./configure [options]"
-       echo "options are:"
-       echo "  [-]-bindir <directory>"
-       echo "    set the binary directory for installation (default ${BIN_DIR})"
-       echo "  [-]-libdir <directory>"
-       echo "    set the library directory for installation (default ${LIB_DIR})"
+       echo
+       echo "general options are:"
+       echo
        echo "  [-]-prefix <directory>"
-       echo "    set the directory prefix for installation (default ${PREFIX})"
+       echo "    set <directory> as the directory prefix for installation of ${PROJECT_NAME}."
+       echo "    (Default value for <directory> is ${DEFAULT_PREFIX}.)"
+       echo "  [-]-bindir <directory>"
+       echo "    set <directory> as the binary directory for installation of binaries for ${PROJECT_NAME}."
+       echo "    (Default value for <directory> is ${DEFAULT_BIN_DIR}.)"
+       echo "  [-]-libdir <directory>"
+       echo "    set <directory> as the library directory for installation of libraries for ${PROJECT_NAME}."
+       echo "    (Default value for <directory> is ${DEFAULT_LIB_DIR}.)"
+       echo "  [-]-debug | [-]-enable_debug"
+       echo "    enable debugging"
+       echo "  [-]-nodebug | [-]-disable_debug"
+       echo "    disable debugging"
+       echo "  [-]-help";
+       echo "    display help and exit"
+       echo
+       echo "options specific to Zenon are:"
+       echo
+       echo "  [-]-use_coqc <boolean>"
+       echo "    set if coqc must be used to verify the proofs given by zenon."
+       echo "  [-]-convert <executable-file>"
+       echo "    set absolute path for the command convert."
+       echo "  [-]-gs <executable-file>"
+       echo "    set absolute path for the command gs."
+       echo "  [-]-sum <executable-file>"
+       echo "    set absolute path for the check-sum command."
+       echo
+       echo "options specific to Caml are:"
+       echo
        echo "  [-]-caml_lib_dir <directory>"
+       echo "    set absolute path for the Caml libraries."
        echo "  [-]-caml_byt <executable-file>"
        echo "    set absolute path for the Caml byte code compiler."
        echo "  [-]-caml_bin <executable-file>"
@@ -377,24 +448,13 @@ while : ; do
        echo "    set absolute path for the Caml Lex compiler."
        echo "  [-]-caml_yac <executable-file>"
        echo "    set absolute path for the Caml Yacc compiler."
-       echo "  [-]-use_coqc <boolean>"
-       echo "    set if coqc must be used to verify the proofs given by zenon."
+       echo
+       echo "options specific to Coq are:"
+       echo
        echo "  [-]-coqc <executable-file>"
        echo "    set absolute path for the command coqc."
        echo "  [-]-coqrc <file>"
        echo "    set absolute path for coqrc, the startup file for coqc."
-       echo "  [-]-debug | [-]-enable-debug"
-       echo "    enable debugging"
-       echo "  [-]-convert <executable-file>"
-       echo "    set absolute path for the command convert."
-       echo "  [-]-gs <executable-file>"
-       echo "    set absolute path for the command gs."
-       echo "  [-]-nodebug | --disable-debug"
-       echo "    disable debugging"
-       echo "  [-]-sum <executable-file>"
-       echo "    set absolute path for the check-sum command."
-       echo "  [-]-help";
-       echo "    display help and exit"
        exit 0
        ;;
     *) echo "./configure: bad option '$1'" >&2
@@ -408,12 +468,13 @@ done
 # Editing ./.config_var.in with what we learnt here.
 #
 build_config_var () {
-
-  sed \
+  sed -e "s,@PROJECT_NAME@,$PROJECT_NAME," \
       -e "s,@DEBUG@,$DEBUG," \
+  \
       -e "s,@PREFIX@,$PREFIX," \
       -e "s,@BIN_DIR@,$BIN_DIR," \
       -e "s,@LIB_DIR@,$LIB_DIR," \
+  \
       -e "s,@CAML_LIB_DIR@,$CAML_LIB_DIR," \
       -e "s,@CAML_BYT@,$CAML_BYT," \
       -e "s,@CAML_BIN@,$CAML_BIN," \
@@ -421,8 +482,11 @@ build_config_var () {
       -e "s,@CAML_YAC@,$CAML_YAC," \
       -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
       -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
+  \
       -e "s,@COQC@,$COQC," \
       -e "s,@COQRC@,$COQRC," \
+
+  \
       -e "s,@USE_COQC@,$USE_COQC," \
       -e "s,@SUM@,$SUM," \
       -e "s,@CONVERT@,$CONVERT," \
@@ -432,10 +496,13 @@ build_config_var () {
 }
 
 summarize_configuration () {
-  echo
-  echo "Configuration summary for zenon:"
+  echo "*******************************************"
+  echo "Configuration settings summary for ${PROJECT_NAME}"
   echo
   cat .config_var
+  echo
+  echo "End of configuration settings for ${PROJECT_NAME}."
+  echo "*******************************************"
 }
 
 #
