@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-#  $Id: configure,v 1.41 2008-12-27 22:07:32 weis Exp $
+#  $Id: configure,v 1.42 2008-12-27 22:12:18 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -480,6 +480,8 @@ build_config_var () {
       -e "s,@PREFIX@,$PREFIX," \
       -e "s,@BIN_DIR@,$BIN_DIR," \
       -e "s,@LIB_DIR@,$LIB_DIR," \
+      -e "s,@DOC_DIR@,$DOC_DIR," \
+      -e "s,@MAN_DIR@,$MAN_DIR," \
   \
       -e "s,@CAML_LIB_DIR@,$CAML_LIB_DIR," \
       -e "s,@CAML_BIN_DIR@,$CAML_BIN_DIR," \
@@ -495,6 +497,8 @@ build_config_var () {
       -e "s,@COQC@,$COQC," \
       -e "s,@COQRC@,$COQRC," \
   \
+      -e "s,@ZENON_LIB_DIR@,$ZENON_LIB_DIR," \
+      -e "s,@ZENON@,$ZENON," \
       -e "s,@USE_COQC@,$USE_COQC," \
       -e "s,@SUM@,$SUM," \
       -e "s,@CONVERT@,$CONVERT," \
