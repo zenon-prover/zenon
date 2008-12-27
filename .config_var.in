@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.8 2008-12-27 18:26:46 weis Exp $
+#  $Id: .config_var.in,v 1.9 2008-12-27 19:36:25 weis Exp $
 
 DEBUG=@DEBUG@
 
@@ -50,7 +50,7 @@ GS=@GS@
 XMLRPC=@XMLRPC@
 
 # Aliases for this tool.
-CAMLC=@CAML_BYT@
-CAMLOPT=@CAML_BIN@
+CAMLBYT=@CAML_BYT@
+CAMLBIN=@CAML_BIN@
 CAMLLEX=@CAML_LEX@
 CAMLYACC=@CAML_YAC@

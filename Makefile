@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.61 2008-12-22 09:02:15 weis Exp $
+#  $Id: Makefile,v 1.62 2008-12-27 19:36:25 weis Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -9,11 +9,11 @@ DESTDIR = ""
 
 CAMLFLAGS = -warn-error A
 
-# Variables CAMLC, CAMLOPT, CAMLLEX, CAMLYACC are defined at configuration time
+# Variables CAMLBYT, CAMLBIN, CAMLLEX, CAMLYACC are defined at configuration time
 # their value is recorded in .config_var
-CAMLOPTFLAGS = ${CAMLFLAGS} ${BIN_DEBUG_FLAGS}
+CAMLBINFLAGS = ${CAMLFLAGS} ${BIN_DEBUG_FLAGS}
 
-CAMLCFLAGS = ${CAMLFLAGS} ${BYT_DEBUG_FLAGS}
+CAMLBYTFLAGS = ${CAMLFLAGS} ${BYT_DEBUG_FLAGS}
 
 
 # SOURCES specifies both the list of source files and the set of
@@ -71,10 +71,10 @@ byt: zenon.byt
 opt: zenon.opt
 
 zenon.opt: ${OBJOPT}
-	${CAMLOPT} ${CAMLOPTFLAGS} -o zenon.opt ${OBJOPT}
+	${CAMLBIN} ${CAMLBINFLAGS} -o zenon.opt ${OBJOPT}
 
 zenon.byt: ${OBJBYT}
-	${CAMLC} ${CAMLCFLAGS} -o zenon.byt ${OBJBYT}
+	${CAMLBYT} ${CAMLBYTFLAGS} -o zenon.byt ${OBJBYT}
 
 
 zenon: zenon.byt
@@ -102,13 +102,13 @@ uninstall:
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
 .ml.cmo:
-	${CAMLC} ${CAMLCFLAGS} -c $*.ml
+	${CAMLBYT} ${CAMLBYTFLAGS} -c $*.ml
 
 .ml.cmx:
-	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.ml
+	${CAMLBIN} ${CAMLBINFLAGS} -c $*.ml
 
 .mli.cmi:
-	${CAMLOPT} ${CAMLOPTFLAGS} -c $*.mli
+	${CAMLBIN} ${CAMLBINFLAGS} -c $*.mli
 
 lexzen.ml: lexzen.mll
 	${CAMLLEX} lexzen.mll
