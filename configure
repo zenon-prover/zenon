@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-#  $Id: configure,v 1.40 2008-12-24 16:00:30 weis Exp $
+#  $Id: configure,v 1.41 2008-12-27 22:07:32 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -94,6 +94,7 @@ set_intrinsic_defaults () {
   # Intrinsic defaults for Zvtov.
   DEFAULT_USE_XMLRPC=false
   DEFAULT_XMLRPC=xmlrpc
+  DEFAULT_XMLRPC_MODULE=""
   DEFAULT_XMLRPC_FLAGS=""
   DEFAULT_XMLRPC_LINK=""
 
@@ -157,7 +158,8 @@ set_intrinsic () {
 
   # Intrinsic settings for Zvtov.
   if test -z "$USE_XMLRPC"; then USE_XMLRPC=${DEFAULT_USE_XMLRPC}; fi
-  if test $USE_XMLRPC; then
+  if test -z "$XMLRPC_MODULE"; then XMLRPC_MODULE=${DEFAULT_XMLRPC_MODULE}; fi
+  if $USE_XMLRPC; then
     # set_XMLRPC;
     if test -z "$XMLRPC"; then XMLRPC="$DEFAULT_XMLRPC"; else
       if check $XMLRPC; then :; else
@@ -180,6 +182,10 @@ set_intrinsic () {
       else
           XMLRPC_LINK="${DEFAULT_XMLRPC_LINK}"
       fi
+    fi
+    # set_XMLRPC_MODULE;
+    if $USE_XMLRPC; then
+      if test -z $XMLRPC_MODULE; then XMLRPC_MODULE="xmlrpc"; fi
     fi
   fi;
 
@@ -476,6 +482,7 @@ build_config_var () {
       -e "s,@LIB_DIR@,$LIB_DIR," \
   \
       -e "s,@CAML_LIB_DIR@,$CAML_LIB_DIR," \
+      -e "s,@CAML_BIN_DIR@,$CAML_BIN_DIR," \
       -e "s,@CAML_BYT@,$CAML_BYT," \
       -e "s,@CAML_BIN@,$CAML_BIN," \
       -e "s,@CAML_LEX@,$CAML_LEX," \
@@ -483,6 +490,8 @@ build_config_var () {
       -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
       -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
   \
+      -e "s,@COQ_LIB_DIR@,$COQ_LIB_DIR," \
+      -e "s,@COQ_CAML_DIR@,$COQ_CAML_DIR," \
       -e "s,@COQC@,$COQC," \
       -e "s,@COQRC@,$COQRC," \
   \
