@@ -1,27 +1,55 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.7 2008-12-23 14:55:08 weis Exp $
+#  $Id: .config_var.in,v 1.8 2008-12-27 18:26:46 weis Exp $
 
 DEBUG=@DEBUG@
 
+# The directories where the project installs its own binaries and libraries.
 PREFIX=@PREFIX@
 BIN_DIR=@BIN_DIR@
 LIB_DIR=@LIB_DIR@
+MAN_DIR=@MAN_DIR@
 
+# Caml settings
+CAML_BIN_DIR=@CAML_BIN_DIR@
+CAML_LIB_DIR=@CAML_LIB_DIR@
 CAML_BYT=@CAML_BYT@
 CAML_BIN=@CAML_BIN@
 CAML_LEX=@CAML_LEX@
 CAML_YAC=@CAML_YAC@
+# Compilation flags for Caml.
 BYT_DEBUG_FLAGS=@BYT_DEBUG_FLAGS@
 BIN_DEBUG_FLAGS=@BIN_DEBUG_FLAGS@
 
+# Coq settings.
+COQ_LIB_DIR=@COQ_LIB_DIR@
+COQ_CAML_DIR=@COQ_CAML_DIR@
 COQC=@COQC@
 COQRC=@COQRC@
+
+# Zenon settings
+ZENON_LIB_DIR=@ZENON_LIB_DIR@
+ZENON=@ZENON@
 USE_COQC=@USE_COQC@
 
+# Zvtov.
+ZVTOV_LIB_DIR=@ZVTOV_LIB_DIR@
+ZVTOV=@ZVTOV@
+USE_XMLRPC=@USE_XMLRPC@
+XMLRPC_FLAGS=@XMLRPC_FLAGS@
+XMLRPC_LINK=@XMLRPC_LINK@
+
+#
+# Completely external tools (not installed with the project).
+#
+# External tools for zenon
+SUM=@SUM@
 CONVERT=@CONVERT@
 GS=@GS@
-SUM=@SUM@
 
+# External tools for zvtov
+XMLRPC=@XMLRPC@
+
+# Aliases for this tool.
 CAMLC=@CAML_BYT@
 CAMLOPT=@CAML_BIN@
 CAMLLEX=@CAML_LEX@
