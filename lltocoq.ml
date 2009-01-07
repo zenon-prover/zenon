@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.43 2008-12-23 12:43:22 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.44 2009-01-07 16:07:04 doligez Exp $";;
 
 open Printf;;
 
@@ -121,7 +121,8 @@ let get_goals concl =
 ;;
 
 let declare_lemma oc name params concl =
-  fprintf oc "Lemma %s : %a%a.\n" name p_forall params p_nand (get_goals concl);
+  fprintf oc "assert (%s : %a%a).\n" name p_forall params
+          p_nand (get_goals concl);
 ;;
 
 let declare_theorem oc name params concl phrases =
@@ -143,7 +144,7 @@ let p_name_list oc l =
 ;;
 
 let p_start_lemma oc nvars conc =
-  fprintf oc "do %d intro. intros %a.\n" nvars p_name_list conc
+  fprintf oc "do %d intro. intros%a.\n" nvars p_name_list conc
 ;;
 
 let p_start_thm oc conc =
@@ -329,7 +330,6 @@ let rec p_tree oc proof =
 let p_script_lemma oc nvars proof =
   p_start_lemma oc nvars (get_goals proof.conc);
   p_tree oc proof;
-  p_end oc;
 ;;
 
 let p_script_thm oc proof =
@@ -340,18 +340,25 @@ let p_script_thm oc proof =
 
 let notmeta (v, _) = not (Mltoll.is_meta v);;
 
-let rec p_lemmas oc phrases l =
+let rec p_lemmas oc l =
+  match l with
+  | [] -> ()
+  | lem :: t ->
+     let params = List.filter notmeta lem.params in
+     declare_lemma oc lem.name params lem.proof.conc;
+     p_script_lemma oc (List.length params) lem.proof;
+     fprintf oc "(* end of lemma %s *)\n" lem.name;
+     p_lemmas oc t;
+;;
+
+let p_theorem oc phrases l =
   match l with
   | [] -> assert false
-  | [thm] ->
-      let params = List.filter notmeta thm.params in
-      declare_theorem oc thm.name params thm.proof.conc phrases;
-      p_script_thm oc thm.proof;
-  | lem :: t ->
-      let params = List.filter notmeta lem.params in
-      declare_lemma oc lem.name params lem.proof.conc;
-      p_script_lemma oc (List.length params) lem.proof;
-      p_lemmas oc phrases t;
+  | thm :: lemmas ->
+     let params = List.filter notmeta thm.params in
+     declare_theorem oc thm.name params thm.proof.conc phrases;
+     p_lemmas oc (List.rev lemmas);
+     p_script_thm oc thm.proof;
 ;;
 
 let output oc phrases ppphrases llp =
@@ -360,7 +367,7 @@ let output oc phrases ppphrases llp =
     Coqterm.init_induct ppphrases;
     if !Globals.ctx_flag then Coqterm.declare_context oc phrases;
     if not !Globals.quiet_flag then fprintf oc "(* BEGIN-PROOF *)\n";
-    p_lemmas oc phrases llp;
+    p_theorem oc phrases (List.rev llp);
     if not !Globals.quiet_flag then fprintf oc "(* END-PROOF *)\n";
     !Coqterm.constants_used
   with

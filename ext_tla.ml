@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.21 2008-12-23 12:42:56 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.22 2009-01-07 16:07:04 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -293,7 +293,7 @@ let apply f e =
   | _ -> assert false
 ;;
 
-let rewrites in_expr ctx e mknode =
+let rec rewrites in_expr ctx e mknode =
   let lamctx = let x = Expr.newvar () in elam (x, "", ctx x) in
   let mk_boolcase name e1 e2 =
     let h1a = eapp ("=", [e; etrue]) in
@@ -307,6 +307,21 @@ let rewrites in_expr ctx e mknode =
   | _ when in_expr && Index.member e ->
      let h1 = ctx (etrue) in
      mknode "trueistrue" [ctx e; e; h1; lamctx; e] [e] [| [h1] |]
+  | Evar (f, _) when in_expr && Index.has_def f ->
+     let (d, params, body) = Index.get_def f in
+     if params = [] then begin
+       let unfolded = ctx body in
+       mknode "definition" [ctx e; unfolded; e] [] [| [unfolded] |]
+     end else
+       []
+  | Eapp (f, args, _) when in_expr && Index.has_def f ->
+     let (d, params, body) = Index.get_def f in
+     if List.length params = List.length args then begin
+       let s = List.combine params args in
+       let unfolded = ctx (substitute s body) in
+       mknode "definition" [ctx e; unfolded; e] [] [| [unfolded] |]
+     end else
+       []
   | Eapp ("TLA.fapply", [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _); a], _)
   -> let h1 = enot (eapp ("TLA.in", [a; s])) in
      let h2 = ctx (Expr.substitute [(v, a)] b) in
@@ -323,12 +338,17 @@ let rewrites in_expr ctx e mknode =
      mknode "fapplyexcept" [ctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
                             lamctx; f; v; e1; w]
             [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
+  | Eapp ("TLA.fapply", [f; a], _) ->
+     rewrites true (fun x -> ctx (eapp ("TLA.fapply", [x; a]))) f mknode
+     @ rewrites true (fun x -> ctx (eapp ("TLA.fapply", [f; x]))) f mknode
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = ctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [ctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
      let h1 = ctx (s) in
      mknode "domain_fcn" [ctx e; h1; lamctx; s; l] [] [| [h1] |]
+  | Eapp ("TLA.DOMAIN", [f], _) ->
+     rewrites true (fun x -> ctx (eapp ("TLA.DOMAIN", [x]))) f mknode
   | Enot (e1, _) when in_expr ->
      let h1a = eapp ("=", [e; etrue]) in
      let h1b = ctx (etrue) in
@@ -382,13 +402,37 @@ let rec find_rewrites in_expr ctx e mknode =
 
 let newnodes_rewrites e g =
   let mknode name args add_con branches =
-    [ Node {
-      nconc = e :: add_con;
-      nrule = Ext ("tla", name, args);
-      nprio = Arity;
-      ngoal = g;
-      nbranches = branches;
-    }]
+    match name with
+    | "definition" ->
+       begin match args with
+       | [folded; unfolded; Evar (f, _)] ->
+          let (def, params, body) = Index.get_def f in
+          [ Node {
+            nconc = e :: add_con;
+            nrule = Definition (def, folded, unfolded);
+            nprio = Arity;
+            ngoal = g;
+            nbranches = branches;
+          }]
+       | [folded; unfolded; Eapp (f, args, _)] ->
+          let (def, params, body) = Index.get_def f in
+          [ Node {
+            nconc = e :: add_con;
+            nrule = Definition (def, folded, unfolded);
+            nprio = Arity;
+            ngoal = g;
+            nbranches = branches;
+          }]
+       | _ -> assert false
+       end
+    | _ ->
+       [ Node {
+         nconc = e :: add_con;
+         nrule = Ext ("tla", name, args);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = branches;
+       }]
   in
   find_rewrites false (fun x -> x) e mknode
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.40 2008-12-18 17:07:53 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.41 2009-01-07 16:07:04 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -441,21 +441,62 @@ let rec get_actuals env var =
       act :: (get_actuals env rest)
 ;;
 
-let rec find_diff f1 f2 =
+let rec find_diff x f1 f2 =
+  assert (not (Expr.equal f1 f2));
   match f1, f2 with
-  | Enot (g1, _), Enot (g2, _) -> find_diff g1 g2
   | Eapp (s1, args1, _), Eapp (s2, args2, _) when s1 = s2 ->
-      find_diff_list args1 args2
-  | Eapp (s1, args1, _), _ -> args1
-  | Evar _, _ -> []
-  | _ -> assert false
+     let (args, l, r) = find_diff_list x args1 args2 in
+     eapp (s1, args), l, r
+  | Enot (g1, _), Enot (g2, _) ->
+     let (lam, l, r) = find_diff x g1 g2 in
+     enot (lam), l, r
+  | Eand (g1, h1, _), Eand (g2, h2, _) ->
+     if Expr.equal g1 g2 then begin
+       let (lam, l, r) = find_diff x h1 h2 in
+       eand (g1, lam), l, r
+     end else begin 
+       let (lam, l, r) = find_diff x g1 g2 in
+       eand (lam, h1), l, r
+     end
+  | Eor (g1, h1, _), Eand (g2, h2, _) ->
+     if Expr.equal g1 g2 then begin
+       let (lam, l, r) = find_diff x h1 h2 in
+       eor (g1, lam), l, r
+     end else begin 
+       let (lam, l, r) = find_diff x g1 g2 in
+       eor (lam, h1), l, r
+     end
+  | Eimply (g1, h1, _), Eand (g2, h2, _) ->
+     if Expr.equal g1 g2 then begin
+       let (lam, l, r) = find_diff x h1 h2 in
+       eimply (g1, lam), l, r
+     end else begin 
+       let (lam, l, r) = find_diff x g1 g2 in
+       eimply (lam, h1), l, r
+     end
+  | Eequiv (g1, h1, _), Eand (g2, h2, _) ->
+     if Expr.equal g1 g2 then begin
+       let (lam, l, r) = find_diff x h1 h2 in
+       eequiv (g1, lam), l, r
+     end else begin 
+       let (lam, l, r) = find_diff x g1 g2 in
+       eequiv (lam, h1), l, r
+     end
+  | Eall _, Eall _ -> assert false
+  | Eex _, Eex _ -> assert false
+  | Etau _, Etau _ -> assert false
+  | Elam _, Elam _ -> assert false
+  | _, _ -> x, f1, f2
 
-and find_diff_list l1 l2 =
+and find_diff_list x l1 l2 =
   match l1, l2 with
-  | h1::t1, h2::t2 when Expr.equal h1 h2 -> find_diff_list t1 t2
+  | h1::t1, h2::t2 when Expr.equal h1 h2 ->
+     let args, l, r = find_diff_list x t1 t2 in
+     (h1 :: args), l, r
   | h1::t1, h2::t2 ->
-      assert (List.for_all2 Expr.equal t1 t2);
-      find_diff h1 h2
+     assert (List.for_all2 Expr.equal t1 t2);
+     let lam, l, r = find_diff x h1 h2 in
+     (lam :: t1), l, r
   | _, _ -> assert false
 ;;
 
@@ -466,7 +507,13 @@ let rec get_univ f =
 ;;
 
 let get_args def args folded unfolded =
-  let vals = find_diff folded unfolded in
+  let x = Expr.newvar () in
+  let vals =
+    match find_diff x folded unfolded with
+    | _, Eapp (_, args, _), _ -> args
+    | _, Evar (_, _), _ -> []
+    | _ -> assert false
+  in
   let env = List.combine args vals in
   let vars = get_univ def in
   get_actuals env vars
@@ -698,6 +745,12 @@ let expand_trans_equal a b c d n1 n2 =
   n4
 ;;
 
+let make_sym x y n0 =
+  let n1 = make_cls "=" x y in
+  let n2 = make_cut (eapp ("=", [y; x])) n0 n1 in
+  n2
+;;
+
 let orelse f1 a1 f2 a2 =
   match f1 a1 with
   | None -> f2 a2
@@ -787,7 +840,7 @@ and translate_derived p =
   | Definition (DefPseudo ((def_hyp, _), s, args, body), folded, unfolded) ->
       let actuals = get_args def_hyp args folded unfolded in
       let exp =
-        translate_pseudo_def p def_hyp s actuals body folded unfolded
+        translate_pseudo_def p def_hyp s actuals folded unfolded
       in
       let (n, ext) = to_llproof exp in
       (n, union [def_hyp] ext)
@@ -952,17 +1005,17 @@ and translate_derived p =
   | Congruence _
     -> assert false
 
-and translate_pseudo_def p def_hyp s args body folded unfolded =
+and translate_pseudo_def p def_hyp s args folded unfolded =
   match args with
-  | [] -> translate_pseudo_def_base p def_hyp s body folded unfolded
+  | [] -> translate_pseudo_def_base p def_hyp s args folded unfolded
   | a1::rest ->
-      let newhyp = inst_all def_hyp a1 in
-      let n1 = translate_pseudo_def p newhyp s rest body folded unfolded in
-      make_node [def_hyp] (All (def_hyp, a1)) [[newhyp]] [n1]
+     let newhyp = inst_all def_hyp a1 in
+     let n1 = translate_pseudo_def p newhyp s rest folded unfolded in
+     make_node [def_hyp] (All (def_hyp, a1)) [[newhyp]] [n1]
 
-and translate_pseudo_def_base p def_hyp s body folded unfolded =
-  let n1 = match p.mlhyps with
-    | [| n1 |] -> n1
+and translate_pseudo_def_base p def_hyp s args folded unfolded =
+  let n0 = match p.mlhyps with
+    | [| n0 |] -> n0
     | _ -> assert false
   in
   match def_hyp with
@@ -973,51 +1026,25 @@ and translate_pseudo_def_base p def_hyp s body folded unfolded =
       in
       let n2 = make_node [q; nq] (Close q) [] [] in
       if cross then
-        make_node [def_hyp] (Equiv (a, b)) [[nunf]; [q]] [n1; n2]
+        make_node [def_hyp] (Equiv (a, b)) [[nunf]; [q]] [n0; n2]
       else
-        make_node [def_hyp] (Equiv (a, b)) [[nq]; [unf]] [n2; n1]
+        make_node [def_hyp] (Equiv (a, b)) [[nq]; [unf]] [n2; n0]
   | Eapp ("=", [_; _], _) when Expr.equal folded (enot def_hyp) ->
       make_node [folded; def_hyp] (Close def_hyp) [] []
-  | Eapp ("=", [_; _], _) ->
-      let (cross1, negunf, baseunf) = match unfolded with
-        | Enot (neg, _) -> (true, neg, neg)
-        | _ -> (false, enot unfolded, unfolded)
-      in
-      let (sym, f, body) = match def_hyp with
-        | Eapp ("=", [Eapp (s1, _, _) as f; body], _)
-        | Eapp ("=", [Evar (s1, _) as f; body], _)
-          when s1 = s -> (cross1, f, body)
-        | Eapp ("=", [body; Eapp (s1, _, _) as f], _)
-        | Eapp ("=", [body; Evar (s1, _) as f], _)
-          when s1 = s -> (not cross1, f, body)
-        | _ -> assert false
-      in
-      let (x, y) = if cross1 then (body, f) else (f, body) in
-      let nfeb = enot (eapp ("=", [x; y])) in
-      let rule2 = if sym then Close_sym ("=", y, x) else Close def_hyp in
-      let n2 = make_node [nfeb; def_hyp] rule2 [] [] in
-      let hyps_subs4 =
-        let f f1 u1 =
-          if Expr.equal f1 u1 then begin
-            let neee = enot (eapp ("=", [f1; f1])) in
-            ([neee], make_node [neee] (Close_refl ("=", f1)) [] [])
-          end else
-            ([nfeb], n2)
-        in
-        match folded, unfolded with
-        | Eapp (_, args1, _), Eapp (_, args2, _)
-        | Enot (Eapp (_, args1, _), _), Enot (Eapp (_, args2, _), _)
-          -> List.map2 f args1 args2
-        | _ -> assert false
-      in
-      let hyps4, subs4 = List.split hyps_subs4 in
-      let rule4 = if cross1 then P_NotP (baseunf, folded)
-                            else P_NotP (folded, negunf)
-      in
-      let n4 = make_node [negunf; folded] rule4 hyps4 subs4 in
-      if cross1
-        then make_node [] (Cut baseunf) [[baseunf]; [enot baseunf]] [n4; n1]
-        else make_node [] (Cut baseunf) [[baseunf]; [enot baseunf]] [n1; n4]
+  | Eapp ("=", [xx; yy], _) ->
+     let sym = match def_hyp with
+       | Eapp ("=", [Eapp (s1, _, _); body], _)
+       | Eapp ("=", [Evar (s1, _); body], _)
+         when s1 = s -> false
+       | Eapp ("=", [body; Eapp (s1, _, _)], _)
+       | Eapp ("=", [body; Evar (s1, _)], _)
+         when s1 = s -> true
+       | _ -> assert false
+     in
+     let x = Expr.newvar () in
+     let (ctx, a, b) = find_diff x folded unfolded in
+     let n1 = make_congr (elam (x, "", ctx)) a b n0 in
+     if sym then make_sym xx yy n1 else n1
   | _ -> assert false
 ;;
 

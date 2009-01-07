@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.26 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.27 2009-01-07 16:07:04 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -489,7 +489,7 @@ let llproof_rule o r =
       pr ", ";
       llproof_expr o a;
       pr ", ";
-      llproof_expr o a;
+      llproof_expr o b;
       pr ")";
   | Rdefinition (name, sym, folded, unfolded) ->
       pr "---definition \"%s\" (%s)" name sym;

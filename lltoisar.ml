@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.20 2008-12-23 12:43:41 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.21 2009-01-07 16:07:04 doligez Exp $";;
 
 open Printf;;
 
@@ -98,6 +98,8 @@ let rec p_expr env dict oc e =
       poc "(%a%s%a)" (p_expr env dict) e1 (tr_infix f) (p_expr env dict) e2;
   | Eapp (f, l, _) ->
       poc "%s(%a)" (tr_prefix f) (p_expr_list env dict) l;
+  | Enot (Eapp ("=", [e1; e2], _), _) ->
+      poc "(%a~=%a)" (p_expr env dict) e1 (p_expr env dict) e2;
   | Enot (e, _) ->
       poc "(~%a)" (p_expr env dict) e;
   | Eand (e1, e2, _) ->
