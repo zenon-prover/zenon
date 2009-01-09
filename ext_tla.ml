@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.22 2009-01-07 16:07:04 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.23 2009-01-09 16:28:45 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -340,7 +340,7 @@ let rec rewrites in_expr ctx e mknode =
             [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
   | Eapp ("TLA.fapply", [f; a], _) ->
      rewrites true (fun x -> ctx (eapp ("TLA.fapply", [x; a]))) f mknode
-     @ rewrites true (fun x -> ctx (eapp ("TLA.fapply", [f; x]))) f mknode
+     @ rewrites true (fun x -> ctx (eapp ("TLA.fapply", [f; x]))) a mknode
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = ctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [ctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
