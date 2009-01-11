@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.44 2009-01-11 21:13:38 weis Exp $
+# $Id: configure,v 1.45 2009-01-11 22:36:06 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -515,6 +515,7 @@ while : ; do
     -mandir | --mandir) MAN_DIR="$2"; shift 2;;
     # Caml options
     -caml_lib_dir | --caml_lib_dir) CAML_LIB_DIR="$2"; shift 2;;
+    -caml_bin_dir | --caml_bin_dir) CAML_BIN_DIR="$2"; shift 2;;
     -caml_byt | --caml_byt) CAML_BYT="$2"; shift 2;;
     -caml_bin | --caml_bin) CAML_BIN="$2"; shift 2;;
     -caml_lex | --caml_lex) CAML_LEX="$2"; shift 2;;
@@ -522,6 +523,7 @@ while : ; do
     -caml_dep | --caml_dep) CAML_DEP="$2"; shift 2;;
     -caml_doc | --caml_doc) CAML_DOC="$2"; shift 2;;
     # Coq options
+    -coq_lib_dir | --coq_lib_dir) COQ_LIB_DIR="$2"; shift 2;;
     -coqc | --coqc) COQC="$2"; shift 2;;
     -coq_dep | --coq_dep) COQ_DEP="$2"; shift 2;;
     -coqrc | --coqrc) COQRC="$2"; shift 2;;
@@ -531,6 +533,14 @@ while : ; do
     -sum | --sum) SUM="$2"; shift 2;;
     -convert | --convert) CONVERT="$2"; shift 2;;
     -gs | --gs) GS="$2"; shift 2;;
+    # Configure script specific options
+    -no_make_external | --no_make_external) MAKE_EXTERNAL=false; shift;;
+    -magic_make_external | --magic_make_external) MAGIC_MAKE_EXTERNAL=true; shift;;
+    -static_external | --static_external) STATIC_EXTERNAL=$2; shift 2;;
+    -use_share_sub_directory | --use_share_sub_directory)
+     USE_SHARE_SUB_DIRECTORY=$2; shift 2;;
+    -use_project_sub_directory | --use_project_sub_directory)
+     USE_PROJECT_SUB_DIRECTORY=$2; shift 2;;
     # Generic options
     -debug | --debug) DEBUG=$2; shift 2;;
     -enable_debug | --enable_debug) DEBUG=true; shift;;
@@ -576,6 +586,8 @@ while : ; do
        echo
        echo "options specific to Caml are:"
        echo
+       echo "  [-]-caml_bin_dir <directory>"
+       echo "    set absolute path for the Caml commands."
        echo "  [-]-caml_lib_dir <directory>"
        echo "    set absolute path for the Caml libraries."
        echo "  [-]-caml_byt <executable-file>"
@@ -593,6 +605,8 @@ while : ; do
        echo
        echo "options specific to Coq are:"
        echo
+       echo "  [-]-coq_lib_dir <directory>"
+       echo "    set absolute path for the Coq library."
        echo "  [-]-coqc <executable-file>"
        echo "    set absolute path for the Coq compiler."
        echo "  [-]-coq_dep <executable-file>"
@@ -626,7 +640,7 @@ build_config_var () {
       -e "s,@LIB_DIR@,$LIB_DIR," \
       -e "s,@DOC_DIR@,$DOC_DIR," \
       -e "s,@MAN_DIR@,$MAN_DIR," \
-      -e "s,@SHARE_PROJECT_PREFIX@,$SHARE_PROJECT_PREFIX," \
+      -e "s,@SHARE_PREFIX@,$SHARE_PREFIX," \
       -e "s,@SHARE_PROJECT_DIR@,$SHARE_PROJECT_DIR," \
       -e "s,@SHARE_PROJECT_BIN_DIR@,$SHARE_PROJECT_BIN_DIR," \
       -e "s,@SHARE_PROJECT_LIB_DIR@,$SHARE_PROJECT_LIB_DIR," \

@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.10 2009-01-11 16:36:40 weis Exp $
+#  $Id: .config_var.in,v 1.11 2009-01-11 22:36:06 weis Exp $
 
 #
 # The project identity card.
@@ -28,7 +28,7 @@ MAN_DIR=@MAN_DIR@
 
 # The directories where the project installs its own specific versions
 # of mandatory external tools binaries and libraries (if any).
-SHARE_PROJECT_PREFIX=@SHARE_PROJECT_PREFIX@
+SHARE_PREFIX=@SHARE_PREFIX@
 SHARE_PROJECT_DIR=@SHARE_PROJECT_DIR@
 SHARE_PROJECT_BIN_DIR=@SHARE_PROJECT_BIN_DIR@
 SHARE_PROJECT_LIB_DIR=@SHARE_PROJECT_LIB_DIR@
