@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.43 2009-01-11 16:36:40 weis Exp $
+# $Id: configure,v 1.44 2009-01-11 21:13:38 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -122,7 +122,7 @@ set_intrinsic_defaults () {
   # Intrinsic defaults for Zvtov.
   DEFAULT_USE_XMLRPC=false
   DEFAULT_XMLRPC=:
-  DEFAULT_XMLRPC_MODULE=""
+  DEFAULT_XMLRPC_MODULE="xmlrpc"
   DEFAULT_XMLRPC_FLAGS=""
   DEFAULT_XMLRPC_LINK=""
 
@@ -241,12 +241,12 @@ set_prefix_defaults () {
 
   # General defaults for the installation of the external tools of the project.
   # Normal setting is:
-  # DEFAULT_SHARE_PROJECT_PREFIX="${DEFAULT_PREFIX}/share"
-  # For Zenon the DEFAULT_SHARE_PROJECT_PREFIX should be the DEFAULT_PREFIX.
+  # DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}/share"
+  # For Zenon the DEFAULT_SHARE_PREFIX should be the DEFAULT_PREFIX.
   if $USE_SHARE_SUB_DIRECTORY; then
-    DEFAULT_SHARE_PROJECT_PREFIX="${DEFAULT_PREFIX}/share"
+    DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}/share"
   else
-    DEFAULT_SHARE_PROJECT_PREFIX="${DEFAULT_PREFIX}"
+    DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}"
   fi
 
 }
@@ -261,22 +261,19 @@ set_prefix () {
   if test -z "${MAN_DIR}"; then MAN_DIR="${PREFIX}/man"; fi
   if test -z "${DOC_DIR}"; then DOC_DIR="${PREFIX}/doc"; fi
 
-  if test -z "${SHARE_PROJECT_PREFIX}"; then
-    SHARE_PROJECT_PREFIX="${DEFAULT_SHARE_PROJECT_PREFIX}"; fi
-
 }
 
 # Setting (or defining) variables that depend upon ${DEFAULT_SHARE_PREFIX}.
 set_share_defaults () {
 
   # The normal default binding is
-  # DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+  # DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   # For traditional projects (e.g. zenon), there is no FULL_PROJECT_NAME sub directory,
-  # we directly use the DEFAULT_SHARE_PROJECT_PREFIX.
+  # we directly use the DEFAULT_SHARE_PREFIX.
   if ${USE_PROJECT_SUB_DIRECTORY}; then
-    DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+    DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   else
-    DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PROJECT_PREFIX}"
+    DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PREFIX}"
   fi
 
   DEFAULT_SHARE_PROJECT_BIN_DIR="${DEFAULT_SHARE_PROJECT_DIR}/bin"
@@ -299,12 +296,14 @@ set_share_defaults () {
     DEFAULT_CAML_YAC="${DEFAULT_CAML_BIN_DIR}/ocamlyacc"
     DEFAULT_CAML_LEX="${DEFAULT_CAML_BIN_DIR}/ocamllex"
     DEFAULT_CAML_DEP="${DEFAULT_CAML_BIN_DIR}/ocamldep"
+    DEFAULT_CAML_DOC="${DEFAULT_CAML_BIN_DIR}/ocamldoc"
   else
     DEFAULT_CAML_BYT="ocamlc"
     DEFAULT_CAML_BIN="ocamlopt"
     DEFAULT_CAML_LEX="ocamllex"
     DEFAULT_CAML_YAC="ocamlyacc"
     DEFAULT_CAML_DEP="ocamldep"
+    DEFAULT_CAML_DOC="ocamldoc"
   fi
 
   # Default for Camlp5
@@ -350,15 +349,19 @@ set_share_defaults () {
 # Setting variables that depend upon ${SHARE_PREFIX}.
 set_share () {
 
+  if test -z "${SHARE_PREFIX}"; then
+    SHARE_PREFIX="${DEFAULT_SHARE_PREFIX}"
+  fi
+
   # The normal setting is:
-  # SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+  # SHARE_PROJECT_DIR="${SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   # For traditional project (e.g. zenon) there is no ${FULL_PROJECT_NAME}
-  # sub directory, and SHARE_PROJECT_DIR is just SHARE_PROJECT_PREFIX.
-  # SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+  # sub directory, and SHARE_PROJECT_DIR is just ${SHARE_PREFIX}.
+  # SHARE_PROJECT_DIR="${SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   if ${USE_PROJECT_SUB_DIRECTORY}; then
-    SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}/${FULL_PROJECT_NAME}"
+    SHARE_PROJECT_DIR="${SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   else
-    SHARE_PROJECT_DIR="${SHARE_PROJECT_PREFIX}"
+    SHARE_PROJECT_DIR="${SHARE_PREFIX}"
   fi
 
   SHARE_PROJECT_BIN_DIR="${SHARE_PROJECT_DIR}/bin"
@@ -374,30 +377,42 @@ set_share () {
     # get bound to their defaults, unless those commands have already
     # been explicitely set otherwise.
     CAML_BIN_DIR="${SHARE_PROJECT_BIN_DIR}";
-    if test -z "${CAML_BYT}"; then
-    CAML_BYT="${DEFAULT_CAML_BYT}"; fi
-    if test -z "${CAML_BIN}"; then
-    CAML_BIN="${DEFAULT_CAML_BIN}"; fi
-    if test -z "${CAML_LEX}"; then
-    CAML_LEX="${DEFAULT_CAML_LEX}"; fi
-    if test -z "${CAML_YAC}"; then
-    CAML_YAC="${DEFAULT_CAML_YAC}"; fi
-    if test -z "${CAML_DEP}"; then
-    CAML_DEP="${DEFAULT_CAML_DEP}"; fi
+    if ${STATIC_EXTERNAL}; then
+      CAML_BYT="${CAML_BIN_DIR}/ocamlc"
+      CAML_BIN="${CAML_BIN_DIR}/ocamlopt"
+      CAML_YAC="${CAML_BIN_DIR}/ocamlyacc"
+      CAML_LEX="${CAML_BIN_DIR}/ocamllex"
+      CAML_DEP="${CAML_BIN_DIR}/ocamldep"
+      CAML_DOC="${CAML_BIN_DIR}/ocamldoc"
+    else
+      CAML_BYT="ocamlc"
+      CAML_BIN="ocamlopt"
+      CAML_LEX="ocamllex"
+      CAML_YAC="ocamlyacc"
+      CAML_DEP="ocamldep"
+      CAML_DOC="ocamldoc"
+    fi
   else
     # If CAML_BIN_DIR HAS been set, then it implies the value of
-    # associated commands, unless those cammands have already
+    # associated commands, unless those commands have already
     # been explicitely set otherwise.
-    if test -z "${CAML_BYT}"; then
-    CAML_BYT="${CAML_BIN_DIR}/ocamlc"; fi
-    if test -z "${CAML_BIN}"; then
-    CAML_BIN="${CAML_BIN_DIR}/ocamlopt"; fi
-    if test -z "${CAML_LEX}"; then
-    CAML_LEX="${CAML_BIN_DIR}/ocamllex"; fi
-    if test -z "${CAML_YAC}"; then
-    CAML_YAC="${CAML_BIN_DIR}/ocamlyacc"; fi
-    if test -z "${CAML_DEP}"; then
-    CAML_DEP="${CAML_BIN_DIR}/ocamldep"; fi
+    if ${STATIC_EXTERNAL}; then
+      if test -z "${CAML_BYT}"; then
+      CAML_BYT="${CAML_BIN_DIR}/ocamlc"; fi
+      if test -z "${CAML_BIN}"; then
+      CAML_BIN="${CAML_BIN_DIR}/ocamlopt"; fi
+      if test -z "${CAML_LEX}"; then
+      CAML_LEX="${CAML_BIN_DIR}/ocamllex"; fi
+      if test -z "${CAML_YAC}"; then
+      CAML_YAC="${CAML_BIN_DIR}/ocamlyacc"; fi
+      if test -z "${CAML_DEP}"; then
+      CAML_DEP="${CAML_BIN_DIR}/ocamldep"; fi
+      if test -z "${CAML_DOC}"; then
+      CAML_DOC="${CAML_BIN_DIR}/ocamldoc"; fi
+    else
+      abort_configuration "Cannot use option caml_bin_dir when not in static_external mode.";
+      abort_remedy "Choose static_external mode or remove caml_bin_dir option."
+    fi
   fi
 
   # Settings for Camlp5
@@ -492,7 +507,7 @@ while : ; do
   case "$1" in
     # Software specific options
     -share_prefix | --share_prefix | -share_project_prefix | --share_project_prefix)
-      SHARE_PROJECT_PREFIX="$2"; shift 2;;
+      SHARE_PREFIX="$2"; shift 2;;
     -prefix | --prefix) PREFIX="$2"; shift 2;;
     -bindir | --bindir) BIN_DIR="$2"; shift 2;;
     -libdir | --libdir) LIB_DIR="$2"; shift 2;;
@@ -505,6 +520,7 @@ while : ; do
     -caml_lex | --caml_lex) CAML_LEX="$2"; shift 2;;
     -caml_yac | --caml_yac) CAML_YAC="$2"; shift 2;;
     -caml_dep | --caml_dep) CAML_DEP="$2"; shift 2;;
+    -caml_doc | --caml_doc) CAML_DOC="$2"; shift 2;;
     # Coq options
     -coqc | --coqc) COQC="$2"; shift 2;;
     -coq_dep | --coq_dep) COQ_DEP="$2"; shift 2;;
@@ -534,6 +550,12 @@ while : ; do
        echo "  [-]-libdir <directory>"
        echo "    set <directory> as the library directory for installation of libraries for ${PROJECT_NAME}."
        echo "    (Default value for <directory> is ${DEFAULT_LIB_DIR}.)"
+       echo "  [-]-docdir <directory>"
+       echo "    set <directory> as the directory for installation of documentation for ${PROJECT_NAME}."
+       echo "    (Default value for <directory> is ${DEFAULT_DOC_DIR}.)"
+       echo "  [-]-mandir <directory>"
+       echo "    set <directory> as the directory for installation of man pages for ${PROJECT_NAME}."
+       echo "    (Default value for <directory> is ${DEFAULT_MAN_DIR}.)"
        echo "  [-]-debug | [-]-enable_debug"
        echo "    enable debugging"
        echo "  [-]-nodebug | [-]-disable_debug"
@@ -566,6 +588,8 @@ while : ; do
        echo "    set absolute path for the Caml Yacc compiler."
        echo "  [-]-caml_dep <executable-file>"
        echo "    set absolute path for the Caml automatic dependency manager."
+       echo "  [-]-caml_doc <executable-file>"
+       echo "    set absolute path for the Caml automatic documentation generator."
        echo
        echo "options specific to Coq are:"
        echo
