@@ -1,32 +1,70 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.9 2008-12-27 19:36:25 weis Exp $
+#  $Id: .config_var.in,v 1.10 2009-01-11 16:36:40 weis Exp $
+
+#
+# The project identity card.
+#
+PROJECT_NAME=@PROJECT_NAME@
+MAIN_VERSION_NUMBER=@MAIN_VERSION_NUMBER@
+SUB_VERSION_NUMBER=@SUB_VERSION_NUMBER@
+PATCH_VERSION_NUMBER=@PATCH_VERSION_NUMBER@
+FULL_VERSION_NUMBER=@FULL_VERSION_NUMBER@
+FULL_PROJECT_NAME=@FULL_PROJECT_NAME@
 
 DEBUG=@DEBUG@
+
+#
+# The project directories.
+#
+# The project sources directory.
+ABSOLUTE_ROOT_DIR=@ABSOLUTE_ROOT_DIR@
 
 # The directories where the project installs its own binaries and libraries.
 PREFIX=@PREFIX@
 BIN_DIR=@BIN_DIR@
 LIB_DIR=@LIB_DIR@
+DOC_DIR=@DOC_DIR@
 MAN_DIR=@MAN_DIR@
 
-# Caml settings
+# The directories where the project installs its own specific versions
+# of mandatory external tools binaries and libraries (if any).
+SHARE_PROJECT_PREFIX=@SHARE_PROJECT_PREFIX@
+SHARE_PROJECT_DIR=@SHARE_PROJECT_DIR@
+SHARE_PROJECT_BIN_DIR=@SHARE_PROJECT_BIN_DIR@
+SHARE_PROJECT_LIB_DIR=@SHARE_PROJECT_LIB_DIR@
+SHARE_PROJECT_MAN_DIR=@SHARE_PROJECT_MAN_DIR@
+SHARE_PROJECT_DOC_DIR=@SHARE_PROJECT_DOC_DIR@
+
+#
+# External tools settings.
+#
+# Caml tools settings.
 CAML_BIN_DIR=@CAML_BIN_DIR@
 CAML_LIB_DIR=@CAML_LIB_DIR@
 CAML_BYT=@CAML_BYT@
 CAML_BIN=@CAML_BIN@
 CAML_LEX=@CAML_LEX@
 CAML_YAC=@CAML_YAC@
+CAML_DEP=@CAML_DEP@
 # Compilation flags for Caml.
 BYT_DEBUG_FLAGS=@BYT_DEBUG_FLAGS@
 BIN_DEBUG_FLAGS=@BIN_DEBUG_FLAGS@
 
+# Camlp5 settings.
+CAMLP5_LIB_DIR=@CAMLP5_LIB_DIR@
+
 # Coq settings.
 COQ_LIB_DIR=@COQ_LIB_DIR@
 COQ_CAML_DIR=@COQ_CAML_DIR@
-COQC=@COQC@
 COQRC=@COQRC@
+COQC=@COQC@
+COQ_DEP=@COQ_DEP@
+COQ_MAKE=@COQ_MAKE@
 
-# Zenon settings
+#
+# Internal tools flags.
+#
+# Zenon.
 ZENON_LIB_DIR=@ZENON_LIB_DIR@
 ZENON=@ZENON@
 USE_COQC=@USE_COQC@
@@ -37,6 +75,7 @@ ZVTOV=@ZVTOV@
 USE_XMLRPC=@USE_XMLRPC@
 XMLRPC_FLAGS=@XMLRPC_FLAGS@
 XMLRPC_LINK=@XMLRPC_LINK@
+XMLRPC_MODULE=@XMLRPC_MODULE@
 
 #
 # Completely external tools (not installed with the project).
@@ -54,3 +93,5 @@ CAMLBYT=@CAML_BYT@
 CAMLBIN=@CAML_BIN@
 CAMLLEX=@CAML_LEX@
 CAMLYACC=@CAML_YAC@
+CAMLDEP=@CAML_DEP@
+COQDEP=@COQ_DEP@
