@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_focal.v,v 1.5 2008-11-24 15:28:27 doligez Exp $  *)
+(*  $Id: zenon_focal.v,v 1.6 2009-01-13 16:20:53 doligez Exp $  *)
 
 Require Export Bool.
 Require Import ClassicalEpsilon.
@@ -28,14 +28,72 @@ Proof.
   auto.
 Qed.
 
-Lemma zenon_focal_falsetrue : false = true -> False.
+Lemma zenon_focal_trueequal : forall x,
+  (Is_true x -> False) -> true = x -> False.
 Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
   congruence.
 Qed.
 
-Lemma zenon_focal_truefalse : true = false -> False.
+Lemma zenon_focal_equaltrue : forall x,
+  (Is_true x -> False) -> x = true -> False.
 Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
   congruence.
+Qed.
+
+Lemma zenon_focal_truenotequal : forall x,
+  (~Is_true x -> False) -> ~(true = x) -> False.
+Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
+Qed.
+
+Lemma zenon_focal_notequaltrue : forall x,
+  (~Is_true x -> False) -> ~(x = true) -> False.
+Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
+Qed.
+
+Lemma zenon_focal_falseequal : forall x,
+  (~Is_true x -> False) -> false = x -> False.
+Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
+  congruence.
+Qed.
+
+Lemma zenon_focal_equalfalse : forall x,
+  (~Is_true x -> False) -> x = false -> False.
+Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
+  congruence.
+Qed.
+
+Lemma zenon_focal_falsenotequal : forall x,
+  (Is_true x -> False) -> ~(false = x) -> False.
+Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
+Qed.
+
+Lemma zenon_focal_notequalfalse : forall x,
+  (Is_true x -> False) -> ~(x = false) -> False.
+Proof.
+  unfold Is_true.
+  intros.
+  destruct x; auto.
 Qed.
 
 Lemma zenon_focal_not :
