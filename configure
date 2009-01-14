@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.46 2009-01-14 11:36:28 weis Exp $
+# $Id: configure,v 1.47 2009-01-14 12:07:47 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -38,7 +38,7 @@ check () {
 #
 # Finding acceptable defaults for various unusual commands
 #
-sum_default () {
+set_sum_default () {
   for i in sum md5 md5sum md5deep sha1deep sha256deep; do
     if check $i; then DEFAULT_SUM=$i; break; fi
   done
@@ -174,6 +174,7 @@ set_intrinsic () {
   if test -z "${MAGIC_MAKE_EXTERNAL}"; then
     MAGIC_MAKE_EXTERNAL="${DEFAULT_MAGIC_MAKE_EXTERNAL}"; fi
 
+  # Intrinsic settings for Caml.
   if test -z "${BYT_DEBUG_FLAGS}"; then
     BYT_DEBUG_FLAGS="${DEFAULT_BYT_DEBUG_FLAGS}"; fi
   if test -z "${BIN_DEBUG_FLAGS}"; then
@@ -248,6 +249,7 @@ set_intrinsic () {
         XMLRPC_LINK="${DEFAULT_XMLRPC_LINK}"
       fi
     fi
+  fi
 
 }
 
@@ -342,7 +344,7 @@ set_share_prefix_defaults () {
     DEFAULT_COQ_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqc"
     DEFAULT_COQ_DEP_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqdep"
   else
-    DEFAULT_COQ_DEP_COMPILER="coqc"
+    DEFAULT_COQ_COMPILER="coqc"
     DEFAULT_COQ_DEP_COMPILER="coqdep"
   fi
 
