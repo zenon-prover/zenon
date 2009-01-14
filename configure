@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.45 2009-01-11 22:36:06 weis Exp $
+# $Id: configure,v 1.46 2009-01-14 11:36:28 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -38,40 +38,63 @@ check () {
 #
 # Finding acceptable defaults for various unusual commands
 #
-set_default_sum () {
+sum_default () {
   for i in sum md5 md5sum md5deep sha1deep sha256deep; do
     if check $i; then DEFAULT_SUM=$i; break; fi
   done
 }
 
-set_default_convert () {
+set_convert_default () {
   for i in convert; do
     if check $i; then DEFAULT_CONVERT=$i; break; fi
   done
 }
 
-set_default_gs () {
+set_gs_default () {
   for i in gs; do
     if check $i; then DEFAULT_GS=$i; break; fi
   done
 }
 
-set_default_xmlrpc () {
+set_xmlrpc_default () {
   for i in xmlrpc; do
     if check $i; then DEFAULT_XMLRPC=$i; break; fi
   done
 }
 
 set_command_defaults () {
-  set_default_sum;
-  set_default_convert;
-  set_default_gs;
-  set_default_xmlrpc;
+  set_sum_default;
+  set_convert_default;
+  set_gs_default;
+  set_xmlrpc_default;
 }
 
 #
 # Defining all default variables
 #
+
+# The two root variables of the configuration are
+# $(PREFIX) and $(SHARE_PREFIX).
+#
+# $(PREFIX) defines the root directory for the project installation after its
+# proper configuration and compilation.
+# This directory will contain
+# - $(PREFIX)/bin for installation of the project binaries,
+# - $(PREFIX)/lib for installation of the project library files,
+# - $(PREFIX)/man for installation of the project manual pages,
+# - $(PREFIX)/doc for installation of the project documentation.
+#
+# $(SHARE_PREFIX) defines the root directory for the installation of private
+# versions of external tools, if necessary.
+# This directory will contain
+# - $(SHARE_PREFIX)/bin for installation of the project external tools binaries,
+# - $(SHARE_PREFIX)/lib for installation of the project external tools library files,
+# - $(SHARE_PREFIX)/man for installation of the project external tools manual pages,
+# - $(SHARE_PREFIX)/doc for installation of the project external tools documentation.
+
+# Default variable assigment
+
+# Variable assigment
 
 # Variables are divided into 3 groups:
 # - intrinsic defaults, which are string constants,
@@ -80,6 +103,7 @@ set_command_defaults () {
 #
 # For those groups we define a procedure that sets the defaults,
 # and a procedure that sets the variables after options have been processed.
+#
 # Then procedure set_defaults is called before parsing options, and
 # set_variables is called after parsing options.
 
@@ -93,7 +117,7 @@ set_intrinsic_defaults () {
 
   # Intrinsic defaults for the project installation.
   DEFAULT_PREFIX="/usr/local"
-  # Do we use the 'share' sub directory of ${SHARE_PREFIX} for the project ?
+  # Do we add the 'share' sub directory to ${SHARE_PREFIX} for the project ?
   DEFAULT_USE_SHARE_SUB_DIRECTORY=false
   # Do we use a 'full project name' private sub directory ${SHARE_PREFIX} for the project ?
   DEFAULT_USE_PROJECT_SUB_DIRECTORY=false
@@ -110,11 +134,11 @@ set_intrinsic_defaults () {
   DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
 
   # Intrinsic defaults for Coq.
-  DEFAULT_COQRC="$HOME/.coqrc"
+  DEFAULT_COQ_RC="$HOME/.coqrc"
   DEFAULT_COQ_MAKE="gmake"
 
   # Intrinsic defaults for Zenon.
-  DEFAULT_USE_COQC=false
+  DEFAULT_USE_COQ_COMPILER=false
   DEFAULT_SUM=:
   DEFAULT_CONVERT=:
   DEFAULT_GS=:
@@ -133,33 +157,30 @@ set_intrinsic () {
 
   # Intrinsic settings for the project.
 
-  if test -z ${DEBUG}; then
-  DEBUG=${DEFAULT_DEBUG}; fi
+  if test -z ${DEBUG}; then DEBUG=${DEFAULT_DEBUG}; fi
 
   # Intrinsic settings for the project installation.
-  DEFAULT_PREFIX="/usr/local"
+  if test -z ${PREFIX}; then PREFIX=${DEFAULT_PREFIX}; fi
   if test -z "${USE_SHARE_SUB_DIRECTORY}"; then
-  USE_SHARE_SUB_DIRECTORY="${DEFAULT_USE_SHARE_SUB_DIRECTORY}"; fi
+    USE_SHARE_SUB_DIRECTORY="${DEFAULT_USE_SHARE_SUB_DIRECTORY}"; fi
   if test -z "${USE_PROJECT_SUB_DIRECTORY}"; then
-  USE_PROJECT_SUB_DIRECTORY="${DEFAULT_USE_PROJECT_SUB_DIRECTORY}"; fi
+    USE_PROJECT_SUB_DIRECTORY="${DEFAULT_USE_PROJECT_SUB_DIRECTORY}"; fi
 
   # External tools
   if test -z "${STATIC_EXTERNAL}"; then
-  STATIC_EXTERNAL="${DEFAULT_STATIC_EXTERNAL}"; fi
+    STATIC_EXTERNAL="${DEFAULT_STATIC_EXTERNAL}"; fi
   if test -z "${MAKE_EXTERNAL}"; then
-  MAKE_EXTERNAL="${DEFAULT_MAKE_EXTERNAL}"; fi
+    MAKE_EXTERNAL="${DEFAULT_MAKE_EXTERNAL}"; fi
   if test -z "${MAGIC_MAKE_EXTERNAL}"; then
-  MAGIC_MAKE_EXTERNAL="${DEFAULT_MAGIC_MAKE_EXTERNAL}"; fi
+    MAGIC_MAKE_EXTERNAL="${DEFAULT_MAGIC_MAKE_EXTERNAL}"; fi
 
-  # Intrinsic settings for Caml
-  if test ${DEBUG}; then
-    BYT_DEBUG_FLAGS="${DEFAULT_BYT_DEBUG_FLAGS}";
-    BIN_DEBUG_FLAGS="${DEFAULT_BIN_DEBUG_FLAGS}";
-  fi
+  if test -z "${BYT_DEBUG_FLAGS}"; then
+    BYT_DEBUG_FLAGS="${DEFAULT_BYT_DEBUG_FLAGS}"; fi
+  if test -z "${BIN_DEBUG_FLAGS}"; then
+    BIN_DEBUG_FLAGS="${DEFAULT_BIN_DEBUG_FLAGS}"; fi
 
   # Intrinsic settings for Coq.
-  if test -z "${COQRC}"; then
-  COQRC="${DEFAULT_COQRC}"; fi
+  if test -z "${COQ_RC}"; then COQ_RC="${DEFAULT_COQ_RC}"; fi
 
   # Setting coq make command.
   if test -z "${COQ_MAKE}"; then
@@ -172,40 +193,44 @@ set_intrinsic () {
   fi
 
   # Intrinsic settings for Zenon.
-  if test -z "${USE_COQC}"; then USE_COQC="${DEFAULT_USE_COQC}"; fi
+  if test -z "${USE_COQ_COMPILER}"; then USE_COQ_COMPILER="${DEFAULT_USE_COQ_COMPILER}"; fi
   if test -z "${SUM}"; then SUM="${DEFAULT_SUM}"; else
-    if check $SUM; then :; else
-      abort_configuration "unavailable command $SUM.";
+    if check "${SUM}"; then :; else
+      abort_configuration "unavailable command ${SUM}.";
       abort_remedy "Choose an executable check sum command."
     fi
   fi
-  if test -z $CONVERT; then CONVERT="$DEFAULT_CONVERT"; else
-    if check $CONVERT; then :; else
-      abort_configuration "unavailable command $CONVERT.";
+  if test -z "${CONVERT}"; then CONVERT="${DEFAULT_CONVERT}"; else
+    if check "${CONVERT}"; then :; else
+      abort_configuration "unavailable command ${CONVERT}.";
       abort_remedy "Choose an executable convert command."
     fi
   fi
-  if test -z $GS; then GS="$DEFAULT_GS"; else
-    if check $GS; then :; else
-      abort_configuration "unavailable command $GS.";
+  if test -z "${GS}"; then GS="${DEFAULT_GS}"; else
+    if check ${GS}; then :; else
+      abort_configuration "unavailable command ${GS}.";
       abort_remedy "Choose an executable gs command."
     fi
   fi
 
   # Intrinsic settings for Zvtov.
   if test -z "$USE_XMLRPC"; then USE_XMLRPC=${DEFAULT_USE_XMLRPC}; fi
-  if test -z $XMLRPC; then XMLRPC="$DEFAULT_XMLRPC"; else
-    if check $XMLRPC; then :; else
-      abort_configuration "unavailable command $XMLRPC.";
+  if test -z "${XMLRPC}"; then XMLRPC="${DEFAULT_XMLRPC}"; else
+    if check "${XMLRPC}"; then :; else
+      abort_configuration "unavailable command ${XMLRPC}.";
       abort_remedy "Choose an executable xmlrpc command."
     fi
   fi
 
-  if $USE_XMLRPC; then
+  if ${USE_XMLRPC}; then
     # Check_XMLRPC;
-    if check $XMLRPC; then :; else
-      abort_configuration "unavailable command $XMLRPC.";
+    if check "${XMLRPC}"; then :; else
+      abort_configuration "unavailable command ${XMLRPC}.";
       abort_remedy "Choose an executable xmlrpc command."
+    fi
+    # set_XMLRPC_MODULE;
+    if ${USE_XMLRPC}; then
+      if test -z "${XMLRPC_MODULE}"; then XMLRPC_MODULE="${DEFAULT_XMLRPC_MODULE}"; fi
     fi
     # set_XMLRPC_FLAGS;
     if test -z "$XMLRPC_FLAGS"; then
@@ -223,11 +248,6 @@ set_intrinsic () {
         XMLRPC_LINK="${DEFAULT_XMLRPC_LINK}"
       fi
     fi
-    # set_XMLRPC_MODULE;
-    if $USE_XMLRPC; then
-      if test -z $XMLRPC_MODULE; then XMLRPC_MODULE="${DEFAULT_XMLRPC_MODULE}"; fi
-    fi
-  fi
 
 }
 
@@ -238,16 +258,6 @@ set_prefix_defaults () {
   DEFAULT_LIB_DIR="${DEFAULT_PREFIX}/lib"
   DEFAULT_MAN_DIR="${DEFAULT_PREFIX}/man"
   DEFAULT_DOC_DIR="${DEFAULT_PREFIX}/doc"
-
-  # General defaults for the installation of the external tools of the project.
-  # Normal setting is:
-  # DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}/share"
-  # For Zenon the DEFAULT_SHARE_PREFIX should be the DEFAULT_PREFIX.
-  if $USE_SHARE_SUB_DIRECTORY; then
-    DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}/share"
-  else
-    DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}"
-  fi
 
 }
 
@@ -264,13 +274,23 @@ set_prefix () {
 }
 
 # Setting (or defining) variables that depend upon ${DEFAULT_SHARE_PREFIX}.
-set_share_defaults () {
+set_share_prefix_defaults () {
+
+  # General defaults for the installation of the external tools of the project.
+  # Normal setting is:
+  # DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}/share"
+  # For Zenon the DEFAULT_SHARE_PREFIX should be the DEFAULT_PREFIX.
+  if ${DEFAULT_USE_SHARE_SUB_DIRECTORY}; then
+    DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}/share"
+  else
+    DEFAULT_SHARE_PREFIX="${DEFAULT_PREFIX}"
+  fi
 
   # The normal default binding is
   # DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   # For traditional projects (e.g. zenon), there is no FULL_PROJECT_NAME sub directory,
   # we directly use the DEFAULT_SHARE_PREFIX.
-  if ${USE_PROJECT_SUB_DIRECTORY}; then
+  if ${DEFAULT_USE_PROJECT_SUB_DIRECTORY}; then
     DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PREFIX}/${FULL_PROJECT_NAME}"
   else
     DEFAULT_SHARE_PROJECT_DIR="${DEFAULT_SHARE_PREFIX}"
@@ -290,20 +310,20 @@ set_share_defaults () {
   # For traditional projects (e.g. zenon), there is no reasonable
   # value for ${DEFAULT_CAML_BIN_DIR} defined: we thus directly use
   # "com" as default.
-  if ${STATIC_EXTERNAL}; then
-    DEFAULT_CAML_BYT="${DEFAULT_CAML_BIN_DIR}/ocamlc"
-    DEFAULT_CAML_BIN="${DEFAULT_CAML_BIN_DIR}/ocamlopt"
-    DEFAULT_CAML_YAC="${DEFAULT_CAML_BIN_DIR}/ocamlyacc"
-    DEFAULT_CAML_LEX="${DEFAULT_CAML_BIN_DIR}/ocamllex"
-    DEFAULT_CAML_DEP="${DEFAULT_CAML_BIN_DIR}/ocamldep"
-    DEFAULT_CAML_DOC="${DEFAULT_CAML_BIN_DIR}/ocamldoc"
+  if ${DEFAULT_STATIC_EXTERNAL}; then
+    DEFAULT_CAML_BYT_COMPILER="${DEFAULT_CAML_BIN_DIR}/ocamlc"
+    DEFAULT_CAML_BIN_COMPILER="${DEFAULT_CAML_BIN_DIR}/ocamlopt"
+    DEFAULT_CAML_YAC_COMPILER="${DEFAULT_CAML_BIN_DIR}/ocamlyacc"
+    DEFAULT_CAML_LEX_COMPILER="${DEFAULT_CAML_BIN_DIR}/ocamllex"
+    DEFAULT_CAML_DEP_COMPILER="${DEFAULT_CAML_BIN_DIR}/ocamldep"
+    DEFAULT_CAML_DOC_COMPILER="${DEFAULT_CAML_BIN_DIR}/ocamldoc"
   else
-    DEFAULT_CAML_BYT="ocamlc"
-    DEFAULT_CAML_BIN="ocamlopt"
-    DEFAULT_CAML_LEX="ocamllex"
-    DEFAULT_CAML_YAC="ocamlyacc"
-    DEFAULT_CAML_DEP="ocamldep"
-    DEFAULT_CAML_DOC="ocamldoc"
+    DEFAULT_CAML_BYT_COMPILER="ocamlc"
+    DEFAULT_CAML_BIN_COMPILER="ocamlopt"
+    DEFAULT_CAML_LEX_COMPILER="ocamllex"
+    DEFAULT_CAML_YAC_COMPILER="ocamlyacc"
+    DEFAULT_CAML_DEP_COMPILER="ocamldep"
+    DEFAULT_CAML_DOC_COMPILER="ocamldoc"
   fi
 
   # Default for Camlp5
@@ -314,40 +334,40 @@ set_share_defaults () {
   DEFAULT_COQ_CAML_DIR="${DEFAULT_CAML_BIN_DIR}"
 
   # The normal default binding for coqc is
-  # DEFAULT_COQC="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqc"
+  # DEFAULT_COQ_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqc"
   # For traditional projects (e.g. zenon), there is no reasonable value for
   # ${DEFAULT_SHARE_PROJECT_BIN_DIR} defined: we thus directly use
   # "coqc" as default.
-  if ${STATIC_EXTERNAL}; then
-    DEFAULT_COQC="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqc"
-    DEFAULT_COQ_DEP="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqdep"
+  if ${DEFAULT_STATIC_EXTERNAL}; then
+    DEFAULT_COQ_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqc"
+    DEFAULT_COQ_DEP_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/coqdep"
   else
-    DEFAULT_COQC="coqc"
-    DEFAULT_COQ_DEP="coqdep"
+    DEFAULT_COQ_DEP_COMPILER="coqc"
+    DEFAULT_COQ_DEP_COMPILER="coqdep"
   fi
 
   # Defaults for Zenon.
   DEFAULT_ZENON_LIB_DIR="${DEFAULT_SHARE_PROJECT_LIB_DIR}/zenon"
 
-  if ${STATIC_EXTERNAL}; then
-    DEFAULT_ZENON="${DEFAULT_SHARE_PROJECT_BIN_DIR}/zenon"
+  if ${DEFAULT_STATIC_EXTERNAL}; then
+    DEFAULT_ZENON_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/zenon"
   else
-    DEFAULT_ZENON="zenon"
+    DEFAULT_ZENON_COMPILER="zenon"
   fi
 
   # Defaults for Zvtov.
   DEFAULT_ZVTOV_LIB_DIR="${DEFAULT_SHARE_PROJECT_LIB_DIR}/zvtov"
 
-  if ${STATIC_EXTERNAL}; then
-    DEFAULT_ZVTOV="${DEFAULT_SHARE_PROJECT_BIN_DIR}/zvtov"
+  if ${DEFAULT_STATIC_EXTERNAL}; then
+    DEFAULT_ZVTOV_COMPILER="${DEFAULT_SHARE_PROJECT_BIN_DIR}/zvtov"
   else
-    DEFAULT_ZVTOV="zvtov"
+    DEFAULT_ZVTOV_COMPILER="zvtov"
   fi
 
 }
 
 # Setting variables that depend upon ${SHARE_PREFIX}.
-set_share () {
+set_share_prefix () {
 
   if test -z "${SHARE_PREFIX}"; then
     SHARE_PREFIX="${DEFAULT_SHARE_PREFIX}"
@@ -371,44 +391,44 @@ set_share () {
 
   # Settings for Caml.
   if test -z "${CAML_LIB_DIR}"; then
-  CAML_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/ocaml"; fi
+    CAML_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/ocaml"; fi
   if test -z "${CAML_BIN_DIR}"; then
     # If CAML_BIN_DIR HAS NOT been set, then the associated commands,
     # get bound to their defaults, unless those commands have already
     # been explicitely set otherwise.
     CAML_BIN_DIR="${SHARE_PROJECT_BIN_DIR}";
     if ${STATIC_EXTERNAL}; then
-      CAML_BYT="${CAML_BIN_DIR}/ocamlc"
-      CAML_BIN="${CAML_BIN_DIR}/ocamlopt"
-      CAML_YAC="${CAML_BIN_DIR}/ocamlyacc"
-      CAML_LEX="${CAML_BIN_DIR}/ocamllex"
-      CAML_DEP="${CAML_BIN_DIR}/ocamldep"
-      CAML_DOC="${CAML_BIN_DIR}/ocamldoc"
+      CAML_BYT_COMPILER="${CAML_BIN_DIR}/ocamlc"
+      CAML_BIN_COMPILER="${CAML_BIN_DIR}/ocamlopt"
+      CAML_YAC_COMPILER="${CAML_BIN_DIR}/ocamlyacc"
+      CAML_LEX_COMPILER="${CAML_BIN_DIR}/ocamllex"
+      CAML_DEP_COMPILER="${CAML_BIN_DIR}/ocamldep"
+      CAML_DOC_COMPILER="${CAML_BIN_DIR}/ocamldoc"
     else
-      CAML_BYT="ocamlc"
-      CAML_BIN="ocamlopt"
-      CAML_LEX="ocamllex"
-      CAML_YAC="ocamlyacc"
-      CAML_DEP="ocamldep"
-      CAML_DOC="ocamldoc"
+      CAML_BYT_COMPILER="ocamlc"
+      CAML_BIN_COMPILER="ocamlopt"
+      CAML_LEX_COMPILER="ocamllex"
+      CAML_YAC_COMPILER="ocamlyacc"
+      CAML_DEP_COMPILER="ocamldep"
+      CAML_DOC_COMPILER="ocamldoc"
     fi
   else
     # If CAML_BIN_DIR HAS been set, then it implies the value of
     # associated commands, unless those commands have already
     # been explicitely set otherwise.
     if ${STATIC_EXTERNAL}; then
-      if test -z "${CAML_BYT}"; then
-      CAML_BYT="${CAML_BIN_DIR}/ocamlc"; fi
-      if test -z "${CAML_BIN}"; then
-      CAML_BIN="${CAML_BIN_DIR}/ocamlopt"; fi
-      if test -z "${CAML_LEX}"; then
-      CAML_LEX="${CAML_BIN_DIR}/ocamllex"; fi
-      if test -z "${CAML_YAC}"; then
-      CAML_YAC="${CAML_BIN_DIR}/ocamlyacc"; fi
-      if test -z "${CAML_DEP}"; then
-      CAML_DEP="${CAML_BIN_DIR}/ocamldep"; fi
-      if test -z "${CAML_DOC}"; then
-      CAML_DOC="${CAML_BIN_DIR}/ocamldoc"; fi
+      if test -z "${CAML_BYT_COMPILER}"; then
+      CAML_BYT_COMPILER="${CAML_BIN_DIR}/ocamlc"; fi
+      if test -z "${CAML_BIN_COMPILER}"; then
+      CAML_BIN_COMPILER="${CAML_BIN_DIR}/ocamlopt"; fi
+      if test -z "${CAML_LEX_COMPILER}"; then
+      CAML_LEX_COMPILER="${CAML_BIN_DIR}/ocamllex"; fi
+      if test -z "${CAML_YAC_COMPILER}"; then
+      CAML_YAC_COMPILER="${CAML_BIN_DIR}/ocamlyacc"; fi
+      if test -z "${CAML_DEP_COMPILER}"; then
+      CAML_DEP_COMPILER="${CAML_BIN_DIR}/ocamldep"; fi
+      if test -z "${CAML_DOC_COMPILER}"; then
+      CAML_DOC_COMPILER="${CAML_BIN_DIR}/ocamldoc"; fi
     else
       abort_configuration "Cannot use option caml_bin_dir when not in static_external mode.";
       abort_remedy "Choose static_external mode or remove caml_bin_dir option."
@@ -425,24 +445,24 @@ set_share () {
   if test -z "${COQ_CAML_DIR}"; then
   COQ_CAML_DIR="${CAML_BIN_DIR}"; fi
 
-  if test -z "${COQC}"; then
-  COQC="${SHARE_PROJECT_BIN_DIR}/coqc"; fi
-  if test -z "${COQ_DEP}"; then
-  COQ_DEP="${SHARE_PROJECT_BIN_DIR}/coqdep"; fi
+  if test -z "${COQ_COMPILER}"; then
+  COQ_COMPILER="${SHARE_PROJECT_BIN_DIR}/coqc"; fi
+  if test -z "${COQ_DEP_COMPILER}"; then
+  COQ_DEP_COMPILER="${SHARE_PROJECT_BIN_DIR}/coqdep"; fi
 
   # Settings for Zenon.
   if test -z "${ZENON_LIB_DIR}"; then
   ZENON_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/zenon"; fi
 
-  if test -z "${ZENON}"; then
-  ZENON="${SHARE_PROJECT_BIN_DIR}/zenon"; fi
+  if test -z "${ZENON_COMPILER}"; then
+  ZENON_COMPILER="${SHARE_PROJECT_BIN_DIR}/zenon"; fi
 
   # Settings for Zvtov.
   if test -z "${ZVTOV_LIB_DIR}"; then
   ZVTOV_LIB_DIR="${SHARE_PROJECT_LIB_DIR}/zvtov"; fi
 
-  if test -z "${ZVTOV}"; then
-  ZVTOV="${SHARE_PROJECT_BIN_DIR}/zvtov"; fi
+  if test -z "${ZVTOV_COMPILER}"; then
+  ZVTOV_COMPILER="${SHARE_PROJECT_BIN_DIR}/zvtov"; fi
 
 }
 
@@ -451,14 +471,14 @@ set_defaults () {
   set_intrinsic_defaults;
   set_command_defaults;
   set_prefix_defaults;
-  set_share_defaults;
+  set_share_prefix_defaults;
 }
 
 # Setting all variables after option parsing has been completed.
 set_variables () {
   set_intrinsic;
   set_prefix;
-  set_share;
+  set_share_prefix;
 }
 
 #
@@ -496,6 +516,7 @@ abort_configuration_not_writable_share_prefix_directory () {
 #
 
 # Setting default values (for help in particular).
+# Hence, this must be done before parsing the command line arguments.
 set_defaults
 
 #
@@ -516,23 +537,30 @@ while : ; do
     # Caml options
     -caml_lib_dir | --caml_lib_dir) CAML_LIB_DIR="$2"; shift 2;;
     -caml_bin_dir | --caml_bin_dir) CAML_BIN_DIR="$2"; shift 2;;
-    -caml_byt | --caml_byt) CAML_BYT="$2"; shift 2;;
-    -caml_bin | --caml_bin) CAML_BIN="$2"; shift 2;;
-    -caml_lex | --caml_lex) CAML_LEX="$2"; shift 2;;
-    -caml_yac | --caml_yac) CAML_YAC="$2"; shift 2;;
-    -caml_dep | --caml_dep) CAML_DEP="$2"; shift 2;;
-    -caml_doc | --caml_doc) CAML_DOC="$2"; shift 2;;
+    -caml_byt_compiler | --caml_byt_compiler) CAML_BYT_COMPILER="$2"; shift 2;;
+    -caml_bin_compiler | --caml_bin_compiler) CAML_BIN_COMPILER="$2"; shift 2;;
+    -caml_lex_compiler | --caml_lex_compiler) CAML_LEX_COMPILER="$2"; shift 2;;
+    -caml_yac_compiler | --caml_yac_compiler) CAML_YAC_COMPILER="$2"; shift 2;;
+    -caml_dep_compiler | --caml_dep_compiler) CAML_DEP_COMPILER="$2"; shift 2;;
+    -caml_doc_compiler | --caml_doc_compiler) CAML_DOC_COMPILER="$2"; shift 2;;
     # Coq options
     -coq_lib_dir | --coq_lib_dir) COQ_LIB_DIR="$2"; shift 2;;
-    -coqc | --coqc) COQC="$2"; shift 2;;
-    -coq_dep | --coq_dep) COQ_DEP="$2"; shift 2;;
-    -coqrc | --coqrc) COQRC="$2"; shift 2;;
+    -coq_compiler | --coq_compiler) COQ_COMPILER="$2"; shift 2;;
+    -coq_dep_compiler | --coq_dep_compiler) COQ_DEP_COMPILER="$2"; shift 2;;
+    -coq_rc | --coq_rc) COQ_RC="$2"; shift 2;;
     -coq_make | --coq_make) COQ_MAKE="$2"; shift 2;;
     # Zenon options
-    -use_coqc | --use_coqc) USE_COQC="$2"; shift 2;;
+    -zenon | --zenon) ZENON_COMPILER="$2"; shift 2;;
+    -use_coq_compiler | --use_coq_compiler) USE_COQ_COMPILER="$2"; shift 2;;
     -sum | --sum) SUM="$2"; shift 2;;
     -convert | --convert) CONVERT="$2"; shift 2;;
     -gs | --gs) GS="$2"; shift 2;;
+    # Zvtov options
+    -zvtov | --zvtov) ZVTOV_COMPILER="$2"; shift 2;;
+    -use_xmlrpc | --use_xmlrpc) USE_XMLRPC="$2"; shift 2;;
+    -xmlrpc | --xmlrpc) XMLRPC="$2"; shift 2;;
+    -xmlrpc_flags | --xmlrpc_flags) XMLRPC_FLAGS="$2"; shift 2;;
+    -xmlrpc_link | --xmlrpc_link) XMLRPC_LINK="$2"; shift 2;;
     # Configure script specific options
     -no_make_external | --no_make_external) MAKE_EXTERNAL=false; shift;;
     -magic_make_external | --magic_make_external) MAGIC_MAKE_EXTERNAL=true; shift;;
@@ -575,8 +603,10 @@ while : ; do
        echo
        echo "options specific to Zenon are:"
        echo
-       echo "  [-]-use_coqc <boolean>"
-       echo "    set if coqc must be used to verify the proofs given by zenon."
+       echo "  [-]-zenon <executable-file>"
+       echo "    set absolute path for the command zenon."
+       echo "  [-]-use_coq_compiler <boolean>"
+       echo "    set if the coq compiler must be used to verify the proofs given by zenon."
        echo "  [-]-convert <executable-file>"
        echo "    set absolute path for the command convert."
        echo "  [-]-gs <executable-file>"
@@ -584,37 +614,68 @@ while : ; do
        echo "  [-]-sum <executable-file>"
        echo "    set absolute path for the check-sum command."
        echo
+       echo "options specific to Zvtov are:"
+       echo
+       echo "  [-]-zvtov <executable-file>"
+       echo "    set absolute path for the command zvtov."
+       echo "  [-]-use_xmlrpc <boolean>";
+       echo "    set if xmlrpc must be used by zvtov."
+       echo "  [-]-xmlrpc <executable-file>";
+       echo "    set absolute path for the command xmlrpc."
+       echo "  [-]-xmlrpc_flags <string>";
+       echo "    set the string option argument to pass to xmlrpc invocations."
+       echo "  (Default value for <string> is:";
+       echo "   \"\`ocamlfind query -r -i-format xmlrpc | tr '\\\\012' ' '\`\").";
+       echo "  [-]-xmlrpc_link <string>";
+       echo "    set the link options to pass when linking xmlrpc.";
+       echo "  (Default value for <string> is:";
+       echo "   \"\`ocamlfind query -r -predicates byte -a-format xmlrpc | tr '\\\\012' ' '\`\").";
+       echo
        echo "options specific to Caml are:"
        echo
-       echo "  [-]-caml_bin_dir <directory>"
-       echo "    set absolute path for the Caml commands."
        echo "  [-]-caml_lib_dir <directory>"
        echo "    set absolute path for the Caml libraries."
-       echo "  [-]-caml_byt <executable-file>"
+       echo "  [-]-caml_byt_compiler <executable-file>"
        echo "    set absolute path for the Caml byte code compiler."
-       echo "  [-]-caml_bin <executable-file>"
+       echo "  [-]-caml_bin_compiler <executable-file>"
        echo "    set absolute path for the Caml binary compiler."
-       echo "  [-]-caml_lex <executable-file>"
+       echo "  [-]-caml_lex_compiler <executable-file>"
        echo "    set absolute path for the Caml Lex compiler."
-       echo "  [-]-caml_yac <executable-file>"
+       echo "  [-]-caml_yac_compiler <executable-file>"
        echo "    set absolute path for the Caml Yacc compiler."
-       echo "  [-]-caml_dep <executable-file>"
+       echo "  [-]-caml_dep_compiler <executable-file>"
        echo "    set absolute path for the Caml automatic dependency manager."
-       echo "  [-]-caml_doc <executable-file>"
+       echo "  [-]-caml_doc_compiler <executable-file>"
        echo "    set absolute path for the Caml automatic documentation generator."
        echo
        echo "options specific to Coq are:"
        echo
        echo "  [-]-coq_lib_dir <directory>"
        echo "    set absolute path for the Coq library."
-       echo "  [-]-coqc <executable-file>"
+       echo "  [-]-coq_compiler <executable-file>"
        echo "    set absolute path for the Coq compiler."
-       echo "  [-]-coq_dep <executable-file>"
+       echo "  [-]-coq_dep_compiler <executable-file>"
        echo "    set absolute path for the Coq automatic dependency manager."
-       echo "  [-]-coqrc <file>"
-       echo "    set absolute path for file coqrc, the startup file for Coq."
+       echo "  [-]-coq_rc <file>"
+       echo "    set absolute path for the file coqrc, the startup file for Coq."
+       echo
+       echo "options specific to this configuration script shell:"
+       echo
+       echo "  [-]-static_external_commands <boolean>"
+       echo "    use fixed path for external commands."
+#       echo "  [-]-use_share_sub_directory <boolean>"
+#       echo "    use share as a sub directory for the"
+#       echo "    installation of project specific data (including external tools)."
+#       echo "  [-]-use_project_sub_directory <boolean>"
+#       echo "    use the name of the project as private sub directory for"
+#       echo "    installation of project specific data (including external tools)."
+       echo "  [-]-no_make_external"
+       echo "    <non documented option>."
+       echo "  [-]-magic_make_external"
+       echo "    <unknown option>."
        exit 0
        ;;
+
     *) echo "./configure: bad option '$1'" >&2
        echo "For help, use ./configure -help" >&2
        exit 2
@@ -640,6 +701,8 @@ build_config_var () {
       -e "s,@LIB_DIR@,$LIB_DIR," \
       -e "s,@DOC_DIR@,$DOC_DIR," \
       -e "s,@MAN_DIR@,$MAN_DIR," \
+  \
+      -e "s,@STATIC_EXTERNAL@,$STATIC_EXTERNAL," \
       -e "s,@SHARE_PREFIX@,$SHARE_PREFIX," \
       -e "s,@SHARE_PROJECT_DIR@,$SHARE_PROJECT_DIR," \
       -e "s,@SHARE_PROJECT_BIN_DIR@,$SHARE_PROJECT_BIN_DIR," \
@@ -649,11 +712,12 @@ build_config_var () {
   \
       -e "s,@CAML_BIN_DIR@,$CAML_BIN_DIR," \
       -e "s,@CAML_LIB_DIR@,$CAML_LIB_DIR," \
-      -e "s,@CAML_BYT@,$CAML_BYT," \
-      -e "s,@CAML_BIN@,$CAML_BIN," \
-      -e "s,@CAML_LEX@,$CAML_LEX," \
-      -e "s,@CAML_YAC@,$CAML_YAC," \
-      -e "s,@CAML_DEP@,$CAML_DEP," \
+      -e "s,@CAML_BYT_COMPILER@,$CAML_BYT_COMPILER," \
+      -e "s,@CAML_BIN_COMPILER@,$CAML_BIN_COMPILER," \
+      -e "s,@CAML_LEX_COMPILER@,$CAML_LEX_COMPILER," \
+      -e "s,@CAML_YAC_COMPILER@,$CAML_YAC_COMPILER," \
+      -e "s,@CAML_DEP_COMPILER@,$CAML_DEP_COMPILER," \
+      -e "s,@CAML_DOC_COMPILER@,$CAML_DOC_COMPILER," \
       -e "s,@BYT_DEBUG_FLAGS@,$BYT_DEBUG_FLAGS," \
       -e "s,@BIN_DEBUG_FLAGS@,$BIN_DEBUG_FLAGS," \
   \
@@ -661,20 +725,20 @@ build_config_var () {
   \
       -e "s,@COQ_LIB_DIR@,$COQ_LIB_DIR," \
       -e "s,@COQ_CAML_DIR@,$COQ_CAML_DIR," \
-      -e "s,@COQC@,$COQC," \
-      -e "s,@COQ_DEP@,$COQ_DEP," \
-      -e "s,@COQRC@,$COQRC," \
+      -e "s,@COQ_COMPILER@,$COQ_COMPILER," \
+      -e "s,@COQ_DEP_COMPILER@,$COQ_DEP_COMPILER," \
+      -e "s,@COQ_RC@,$COQ_RC," \
       -e "s,@COQ_MAKE@,$COQ_MAKE," \
   \
       -e "s,@ZENON_LIB_DIR@,$ZENON_LIB_DIR," \
-      -e "s,@ZENON@,$ZENON," \
-      -e "s,@USE_COQC@,$USE_COQC," \
+      -e "s,@ZENON_COMPILER@,$ZENON_COMPILER," \
+      -e "s,@USE_COQ_COMPILER@,$USE_COQ_COMPILER," \
       -e "s,@SUM@,$SUM," \
       -e "s,@CONVERT@,$CONVERT," \
       -e "s,@GS@,$GS," \
   \
       -e "s,@ZVTOV_LIB_DIR@,$ZVTOV_LIB_DIR," \
-      -e "s,@ZVTOV@,$ZVTOV," \
+      -e "s,@ZVTOV_COMPILER@,$ZVTOV_COMPILER," \
       -e "s,@USE_XMLRPC@,$USE_XMLRPC," \
       -e "s,@XMLRPC@,$XMLRPC," \
       -e "s,@XMLRPC_FLAGS@,$XMLRPC_FLAGS," \

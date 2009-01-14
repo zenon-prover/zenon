@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.63 2009-01-11 16:36:40 weis Exp $
+#  $Id: Makefile,v 1.64 2009-01-14 11:36:28 weis Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -9,8 +9,8 @@ DESTDIR = ""
 
 CAMLFLAGS = -warn-error A
 
-# Variables CAMLBYT, CAMLBIN, CAMLLEX, CAMLYACC CAMLDEP are defined at configuration time
-# their value is recorded in .config_var
+# Variables CAMLBYT, CAMLBIN, CAMLLEX, CAMLYACC CAMLDEP CAMLDOC are defined
+# at configuration time, and their value is recorded in .config_var.
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
