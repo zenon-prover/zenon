@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.47 2009-01-14 12:07:47 weis Exp $
+# $Id: configure,v 1.48 2009-01-14 12:44:15 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -553,6 +553,7 @@ while : ; do
     -coq_make | --coq_make) COQ_MAKE="$2"; shift 2;;
     # Zenon options
     -zenon | --zenon) ZENON_COMPILER="$2"; shift 2;;
+    -zenon_lib_dir | --zenon_lib_dir) ZENON_LIB_DIR="$2"; shift 2;;
     -use_coq_compiler | --use_coq_compiler) USE_COQ_COMPILER="$2"; shift 2;;
     -sum | --sum) SUM="$2"; shift 2;;
     -convert | --convert) CONVERT="$2"; shift 2;;
@@ -607,6 +608,8 @@ while : ; do
        echo
        echo "  [-]-zenon <executable-file>"
        echo "    set absolute path for the command zenon."
+       echo "  [-]-zenon_lib_dir <directory>"
+       echo "    set absolute path for the Zenon libraries."
        echo "  [-]-use_coq_compiler <boolean>"
        echo "    set if the coq compiler must be used to verify the proofs given by zenon."
        echo "  [-]-convert <executable-file>"
