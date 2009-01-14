@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.49 2009-01-14 12:47:34 weis Exp $
+# $Id: configure,v 1.50 2009-01-14 17:26:44 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -24,6 +24,10 @@ SUB_VERSION_NUMBER=6
 PATCH_VERSION_NUMBER=2
 FULL_VERSION_NUMBER=${MAIN_VERSION_NUMBER}.${SUB_VERSION_NUMBER}.${PATCH_VERSION_NUMBER}
 FULL_PROJECT_NAME=${PROJECT_NAME}-${FULL_VERSION_NUMBER}
+
+# The list of internal tools for the project.
+# (Also defined in ./Makefile.config if any.)
+INTERNAL_TOOLS=""
 
 # The absolute path of this set of source files.
 ABSOLUTE_ROOT_DIR=`pwd`
@@ -386,6 +390,15 @@ set_share_prefix () {
     SHARE_PROJECT_DIR="${SHARE_PREFIX}"
   fi
 
+  # The list of directories that must be installable during configuration.
+  # The normal setting is:
+  # CONFIGURATION_INSTALLABLE_DIRS="${SHARE_PROJECT_DIR)"
+  if ${MAKE_EXTERNAL}; then
+    CONFIGURATION_INSTALLABLE_DIRS="${SHARE_PROJECT_DIR}"
+  else
+    CONFIGURATION_INSTALLABLE_DIRS=""
+  fi
+
   SHARE_PROJECT_BIN_DIR="${SHARE_PROJECT_DIR}/bin"
   SHARE_PROJECT_LIB_DIR="${SHARE_PROJECT_DIR}/lib"
   SHARE_PROJECT_MAN_DIR="${SHARE_PROJECT_DIR}/man"
@@ -578,7 +591,10 @@ while : ; do
     -nodebug | --nodebug | -disable_debug | --disable_debug)
      DEBUG=false; shift;;
     -help | --help)
-       echo "usage: ./configure [options]"
+       echo "usage: ./configure [options] [<directory>]"
+       echo
+       echo "if optional argument <directory> is provided, it is used as the"
+       echo "[-prefix] option argument (see below)."
        echo
        echo "general options are:"
        echo
@@ -597,6 +613,17 @@ while : ; do
        echo "  [-]-mandir <directory>"
        echo "    set <directory> as the directory for installation of man pages for ${PROJECT_NAME}."
        echo "    (Default value for <directory> is ${DEFAULT_MAN_DIR}.)"
+       echo "  [-]-share_prefix <directory>"
+       echo "    set <directory> as the directory prefix for the installation of external tools."
+       echo "    External tools are mandatory for ${PROJECT_NAME} to work,"
+       echo "    and must be built and installed during the configuration phase,"
+       echo "    since they are needed to correctly compile, install, and safely use"
+       echo "    ${PROJECT_NAME}."
+       echo "    External tools install in the directory <directory>/${FULL_PROJECT_NAME}/,"
+       echo "    once they have ben built."
+       echo "    As a consequence, you must have the permission to install directories"
+       echo "    and files in <directory> to properly configure ${PROJECT_NAME}."
+       echo "    (Default value for <directory> is ${DEFAULT_SHARE_PREFIX}.)"
        echo "  [-]-debug | [-]-enable_debug"
        echo "    enable debugging"
        echo "  [-]-nodebug | [-]-disable_debug"
@@ -606,7 +633,7 @@ while : ; do
        echo
        echo "options specific to Zenon are:"
        echo
-       echo "  [-]-zenon <executable-file>"
+       echo "  [-]-zenon_compiler <executable-file>"
        echo "    set absolute path for the command zenon."
        echo "  [-]-zenon_lib_dir <directory>"
        echo "    set absolute path for the Zenon libraries."
@@ -621,7 +648,7 @@ while : ; do
        echo
        echo "options specific to Zvtov are:"
        echo
-       echo "  [-]-zvtov <executable-file>"
+       echo "  [-]-zvtov_compiler <executable-file>"
        echo "    set absolute path for the command zvtov."
        echo "  [-]-use_xmlrpc <boolean>";
        echo "    set if xmlrpc must be used by zvtov."
@@ -681,12 +708,52 @@ while : ; do
        exit 0
        ;;
 
-    *) echo "./configure: bad option '$1'" >&2
+    -*)
+       echo "./configure: bad option '$1'" >&2
        echo "For help, use ./configure -help" >&2
        exit 2
        ;;
+
+    *)
+       case $# in
+         1) PREFIX="$1"; shift;;
+         *)
+           echo "./configure: bad arguments '$@'" >&2
+           echo "For help, use ./configure -help" >&2
+           exit 2
+           ;;
+       esac
+       ;;
   esac
 done
+
+#
+# Validity checking for installation of external tools.
+#
+check_installation_dirs () {
+  # Check directories that must be configuration time installable (hence writable).
+  for i in ${CONFIGURATION_INSTALLABLE_DIRS}; do
+    echo "Checking if we can install external tools in $i..." >&2
+    if test -d $i; then echo "  the directory exists: good." >&2
+      else
+        echo "  the directory does not exist: unrecoverable failure." >&2
+        abort_configuration \
+          "You cannot install in $i, because it is not a directory.";
+        abort_remedy \
+          "Please, create a directory where you can install files and directories.";
+    fi
+    if test -w $i; then echo "  the directory is writable: good." >&2
+      else
+        echo "  the directory is not writable: unrecoverable failure." >&2
+        abort_configuration_not_writable_share_prefix_directory "$i";
+    fi
+    if (touch $i/$$; rm -f $i/$$); then echo "  you can install in the directory: good." >&2
+      else
+        echo "  you cannot install in the directory: unrecoverable failure." >&2
+        abort_configuration_not_writable_share_prefix_directory "$i";
+    fi
+  done
+}
 
 #
 # Editing ./.config_var.in with what we learnt here.
@@ -699,6 +766,7 @@ build_config_var () {
       -e "s,@PATCH_VERSION_NUMBER@,$PATCH_VERSION_NUMBER," \
       -e "s,@FULL_VERSION_NUMBER@,$FULL_VERSION_NUMBER," \
       -e "s,@FULL_PROJECT_NAME@,$FULL_PROJECT_NAME," \
+      -e "s,@INTERNAL_TOOLS@,$INTERNAL_TOOLS," \
   \
       -e "s,@ABSOLUTE_ROOT_DIR@,$ABSOLUTE_ROOT_DIR," \
       -e "s,@PREFIX@,$PREFIX," \
@@ -751,6 +819,27 @@ build_config_var () {
       -e "s,@XMLRPC_MODULE@,$XMLRPC_MODULE," \
       <.config_var.in >.config_var
 
+  chmod g+w .config_var;
+
+}
+
+# Bootstrapping .depend.
+touch_depends () {
+  touch ./.depend;
+  chmod g+w ./.depend;
+  if test -d tarballs; then
+    touch tarballs/.depend;
+    chmod g+w tarballs/.depend;
+ fi;
+}
+
+#
+# Copying information gathered here to internal tools.
+#
+configure_internal_tools () {
+  for i in ${INTERNAL_TOOLS}; do
+    cp .config_var $i
+  done
 }
 
 summarize_configuration () {
@@ -770,9 +859,15 @@ summarize_configuration () {
 main () {
 #  parse_arguments;
   set_variables;
+  check_installation_dirs;
   build_config_var;
-  chmod g+w ./.config_var;
+  touch_depends;
+  configure_internal_tools;
   summarize_configuration;
+  # Call the Makefile to go on configuring external tools.
+  if ${MAGIC_MAKE_EXTERNAL}; then make magic_configure_external_tools; else
+    if ${MAKE_EXTERNAL}; then make configure_external_tools; fi;
+  fi
 }
 
 main; exit 0
