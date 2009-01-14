@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.48 2009-01-14 12:44:15 weis Exp $
+# $Id: configure,v 1.49 2009-01-14 12:47:34 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -552,14 +552,14 @@ while : ; do
     -coq_rc | --coq_rc) COQ_RC="$2"; shift 2;;
     -coq_make | --coq_make) COQ_MAKE="$2"; shift 2;;
     # Zenon options
-    -zenon | --zenon) ZENON_COMPILER="$2"; shift 2;;
+    -zenon_compiler | --zenon_compiler) ZENON_COMPILER="$2"; shift 2;;
     -zenon_lib_dir | --zenon_lib_dir) ZENON_LIB_DIR="$2"; shift 2;;
     -use_coq_compiler | --use_coq_compiler) USE_COQ_COMPILER="$2"; shift 2;;
     -sum | --sum) SUM="$2"; shift 2;;
     -convert | --convert) CONVERT="$2"; shift 2;;
     -gs | --gs) GS="$2"; shift 2;;
     # Zvtov options
-    -zvtov | --zvtov) ZVTOV_COMPILER="$2"; shift 2;;
+    -zvtov_compiler | --zvtov_compiler) ZVTOV_COMPILER="$2"; shift 2;;
     -use_xmlrpc | --use_xmlrpc) USE_XMLRPC="$2"; shift 2;;
     -xmlrpc | --xmlrpc) XMLRPC="$2"; shift 2;;
     -xmlrpc_flags | --xmlrpc_flags) XMLRPC_FLAGS="$2"; shift 2;;
