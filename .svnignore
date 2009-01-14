@@ -12,7 +12,7 @@ checksum.ml
 parsetptp.mli
 parsetptp.ml
 lextptp.ml
-zenon.byt
+zenon.bin
 zenon.opt
 zenon
 config.ml
