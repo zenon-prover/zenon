@@ -1,10 +1,10 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.64 2009-01-14 11:36:28 weis Exp $
+#  $Id: Makefile,v 1.65 2009-01-15 09:32:41 weis Exp $
 
 # Reading configuration settings.
 include .config_var
 
-# staging directory for package managers
+# Staging directory for package managers
 DESTDIR = ""
 
 CAMLFLAGS = -warn-error A
