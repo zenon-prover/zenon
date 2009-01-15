@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.13 2009-01-14 17:26:44 weis Exp $
+#  $Id: .config_var.in,v 1.14 2009-01-15 08:43:31 weis Exp $
 
 #
 # The project identity card.
@@ -51,8 +51,8 @@ CAML_YAC_COMPILER=@CAML_YAC_COMPILER@
 CAML_DEP_COMPILER=@CAML_DEP_COMPILER@
 CAML_DOC_COMPILER=@CAML_DOC_COMPILER@
 # Compilation flags for Caml.
-BYT_DEBUG_FLAGS=@BYT_DEBUG_FLAGS@
-BIN_DEBUG_FLAGS=@BIN_DEBUG_FLAGS@
+BYT_DEBUG_FLAGS="@BYT_DEBUG_FLAGS@"
+BIN_DEBUG_FLAGS="@BIN_DEBUG_FLAGS@"
 
 # Camlp5 settings.
 CAMLP5_LIB_DIR=@CAMLP5_LIB_DIR@
