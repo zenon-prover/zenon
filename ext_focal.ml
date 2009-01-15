@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.17 2009-01-13 16:20:53 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.18 2009-01-15 13:07:25 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -468,35 +468,35 @@ let to_llargs tr_expr r =
       let c = tr_expr (enot (istrue (evar "true"))) in
       ("zenon_focal_nottrue", [], [c], []);
   | Ext (_, "trueequal", [e1]) ->
-     let c = tr_expr (eapp ("=", [etrue; e1])) in
+     let c = tr_expr (eapp ("=", [evar "true"; e1])) in
      let h = tr_expr (eapp ("Is_true", [e1])) in
      ("zenon_focal_trueequal", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "equaltrue", [e1]) ->
-     let c = tr_expr (eapp ("=", [e1; etrue])) in
+     let c = tr_expr (eapp ("=", [e1; evar "true"])) in
      let h = tr_expr (eapp ("Is_true", [e1])) in
      ("zenon_focal_equaltrue", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "truenotequal", [e1]) ->
-     let c = tr_expr (enot (eapp ("=", [etrue; e1]))) in
+     let c = tr_expr (enot (eapp ("=", [evar "true"; e1]))) in
      let h = tr_expr (enot (eapp ("Is_true", [e1]))) in
      ("zenon_focal_truenotequal", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "notequaltrue", [e1]) ->
-     let c = tr_expr (enot (eapp ("=", [e1; etrue]))) in
+     let c = tr_expr (enot (eapp ("=", [e1; evar "true"]))) in
      let h = tr_expr (enot (eapp ("Is_true", [e1]))) in
      ("zenon_focal_notequaltrue", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "falseequal", [e1]) ->
-     let c = tr_expr (eapp ("=", [efalse; e1])) in
+     let c = tr_expr (eapp ("=", [evar "false"; e1])) in
      let h = tr_expr (enot (eapp ("Is_true", [e1]))) in
      ("zenon_focal_falseequal", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "equalfalse", [e1]) ->
-     let c = tr_expr (eapp ("=", [e1; efalse])) in
+     let c = tr_expr (eapp ("=", [e1; evar "false"])) in
      let h = tr_expr (enot (eapp ("Is_true", [e1]))) in
      ("zenon_focal_equalfalse", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "falsenotequal", [e1]) ->
-     let c = tr_expr (enot (eapp ("=", [efalse; e1]))) in
+     let c = tr_expr (enot (eapp ("=", [evar "false"; e1]))) in
      let h = tr_expr (eapp ("Is_true", [e1])) in
      ("zenon_focal_falsenotequal", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "notequalfalse", [e1]) ->
-     let c = tr_expr (enot (eapp ("=", [e1; efalse]))) in
+     let c = tr_expr (enot (eapp ("=", [e1; evar "false"]))) in
      let h = tr_expr (eapp ("Is_true", [e1])) in
      ("zenon_focal_notequalfalse", [tr_expr e1], [c], [ [h] ])
   | Ext (_, "merge", _) -> ("zenon_focal_merge", [], [], [])
