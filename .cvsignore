@@ -13,6 +13,7 @@ lextptp.ml
 parsetptp.ml
 parsetptp.mli
 .config_var
+.config_var_for_shell
 zenon
 zenon.bin
 zenon.byt
