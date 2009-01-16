@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.51 2009-01-16 12:39:10 weis Exp $
+# $Id: configure,v 1.52 2009-01-16 14:00:48 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -31,6 +31,38 @@ INTERNAL_TOOLS=""
 
 # The absolute path of this set of source files.
 ABSOLUTE_ROOT_DIR=`pwd`
+
+#
+# Generic aborting procedures.
+#
+
+BOLD_TAG="\033[1m"
+UNDERLINE_TAG="\033[4m"
+NORMAL_TAG="\033[0m"
+
+abort_configuration () {
+  echo >&2
+  echo "./configure: " $BOLD_TAG"ABORTING CONFIGURATION!"$NORMAL_TAG  >&2
+  echo >&2
+  echo "$1" >&2
+}
+
+abort_remedy () {
+  echo >&2
+  echo "$1" >&2
+  echo "(See configure -help for details)." >&2
+  exit 1;
+}
+
+abort_configuration_not_writable_share_prefix_directory () {
+  abort_configuration \
+    "You cannot install external tools in the directory $1: it is not writable for you.";
+  abort_remedy \
+    "Please, use configure with the \"-share_prefix\" option set to a writable directory.";
+  echo "Try for instance:";
+  echo "./configure -share_prefix ~/pkg";
+  echo "to install external tools in sub-directory pkg of your home directory.";
+}
 
 # Checking if a string is a valid command name.
 check () {
@@ -495,36 +527,6 @@ set_variables () {
   set_prefix;
   set_share_prefix;
 }
-
-#
-# Generic aborting procedures.
-#
-
-BOLD_TAG="\033[1m"
-UNDERLINE_TAG="\033[4m"
-NORMAL_TAG="\033[0m"
-
-abort_configuration () {
-  echo >&2
-  echo "./configure: " $BOLD_TAG"ABORTING CONFIGURATION!"$NORMAL_TAG  >&2
-  echo >&2
-  echo "$1" >&2
-}
-
-abort_remedy () {
-  echo >&2
-  echo "$1" >&2
-  echo "(See configure -help for details)." >&2
-  exit 1;
-}
-
-abort_configuration_not_writable_share_prefix_directory () {
-  abort_configuration \
-    "You cannot install external tools in the directory $1: it is not writable for you.";
-  abort_remedy \
-    "Please, use configure with the \"-share_prefix\" option set to a writable directory.";
-}
-
 
 #
 # Beginning execution.
