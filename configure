@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.50 2009-01-14 17:26:44 weis Exp $
+# $Id: configure,v 1.51 2009-01-16 12:39:10 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -758,7 +758,7 @@ check_installation_dirs () {
 #
 # Editing ./.config_var.in with what we learnt here.
 #
-build_config_var () {
+build_config_file () {
   sed -e "s,@PROJECT_NAME@,$PROJECT_NAME," \
       -e "s,@DEBUG@,$DEBUG," \
       -e "s,@MAIN_VERSION_NUMBER@,$MAIN_VERSION_NUMBER," \
@@ -817,10 +817,30 @@ build_config_var () {
       -e "s,@XMLRPC_FLAGS@,$XMLRPC_FLAGS," \
       -e "s,@XMLRPC_LINK@,$XMLRPC_LINK," \
       -e "s,@XMLRPC_MODULE@,$XMLRPC_MODULE," \
-      <.config_var.in >.config_var
+      <$1 >$2
 
-  chmod g+w .config_var;
+  chmod g+w $2;
 
+}
+
+build_config_var () {
+  build_config_file .config_var.in .config_var
+}
+
+build_config_var_for_shell () {
+
+  sed -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
+  <.config_var.in >.config_var_for_shell.in
+
+  build_config_file .config_var_for_shell.in .config_var_for_shell
+
+  rm -f .config_var_for_shell.in
+
+}
+
+build_configuration_variables () {
+  build_config_var;
+  build_config_var_for_shell;
 }
 
 # Bootstrapping .depend.
@@ -860,9 +880,13 @@ main () {
 #  parse_arguments;
   set_variables;
   check_installation_dirs;
-  build_config_var;
+  build_configuration_variables;
   touch_depends;
   configure_internal_tools;
+  # Now that .config_var_for_shell is built, we can call ./.configure, the
+  # script that does the rest of the work that never necessitates user's
+  # interaction.
+  if test -x ./.configure; then ./.configure; fi;
   summarize_configuration;
   # Call the Makefile to go on configuring external tools.
   if ${MAGIC_MAKE_EXTERNAL}; then make magic_configure_external_tools; else
