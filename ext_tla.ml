@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.23 2009-01-09 16:28:45 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.24 2009-01-27 15:34:56 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -284,6 +284,7 @@ let newnodes_prop e g =
      in
      let h = enot (eand (eand (eand (h0, h1), h2), h3)) in
      mknode (Inst h3) "notfunequal" [e; h; e1; e2] [| [h] |]
+
   | _ -> []
 ;;
 

@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.40 2008-12-23 13:00:32 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.41 2009-01-27 15:34:56 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -761,7 +761,7 @@ let newnodes_match_congruence st fm g =
         add_node st {
           nconc = [fm];
           nrule = NotEqual (e1, e2);
-          nprio = Arity_eq;
+          nprio = Arity;
           ngoal = g;
           nbranches = make_inequals a1 a2;
         }, false
