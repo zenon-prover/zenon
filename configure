@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.55 2009-01-28 06:08:36 weis Exp $
+# $Id: configure,v 1.56 2009-01-28 06:22:52 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -571,26 +571,29 @@ set_variables () {
 # Reading the project installation prefix directory.
 
 # Flags to drive the interactive/continue machinery:
-# - if the ${PREFIX} directory has been explicitely given by the user,
-#   we don't need to ask for it again.
-# - if the ${TOOLS_PREFIX} directory has been explicitely given by the user,
-#   we don't need to ask for it again.
+# - if the ${PREFIX} directory has been explicitely given as an option
+#   by the user, we don't need to ask for it again.
+# - if the ${TOOLS_PREFIX} directory has been explicitely given as an option
+#   by the user, we don't need to ask for it again.
 # - if there is no tools (${PROJECT_TOOLS} is empty), TOOLS_PREFIX is
 #   considered given, since there is no need to ask.
-# - we should continue without asking, if all the prefixes has been given.
+# - we should continue without asking, if all the prefixes has been
+#   explicitely given as options.
 PREFIX_GIVEN=false
-TOOLS_PREFIX_GIVEN=`test -z "${PROJECT_TOOLS}"`
-CONTINUE_WITHOUT_ASKING=`test ${PREFIX_GIVEN} -a ${TOOLS_PREFIX_GIVEN}`
+PREFIX_READ=false
+TOOLS_PREFIX_GIVEN=false
+TOOLS_PREFIX_READ=false
+CONTINUE_WITHOUT_ASKING=false
 
 read_prefix () {
   echo $BOLD_TAG"Where to install the ${PROJECT_NAME} files ?"$NORMAL_TAG
   echo "Default is $DEFAULT_PREFIX."
   echo "Just press enter to use the default location."
   read USER_INPUT
-  if ! test -z "$USER_INPUT"; then
+  if test ! -z "$USER_INPUT"; then
      PREFIX="$USER_INPUT"
   fi
-  PREFIX_GIVEN=true
+  PREFIX_READ=true
 }
 
 # Reading the project tools installation prefix directory. 
@@ -599,27 +602,31 @@ read_tools_prefix () {
   echo "Default is $DEFAULT_TOOLS_PREFIX."
   echo "Just press enter to use the default location."
   read USER_INPUT
-  if ! test -z "$USER_INPUT"; then
+  if test ! -z "$USER_INPUT"; then
      TOOLS_PREFIX="$USER_INPUT"
   fi
-  TOOLS_PREFIX_GIVEN=true
+  TOOLS_PREFIX_READ=true
 }
 
 # Summary feedback.
 prefix_summary () {
   echo "Configuration done for installation directories:" &&
   echo "- The ${PROJECT_NAME} system installs in ${PREFIX}" &&
-  if ! test -z "${PROJECT_TOOLS}"; then
+  if test ! -z "${PROJECT_TOOLS}"; then
     echo "- The ${PROJECT_NAME} tools install in ${TOOLS_PREFIX}";
   fi
 }
 
 continue_configure () {
   # Don't ask if everything (important) has been given.
+  if ${PREFIX_GIVEN}; then
+    if ${TOOLS_PREFIX_GIVEN}; then
+      CONTINUE_WITHOUT_ASKING=true;
+    fi
+  fi
   if ! ${CONTINUE_WITHOUT_ASKING}; then
     echo;
     echo "Ready to continue ?";
-    #echo "Default is yes";
     echo "Just press enter to continue."
     read USER_INPUT;
     case ${USER_INPUT} in
@@ -630,13 +637,18 @@ continue_configure () {
 }
 
 prefix_main () {
+ # I know these are boolean ands but I don't know the shell style for these.
  if ! ${PREFIX_GIVEN}; then
-   read_prefix;
- fi &&
- if ! test -z "${PROJECT_TOOLS}"; then
+   if ! ${PREFIX_READ}; then
+     read_prefix;
+   fi;
+ fi;
+ if test ! -z "${PROJECT_TOOLS}"; then
    if ! ${TOOLS_PREFIX_GIVEN}; then
-     read_tools_prefix;
-   fi
+     if ! ${TOOLS_PREFIX_READ}; then
+       read_tools_prefix;
+     fi;
+   fi;
  fi
 }
 
