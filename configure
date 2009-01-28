@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.54 2009-01-27 21:35:05 weis Exp $
+# $Id: configure,v 1.55 2009-01-28 06:08:36 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -549,7 +549,7 @@ set_tools_prefix () {
     ZVTOV_BIN_DIR="${ZVTOV_PREFIX}/bin"; fi
 
   if test -z "${ZVTOV_COMPILER}"; then
-    ZVTOV_COMPILER="${TOOLS_PROJECT_BIN_DIR}/zvtov"; fi
+    ZVTOV_COMPILER="${ZVTOV_BIN_DIR}/zvtov"; fi
 
 }
 
