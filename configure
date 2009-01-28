@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.56 2009-01-28 06:22:52 weis Exp $
+# $Id: configure,v 1.57 2009-01-28 07:16:11 weis Exp $
 
 # Fix the name and version of the software
 PROJECT_NAME=zenon
@@ -34,14 +34,32 @@ EXTERNAL_TOOLS=""
 # (Also defined in ./Makefile.config if any.)
 INTERNAL_TOOLS=""
 
-# The list of tools not specific to the project.
-PROJECT_TOOLS="${EXTERNAL_TOOLS} ${INTERNAL_TOOLS}"
-
 # The list of tools specific for the project (and not stand alone internal tools).
 PROJECT_DELIVERABLES="zenon"
 
 # The absolute path of this set of source files.
 ABSOLUTE_ROOT_DIR=`pwd`
+
+# The list of tools not specific to the project.
+PROJECT_TOOLS=""
+
+# Setting the value of PROJECT_TOOLS avoiding spurious spaces
+# (i.e. preserving its emptyness for easy test).
+set_project_tools () {
+  if test ! -z "${EXTERNAL_TOOLS}"; then
+    if test ! -z "${INTERNAL_TOOLS}"; then
+      PROJECT_TOOLS="${EXTERNAL_TOOLS} ${INTERNAL_TOOLS}";
+    else
+      PROJECT_TOOLS="${EXTERNAL_TOOLS}";
+    fi;
+  else
+    if test ! -z "${INTERNAL_TOOLS}"; then
+      PROJECT_TOOLS="${INTERNAL_TOOLS}";
+    else
+      PROJECT_TOOLS="";
+    fi;
+  fi
+}
 
 #
 # Generic aborting procedures.
@@ -555,16 +573,17 @@ set_tools_prefix () {
 
 # Setting all variables defaults
 set_defaults () {
-  set_intrinsic_defaults;
-  set_command_defaults;
-  set_prefix_defaults;
+  set_project_tools &&
+  set_intrinsic_defaults &&
+  set_command_defaults &&
+  set_prefix_defaults &&
   set_tools_prefix_defaults;
 }
 
 # Setting all variables after option parsing has been completed.
 set_variables () {
-  set_intrinsic;
-  set_prefix;
+  set_intrinsic &&
+  set_prefix &&
   set_tools_prefix;
 }
 
@@ -617,13 +636,25 @@ prefix_summary () {
   fi
 }
 
+set_continue_without_asking () {
+  # If PREFIX has been given:
+  # just check if we need to ask for TOOLS_PREFIX, and if not so continue.
+  if ${PREFIX_GIVEN}; then
+    # No project tools: useless to ask for TOOLS_PREFIX, hence continue.
+    if test -z ${PROJECT_TOOLS}; then
+      CONTINUE_WITHOUT_ASKING=true;
+    else
+      # PREFIX and TOOLS_PREFIX have been given, hence continue.
+      if ${TOOLS_PREFIX_GIVEN}; then
+        CONTINUE_WITHOUT_ASKING=true;
+      fi
+    fi;
+  fi
+}
+
 continue_configure () {
   # Don't ask if everything (important) has been given.
-  if ${PREFIX_GIVEN}; then
-    if ${TOOLS_PREFIX_GIVEN}; then
-      CONTINUE_WITHOUT_ASKING=true;
-    fi
-  fi
+  set_continue_without_asking;
   if ! ${CONTINUE_WITHOUT_ASKING}; then
     echo;
     echo "Ready to continue ?";
