@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.30 2008-12-18 17:00:41 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.31 2009-01-29 20:19:32 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -242,7 +242,7 @@ module HashedExpr = struct
       | Evar _, Evar _ -> same_binding env1 e1 env2 e2
       | Emeta (n1, _), Emeta (n2, _) -> n1 == n2
       | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
-          sym1 =%= sym2
+          sym1 =%= sym2 && List.length args1 =%= List.length args2
           && List.for_all2 (equal_in_env env1 env2) args1 args2
       | Enot (f1, _), Enot (f2, _) -> equal_in_env env1 env2 f1 f2
       | Eand (f1, g1, _), Eand (f2, g2, _)

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.48 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.49 2009-01-29 20:19:32 doligez Exp $";;
 
 open Printf;;
 
@@ -381,5 +381,7 @@ let main () =
 ;;
 
 try main ()
-with Error.Abort -> exit 11
+with
+| Error.Abort -> exit 11;
+| e -> eprintf "Zenon fatal error: %s\n" (Printexc.to_string e); exit 12;
 ;;
