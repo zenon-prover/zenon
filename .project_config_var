@@ -1,0 +1,94 @@
+#**********************************************************************#
+#                                                                      #
+#                        FoCaLize compiler                             #
+#                                                                      #
+#            François Pessaux                                          #
+#            Pierre Weis                                               #
+#            Damien Doligez                                            #
+#                                                                      #
+#                               LIP6  --  INRIA Rocquencourt           #
+#                                                                      #
+#  Copyright 2008 INRIA                                                #
+#  Distributed only by permission.                                     #
+#                                                                      #
+#**********************************************************************#
+
+# $Id: .project_config_var,v 1.1 2009-01-29 19:30:05 weis Exp $
+
+# The configuration variables specific to FoCaLize.
+
+set_project_id () {
+
+# Fix the name and version of the software
+PROJECT_NAME=zenon
+
+VERSION_NUMBER_MAIN=0
+VERSION_NUMBER_SUB=6
+VERSION_NUMBER_PATCH=2
+
+# The list of external tools for the project.
+# (Also defined in ./Makefile.config if any.)
+TOOLS_EXTERNAL=""
+
+# The list of internal tools for the project. Those are likely to be
+# stand alone projects inside the main project: its sub-projects.
+# (Also defined in ./Makefile.config if any.)
+TOOLS_INTERNAL=""
+
+# The list of tools specific for the project (and not stand alone internal tools).
+PROJECT_DELIVERABLES="zenon"
+
+}
+
+#
+# Defining all default variables
+#
+
+# Defining intrinsic defaults (default values for default values!).
+set_intrinsic_defaults () {
+
+  # Intrinsic defaults for the project.
+
+  # Do we use debug mode ?
+  DEFAULT_DEBUG=true
+
+  # Intrinsic defaults for the project installation.
+  DEFAULT_PREFIX="/usr/local"
+
+  # External tools
+  # Do we use statically known external tools ?
+  DEFAULT_STATIC_EXTERNAL=false
+  # Do we make external tools ?
+  DEFAULT_MAKE_EXTERNAL=false
+  DEFAULT_MAGIC_MAKE_EXTERNAL=false
+
+  # Do we use a tools specific prefix directory for the project ?
+  DEFAULT_USE_TOOLS_PREFIX_DIRECTORY=false
+  DEFAULT_TOOLS_PREFIX=~/pkg
+  
+  # Do we use a 'full project name' private sub directory inside ${TOOLS_PREFIX}
+  # for the installation of the external/internal tools of the project ?
+  DEFAULT_USE_PROJECT_SUB_DIRECTORY=false
+
+  # Intrinsic defaults for Caml
+  DEFAULT_BYT_DEBUG_FLAGS="-g -dtypes"
+  DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
+
+  # Intrinsic defaults for Coq.
+  DEFAULT_COQ_RC="$HOME/.coqrc"
+  DEFAULT_COQ_MAKE="gmake"
+
+  # Intrinsic defaults for Zenon.
+  DEFAULT_USE_COQ_COMPILER=true
+  DEFAULT_SUM=:
+  DEFAULT_CONVERT=:
+  DEFAULT_GS=:
+
+  # Intrinsic defaults for Zvtov.
+  DEFAULT_USE_XMLRPC=false
+  DEFAULT_XMLRPC=:
+  DEFAULT_XMLRPC_MODULE="xmlrpc"
+  DEFAULT_XMLRPC_FLAGS=""
+  DEFAULT_XMLRPC_LINK=""
+
+}

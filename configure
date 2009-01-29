@@ -15,63 +15,38 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.57 2009-01-28 07:16:11 weis Exp $
+# $Id: configure,v 1.58 2009-01-29 19:30:05 weis Exp $
 
-# Fix the name and version of the software
-PROJECT_NAME=zenon
-MAIN_VERSION_NUMBER=0
-SUB_VERSION_NUMBER=6
-PATCH_VERSION_NUMBER=2
-FULL_VERSION_NUMBER=${MAIN_VERSION_NUMBER}.${SUB_VERSION_NUMBER}.${PATCH_VERSION_NUMBER}
-FULL_PROJECT_NAME=${PROJECT_NAME}-${FULL_VERSION_NUMBER}
+########################################################################
+#
+# Coarse documentation for configure.
+#
+# The configure script is divided into 3 parts:
+# - procedure definitions,
+# - command line argument parsing,
+# - computation of configuration variables and validity checks.
+#
+# The final part records all the variables into the file "./.config_var", by
+# editing the template file "./.config_var.in".
 
-# The list of external tools for the project.
-# (Also defined in ./Makefile.config if any.)
-EXTERNAL_TOOLS=""
+# Configure reads the set of configuration variables specific to the project,
+# written by the developper in the file "./.project_config_var".
+# This set of variables provides all the necessary information to properly
+# run this script.
+# Hence, there is no need to modify this script to configure another project:
+# it is entirely sharable.
+##########################################################################
 
-# The list of internal tools for the project. Those are likely to be
-# stand alone projects inside the main project: its sub-projects.
-# (Also defined in ./Makefile.config if any.)
-INTERNAL_TOOLS=""
-
-# The list of tools specific for the project (and not stand alone internal tools).
-PROJECT_DELIVERABLES="zenon"
-
-# The absolute path of this set of source files.
-ABSOLUTE_ROOT_DIR=`pwd`
-
-# The list of tools not specific to the project.
-PROJECT_TOOLS=""
-
-# Setting the value of PROJECT_TOOLS avoiding spurious spaces
-# (i.e. preserving its emptyness for easy test).
-set_project_tools () {
-  if test ! -z "${EXTERNAL_TOOLS}"; then
-    if test ! -z "${INTERNAL_TOOLS}"; then
-      PROJECT_TOOLS="${EXTERNAL_TOOLS} ${INTERNAL_TOOLS}";
-    else
-      PROJECT_TOOLS="${EXTERNAL_TOOLS}";
-    fi;
-  else
-    if test ! -z "${INTERNAL_TOOLS}"; then
-      PROJECT_TOOLS="${INTERNAL_TOOLS}";
-    else
-      PROJECT_TOOLS="";
-    fi;
-  fi
-}
+# Remembering the number of arguments to this script, in order to parse them
+# properly.
+argc="$#"
 
 #
 # Generic aborting procedures.
 #
-
-BOLD_TAG="\033[1m"
-UNDERLINE_TAG="\033[4m"
-NORMAL_TAG="\033[0m"
-
 abort_configuration () {
   echo >&2
-  echo "./configure: " $BOLD_TAG"ABORTING CONFIGURATION!"$NORMAL_TAG  >&2
+  echo "./configure: " $TAG_BOLD"ABORTING CONFIGURATION!"$TAG_NORMAL  >&2
   echo >&2
   echo "$1" >&2
 }
@@ -93,37 +68,124 @@ abort_configuration_not_writable_tools_prefix_directory () {
   echo "to install external tools in sub-directory pkg of your home directory.";
 }
 
+include_project_configuration_variables () {
+  if test -r .project_config_var; then
+    . .project_config_var;
+    #echo ".project_config_var loaded" >&2;
+  else
+    abort_configuration &&
+    echo "There is no ./.project_config_var file." >&2
+    abort_remedy \
+      "Define the project specific configuration variables in .project_config_var.";
+    exit 1
+  fi
+}
+
+#
+# Checking if the project identity card was properly filled.
+#
+check_include () {
+  if test -z "${PROJECT_NAME}"; then
+    abort_configuration;
+    echo "The variable PROJECT_NAME is empty." >&2
+    abort_remedy \
+      "Bind PROJECT_NAME to the name of the project in .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${VERSION_NUMBER_MAIN}"; then
+    abort_configuration;
+    echo "The variable VERSION_NUMBER_MAIN is empty." >&2
+    abort_remedy \
+      "Bind VERSION_NUMBER_MAIN to the project main version number in .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${VERSION_NUMBER_SUB}"; then
+    abort_configuration;
+    echo "The variable VERSION_NUMBER_SUB is empty." >&2
+    abort_remedy \
+      "Bind VERSION_NUMBER_SUB to the the project sub version number in .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${VERSION_NUMBER_PATCH}"; then
+    abort_configuration;
+    echo "The variable VERSION_NUMBER_PATCH is empty." >&2
+    abort_remedy \
+      "Bind VERSION_NUMBER_PATCH to the project version patch level in .project_config_var.";
+    exit 1;
+  fi
+}
+
+#
+# Computing and defining project related variables
+# (needs project specific variables).
+#
+set_project_specific_variables () {
+    # The absolute path of this set of source files.
+    ABSOLUTE_ROOT_DIR=`pwd`
+    VERSION_NUMBER_FULL=${VERSION_NUMBER_MAIN}.${VERSION_NUMBER_SUB}.${VERSION_NUMBER_PATCH}
+    PROJECT_NAME_FULL=${PROJECT_NAME}-${VERSION_NUMBER_FULL}
+    TOOLS_PROJECT=""
+}
+
+#
+# Computing the list of all the tools not specific to the project, that
+# should be compiled and installed.
+# (needs project specific variables).
+#
+# TOOLS_PROJECT should be TOOLS_EXTERNAL + TOOLS_INTERNAL, as defined in
+# file .project_config_var.
+#
+# Setting the value of TOOLS_PROJECT avoiding spurious spaces
+# (i.e. preserving its emptyness to correctly test its value).
+set_tools_project () {
+  if test ! -z "${TOOLS_EXTERNAL}"; then
+    if test ! -z "${TOOLS_INTERNAL}"; then
+      TOOLS_PROJECT="${TOOLS_EXTERNAL} ${TOOLS_INTERNAL}";
+    else
+      TOOLS_PROJECT="${TOOLS_EXTERNAL}";
+    fi;
+  else
+    if test ! -z "${TOOLS_INTERNAL}"; then
+      TOOLS_PROJECT="${TOOLS_INTERNAL}";
+    else
+      TOOLS_PROJECT="";
+    fi;
+  fi
+}
+
 # Checking if a string is a valid command name.
-check () {
+check_command () {
   type "$1" >/dev/null 2>&1
 }
 
+###################
 # Default settings.
+###################
 
 #
 # Finding acceptable defaults for various unusual commands
 #
 set_sum_default () {
   for i in sum md5 md5sum md5deep sha1deep sha256deep; do
-    if check $i; then DEFAULT_SUM=$i; break; fi
+    if check_command $i; then DEFAULT_SUM=$i; break; fi
   done
 }
 
 set_convert_default () {
   for i in convert; do
-    if check $i; then DEFAULT_CONVERT=$i; break; fi
+    if check_command $i; then DEFAULT_CONVERT=$i; break; fi
   done
 }
 
 set_gs_default () {
   for i in gs; do
-    if check $i; then DEFAULT_GS=$i; break; fi
+    if check_command $i; then DEFAULT_GS=$i; break; fi
   done
 }
 
 set_xmlrpc_default () {
   for i in xmlrpc; do
-    if check $i; then DEFAULT_XMLRPC=$i; break; fi
+    if check_command $i; then DEFAULT_XMLRPC=$i; break; fi
   done
 }
 
@@ -157,67 +219,23 @@ set_command_defaults () {
 # - $(TOOLS_PREFIX)/man for installation of the project external tools manual pages,
 # - $(TOOLS_PREFIX)/doc for installation of the project external tools documentation.
 
-# Default variable assigment
-
 # Variable assigment
 
 # Variables are divided into 3 groups:
-# - intrinsic defaults, which are string constants,
-# - prefix defaults, that depend on ${DEFAULT_PREFIX},
-# - tools prefix, that depend on ${DEFAULT_TOOLS_PREFIX}.
+# (1) intrinsic defaults, which are string constants,
+# (2) prefix defaults, that depend on ${DEFAULT_PREFIX},
+# (3) tools prefix, that depend on ${DEFAULT_TOOLS_PREFIX}.
 #
 # For those groups we define a procedure that sets the defaults,
 # and a procedure that sets the variables after options have been processed.
 #
+# Variables in group (1), intrinsic defaults, are project dependent:
+# they are all defined in file .project_config_var with
+# their associated setting procedure ``set_intrinsic_defaults''.
+# # Variables in group (2) and (3), intrinsic defaults are defined in file .project_config_var.
+
 # Then procedure set_defaults is called before parsing options, and
 # set_variables is called after parsing options.
-
-# Defining intrinsic defaults (default values for default values!).
-set_intrinsic_defaults () {
-
-  # Intrinsic defaults for the project.
-
-  # Do we use debug mode ?
-  DEFAULT_DEBUG=true
-
-  # Intrinsic defaults for the project installation.
-  DEFAULT_PREFIX="/usr/local"
-
-  # External tools
-  # Do we use statically known external tools ?
-  DEFAULT_STATIC_EXTERNAL=false
-  # Do we make external tools ?
-  DEFAULT_MAKE_EXTERNAL=false
-  DEFAULT_MAGIC_MAKE_EXTERNAL=false
-
-  # Do we use a tools specific prefix directory for the project ?
-  DEFAULT_USE_TOOLS_PREFIX_DIRECTORY=false
-  # Do we use a 'full project name' private sub directory inside ${TOOLS_PREFIX}
-  # for the installation of the external/internal tools of the project ?
-  DEFAULT_USE_PROJECT_SUB_DIRECTORY=false
-
-  # Intrinsic defaults for Caml
-  DEFAULT_BYT_DEBUG_FLAGS="-g -dtypes"
-  DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
-
-  # Intrinsic defaults for Coq.
-  DEFAULT_COQ_RC="$HOME/.coqrc"
-  DEFAULT_COQ_MAKE="gmake"
-
-  # Intrinsic defaults for Zenon.
-  DEFAULT_USE_COQ_COMPILER=false
-  DEFAULT_SUM=:
-  DEFAULT_CONVERT=:
-  DEFAULT_GS=:
-
-  # Intrinsic defaults for Zvtov.
-  DEFAULT_USE_XMLRPC=false
-  DEFAULT_XMLRPC=:
-  DEFAULT_XMLRPC_MODULE="xmlrpc"
-  DEFAULT_XMLRPC_FLAGS=""
-  DEFAULT_XMLRPC_LINK=""
-
-}
 
 # Setting intrinsic values.
 set_intrinsic () {
@@ -226,7 +244,6 @@ set_intrinsic () {
 
   if test -z ${DEBUG}; then DEBUG=${DEFAULT_DEBUG}; fi
 
-  # Intrinsic settings for the project installation.
   if test -z ${PREFIX}; then PREFIX=${DEFAULT_PREFIX}; fi
   if test -z "${USE_TOOLS_PREFIX_DIRECTORY}"; then
     USE_TOOLS_PREFIX_DIRECTORY="${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}"; fi
@@ -253,7 +270,7 @@ set_intrinsic () {
   # Setting coq make command.
   if test -z "${COQ_MAKE}"; then
     # To compile Coq, prefer gmake, if GNU make is available with that name.
-    if check "${DEFAULT_COQ_MAKE}"; then COQ_MAKE="${DEFAULT_COQ_MAKE}";
+    if check_command "${DEFAULT_COQ_MAKE}"; then COQ_MAKE="${DEFAULT_COQ_MAKE}";
     # Otherwise, use make (which is GNU make anyway on
     # boxes with GNU make as default!).
     else COQ_MAKE="make";
@@ -263,19 +280,19 @@ set_intrinsic () {
   # Intrinsic settings for Zenon.
   if test -z "${USE_COQ_COMPILER}"; then USE_COQ_COMPILER="${DEFAULT_USE_COQ_COMPILER}"; fi
   if test -z "${SUM}"; then SUM="${DEFAULT_SUM}"; else
-    if check "${SUM}"; then :; else
+    if check_command "${SUM}"; then :; else
       abort_configuration "unavailable command ${SUM}.";
       abort_remedy "Choose an executable check sum command."
     fi
   fi
   if test -z "${CONVERT}"; then CONVERT="${DEFAULT_CONVERT}"; else
-    if check "${CONVERT}"; then :; else
+    if check_command "${CONVERT}"; then :; else
       abort_configuration "unavailable command ${CONVERT}.";
       abort_remedy "Choose an executable convert command."
     fi
   fi
   if test -z "${GS}"; then GS="${DEFAULT_GS}"; else
-    if check ${GS}; then :; else
+    if check_command ${GS}; then :; else
       abort_configuration "unavailable command ${GS}.";
       abort_remedy "Choose an executable gs command."
     fi
@@ -284,7 +301,7 @@ set_intrinsic () {
   # Intrinsic settings for Zvtov.
   if test -z "$USE_XMLRPC"; then USE_XMLRPC=${DEFAULT_USE_XMLRPC}; fi
   if test -z "${XMLRPC}"; then XMLRPC="${DEFAULT_XMLRPC}"; else
-    if check "${XMLRPC}"; then :; else
+    if check_command "${XMLRPC}"; then :; else
       abort_configuration "unavailable command ${XMLRPC}.";
       abort_remedy "Choose an executable xmlrpc command."
     fi
@@ -292,7 +309,7 @@ set_intrinsic () {
 
   if ${USE_XMLRPC}; then
     # Check_XMLRPC;
-    if check "${XMLRPC}"; then :; else
+    if check_command "${XMLRPC}"; then :; else
       abort_configuration "unavailable command ${XMLRPC}.";
       abort_remedy "Choose an executable xmlrpc command."
     fi
@@ -302,7 +319,7 @@ set_intrinsic () {
     fi
     # set_XMLRPC_FLAGS;
     if test -z "$XMLRPC_FLAGS"; then
-      if check "ocamlfind"; then
+      if check_command "ocamlfind"; then
         XMLRPC_FLAGS="`ocamlfind query -r -i-format xmlrpc | tr '\012' ' '`"
       else
         XMLRPC_FLAGS="${DEFAULT_XMLRPC_FLAGS}"
@@ -310,7 +327,7 @@ set_intrinsic () {
     fi
     # set_XMLRPC_LINK;
     if test -z "$XMLRPC_LINK"; then
-      if check "ocamlfind"; then
+      if check_command "ocamlfind"; then
         XMLRPC_LINK="`ocamlfind query -r -predicates byte -a-format xmlrpc | tr '\012' ' '`"
       else
         XMLRPC_LINK="${DEFAULT_XMLRPC_LINK}"
@@ -349,18 +366,16 @@ set_tools_prefix_defaults () {
   # Normal setting is:
   # DEFAULT_TOOLS_PREFIX=~/pkg
   # For Zenon the DEFAULT_TOOLS_PREFIX should be the DEFAULT_PREFIX.
-  if ${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}; then
-    DEFAULT_TOOLS_PREFIX=~/pkg
-  else
+  if ! ${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}; then
     DEFAULT_TOOLS_PREFIX="${DEFAULT_PREFIX}"
   fi
 
   # The normal default binding is
-  # DEFAULT_TOOLS_PROJECT_DIR="${DEFAULT_TOOLS_PREFIX}/${FULL_PROJECT_NAME}"
-  # For traditional projects (e.g. zenon), there is no FULL_PROJECT_NAME sub directory,
+  # DEFAULT_TOOLS_PROJECT_DIR="${DEFAULT_TOOLS_PREFIX}/${PROJECT_NAME_FULL}"
+  # For traditional projects (e.g. zenon), there is no PROJECT_NAME_FULL sub directory,
   # we directly use the DEFAULT_TOOLS_PREFIX.
   if ${DEFAULT_USE_PROJECT_SUB_DIRECTORY}; then
-    DEFAULT_TOOLS_PROJECT_DIR="${DEFAULT_TOOLS_PREFIX}/${FULL_PROJECT_NAME}"
+    DEFAULT_TOOLS_PROJECT_DIR="${DEFAULT_TOOLS_PREFIX}/${PROJECT_NAME_FULL}"
   else
     DEFAULT_TOOLS_PROJECT_DIR="${DEFAULT_TOOLS_PREFIX}"
   fi
@@ -450,12 +465,12 @@ set_tools_prefix () {
   fi
 
   # The normal setting is:
-  # TOOLS_PROJECT_PREFIX="${TOOLS_PREFIX}/${FULL_PROJECT_NAME}"
-  # For traditional project (e.g. zenon) there is no ${FULL_PROJECT_NAME}
+  # TOOLS_PROJECT_PREFIX="${TOOLS_PREFIX}/${PROJECT_NAME_FULL}"
+  # For traditional project (e.g. zenon) there is no ${PROJECT_NAME_FULL}
   # sub directory, and TOOLS_PROJECT_PREFIX is just ${TOOLS_PREFIX}.
-  # TOOLS_PROJECT_PREFIX="${TOOLS_PREFIX}/${FULL_PROJECT_NAME}"
+  # TOOLS_PROJECT_PREFIX="${TOOLS_PREFIX}/${PROJECT_NAME_FULL}"
   if ${USE_PROJECT_SUB_DIRECTORY}; then
-    TOOLS_PROJECT_DIR="${TOOLS_PREFIX}/${FULL_PROJECT_NAME}"
+    TOOLS_PROJECT_DIR="${TOOLS_PREFIX}/${PROJECT_NAME_FULL}"
   else
     TOOLS_PROJECT_DIR="${TOOLS_PREFIX}"
   fi
@@ -571,58 +586,52 @@ set_tools_prefix () {
 
 }
 
-# Setting all variables defaults
-set_defaults () {
-  set_project_tools &&
-  set_intrinsic_defaults &&
-  set_command_defaults &&
-  set_prefix_defaults &&
-  set_tools_prefix_defaults;
-}
-
-# Setting all variables after option parsing has been completed.
-set_variables () {
-  set_intrinsic &&
-  set_prefix &&
-  set_tools_prefix;
-}
-
-# Reading the project installation prefix directory.
+#
+# Defining variables specific to this script behaviour.
+#
 
 # Flags to drive the interactive/continue machinery:
 # - if the ${PREFIX} directory has been explicitely given as an option
 #   by the user, we don't need to ask for it again.
 # - if the ${TOOLS_PREFIX} directory has been explicitely given as an option
 #   by the user, we don't need to ask for it again.
-# - if there is no tools (${PROJECT_TOOLS} is empty), TOOLS_PREFIX is
+# - if there is no tools (${TOOLS_PROJECT} is empty), TOOLS_PREFIX is
 #   considered given, since there is no need to ask.
 # - we should continue without asking, if all the prefixes has been
 #   explicitely given as options.
-PREFIX_GIVEN=false
-PREFIX_READ=false
-TOOLS_PREFIX_GIVEN=false
-TOOLS_PREFIX_READ=false
-CONTINUE_WITHOUT_ASKING=false
+
+set_configure_script_variables () {
+  TAG_BOLD="\033[1m"
+  TAG_UNDERLINE="\033[4m"
+  TAG_NORMAL="\033[0m"
+  PREFIX_GIVEN=false
+  PREFIX_READ=false
+  TOOLS_PREFIX_GIVEN=false
+  TOOLS_PREFIX_READ=false
+  CONTINUE_WITHOUT_ASKING=false
+}
+
+# Reading the project installation prefix directory.
 
 read_prefix () {
-  echo $BOLD_TAG"Where to install the ${PROJECT_NAME} files ?"$NORMAL_TAG
-  echo "Default is $DEFAULT_PREFIX."
+  echo $TAG_BOLD"Where to install the ${PROJECT_NAME} files ?"$TAG_NORMAL
+  echo "Default is ${DEFAULT_PREFIX}."
   echo "Just press enter to use the default location."
   read USER_INPUT
-  if test ! -z "$USER_INPUT"; then
-     PREFIX="$USER_INPUT"
+  if test ! -z "${USER_INPUT}"; then
+     PREFIX="${USER_INPUT}"
   fi
   PREFIX_READ=true
 }
 
-# Reading the project tools installation prefix directory. 
+# Reading the project tools installation prefix directory.
 read_tools_prefix () {
-  echo $BOLD_TAG"Where to install the ${PROJECT_NAME} tools (${PROJECT_TOOLS}) ?"$NORMAL_TAG
-  echo "Default is $DEFAULT_TOOLS_PREFIX."
+  echo $TAG_BOLD"Where to install the ${PROJECT_NAME} tools (${TOOLS_PROJECT}) ?"$TAG_NORMAL
+  echo "Default is ${DEFAULT_TOOLS_PREFIX}."
   echo "Just press enter to use the default location."
   read USER_INPUT
-  if test ! -z "$USER_INPUT"; then
-     TOOLS_PREFIX="$USER_INPUT"
+  if test ! -z "${USER_INPUT}"; then
+     TOOLS_PREFIX="${USER_INPUT}"
   fi
   TOOLS_PREFIX_READ=true
 }
@@ -631,7 +640,7 @@ read_tools_prefix () {
 prefix_summary () {
   echo "Configuration done for installation directories:" &&
   echo "- The ${PROJECT_NAME} system installs in ${PREFIX}" &&
-  if test ! -z "${PROJECT_TOOLS}"; then
+  if test ! -z "${TOOLS_PROJECT}"; then
     echo "- The ${PROJECT_NAME} tools install in ${TOOLS_PREFIX}";
   fi
 }
@@ -641,7 +650,7 @@ set_continue_without_asking () {
   # just check if we need to ask for TOOLS_PREFIX, and if not so continue.
   if ${PREFIX_GIVEN}; then
     # No project tools: useless to ask for TOOLS_PREFIX, hence continue.
-    if test -z ${PROJECT_TOOLS}; then
+    if test -z ${TOOLS_PROJECT}; then
       CONTINUE_WITHOUT_ASKING=true;
     else
       # PREFIX and TOOLS_PREFIX have been given, hence continue.
@@ -674,7 +683,7 @@ prefix_main () {
      read_prefix;
    fi;
  fi;
- if test ! -z "${PROJECT_TOOLS}"; then
+ if test ! -z "${TOOLS_PROJECT}"; then
    if ! ${TOOLS_PREFIX_GIVEN}; then
      if ! ${TOOLS_PREFIX_READ}; then
        read_tools_prefix;
@@ -700,11 +709,11 @@ usage () {
   echo "    and must be built and installed during the configuration phase,"
   echo "    since they are needed to correctly compile, install, and safely use"
   echo "    ${PROJECT_NAME}."
-  echo "    External tools then install in <directory>/${FULL_PROJECT_NAME}/,"
+  echo "    External tools then install in <directory>/${PROJECT_NAME_FULL}/,"
   echo "    once they have ben built."
   echo "    As a consequence, you must have the permission to install directories"
   echo "    and files in <directory> to properly configure ${PROJECT_NAME}."
-  echo "    (Default value for <directory> is ${DEFAULT_TOOLS_PREFIX}.)"
+  echo "    (Default value for <directory> is ${TOOLS_DEFAULT_PREFIX}.)"
   echo "  [-]-debug | [-]-enable_debug"
   echo "    enable debugging"
   echo "  [-]-nodebug | [-]-disable_debug"
@@ -770,16 +779,41 @@ usage () {
   echo "    <unknown option>."
 }
 
+# Setting all variables defaults
+set_defaults () {
+  # Defining configure script specific variables.
+  set_configure_script_variables &&
+
+  # Read the project specific variables, and define its variables.
+  include_project_configuration_variables &&
+  set_project_id &&
+  set_project_specific_variables &&
+  set_tools_project &&
+
+  # Perform some verifications about the project definition.
+  check_include &&
+ 
+ # Computing defaults.
+  set_intrinsic_defaults &&
+  set_command_defaults &&
+  set_prefix_defaults &&
+  set_tools_prefix_defaults;
+}
+
+# Setting all variables after option parsing has been completed.
+set_variables () {
+  set_intrinsic &&
+  set_prefix &&
+  set_tools_prefix;
+}
+
 #
 # Beginning execution.
 #
 
-# Setting default values (for help in particular).
+# Setting the default values (for help in particular).
 # Hence, this must be done before parsing the command line arguments.
 set_defaults
-
-# Remembering the number of arguments to configure.
-argc="$#"
 
 #
 # Parsing arguments
@@ -915,13 +949,13 @@ check_installation_dirs () {
 build_config_file () {
   sed -e "s,@PROJECT_NAME@,$PROJECT_NAME," \
       -e "s,@DEBUG@,$DEBUG," \
-      -e "s,@MAIN_VERSION_NUMBER@,$MAIN_VERSION_NUMBER," \
-      -e "s,@SUB_VERSION_NUMBER@,$SUB_VERSION_NUMBER," \
-      -e "s,@PATCH_VERSION_NUMBER@,$PATCH_VERSION_NUMBER," \
-      -e "s,@FULL_VERSION_NUMBER@,$FULL_VERSION_NUMBER," \
-      -e "s,@FULL_PROJECT_NAME@,$FULL_PROJECT_NAME," \
-      -e "s,@INTERNAL_TOOLS@,$INTERNAL_TOOLS," \
-      -e "s,@EXTERNAL_TOOLS@,$EXTERNAL_TOOLS," \
+      -e "s,@VERSION_NUMBER_MAIN@,$VERSION_NUMBER_MAIN," \
+      -e "s,@VERSION_NUMBER_SUB@,$VERSION_NUMBER_SUB," \
+      -e "s,@VERSION_NUMBER_PATCH@,$VERSION_NUMBER_PATCH," \
+      -e "s,@VERSION_NUMBER_FULL@,$VERSION_NUMBER_FULL," \
+      -e "s,@PROJECT_NAME_FULL@,$PROJECT_NAME_FULL," \
+      -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
+      -e "s,@TOOLS_EXTERNAL@,$TOOLS_EXTERNAL," \
       -e "s,@PROJECT_DELIVERABLES@,$PROJECT_DELIVERABLES," \
   \
       -e "s,@ABSOLUTE_ROOT_DIR@,$ABSOLUTE_ROOT_DIR," \
@@ -1018,7 +1052,7 @@ touch_depends () {
 # Copying information gathered here to internal tools.
 #
 configure_internal_tools () {
-  for i in ${INTERNAL_TOOLS}; do
+  for i in ${TOOLS_INTERNAL}; do
     cp .config_var $i
   done
 }
