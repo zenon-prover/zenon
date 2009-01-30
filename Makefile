@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.65 2009-01-15 09:32:41 weis Exp $
+#  $Id: Makefile,v 1.66 2009-01-30 07:43:55 weis Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -151,6 +151,10 @@ dist: $(ALLSRC)
 	mkdir -p dist/zenon
 	cp $(ALLSRC) dist/zenon
 	cd dist && tar cf - zenon | gzip >../zenon.tar.gz
+
+.PHONY: doc docdir
+doc docdir:
+	@echo "The documentation for zenon is not yet available :(" >&2
 
 .PHONY: clean
 clean:
