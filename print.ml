@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.27 2009-01-07 16:07:04 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.28 2009-02-05 15:15:44 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -90,13 +90,17 @@ let expr o e =
   flush ();
 ;;
 
+let is_infix_op s =
+  s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_'
+;;
+
 let rec expr_soft o ex =
   let pr f = oprintf o f in
   match ex with
   | Evar (v, _) -> pr "%s" v;
   | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
-  | Eapp (s, [e1; e2], _) when s <> "" && not (is_letter s.[0]) && s.[0] != '$'
-  -> pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
+  | Eapp (s, [e1; e2], _) when is_infix_op s ->
+     pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
   | Eapp (s, es, _) ->
       pr "(%s" s;
       List.iter (fun x -> pr " "; expr_soft o x) es;
@@ -367,10 +371,6 @@ let hlproof o depth p =
 open Llproof;;
 
 let indent o i = for j = 0 to i do oprintf o "  "; done;;
-
-let is_infix_op s =
-  s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_'
-;;
 
 let rec llproof_expr o e =
   let pro f = oprintf o f in
