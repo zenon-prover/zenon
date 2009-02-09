@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.58 2009-01-29 19:30:05 weis Exp $
+# $Id: configure,v 1.59 2009-02-09 15:23:46 weis Exp $
 
 ########################################################################
 #
@@ -639,9 +639,9 @@ read_tools_prefix () {
 # Summary feedback.
 prefix_summary () {
   echo "Configuration done for installation directories:" &&
-  echo "- The ${PROJECT_NAME} system installs in ${PREFIX}" &&
+  echo "- The ${PROJECT_NAME} system installs in directory ${PREFIX}" &&
   if test ! -z "${TOOLS_PROJECT}"; then
-    echo "- The ${PROJECT_NAME} tools install in ${TOOLS_PREFIX}";
+    echo "- The ${PROJECT_NAME} tools install in directory ${TOOLS_PREFIX}";
   fi
 }
 
@@ -818,12 +818,13 @@ set_defaults
 #
 # Parsing arguments
 #
+
+# Debug...
+#echo "Arguments :"
+#echo ${argc}
+
 case ${argc} in
   0) prefix_main
-     ;;
-  1) PREFIX="$1";
-     PREFIX_GIVEN=true;
-     prefix_main;
      ;;
   *)
 
@@ -891,22 +892,36 @@ case ${argc} in
       -nodebug | --nodebug | -disable_debug | --disable_debug)
        DEBUG=false; shift;;
       -help | --help)
+        shift;
         usage &&
         exit 0
         ;;
 
       -*)
-         echo "./configure: bad option '$1'" >&2
-         echo "For help, use ./configure -help" >&2
-         exit 2
-         ;;
+        option="$1";
+        shift;
+        echo "./configure: bad option '${option}'" >&2
+        echo "For help, use ./configure -help" >&2
+        exit 2
+        ;;
 
       *)
-         echo "./configure: bad arguments '$@'" >&2
-         echo "For help, use ./configure -help" >&2
-         exit 2
-         ;;
+        if test ${argc} -eq 1; then
+          PREFIX="$1";
+          shift;
+          echo "Prefix installation directory for ${PROJECT_NAME} files set to \"${PREFIX}\"";
+          PREFIX_GIVEN=true;
+          prefix_main;
+        else
+          option="$@";
+          shift;
+          echo "./configure: bad arguments '${option}'" >&2
+          echo "For help, use ./configure -help" >&2
+          exit 2
+        fi
+        ;;
     esac
+
   done
   ;;
 
