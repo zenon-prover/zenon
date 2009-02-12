@@ -13,30 +13,30 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.1 2009-01-29 19:30:05 weis Exp $
+# $Id: .project_config_var,v 1.1.2.1 2009-02-12 16:02:35 weis Exp $
 
 # The configuration variables specific to FoCaLize.
 
 set_project_id () {
 
-# Fix the name and version of the software
-PROJECT_NAME=zenon
+  # Fix the name and version of the software
+  PROJECT_NAME=zenon
 
-VERSION_NUMBER_MAIN=0
-VERSION_NUMBER_SUB=6
-VERSION_NUMBER_PATCH=2
+  VERSION_NUMBER_MAIN=0
+  VERSION_NUMBER_SUB=6
+  VERSION_NUMBER_PATCH=2
 
-# The list of external tools for the project.
-# (Also defined in ./Makefile.config if any.)
-TOOLS_EXTERNAL=""
+  # The list of external tools for the project.
+  # (Also defined in ./Makefile.config if any.)
+  TOOLS_EXTERNAL=""
 
-# The list of internal tools for the project. Those are likely to be
-# stand alone projects inside the main project: its sub-projects.
-# (Also defined in ./Makefile.config if any.)
-TOOLS_INTERNAL=""
+  # The list of internal tools for the project. Those are likely to be
+  # stand alone projects inside the main project: its sub-projects.
+  # (Also defined in ./Makefile.config if any.)
+  TOOLS_INTERNAL=""
 
-# The list of tools specific for the project (and not stand alone internal tools).
-PROJECT_DELIVERABLES="zenon"
+  # The list of tools specific for the project (and not stand alone internal tools).
+  PROJECT_DELIVERABLES="zenon"
 
 }
 
