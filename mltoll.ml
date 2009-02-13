@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.41 2009-01-07 16:07:04 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.42 2009-02-13 14:55:50 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -454,7 +454,7 @@ let rec find_diff x f1 f2 =
      if Expr.equal g1 g2 then begin
        let (lam, l, r) = find_diff x h1 h2 in
        eand (g1, lam), l, r
-     end else begin 
+     end else begin
        let (lam, l, r) = find_diff x g1 g2 in
        eand (lam, h1), l, r
      end
@@ -462,7 +462,7 @@ let rec find_diff x f1 f2 =
      if Expr.equal g1 g2 then begin
        let (lam, l, r) = find_diff x h1 h2 in
        eor (g1, lam), l, r
-     end else begin 
+     end else begin
        let (lam, l, r) = find_diff x g1 g2 in
        eor (lam, h1), l, r
      end
@@ -470,7 +470,7 @@ let rec find_diff x f1 f2 =
      if Expr.equal g1 g2 then begin
        let (lam, l, r) = find_diff x h1 h2 in
        eimply (g1, lam), l, r
-     end else begin 
+     end else begin
        let (lam, l, r) = find_diff x g1 g2 in
        eimply (lam, h1), l, r
      end
@@ -478,7 +478,7 @@ let rec find_diff x f1 f2 =
      if Expr.equal g1 g2 then begin
        let (lam, l, r) = find_diff x h1 h2 in
        eequiv (g1, lam), l, r
-     end else begin 
+     end else begin
        let (lam, l, r) = find_diff x g1 g2 in
        eequiv (lam, h1), l, r
      end
@@ -916,7 +916,7 @@ and translate_derived p =
       let refl_hyp = Eqrel.get_refl_hyp s in
       let paa = eapp (s, [a; a]) in
       let npab = enot (eapp (s, [a; b])) in
-      let n2 = make_clr s a in
+      let n2 = make_clr "=" a in
       let n3 = make_pnp paa npab [n2; n1] in
       let n4 = make_all refl_hyp a n3 in
       let (n, ext) = to_llproof n4 in
