@@ -13,7 +13,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.1.2.1 2009-02-12 16:02:35 weis Exp $
+# $Id: .project_config_var,v 1.1.2.2 2009-02-20 01:16:16 weis Exp $
 
 # The configuration variables specific to FoCaLize.
 
@@ -21,6 +21,13 @@ set_project_id () {
 
   # Fix the name and version of the software
   PROJECT_NAME=zenon
+
+  PROJECT_NAME_TEXT=Zenon
+
+  PROJECT_WEB_SERVER=modulogic.inria.fr
+  PROJECT_WEB_SITE_DIR=/home/www/zenon
+
+  PROJECT_FIRST_YEAR=1997
 
   VERSION_NUMBER_MAIN=0
   VERSION_NUMBER_SUB=6
