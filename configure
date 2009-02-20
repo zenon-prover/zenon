@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.59.2.1 2009-02-20 01:16:16 weis Exp $
+# $Id: configure,v 1.59.2.2 2009-02-20 19:17:28 weis Exp $
 
 ########################################################################
 #
@@ -114,7 +114,7 @@ check_include () {
     echo "The variable PROJECT_WEB_SITE_DIR is empty." >&2
     abort_remedy \
       "Bind PROJECT_WEB_SITE_DIR to the root directory on the server \
-       of the project web site in \
+       of the project web site (e.g. /home/www/${PROJECT_NAME}) in \
        the file .project_config_var.";
     exit 1;
   fi
@@ -130,7 +130,7 @@ check_include () {
     abort_configuration;
     echo "The variable VERSION_NUMBER_MAIN is empty." >&2
     abort_remedy \
-      "Bind VERSION_NUMBER_MAIN to the project main version number in \
+      "Bind VERSION_NUMBER_MAIN to the project main version number (e.g. 0) in \
        the file .project_config_var.";
     exit 1;
   fi
@@ -138,7 +138,7 @@ check_include () {
     abort_configuration;
     echo "The variable VERSION_NUMBER_SUB is empty." >&2
     abort_remedy \
-      "Bind VERSION_NUMBER_SUB to the the project sub version number in \
+      "Bind VERSION_NUMBER_SUB to the the project sub version number (e.g. 0) in \
        the file .project_config_var.";
     exit 1;
   fi
@@ -146,7 +146,16 @@ check_include () {
     abort_configuration;
     echo "The variable VERSION_NUMBER_PATCH is empty." >&2
     abort_remedy \
-      "Bind VERSION_NUMBER_PATCH to the project version patch level in \
+      "Bind VERSION_NUMBER_PATCH to the project version patch level (e.g. 0) in \
+       the file .project_config_var.";
+    exit 1;
+  fi
+
+  if test -z "${PROJECT_MAN_EXT}"; then
+    abort_configuration;
+    echo "The variable PROJECT_MAN_EXT is empty." >&2
+    abort_remedy \
+      "Bind PROJECT_MAN_EXT to the project manual page extension (e.g. 1) in \
        the file .project_config_var.";
     exit 1;
   fi
@@ -1058,9 +1067,10 @@ build_config_file () {
       -e "s,@VERSION_NUMBER_PATCH@,$VERSION_NUMBER_PATCH," \
       -e "s,@VERSION_NUMBER_FULL@,$VERSION_NUMBER_FULL," \
       -e "s,@PROJECT_NAME_FULL@,$PROJECT_NAME_FULL," \
-      -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
       -e "s,@TOOLS_EXTERNAL@,$TOOLS_EXTERNAL," \
+      -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
       -e "s,@PROJECT_DELIVERABLES@,$PROJECT_DELIVERABLES," \
+      -e "s,@PROJECT_MAN_EXT@,$PROJECT_MAN_EXT," \
   \
       -e "s,@ABSOLUTE_ROOT_DIR@,$ABSOLUTE_ROOT_DIR," \
       -e "s,@PREFIX@,$PREFIX," \
@@ -1136,8 +1146,18 @@ build_config_var () {
 
 build_config_var_for_shell () {
 
-  sed -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
-      -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
+  sed \
+     -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
+     -e "s,@BIN_DEBUG_FLAGS@,\"$BIN_DEBUG_FLAGS\"," \
+     -e "s,@PREFIX@,\"$PREFIX\"," \
+     -e "s,@BIN_DIR@,\"$BIN_DIR\"," \
+     -e "s,@LIB_DIR@,\"$LIB_DIR\"," \
+     -e "s,@DOC_DIR@,\"$DOC_DIR\"," \
+     -e "s,@MAN_DIR@,\"$MAN_DIR\"," \
+     -e "s,@XMLRPC_FLAGS@,\"$XMLRPC_FLAGS\"," \
+     -e "s,@XMLRPC_LINK@,\"$XMLRPC_LINK\"," \
+     -e "s,@XMLRPC_MODULE@,\"$XMLRPC_MODULE\"," \
+     -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
   <.config_var.in >.config_var_for_shell.in
 
   build_config_file .config_var_for_shell.in .config_var_for_shell
@@ -1196,6 +1216,7 @@ main () {
   # script that does the rest of the work that never necessitates user's
   # interaction.
   if test -x ./.configure; then ./.configure; fi &&
+  if test -x ./.configure_distribution; then ./.configure_distribution; fi &&
   prefix_summary &&
   continue_configure &&
   summarize_configuration &&
