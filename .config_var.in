@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.17.2.1 2009-02-20 01:16:16 weis Exp $
+#  $Id: .config_var.in,v 1.17.2.2 2009-02-20 01:44:05 weis Exp $
 
 #
 # The project identity card.
@@ -35,11 +35,11 @@ DEBUG=@DEBUG@
 ABSOLUTE_ROOT_DIR=@ABSOLUTE_ROOT_DIR@
 
 # The directories where the project installs its own binaries and libraries.
-PREFIX="@PREFIX@"
-BIN_DIR="@BIN_DIR@"
-LIB_DIR="@LIB_DIR@"
-DOC_DIR="@DOC_DIR@"
-MAN_DIR="@MAN_DIR@"
+PREFIX=@PREFIX@
+BIN_DIR=@BIN_DIR@
+LIB_DIR=@LIB_DIR@
+DOC_DIR=@DOC_DIR@
+MAN_DIR=@MAN_DIR@
 
 # The directories where the project installs its own specific versions
 # of mandatory external tools binaries and libraries (if any).
@@ -66,7 +66,7 @@ CAML_DEP_COMPILER="@CAML_DEP_COMPILER@"
 CAML_DOC_COMPILER="@CAML_DOC_COMPILER@"
 # Compilation flags for Caml.
 BYT_DEBUG_FLAGS=@BYT_DEBUG_FLAGS@
-BIN_DEBUG_FLAGS="@BIN_DEBUG_FLAGS@"
+BIN_DEBUG_FLAGS=@BIN_DEBUG_FLAGS@
 
 # Camlp5 settings.
 CAMLP5_LIB_DIR="@CAMLP5_LIB_DIR@"
@@ -94,9 +94,9 @@ ZVTOV_PREFIX="@ZVTOV_PREFIX@"
 ZVTOV_LIB_DIR="@ZVTOV_LIB_DIR@"
 ZVTOV_COMPILER="@ZVTOV_COMPILER@"
 USE_XMLRPC=@USE_XMLRPC@
-XMLRPC_FLAGS="@XMLRPC_FLAGS@"
-XMLRPC_LINK="@XMLRPC_LINK@"
-XMLRPC_MODULE="@XMLRPC_MODULE@"
+XMLRPC_FLAGS=@XMLRPC_FLAGS@
+XMLRPC_LINK=@XMLRPC_LINK@
+XMLRPC_MODULE=@XMLRPC_MODULE@
 
 # Focalizec
 FOCALIZEC_PREFIX="@FOCALIZEC_PREFIX@"
