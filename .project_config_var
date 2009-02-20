@@ -13,7 +13,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.1.2.2 2009-02-20 01:16:16 weis Exp $
+# $Id: .project_config_var,v 1.1.2.3 2009-02-20 19:26:27 weis Exp $
 
 # The configuration variables specific to FoCaLize.
 
@@ -44,6 +44,9 @@ set_project_id () {
 
   # The list of tools specific for the project (and not stand alone internal tools).
   PROJECT_DELIVERABLES="zenon"
+
+  # The manual extension for the man page of the project
+  PROJECT_MAN_EXT=1
 
 }
 
