@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.59 2009-02-09 15:23:46 weis Exp $
+# $Id: configure,v 1.60 2009-02-26 13:53:46 pessaux Exp $
 
 ########################################################################
 #
@@ -89,28 +89,74 @@ check_include () {
     abort_configuration;
     echo "The variable PROJECT_NAME is empty." >&2
     abort_remedy \
-      "Bind PROJECT_NAME to the name of the project in .project_config_var.";
+      "Bind PROJECT_NAME to the name of the project in \
+       the file .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${PROJECT_NAME_TEXT}"; then
+    abort_configuration;
+    echo "The variable PROJECT_NAME_TEXT is empty." >&2
+    abort_remedy \
+      "Bind PROJECT_NAME_TEXT to the text of the project name in \
+       the file .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${PROJECT_WEB_SERVER}"; then
+    abort_configuration;
+    echo "The variable PROJECT_WEB_SERVER is empty." >&2
+    abort_remedy \
+      "Bind PROJECT_WEB_SERVER to the name of the project web server in \
+       the file .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${PROJECT_WEB_SITE_DIR}"; then
+    abort_configuration;
+    echo "The variable PROJECT_WEB_SITE_DIR is empty." >&2
+    abort_remedy \
+      "Bind PROJECT_WEB_SITE_DIR to the root directory on the server \
+       of the project web site (e.g. /home/www/${PROJECT_NAME}) in \
+       the file .project_config_var.";
+    exit 1;
+  fi
+  if test -z "${PROJECT_FIRST_YEAR}"; then
+    abort_configuration;
+    echo "The variable PROJECT_FIRST_YEAR is undefined." >&2
+    abort_remedy \
+      "Bind PROJECT_FIRST_YEAR to the first year of development for the project in \
+       the file .project_config_var.";
     exit 1;
   fi
   if test -z "${VERSION_NUMBER_MAIN}"; then
     abort_configuration;
     echo "The variable VERSION_NUMBER_MAIN is empty." >&2
     abort_remedy \
-      "Bind VERSION_NUMBER_MAIN to the project main version number in .project_config_var.";
+      "Bind VERSION_NUMBER_MAIN to the project main version number (e.g. 0) in \
+       the file .project_config_var.";
     exit 1;
   fi
   if test -z "${VERSION_NUMBER_SUB}"; then
     abort_configuration;
     echo "The variable VERSION_NUMBER_SUB is empty." >&2
     abort_remedy \
-      "Bind VERSION_NUMBER_SUB to the the project sub version number in .project_config_var.";
+      "Bind VERSION_NUMBER_SUB to the the project sub version number (e.g. 0) in \
+       the file .project_config_var.";
     exit 1;
   fi
   if test -z "${VERSION_NUMBER_PATCH}"; then
     abort_configuration;
     echo "The variable VERSION_NUMBER_PATCH is empty." >&2
     abort_remedy \
-      "Bind VERSION_NUMBER_PATCH to the project version patch level in .project_config_var.";
+      "Bind VERSION_NUMBER_PATCH to the project version patch level (e.g. 0) in \
+       the file .project_config_var.";
+    exit 1;
+  fi
+
+  if test -z "${PROJECT_MAN_EXT}"; then
+    abort_configuration;
+    echo "The variable PROJECT_MAN_EXT is empty." >&2
+    abort_remedy \
+      "Bind PROJECT_MAN_EXT to the project manual page extension (e.g. 1) in \
+       the file .project_config_var.";
     exit 1;
   fi
 }
@@ -277,6 +323,7 @@ set_intrinsic () {
     fi
   fi
 
+  # Internal tools
   # Intrinsic settings for Zenon.
   if test -z "${USE_COQ_COMPILER}"; then USE_COQ_COMPILER="${DEFAULT_USE_COQ_COMPILER}"; fi
   if test -z "${SUM}"; then SUM="${DEFAULT_SUM}"; else
@@ -455,6 +502,28 @@ set_tools_prefix_defaults () {
     DEFAULT_ZVTOV_COMPILER="zvtov"
   fi
 
+  # Defaults for Focalizec.
+  DEFAULT_FOCALIZEC_PREFIX="${DEFAULT_PREFIX}"
+  DEFAULT_FOCALIZEC_BIN_DIR="${DEFAULT_FOCALIZEC_PREFIX}/bin"
+  DEFAULT_FOCALIZEC_LIB_DIR="${DEFAULT_FOCALIZEC_PREFIX}/lib/focalizec"
+
+  if ${DEFAULT_STATIC_EXTERNAL}; then
+    DEFAULT_FOCALIZEC_COMPILER="${DEFAULT_FOCALIZEC_BIN_DIR}/focalizec"
+  else
+    DEFAULT_FOCALIZEC_COMPILER="focalizec"
+  fi
+
+  # Defaults for Focalizedep.
+  DEFAULT_FOCALIZEDEP_PREFIX="${DEFAULT_PREFIX}"
+  DEFAULT_FOCALIZEDEP_BIN_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/bin"
+  DEFAULT_FOCALIZEDEP_LIB_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/lib/focalizedep"
+
+  if ${DEFAULT_STATIC_EXTERNAL}; then
+    DEFAULT_FOCALIZEDEP_COMPILER="${DEFAULT_FOCALIZEDEP_BIN_DIR}/focalizedep"
+  else
+    DEFAULT_FOCALIZEDEP_COMPILER="focalizedep"
+  fi
+
 }
 
 # Setting variables that depend upon ${TOOLS_PREFIX}.
@@ -583,6 +652,30 @@ set_tools_prefix () {
 
   if test -z "${ZVTOV_COMPILER}"; then
     ZVTOV_COMPILER="${ZVTOV_BIN_DIR}/zvtov"; fi
+
+  # Settings for Focalizec.
+  if test -z "${FOCALIZEC_PREFIX}"; then
+    FOCALIZEC_PREFIX="${PREFIX}"; fi
+
+  if test -z "${FOCALIZEC_LIB_DIR}"; then
+    FOCALIZEC_LIB_DIR="${FOCALIZEC_PREFIX}/lib/focalizec"; fi
+  if test -z "${FOCALIZEC_BIN_DIR}"; then
+    FOCALIZEC_BIN_DIR="${FOCALIZEC_PREFIX}/bin"; fi
+
+  if test -z "${FOCALIZEC_COMPILER}"; then
+    FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/focalizec"; fi
+
+  # Settings for Focalizedep.
+  if test -z "${FOCALIZEDEP_PREFIX}"; then
+    FOCALIZEDEP_PREFIX="${PREFIX}"; fi
+
+  if test -z "${FOCALIZEDEP_LIB_DIR}"; then
+    FOCALIZEDEP_LIB_DIR="${FOCALIZEDEP_PREFIX}/lib/focalizedep"; fi
+  if test -z "${FOCALIZEDEP_BIN_DIR}"; then
+    FOCALIZEDEP_BIN_DIR="${FOCALIZEDEP_PREFIX}/bin"; fi
+
+  if test -z "${FOCALIZEDEP_COMPILER}"; then
+    FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/focalizedep"; fi
 
 }
 
@@ -962,16 +1055,22 @@ check_installation_dirs () {
 # Editing ./.config_var.in with what we learnt here.
 #
 build_config_file () {
-  sed -e "s,@PROJECT_NAME@,$PROJECT_NAME," \
+  sed \
       -e "s,@DEBUG@,$DEBUG," \
+      -e "s,@PROJECT_NAME@,$PROJECT_NAME," \
+      -e "s,@PROJECT_NAME_TEXT@,$PROJECT_NAME_TEXT," \
+      -e "s,@PROJECT_WEB_SERVER@,$PROJECT_WEB_SERVER," \
+      -e "s,@PROJECT_WEB_SITE_DIR@,$PROJECT_WEB_SITE_DIR," \
+      -e "s,@PROJECT_FIRST_YEAR@,$PROJECT_FIRST_YEAR," \
       -e "s,@VERSION_NUMBER_MAIN@,$VERSION_NUMBER_MAIN," \
       -e "s,@VERSION_NUMBER_SUB@,$VERSION_NUMBER_SUB," \
       -e "s,@VERSION_NUMBER_PATCH@,$VERSION_NUMBER_PATCH," \
       -e "s,@VERSION_NUMBER_FULL@,$VERSION_NUMBER_FULL," \
       -e "s,@PROJECT_NAME_FULL@,$PROJECT_NAME_FULL," \
-      -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
       -e "s,@TOOLS_EXTERNAL@,$TOOLS_EXTERNAL," \
+      -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
       -e "s,@PROJECT_DELIVERABLES@,$PROJECT_DELIVERABLES," \
+      -e "s,@PROJECT_MAN_EXT@,$PROJECT_MAN_EXT," \
   \
       -e "s,@ABSOLUTE_ROOT_DIR@,$ABSOLUTE_ROOT_DIR," \
       -e "s,@PREFIX@,$PREFIX," \
@@ -1027,6 +1126,14 @@ build_config_file () {
       -e "s,@XMLRPC_FLAGS@,$XMLRPC_FLAGS," \
       -e "s,@XMLRPC_LINK@,$XMLRPC_LINK," \
       -e "s,@XMLRPC_MODULE@,$XMLRPC_MODULE," \
+  \
+      -e "s,@FOCALIZEC_PREFIX@,$FOCALIZEC_PREFIX," \
+      -e "s,@FOCALIZEC_LIB_DIR@,$FOCALIZEC_LIB_DIR," \
+      -e "s,@FOCALIZEC_COMPILER@,$FOCALIZEC_COMPILER," \
+  \
+      -e "s,@FOCALIZEDEP_PREFIX@,$FOCALIZEDEP_PREFIX," \
+      -e "s,@FOCALIZEDEP_LIB_DIR@,$FOCALIZEDEP_LIB_DIR," \
+      -e "s,@FOCALIZEDEP_COMPILER@,$FOCALIZEDEP_COMPILER," \
       <$1 >$2
 
   chmod g+w $2;
@@ -1039,7 +1146,18 @@ build_config_var () {
 
 build_config_var_for_shell () {
 
-  sed -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
+  sed \
+     -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
+     -e "s,@BIN_DEBUG_FLAGS@,\"$BIN_DEBUG_FLAGS\"," \
+     -e "s,@PREFIX@,\"$PREFIX\"," \
+     -e "s,@BIN_DIR@,\"$BIN_DIR\"," \
+     -e "s,@LIB_DIR@,\"$LIB_DIR\"," \
+     -e "s,@DOC_DIR@,\"$DOC_DIR\"," \
+     -e "s,@MAN_DIR@,\"$MAN_DIR\"," \
+     -e "s,@XMLRPC_FLAGS@,\"$XMLRPC_FLAGS\"," \
+     -e "s,@XMLRPC_LINK@,\"$XMLRPC_LINK\"," \
+     -e "s,@XMLRPC_MODULE@,\"$XMLRPC_MODULE\"," \
+     -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
   <.config_var.in >.config_var_for_shell.in
 
   build_config_file .config_var_for_shell.in .config_var_for_shell
@@ -1098,6 +1216,7 @@ main () {
   # script that does the rest of the work that never necessitates user's
   # interaction.
   if test -x ./.configure; then ./.configure; fi &&
+  if test -x ./.configure_distribution; then ./.configure_distribution; fi &&
   prefix_summary &&
   continue_configure &&
   summarize_configuration &&
