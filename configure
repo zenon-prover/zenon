@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.59.2.3 2009-02-26 19:37:45 weis Exp $
+# $Id: configure,v 1.59.2.4 2009-02-27 01:55:03 weis Exp $
 
 ########################################################################
 #
@@ -316,9 +316,9 @@ set_intrinsic () {
 
   # Intrinsic settings for the project.
 
-  if test -z ${DEBUG}; then DEBUG=${DEFAULT_DEBUG}; fi
+  if test -z "${DEBUG}"; then DEBUG=${DEFAULT_DEBUG}; fi
 
-  if test -z ${PREFIX}; then PREFIX=${DEFAULT_PREFIX}; fi
+  if test -z "${PREFIX}"; then PREFIX=${DEFAULT_PREFIX}; fi
 
   if test -z "${USE_TOOLS_PREFIX_DIRECTORY}"; then
     USE_TOOLS_PREFIX_DIRECTORY="${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}"; fi
@@ -845,13 +845,13 @@ set_continue_without_asking () {
   # just check if we need to ask for TOOLS_PREFIX, and if not so continue.
   if ${PREFIX_GIVEN}; then
     # No project tools: useless to ask for TOOLS_PREFIX, hence continue.
-    if test -z ${TOOLS_PROJECT}; then
+    if test -z "${TOOLS_PROJECT}"; then
       CONTINUE_WITHOUT_ASKING=true;
     else
       # PREFIX and TOOLS_PREFIX have been given, hence continue.
       if ${TOOLS_PREFIX_GIVEN}; then
         CONTINUE_WITHOUT_ASKING=true;
-      fi
+      fi;
     fi;
   fi
 }
@@ -868,7 +868,7 @@ continue_configure () {
       n* | N*) abort_configuration; exit 1;;
       *) ;;
     esac;
- fi
+  fi
 }
 
 prefix_main () {
@@ -1380,8 +1380,11 @@ main () {
   # Now that .config_var_for_shell is built, we can call ./.configure, the
   # script that does the rest of the work that never necessitates user's
   # interaction.
-  if test -x ./.configure; then ./.configure; fi &&
-  if test -x ./.configure_distribution; then ./.configure_distribution;
+  if test -x ./.configure; then
+    ./.configure;
+  fi &&
+  if test -x ./.configure_distribution; then
+    ./.configure_distribution;
   fi &&
   prefix_summary &&
   continue_configure &&
