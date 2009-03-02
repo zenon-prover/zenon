@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.18 2009-02-26 13:53:46 pessaux Exp $
+#  $Id: .config_var.in,v 1.19 2009-03-02 10:19:31 weis Exp $
 
 #
 # The project identity card.
