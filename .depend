@@ -142,8 +142,8 @@ tptp.cmi: phrase.cmi
 coqterm.cmi: phrase.cmi llproof.cmi expr.cmi 
 lltocoq.cmi: phrase.cmi llproof.cmi 
 lltoisar.cmi: phrase.cmi llproof.cmi 
-zenon.vo: zenon.v
-zenon_coqbool.vo: zenon_coqbool.v
-zenon_equiv.vo: zenon_equiv.v zenon.vo
-zenon_induct.vo: zenon_induct.v
-zenon_focal.vo: zenon_focal.v
+zenon.vo zenon.glob: zenon.v
+zenon_coqbool.vo zenon_coqbool.glob: zenon_coqbool.v
+zenon_equiv.vo zenon_equiv.glob: zenon_equiv.v
+zenon_induct.vo zenon_induct.glob: zenon_induct.v
+zenon_focal.vo zenon_focal.glob: zenon_focal.v
