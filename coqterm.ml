@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.45 2008-12-16 15:07:24 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.46 2009-03-19 17:05:43 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -725,6 +725,9 @@ let get_signatures ps ext_decl =
         get_sig Prop [] e;
         set_type name Hyp_name;
     | Phrase.Def (DefReal (_, s, _, e)) ->
+        defined := s :: !defined;
+        get_sig (Indirect s) [] e;
+    | Phrase.Def (DefRec (eqn, s, _, e)) ->
         defined := s :: !defined;
         get_sig (Indirect s) [] e;
     | Phrase.Def (DefPseudo _) -> assert false

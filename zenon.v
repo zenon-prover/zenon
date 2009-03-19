@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.8 2008-12-16 14:31:24 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.9 2009-03-19 17:05:43 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -106,3 +106,22 @@ Lemma zenon_equal_step :
   forall (S T : Type) (fa fb : S -> T) (a b : S),
   (fa = fb) -> (a <> b -> False) -> ((fa a) = (fb b)).
 Proof. intros. rewrite (NNPP (a = b)). congruence. auto. Qed.
+
+(* ------------------------------------------------------------ *)
+
+Lemma zenon_recfun_unfold :
+  forall (A : Type) (P : A -> Prop) (a b : A) (eqn : a = b),
+  (P b -> False) -> P a -> False.
+Proof.
+  intros A P a b eqn H pa.
+  apply H.
+  rewrite <- eqn.
+  auto.
+Qed.
+
+Implicit Arguments zenon_recfun_unfold [A].
+
+Definition zenon_recfun_unfold_s :=
+  fun A P a b eqn c h => @zenon_recfun_unfold A P a b eqn h c
+.
+Implicit Arguments zenon_recfun_unfold_s [A].

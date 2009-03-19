@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.49 2009-01-29 20:19:32 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.50 2009-03-19 17:05:43 doligez Exp $";;
 
 open Printf;;
 
@@ -189,6 +189,8 @@ and print_usage () =
   List.iter (fun x -> eprintf "  %s\n" x) !include_path;
   exit 0;
 ;;
+
+Extension.activate "recfun";;
 
 try Arg.parse argspec add_file umsg
 with Not_found -> exit 2

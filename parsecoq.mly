@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.26 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.27 2009-03-19 17:05:43 doligez Exp $";;
 
 open Printf;;
 
@@ -170,6 +170,7 @@ let mk_pairs e l =
 %token FIX
 %token FORALL
 %token FUN
+%token FUNCTION
 %token IF
 %token IN
 %token INDUCTIVE
@@ -387,7 +388,10 @@ hyp_def:
        let compact_params = $3 in
        let (other_params, expr) = get_params $7 in
        Def (DefReal ($2, $2, (compact_params @ other_params), expr))
-     }
+      }
+  | FUNCTION IDENT compact_args COLON_ typ LBRACE_ expr RBRACE_ COLON_EQ_
+    expr PERIOD_
+      { Def (DefRec ($7, $2, $3, $10)) }
   | INDUCTIVE IDENT binding_list COLON_ IDENT COLON_EQ_ constr_list PERIOD_
       { mk_inductive $2 $3 $7 }
 ;

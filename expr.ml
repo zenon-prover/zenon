@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.31 2009-01-29 20:19:32 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.32 2009-03-19 17:05:43 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -37,6 +37,7 @@ and private_info = {
 type definition =
   | DefReal of string * string * expr list * expr
   | DefPseudo of (expr * int) * string * expr list * expr
+  | DefRec of expr * string * expr list * expr
 ;;
 
 exception Higher_order;;
@@ -536,6 +537,14 @@ let rec substitute_2nd map e =
 let apply f a =
   match f with
   | Elam (v, _, body, _) -> substitute [(v, a)] body
+  | _ -> raise Higher_order
+;;
+
+let add_argument f a =
+  match f with
+  | Elam _ -> apply f a
+  | Evar (s, _) -> eapp (s, [a])
+  | Eapp (s, args, _) -> eapp (s, args @ [a])
   | _ -> raise Higher_order
 ;;
 

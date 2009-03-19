@@ -70,12 +70,6 @@ tptp.cmo: version.cmi phrase.cmi parsetptp.cmi namespace.cmi lextptp.cmi \
     extension.cmi expr.cmi error.cmi tptp.cmi 
 tptp.cmx: version.cmx phrase.cmx parsetptp.cmx namespace.cmx lextptp.cmx \
     extension.cmx expr.cmx error.cmx tptp.cmi 
-ext_coqbool.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
-    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
-    ext_coqbool.cmi 
-ext_coqbool.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
-    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
-    ext_coqbool.cmi 
 ext_focal.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
     llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
     ext_focal.cmi 
@@ -86,6 +80,10 @@ ext_tla.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     index.cmi extension.cmi expr.cmi ext_tla.cmi 
 ext_tla.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
     index.cmx extension.cmx expr.cmx ext_tla.cmi 
+ext_recfun.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+    llproof.cmi extension.cmi expr.cmi ext_recfun.cmi 
+ext_recfun.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+    llproof.cmx extension.cmx expr.cmx ext_recfun.cmi 
 ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     extension.cmi expr.cmi ext_equiv.cmi 
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \

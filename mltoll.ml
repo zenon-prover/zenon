@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.44 2009-03-02 10:19:31 weis Exp $";;
+Version.add "$Id: mltoll.ml,v 1.45 2009-03-19 17:05:43 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -177,6 +177,7 @@ let tr_rule r =
   | TransEq2 _
   | TransEq_sym _
   | Definition (DefPseudo _, _, _)
+  | Definition (DefRec _, _, _)
   | Miniscope _
     -> assert false
 
@@ -261,6 +262,7 @@ let is_derived = function
 
   | Definition (DefReal _, _, _) -> false
   | Definition (DefPseudo _, _, _) -> true
+  | Definition (DefRec _, _, _) -> true
 
   | ConjTree _
   | DisjTree _
@@ -506,14 +508,16 @@ let rec get_univ f =
   | _ -> []
 ;;
 
-let get_args def args folded unfolded =
+let get_diff_args folded unfolded =
   let x = Expr.newvar () in
-  let vals =
-    match find_diff x folded unfolded with
-    | _, Eapp (_, args, _), _ -> args
-    | _, Evar (_, _), _ -> []
-    | _ -> assert false
-  in
+  match find_diff x folded unfolded with
+  | _, Eapp (_, args, _), _ -> args
+  | _, Evar (_, _), _ -> []
+  | _ -> assert false
+;;
+
+let get_args def args folded unfolded =
+  let vals = get_diff_args folded unfolded in
   let env = List.combine args vals in
   let vars = get_univ def in
   get_actuals env vars
@@ -802,6 +806,15 @@ let rec refute_scope e tau va =
   | _ -> None
 ;;
 
+let mk_tuple l =
+  match l with
+  | [] -> assert false
+  | [x] -> x
+  | h :: t ->
+     let f x y = eapp ("Datatypes.pair", [x; y]) in
+     List.fold_left f h t
+;;
+
 let rec to_llproof p =
   if p.mlrefc < 0 then
     get_lemma p
@@ -844,6 +857,12 @@ and translate_derived p =
       in
       let (n, ext) = to_llproof exp in
       (n, union [def_hyp] ext)
+  | Definition (DefRec (eqn, s, args, body), folded, unfolded) ->
+      let actuals = get_diff_args folded unfolded in
+      let exp =
+        translate_rec_def p eqn s actuals folded unfolded
+      in
+      to_llproof exp
   | ConjTree (e) ->
       assert (Array.length p.mlhyps = 1);
       let (sub, extras) = to_llproof p.mlhyps.(0) in
@@ -1046,6 +1065,18 @@ and translate_pseudo_def_base p def_hyp s args folded unfolded =
      let n1 = make_congr (elam (x, "", ctx)) a b n0 in
      if sym then make_sym xx yy n1 else n1
   | _ -> assert false
+
+and translate_rec_def p eqn s args folded unfolded =
+  let n0 = match p.mlhyps with
+    | [| n0 |] -> n0
+    | _ -> assert false
+  in
+  let x = Expr.newvar () in
+  let (ctx, a, b) = find_diff x folded unfolded in
+  let p = elam (x, "?", ctx) in
+  let eq = add_argument eqn (mk_tuple args) in
+  make_node [apply p a] (Ext ("recfun", "unfold", [p; a; b; eq]))
+            [[apply p b]] [n0]
 ;;
 
 let rec charged_extra phrases e =

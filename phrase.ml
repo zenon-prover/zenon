@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.16 2008-12-23 12:44:05 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.17 2009-03-19 17:05:43 doligez Exp $";;
 
 open Expr;;
 
@@ -144,9 +144,11 @@ let rec is_redef d ds =
   match d, ds with
   | _, [] -> false
   | _, (DefReal _ :: t) -> is_redef d t
+  | _, (DefRec _ :: t) -> is_redef d t
   | DefPseudo (_, s1, _, _), (DefPseudo(_, s2, _, _) :: t) ->
       s1 = s2 || is_redef d t
   | DefReal _, _ -> assert false
+  | DefRec _, _ -> assert false
 ;;
 
 let rec remove_def accu sym defs =

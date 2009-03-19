@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.18 2009-01-15 13:07:25 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.19 2009-03-19 17:05:43 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -651,6 +651,8 @@ let preprocess l =
     | Hyp (name, e, goalness) -> Hyp (name, pp_expr e, goalness)
     | Def (DefReal (name, sym, formals, body)) ->
         Def (DefReal (name, sym, formals, pp_expr body))
+    | Def (DefRec (eqn, sym, formals, body)) ->
+        Def (DefRec (eqn, sym, formals, pp_expr body))
     | Def (DefPseudo _) -> assert false
     | Sig _ -> x
     | Inductive _ -> x

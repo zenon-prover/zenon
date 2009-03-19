@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.28 2009-02-05 15:15:44 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.29 2009-03-19 17:05:43 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -158,6 +158,14 @@ let phrase o ph =
       pro ") ";
       expr o e;
       pro "\n";
+  | Phrase.Def (DefRec (eqn, s, args, e)) ->
+      pro "$defrec %s (" s;
+      print_list (buf o) print_var " " args;
+      pro ") ";
+      expr o e;
+      pro " ";
+      expr o eqn;
+      pro "\n";
   | Phrase.Def (DefPseudo ((hyp, prio), s, args, e)) ->
       pro "#pseudo-def: ";
       expr o hyp;
@@ -203,6 +211,7 @@ let get_rule_name = function
   | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
   | Definition (DefReal (_, s, _, _), e, _) -> "Definition("^s^")", [e]
   | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
+  | Definition (DefRec (_, s, _, _), e, _) -> "Definition-Rec("^s^")", [e]
   | ConjTree e -> "ConjTree", [e]
   | DisjTree e -> "DisjTree", [e]
   | AllPartial (e1, s, n) -> "All-Partial", [e1]
@@ -290,8 +299,10 @@ let hlrule_name = function
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
   | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
   | NotEqual (e1, e2) -> "NotEqual", [enot (eapp ("=", [e1; e2]))]
-  | Definition ((DefReal (_, s, _, _) | DefPseudo (_, s, _, _)), e, _) ->
-      "Definition("^s^")", [e]
+  | Definition (DefReal (_, s, _, _), e, _)
+  | Definition (DefPseudo (_, s, _, _), e, _)
+  | Definition (DefRec (_, s, _, _), e, _)
+  -> "Definition("^s^")", [e]
   | ConjTree (e) -> "ConjTree", [e]
   | DisjTree (e) -> "DisjTree", [e]
   | AllPartial (e1, s, n) -> "All", [e1]

@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.12 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.13 2009-03-19 17:05:43 doligez Exp $";;
 
 open Printf;;
 
@@ -89,6 +89,7 @@ let warn_unused_var phr_dep =
     match p with
     | Phrase.Hyp (name, e, _) -> check_unused name e
     | Phrase.Def (DefReal (_, name, _, body)) -> check_unused name body
+    | Phrase.Def (DefRec (_, name, _, body)) -> check_unused name body
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig _ -> ()
     | Phrase.Inductive _ -> ()

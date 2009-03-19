@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.43 2009-03-02 10:19:31 weis Exp $";;
+Version.add "$Id: prove.ml,v 1.44 2009-03-19 17:05:43 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1069,7 +1069,17 @@ let sort_uniq l =
   uniq l1 []
 ;;
 
+let rec not_meta_eq e =
+  match e with
+  | Eapp ("=", ([Emeta _; _] | [_; Emeta _]), _) -> false
+  | Eand (e1, e2, _)
+  | Eor (e1, e2, _)
+  -> not_meta_eq e1 || not_meta_eq e2
+  | _ -> true
+;;
+
 let count_meta_list l =
+  let l = List.filter not_meta_eq l in
   List.length (sort_uniq (List.flatten (List.map get_metas l)))
 ;;
 
@@ -1078,7 +1088,10 @@ let rndstate = ref (Random.State.make [| 0 |]);;
 let find_open_branch node brstate =
   let last = Array.length brstate - 1 in
   if brstate =%= [| |] then None
-  else if brstate.(last) =%= Open then Some last else begin
+  else if brstate.(last) =%= Open
+          && List.exists not_meta_eq node.nbranches.(last)
+    then Some last
+  else begin
     let rec loop accu i =
       if i < 0 then accu
       else if brstate.(i) =%= Open then loop (i::accu) (i-1)
@@ -1095,13 +1108,10 @@ let find_open_branch node brstate =
           let s = List.fold_left f 0 fs in
           (count_meta_list fs, s, i)
         in
-        let l1 = List.map score l in
+        let l1 = List.rev_map score l in
         let cmp (len1, size1, _) (len2, size2, _) =
           if len1 =%= len2
           then size1 - size2
-(* FIXME mieux ? pire ? pareil ?
-          then if len1 =%= 0 then size1 - size2 else size2 - size1
-*)
           else len2 - len1
         in
         let l2 = List.sort cmp l1 in

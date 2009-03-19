@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.19 2008-12-16 14:31:24 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.20 2009-03-19 17:05:43 doligez Exp $  *)
 
 type private_info;;
 
@@ -27,6 +27,7 @@ type expr = private
 type definition =
   | DefReal of string * string * expr list * expr
   | DefPseudo of (expr * int) * string * expr list * expr
+  | DefRec of expr * string * expr list * expr
 ;;
 
 type t = expr;;
@@ -84,10 +85,11 @@ val preunify : expr -> expr -> (expr * expr) list;;
 val occurs_as_meta : expr -> expr -> bool;;
 (* [occurs e1 e2] returns true if [Emeta (e1, _)] occurs in [e2] *)
 
+exception Higher_order;;
 val substitute : (expr * expr) list -> expr -> expr;;
 val substitute_2nd : (expr * expr) list -> expr -> expr;;
 val apply : expr -> expr -> expr;;
-exception Higher_order;;
+val add_argument : expr -> expr -> expr;;
 val remove_scope : expr -> expr;;
 
 val newvar : unit -> expr;;
