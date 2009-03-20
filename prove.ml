@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.44 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.45 2009-03-20 14:46:35 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1072,6 +1072,8 @@ let sort_uniq l =
 let rec not_meta_eq e =
   match e with
   | Eapp ("=", ([Emeta _; _] | [_; Emeta _]), _) -> false
+  | Eapp (_, ([Evar ("_", _); Emeta _; _] | [_; Emeta _]), _) ->
+     false (* FIXME HACK see ext_focal.ml *)
   | Eand (e1, e2, _)
   | Eor (e1, e2, _)
   -> not_meta_eq e1 || not_meta_eq e2
