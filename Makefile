@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.68 2009-03-19 17:05:43 doligez Exp $
+#  $Id: Makefile,v 1.69 2009-04-03 15:50:36 doligez Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -85,17 +85,23 @@ zenon: zenon.byt
 .PHONY: install
 install:
 	mkdir -p "$(DESTDIR)$(BIN_DIR)"
-	cp zenon "$(DESTDIR)$(BIN_DIR)"/
-	mkdir -p "$(DESTDIR)$(LIB_DIR)"/zenon
-	cp $(COQSRC) "$(DESTDIR)$(LIB_DIR)"/zenon/
+	cp zenon "$(DESTDIR)$(BIN_DIR)"/$(PROJECT_NAME_FULL)
+	(cd "$(DESTDIR)$(BIN_DIR)" && \
+         rm -rf zenon && ln -s $(PROJECT_NAME_FULL) zenon)
+	mkdir -p "$(DESTDIR)$(LIB_DIR)"/$(PROJECT_NAME_FULL)
+	(cd "$(DESTDIR)$(LIB_DIR)" && \
+         rm -rf zenon && ln -s $(PROJECT_NAME_FULL) zenon)
+	cp $(COQSRC) "$(DESTDIR)$(LIB_DIR)"/$(PROJECT_NAME_FULL)/
 	for i in $(COQOBJ); \
-	  do [ ! -f $$i ] || cp $$i "$(DESTDIR)$(LIB_DIR)/zenon"; \
+	  do [ ! -f $$i ] || cp $$i "$(DESTDIR)$(LIB_DIR)/$(PROJECT_NAME_FULL)"/; \
 	done
 
 .PHONY: uninstall
 uninstall:
 	rm -f "$(DESTDIR)$(BIN_DIR)"/zenon
-	rm -rf "$(DESTDIR)$(LIB_DIR)"/zenon
+	rm -f "$(DESTDIR)$(BIN_DIR)"/$(PROJECT_NAME_FULL)
+	rm -f "$(DESTDIR)$(LIB_DIR)"/zenon
+	rm -rf "$(DESTDIR)$(LIB_DIR)"/$(PROJECT_NAME_FULL)
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 

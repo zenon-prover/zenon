@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.61 2009-03-02 10:19:31 weis Exp $
+# $Id: configure,v 1.62 2009-04-03 15:50:36 doligez Exp $
 
 ########################################################################
 #
@@ -458,13 +458,13 @@ set_prefix () {
     BIN_DIR="${PREFIX}/bin";
   fi
   if test -z "${LIB_DIR}"; then
-    LIB_DIR="${PREFIX}/lib/${PROJECT_NAME_FULL}";
+    LIB_DIR="${PREFIX}/lib";
   fi
   if test -z "${MAN_DIR}"; then
     MAN_DIR="${PREFIX}/man/man${PROJECT_MAN_EXT}";
   fi
   if test -z "${DOC_DIR}"; then
-    DOC_DIR="${PREFIX}/doc/${PROJECT_NAME_FULL}";
+    DOC_DIR="${PREFIX}/doc";
   fi
 
 }
@@ -1312,17 +1312,19 @@ build_config_var () {
 build_config_var_for_shell () {
 
   sed \
-     -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
-     -e "s,@BIN_DEBUG_FLAGS@,\"$BIN_DEBUG_FLAGS\"," \
+     -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
+     -e "s,@VERSION_NUMBER_PATCH@,\"$VERSION_NUMBER_PATCH\"," \
+     -e "s,@VERSION_NUMBER_FULL@,\"$VERSION_NUMBER_FULL\"," \
      -e "s,@PREFIX@,\"$PREFIX\"," \
      -e "s,@BIN_DIR@,\"$BIN_DIR\"," \
      -e "s,@LIB_DIR@,\"$LIB_DIR\"," \
      -e "s,@DOC_DIR@,\"$DOC_DIR\"," \
      -e "s,@MAN_DIR@,\"$MAN_DIR\"," \
+     -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
+     -e "s,@BIN_DEBUG_FLAGS@,\"$BIN_DEBUG_FLAGS\"," \
      -e "s,@XMLRPC_FLAGS@,\"$XMLRPC_FLAGS\"," \
      -e "s,@XMLRPC_LINK@,\"$XMLRPC_LINK\"," \
      -e "s,@XMLRPC_MODULE@,\"$XMLRPC_MODULE\"," \
-     -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
   <.config_var.in >.config_var_for_shell.in
 
   build_config_file .config_var_for_shell.in .config_var_for_shell
