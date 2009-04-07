@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.13 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: lexcoq.mll,v 1.14 2009-04-07 12:22:11 pessaux Exp $";;
 
 open Lexing;;
 open Parsecoq;;
@@ -110,7 +110,7 @@ rule token = parse
   | "True"                  { TRUE }
   | "with"                  { WITH }
 
-  | idstart idchar * ('.' idstart idchar *) * {
+  | '@'? idstart idchar * ('.' idstart idchar *) * {
         Buffer.reset idbuf;
         Buffer.add_string idbuf (Lexing.lexeme lexbuf);
         ident lexbuf;
