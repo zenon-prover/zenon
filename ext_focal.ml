@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.19 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.20 2009-04-24 15:45:17 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -13,6 +13,8 @@ Version.add "$Id: ext_focal.ml,v 1.19 2009-03-19 17:05:43 doligez Exp $";;
      FOCAL.ifthenelse
      basics.crp
      basics.pair
+     basics.fst
+     basics.snd
      List.nil
      List.cons
      equality under its many names...
@@ -529,7 +531,7 @@ let to_llargs tr_expr r =
       let he2 = tr_expr (eapp (r, [e; e2])) in
       let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
-      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      let rf = elam (v1, "", elam (v2, "", eapp (r, [v1; v2]))) in
       ("zenon_focal_ite_rel_l", List.map tr_expr [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_r",
@@ -541,7 +543,7 @@ let to_llargs tr_expr r =
       let he2 = tr_expr (eapp (r, [e1; e])) in
       let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
-      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      let rf = elam (v1, "", elam (v2, "", eapp (r, [v1; v2]))) in
       ("zenon_focal_ite_rel_r", List.map tr_expr [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nl",
@@ -554,7 +556,7 @@ let to_llargs tr_expr r =
       let he2 = tr_expr (enot (eapp (r, [e; e2]))) in
       let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
-      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      let rf = elam (v1, "", elam (v2, "", eapp (r, [v1; v2]))) in
       ("zenon_focal_ite_rel_nl", List.map tr_expr [rf; c; t; e; e2],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "ite_rel_nr",
@@ -567,7 +569,7 @@ let to_llargs tr_expr r =
       let he2 = tr_expr (enot (eapp (r, [e1; e]))) in
       let concl = tr_expr a in
       let v1 = newvar () and v2 = newvar () in
-      let rf = elam (v1, "?", elam (v2, "?", eapp (r, [v1; v2]))) in
+      let rf = elam (v1, "", elam (v2, "", eapp (r, [v1; v2]))) in
       ("zenon_focal_ite_rel_nr", List.map tr_expr [rf; e1; c; t; e],
        [concl], [ [ht1; ht2]; [he1; he2] ])
   | Ext (_, "istrue_true", [e1]) ->
@@ -631,9 +633,9 @@ let built_in_defs =
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
                   eapp ("Datatypes.pair", [x; y])));
     Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
-                  eapp ("$match", [xy; elam (x, "?", elam (y, "?", case))])));
+                  eapp ("$match", [xy; elam (x, "", elam (y, "", case))])));
     Def (DefReal ("snd", "basics.snd", [tx; ty; xy],
-                  eapp ("$match", [xy; elam (y, "?", elam (x, "?", case))])));
+                  eapp ("$match", [xy; elam (y, "", elam (x, "", case))])));
     Inductive ("List.list", ["A"], [
                  ("List.nil", []);
                  ("List.cons", [Param "A"; Self]);

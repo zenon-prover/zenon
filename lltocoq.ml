@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.44 2009-01-07 16:07:04 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.45 2009-04-24 15:45:17 doligez Exp $";;
 
 open Printf;;
 
@@ -19,7 +19,7 @@ let rec p_list init printer sep oc l =
 let p_type oc t =
   match t with
   | t when t = univ_name -> fprintf oc "%s" t;
-  | "?" -> fprintf oc "_";
+  | "" -> fprintf oc "_";
   | s -> fprintf oc "%s" s;
 ;;
 
@@ -211,24 +211,34 @@ let p_rule oc r =
       poc "discriminate %s.\n" (getname conc);
   | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      poc "case_eq (%a); [\n    " p_expr e1;
-     let get_params case =
+     let rec get_params case =
        match case with
-       | [Eapp ("=", [_; Evar (v, _) as a], _) as eq; e2] ->
-          (eq, a, v, [], e2)
-       | [Eapp ("=", [_; Eapp (v, ts, _) as a], _) as eq; e2] ->
-          (eq, a, v, ts, e2)
+       | Eex (v, _, body, _) ->
+          let (vs, e, constr) = get_params body in
+          let vv = Expr.newvar () in
+          (vv :: vs, substitute [(v, vv)] e, constr)
+       | Eapp ("=", [_; Evar (v, _)], _) -> ([], case, v)
+       | Eapp ("=", [_; Eapp (v, _, _)], _) -> ([], case, v)
        | _ -> assert false
      in
-     let params = List.map get_params hs in
-     let p_case oc (eq, a, constr, taus, h2) =
-       let eq_name = getname eq in
-       let rwhyp = apply ctx a in
-       fprintf oc "intros %a %s; assert (%s : %a);"
-               (p_list "" p_expr " ") taus eq_name (getname h2) p_expr rwhyp;
-       fprintf oc " [rewrite %s in *; apply %s | idtac]\n" eq_name (getname c);
+     let solo l = match l with [x] -> x | _ -> assert false in
+     let params = List.map get_params (List.map solo hs) in
+     let p_case oc (vs, eqn, constr) =
+       let eq_name = getname eqn in
+       match vs with
+       | [] ->
+          let ehyp = eapp ("=", [e1; evar constr]) in
+          fprintf oc "zenon_intro %s\n" (getname ehyp);
+       | _ ->
+          let ehyp0 = eapp ("=", [e1; eapp (constr, vs)]) in
+          let add_ex v h = eex (v, "", h) in
+          let ehyp = List.fold_right add_ex vs ehyp0 in
+          fprintf oc "intros %a %s; assert (%s : %a); ["
+                  (p_list "" p_expr " ") vs eq_name (getname ehyp) p_expr ehyp;
+          fprintf oc "%a; exact %s | idtac]\n"
+                  (p_list "exists " p_expr "; ") vs eq_name;
      in
-     p_list "" p_case "  | " oc params;
-     poc "].\n";
+     fprintf oc "%a].\n" (p_list "" p_case "  | ") params;
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
@@ -319,7 +329,12 @@ let p_rule oc r =
       poc "exact (%s I).\n" (getname (enot (etrue)));
   | Rfalse ->
       poc "exact %s.\n" (getname efalse);
-  | Rcongruence _ -> assert false (* FIXME TODO *)
+  | Rcongruence (p, a, b) ->
+      let c1 = apply p a in
+      let c2 = eapp ("=", [a; b]) in
+      let h = apply p b in
+      poc "apply (zenon_congruence_s _ %a _ _ %s %s). zenon_intro %s.\n"
+          p_expr p (getname c1) (getname c2) (getname h);
 ;;
 
 let rec p_tree oc proof =

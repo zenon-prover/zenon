@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.46 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.47 2009-04-24 15:45:17 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -93,7 +93,7 @@ exception Cannot_infer of string;;
 let synthesize s =
   let ty = Mltoll.get_meta_type s in
   match ty with
-  | "?" -> any_name (* FIXME all_list should get the types from context *)
+  | "" -> any_name (* FIXME all_list should get the types from context *)
   | t when t = univ_name -> any_name
   | "nat" -> "O"
   | "bool" -> "true"
@@ -109,6 +109,12 @@ let to_var e =
   match e with
   | Evar (v, _) -> v
   | _ -> assert false
+;;
+
+let cty s =
+  match s with
+  | "" -> Cwild
+  | _ -> Cty s
 ;;
 
 let rec trexpr env e =
@@ -136,8 +142,7 @@ let rec trexpr env e =
   | Eex (Evar (v, _), t, e1, _) -> Cex (v, t, trexpr (v::env) e1)
   | Eex _ -> assert false
   | Etau _ -> assert false
-  | Elam (Evar (v, _), "?", e1, _) -> Clam (v, Cwild, trexpr (v::env) e1)
-  | Elam (Evar (v, _), t, e1, _) -> Clam (v, Cty t, trexpr (v::env) e1)
+  | Elam (Evar (v, _), t, e1, _) -> Clam (v, cty t, trexpr (v::env) e1)
   | Elam _ -> assert false
 
 and trcase env accu e =
@@ -149,11 +154,12 @@ and trcase env accu e =
 ;;
 
 let tropt env e = if !Globals.short_flag then Cwild else trexpr env e;;
-let trpred env v ty p = Clam (v, Cty ty, trexpr env p);;
+let trpred env v ty p = Clam (v, cty ty, trexpr env p);;
 
 let mklam env v t = Clam (getname v, tropt env v, t);;
 let mklams env args t = List.fold_right (mklam env) args t;;
 
+(*
 let mkcase env (c, args) hyp =
   let xs = List.map (fun _ -> Expr.newname ()) args in
   let f h x = Capp (Cvar ("zenon_induct_ex_all"),
@@ -168,6 +174,7 @@ let mkcase env (c, args) hyp =
   let f h v = Clam (v, Cwild, h) in
   List.fold_left f with_ind (List.rev xs)
 ;;
+*)
 
 let mkfixcase (c, args) =
   let mklam e arg =
@@ -260,15 +267,15 @@ let rec trtree env node =
   | Rex (Eex (Evar (x, _) as vx, ty, px, _) as exp, z) ->
       let sub = tr_subtree_1 hyps in
       let pz = substitute [(vx, evar z)] px in
-      let lam = Clam (z, Cty ty, mklam pz sub) in
-      Capp (Cvar "zenon_ex", [Cty ty; trpred x ty px; lam; getv exp])
+      let lam = Clam (z, cty ty, mklam pz sub) in
+      Capp (Cvar "zenon_ex", [cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
   | Rnotall (Eall (Evar (x, _) as vx, ty, px, _) as allp, z) ->
       let sub = tr_subtree_1 hyps in
       let npz = enot (substitute [(vx, evar z)] px) in
-      let lam = Clam (z, Cty ty, mklam npz sub) in
+      let lam = Clam (z, cty ty, mklam npz sub) in
       let concl = getv (enot allp) in
-      Capp (Cvar "zenon_notall", [Cty ty; trpred x ty px; lam; concl])
+      Capp (Cvar "zenon_notall", [cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false
   | Rall (Eall (Evar (x, _) as vx, ty, px, _) as allp, t) ->
       let sub = tr_subtree_1 hyps in
@@ -276,7 +283,7 @@ let rec trtree env node =
       let lam = mklam pt sub in
       let p = trpred x ty px in
       let concl = getv allp in
-      Capp (Cvar "zenon_all", [Cty ty; p; trexpr t; lam; concl])
+      Capp (Cvar "zenon_all", [cty ty; p; trexpr t; lam; concl])
   | Rall _ -> assert false
   | Rnotex (Eex (Evar (x, _) as vx, ty, px, _) as exp, t) ->
       let sub = tr_subtree_1 hyps in
@@ -284,7 +291,7 @@ let rec trtree env node =
       let lam = mklam npt sub in
       let p = trpred x ty px in
       let concl = getv (enot (exp)) in
-      Capp (Cvar "zenon_notex", [Cty ty; p; trexpr t; lam; concl])
+      Capp (Cvar "zenon_notex", [cty ty; p; trexpr t; lam; concl])
   | Rnotex _ -> assert false
   | Rpnotp ((Eapp (p, args1, _) as pp),
             (Enot (Eapp (q, args2, _), _) as nqq)) ->
@@ -303,7 +310,14 @@ let rec trtree env node =
      let neq = enot (eapp ("=", [ff; gg])) in
      Capp (List.fold_right2 (mk_eq_node env) args hyps base, [getv neq])
   | Rnotequal _ -> assert false
-  | Rcongruence _ -> assert false (* FIXME TODO *)
+  | Rcongruence (p, a, b) ->
+     let sub = tr_subtree_1 hyps in
+     let h = apply p b in
+     let lam = mklam h sub in
+     let concl1 = getv (apply p a) in
+     let concl2 = getv (eapp ("=", [a; b])) in
+     Capp (Cvar "zenon_congruence",
+           [Cwild; trexpr p; trexpr a; trexpr b; lam; concl1; concl2])
   | Rdefinition (name, sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
@@ -324,49 +338,47 @@ let rec trtree env node =
   | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      let (args, cstrs) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
-     let get_taus case =
-       match case with
-       | [Eapp ("=", [_; Evar (_, _)], _); _] -> []
-       | [Eapp ("=", [_; Eapp (_, args, _)], _); _] -> args
-       | _ -> assert false
-     in
-     let tauargs = List.map get_taus hs in
-     let make_hyp hyps prf taus (c, cargs) =
-       let stronglam v t = Clam (getname v, trexpr v, t) in
-       let stronglams args t = List.fold_right stronglam args t in
-       let p = stronglams hyps (trtree env prf) in
-       let sh = Capp (Cvar ("zenon_induct_case_subs"),
-                      [Cwild; tropt e1; Cwild; trexpr ctx; p])
+     let make_hyp h (c, cargs) =
+       let vars = List.map (fun x -> Expr.newname ()) cargs in
+       let mkbody prf v = Capp (Cvar "zenon_induct_ex_all",
+                                   [Cwild; Cwild; prf; Cvar v])
        in
+       let shape =
+         match vars with
+         | [] -> eapp ("=", [e1; evar c])
+         | _ ->
+            let vvars = List.map evar vars in
+            let base = eapp ("=", [e1; eapp (c, vvars)]) in
+            let f v accu = eex (v, "", accu) in
+            List.fold_right f vvars base
+       in
+       let sub = mklam shape (trtree env h) in
+       let body = List.fold_left mkbody sub vars in
        let abstract_induct arg body =
          match arg with
          | Phrase.Self -> Clam ("_", Cwild, body)
          | Phrase.Param _ -> body
        in
-       let ish = List.fold_right abstract_induct cargs sh in
-       let abstract tau body =
-         match tau with
-         | Evar (name, _) -> Clam (name, Cwild, body)
-         | _ -> assert false
-       in
-       List.fold_right abstract taus ish
+       let ibody = List.fold_right abstract_induct cargs body in
+       let abstract v body = Clam (v, Cwild, body) in
+       List.fold_right abstract vars ibody
      in
-     let recargs = Misc.list_map4 make_hyp hs hyps tauargs cstrs in
+     let recargs = List.map2 make_hyp hyps cstrs in
      let pred =
        let v = Expr.newvar () in
-       trexpr (elam (v, "?", eimply (eapp ("=", [e1; v]), eimply (c, efalse))))
+       trexpr (elam (v, "", eimply (eapp ("=", [e1; v]), efalse)))
      in
-     let eqrefl = Capp (Cvar ("refl_equal"), [tropt e1]) in
+     let refl = Capp (Cvar "refl_equal", [tropt e1]) in
      Capp (Cvar (sprintf "@%s_ind" ty),
-           typargs @ pred :: recargs @ tropt e1 :: eqrefl :: [getv c])
+           typargs @ pred :: recargs @ tropt e1 :: [refl])
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
      let (args, cstrs) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
      let x = Expr.newvar () in
-     let p = elam (x, "?", eimply (eimply (apply ctx (apply unfx x), efalse),
-                                   eimply (apply ctx (apply foldx x), efalse)))
+     let p = elam (x, "", eimply (eimply (apply ctx (apply unfx x), efalse),
+                                  eimply (apply ctx (apply foldx x), efalse)))
      in
      let brs = List.map mkfixcase cstrs in
      let th = mklam h (tr_subtree_1 hyps) in
@@ -419,7 +431,7 @@ let rec rm_lambdas l term =
 let compare_hyps (name1, _) (name2, _) = Pervasives.compare name1 name2;;
 
 let make_lemma { name = name; params = params; proof = proof } =
-  let pars = List.map (fun (x, y) -> (x, Cty y)) params in
+  let pars = List.map (fun (x, y) -> (x, cty y)) params in
   let parenv = List.map fst params in
   let f x = is_goal x || not (is_mapped x) in
   let hyps = List.filter f proof.conc in
@@ -540,7 +552,7 @@ let make_lemma_type t =
     | Cty ty -> Call (v, ty, ty2)
     | _ -> Cimply (ty1, ty2)
   in
-  List.fold_right make_funtype tys (Cty "False")
+  List.fold_right make_funtype tys (cty "False")
 ;;
 
 (* ******************************************* *)
@@ -548,7 +560,7 @@ let make_lemma_type t =
 let tr_ty t =
   match t with
   | t when t = univ_name -> t
-  | "?" -> "_"
+  | "" -> assert false
   | s -> sprintf "%s" s
 ;;
 
@@ -590,7 +602,9 @@ let pr_oc oc prefix t =
     | Cor (t1,t2) -> bprintf b "(%a\\/%a)" pr t1 pr t2;
     | Cimply (t1, t2) -> bprintf b "(%a->%a)" pr t1 pr t2;
     | Cequiv (t1, t2) -> bprintf b "(%a<->%a)" pr t1 pr t2;
+    | Call (v, "", t1) -> bprintf b "(forall %s,%a)" v pr t1;
     | Call (v, ty, t1) -> bprintf b "(forall %s:%a,%a)" v pr_ty ty pr t1;
+    | Cex (v, "", t1) -> bprintf b "(exists %s,%a)" v pr t1;
     | Cex (v, ty, t1) -> bprintf b "(exists %s:%a,%a)" v pr_ty ty pr t1;
     | Clet (v, t1, t2) -> bprintf b "(let %s:=%a in %a)" v pr t1 pr t2;
     | Cwild -> bprintf b "_";

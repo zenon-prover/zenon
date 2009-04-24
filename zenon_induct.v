@@ -1,12 +1,12 @@
 (*  Copyright 2008 INRIA  *)
-(*  $Id: zenon_induct.v,v 1.1 2008-12-05 15:23:08 doligez Exp $  *)
+(*  $Id: zenon_induct.v,v 1.2 2009-04-24 15:45:17 doligez Exp $  *)
 
-Lemma zenon_induct_match_redex : forall A : Prop, Prop ->
+Lemma zenon_induct_match_redex : forall A : Prop,
   (A -> False) -> (A -> False).
   Proof. tauto. Qed.
 
 Definition zenon_induct_match_redex_s :=
-  fun A B c h => zenon_induct_match_redex A B h c
+  fun A c h => zenon_induct_match_redex A h c
 .
 
 Lemma zenon_induct_f_equal : forall (T1 T2 : Type) (x y : T1) (f : T1 -> T2),
@@ -24,3 +24,7 @@ Implicit Arguments zenon_induct_f_equal_s [t1 t2].
 Lemma zenon_induct_case_subs : forall (T : Type) (b a : T) P,
   (b = a -> P(a) -> False) -> b = a -> P(b) -> False.
   Proof. intros T b a P H e pa. subst b. apply H; auto. Qed.
+
+Lemma zenon_induct_ex_all : forall (T : Type) (P : T -> Prop),
+  ((exists x : T, P(x)) -> False) -> forall x : T, P(x) -> False.
+  Proof. firstorder. Qed.

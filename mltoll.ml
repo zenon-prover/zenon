@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.46 2009-04-03 15:50:36 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.47 2009-04-24 15:45:17 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1073,7 +1073,7 @@ and translate_rec_def p eqn s args folded unfolded =
   in
   let x = Expr.newvar () in
   let (ctx, a, b) = find_diff x folded unfolded in
-  let p = elam (x, "?", ctx) in
+  let p = elam (x, "", ctx) in
   let eq = add_argument eqn (mk_tuple args) in
   make_node [apply p a] (Ext ("recfun", "unfold", [p; a; b; eq]))
             [[apply p b]] [n0]

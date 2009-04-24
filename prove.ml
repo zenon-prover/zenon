@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.45 2009-03-20 14:46:35 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.46 2009-04-24 15:45:17 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -430,7 +430,7 @@ let rec add_scope_p v tau e =
   | _ ->
      match get_values_p [] v e with
      | None -> substitute [(evar v, tau)] e
-     | Some vs -> eapp ("$scope", elam (evar v, "?", e) :: tau :: vs)
+     | Some vs -> eapp ("$scope", elam (evar v, "", e) :: tau :: vs)
 
 and add_scope_n v tau e =
   match e with
@@ -452,7 +452,7 @@ and add_scope_n v tau e =
   | _ ->
      match get_values_n [] v e with
      | None -> substitute [(evar v, tau)] e
-     | Some vs -> eapp ("$scope", elam (evar v, "?", e) :: tau :: vs)
+     | Some vs -> eapp ("$scope", elam (evar v, "", e) :: tau :: vs)
 
 and get_values_p env v e =
   match e with
@@ -1112,6 +1112,12 @@ let find_open_branch node brstate =
         in
         let l1 = List.rev_map score l in
         let cmp (len1, size1, _) (len2, size2, _) =
+(*
+          if len1 =%= len2 then size1 - size2
+          else if len1 =%= 0 then -1
+          else if len2 =%= 0 then 1
+          else len2 - len1
+*)
           if len1 =%= len2
           then size1 - size2
           else len2 - len1

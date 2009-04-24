@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.2 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.3 2009-04-24 15:45:17 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -35,6 +35,16 @@ let type_table =
 ;;
 
 let is_constr s = Hashtbl.mem constructor_table s;;
+let constr_head e =
+  match e with
+  | Eapp (s, _, _) | Evar (s, _) when is_constr s -> true
+  | _ -> false
+;;
+
+module HE = Hashtbl.Make (Expr);;
+let tblsize = 997;;
+let eqs = (HE.create tblsize : expr HE.t);;
+let matches = (HE.create tblsize : ((expr -> expr) * expr list) HE.t);;
 
 let rec make_case accu e =
   match e with
@@ -54,70 +64,71 @@ let compare_cases (cs1, _, _) (cs2, _, _) =
 
 let normalize_cases l = List.sort compare_cases (List.map (make_case []) l);;
 
-let make_match_redex e g ctx m =
+let is_redex m =
   match m with
-  | Eapp ("$match", Eapp (c, a, _) :: cases, _) when is_constr c ->
-     let cs = List.map (make_case []) cases in
-     let goodcase (c1, a1, b1) =
-       c1 = "_" || c1 = c && List.length a1 = List.length a
-     in
-     begin try
-       let (constr, args, body) = List.find goodcase cs in
-       let subs =
-         if constr = "_" then []
-         else List.map2 (fun v x -> (v, x)) args a
-       in
-       let newbody = substitute subs body in
-       let hyp = ctx newbody in
-       [ Node {
-         nconc = [e];
-         nrule = Ext ("induct", "match_redex", [e; hyp]);
-         nprio = Arity;
-         ngoal = g;
-         nbranches = [| [hyp] |];
-       } ]
-     with Not_found | Higher_order -> []
-     end
-  | Eapp ("$match", Evar (c, _) :: cases, _) when is_constr c ->
-     let cs = List.map (make_case []) cases in
-     let goodcase (c1, a1, b1) = a1 = [] && (c1 = c || c1 = "_") in
-     begin try
-       let (constr, _, body) = List.find goodcase cs in
-       let hyp = ctx body in
-       [ Node {
-         nconc = [e];
-         nrule = Ext ("induct", "match_redex", [e; hyp]);
-         nprio = Arity;
-         ngoal = g;
-         nbranches = [| [hyp] |];
-       } ]
-     with Not_found | Higher_order -> []
-     end
-  | _ -> []
+  | Eapp ("$match", Eapp (c, a, _) :: cases, _) when is_constr c -> true
+  | Eapp ("$match", Evar (c, _) :: cases, _) when is_constr c -> true
+  | _ -> false
 ;;
 
-let newnodes_match_redex e g =
+let make_match_redex e g ctx ee cases =
+  let mknode c a cases =
+    assert (is_constr c);
+    let cs = List.map (make_case []) cases in
+    let goodcase (c1, a1, b1) =
+      c1 = "_" || c1 = c && List.length a1 = List.length a
+    in
+    try
+      let (constr, args, body) = List.find goodcase cs in
+      let subs =
+        if constr = "_" then []
+        else List.map2 (fun v x -> (v, x)) args a
+      in
+      let newbody = if subs = [] then body else substitute subs body in
+      let hyp = ctx newbody in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("induct", "match_redex", [e; hyp]);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [hyp] |];
+       } ]
+    with Not_found | Higher_order -> []
+  in
+  match ee with
+  | Eapp (c, a, _) -> mknode c a cases
+  | Evar (c, _) -> mknode c [] cases
+  | _ -> assert false
+;;
+
+let get_matching e =
   match e with
-  | Eapp (s, [Eapp ("$match", _, _) as m; e2], _) when Eqrel.any s ->
-     make_match_redex e g (fun x -> eapp (s, [x; e2])) m
-  | Eapp (s, [e2; Eapp ("$match", _, _) as m], _) when Eqrel.any s ->
-     make_match_redex e g (fun x -> eapp (s, [e2; x])) m
-  | Enot (Eapp (s, [Eapp ("$match", _, _) as m; e2], _), _) when Eqrel.any s ->
-     make_match_redex e g (fun x -> enot (eapp (s, [x; e2]))) m
-  | Enot (Eapp (s, [e2; Eapp ("$match", _, _) as m], _), _) when Eqrel.any s ->
-     make_match_redex e g (fun x -> enot (eapp (s, [e2; x]))) m
-  | Eapp ("$match", _, _) ->
-     make_match_redex e g (fun x -> x) e
-  | Enot (Eapp ("$match", _, _) as m, _) ->
-     make_match_redex e g (fun x -> enot (x)) m
-  | _ -> []
+  | Eapp (s, [Eapp ("$match", ee :: cases, _); e2], _) when Eqrel.any s ->
+     Some ((fun x -> eapp (s, [x; e2])), ee, cases)
+  | Eapp (s, [e1; Eapp ("$match", ee :: cases, _)], _) when Eqrel.any s ->
+     Some ((fun x -> eapp (s, [e1; x])), ee, cases)
+  | Enot (Eapp (s, [Eapp ("$match", ee :: cases, _); e2], _), _)
+    when Eqrel.any s ->
+     Some ((fun x -> enot (eapp (s, [x; e2]))), ee, cases)
+  | Enot (Eapp (s, [e1; Eapp ("$match", ee :: cases, _)], _), _)
+    when Eqrel.any s ->
+     Some ((fun x -> enot (eapp (s, [e1; x]))), ee, cases)
+  | Eapp ("$match", ee :: cases, _) ->
+     Some ((fun x -> x), ee, cases)
+  | Enot (Eapp ("$match", ee :: cases, _), _) ->
+     Some ((fun x -> enot (x)), ee, cases)
+  (* FIXME these last two should only be done when ext_focal is active *)
+  | Eapp ("Is_true", [Eapp ("$match", ee :: cases, _)], _) ->
+     Some ((fun x -> eapp ("Is_true", [x])), ee, cases)
+  | Enot (Eapp ("Is_true", [Eapp ("$match", ee :: cases, _)], _), _) ->
+     Some ((fun x -> enot (eapp ("Is_true", [x]))), ee, cases)
+  | _ -> None
 ;;
 
-let make_match_branches ctx m =
-  match m with
-  | Eapp ("$match", ([] | [_]), _) ->
-     Error.warn "empty pattern-matching"; raise Empty
-  | Eapp ("$match", e :: cases, _) ->
+let make_match_branches ctx e cases =
+  match cases with
+  | [] -> Error.warn "empty pattern-matching"; raise Empty
+  | _ ->
       let c = normalize_cases cases in
       let f (constr, vars, body) =
         let (pattern, rvars, rbody) =
@@ -129,74 +140,85 @@ let make_match_branches ctx m =
              (eapp (constr, rv), rv, Expr.substitute sub body)
         in
         let shape = eapp ("=", [e; pattern]) in
-        let ex = ex_list rvars shape in
-        let f (ex, accu) v =
-          match ex with
-          | Eex (x, ty, b, _) ->
-             let tau = etau (x, ty, b) in
-             let tb = substitute [(x, tau)] b in
-             (tb, (v, tau) :: accu)
-          | _ -> assert false
-        in
-        let (taushape, subs) = List.fold_left f (ex, []) rvars in
-        [taushape; (ctx (substitute subs rbody))]
+        [ex_list rvars shape]
       in
       List.map f c
-  | _ -> assert false
 ;;
 
-let get_type m =
-  match m with
-  | Eapp ("$match", e :: case :: _, _) ->
+let rec get_match_case branches =
+  match branches with
+  | [] -> raise Not_found
+  | [Eapp ("=", [_; e2], _) as shape; _] :: t when Index.member shape -> e2
+  | _ :: t -> get_match_case t
+;;
+
+let get_type cases =
+  match cases with
+  | case :: _ ->
      let (constr, _, _) = make_case [] case in
      (Hashtbl.find constructor_table constr).cd_type
   | _ -> raise Empty
 ;;
 
+let make_match_congruence e g ctx ee cases rhs =
+  let x = Expr.newvar () in
+  (* FIXME could recover the type as in mknode below *)
+  let p = elam (x, "", ctx (eapp ("$match", x :: cases))) in
+  [ Node {
+    nconc = [e; eapp ("=", [ee; rhs])];
+    nrule = Congruence (p, ee, rhs);
+    nprio = Arity;
+    ngoal = g;
+    nbranches = [| [apply p rhs] |];
+  }]
+;;
+
 let newnodes_match_cases e g =
-  let mknode ctx m =
-    let br = make_match_branches ctx m in
-    let tycon = get_type m in
+  let mknode ctx ee cases =
+    let br = make_match_branches ctx ee cases in
+    let tycon = get_type cases in
     let (args, cons) = Hashtbl.find type_table tycon in
     let tyargs = List.fold_left (fun s _ -> " _" ^ s) "" args in
-    let (mctx, e1) = match m with
-      | Eapp ("$match", e1 :: cases, _) ->
-         let x = Expr.newvar () in
-         let mctx = elam (x, sprintf "(%s%s)" tycon tyargs,
-                          ctx (eapp ("$match", x :: cases)))
-         in
-         (mctx ,e1)
-      | _ -> assert false
+    let x = Expr.newvar () in
+    let mctx = elam (x, sprintf "(%s%s)" tycon tyargs,
+                     ctx (eapp ("$match", x :: cases)))
     in
     let ty = evar tycon in
     [ Node {
       nconc = [e];
-      nrule = Ext ("induct", "cases",
-                   e :: ty :: mctx :: e1 :: List.flatten br);
+      nrule = Ext ("induct", "cases", e :: ty :: mctx :: ee :: List.flatten br);
       nprio = Arity;
       ngoal = g;
       nbranches = Array.of_list br;
     }]
   in
+  match get_matching e with
+  | Some (ctx, ee, cases) when constr_head ee ->
+     make_match_redex e g ctx ee cases
+  | Some (ctx, ee, cases) ->
+     begin try
+       make_match_congruence e g ctx ee cases (HE.find eqs ee)
+     with Not_found ->
+       mknode ctx ee cases
+     end
+  | None -> []
+;;
+
+let newnodes_match_cases_eq e g =
   match e with
-  | Eapp (s, [Eapp ("$match", _, _) as m; e2], _) when Eqrel.any s ->
-     let ctx x = eapp (s, [x; e2]) in
-     mknode ctx m
-  | Eapp (s, [e1; Eapp ("$match", _, _) as m], _) when Eqrel.any s ->
-     let ctx x = eapp (s, [e1; x]) in
-     mknode ctx m
-  | Enot (Eapp (s, [Eapp ("$match", _, _) as m; e2], _), _) when Eqrel.any s ->
-     let ctx x = enot (eapp (s, [x; e2])) in
-     mknode ctx m
-  | Enot (Eapp (s, [e1; Eapp ("$match", _, _) as m], _), _) when Eqrel.any s ->
-     let ctx x = enot (eapp (s, [e1; x])) in
-     mknode ctx m
-  | Eapp ("$match", _, _) ->
-     let ctx x = x in
-     mknode ctx e
-  | Enot (Eapp ("$match", _, _) as m, _) ->
-     let ctx x = enot (x) in
-     mknode ctx m
+  | Eapp ("=", [e1; e2], _) when constr_head e2 ->
+     let mknode (ctx, cases) =
+       let x = Expr.newvar () in
+       let p = elam (x, "", ctx (eapp ("$match", x :: cases))) in
+       Node {
+         nconc = [apply p e1; e];
+         nrule = Congruence (p, e1, e2);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [apply p e2] |];
+       }
+     in
+     List.map mknode (HE.find_all matches e1)
   | _ -> []
 ;;
 
@@ -252,7 +274,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "?", eapp (s, [f; e1])) in
+       let ctx = elam (f, "", eapp (s, [f; e1])) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Higher_order -> []
@@ -263,7 +285,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "?", eapp (s, [e1; f])) in
+       let ctx = elam (f, "", eapp (s, [e1; f])) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Higher_order -> []
@@ -274,7 +296,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "?", enot (eapp (s, [f; e1]))) in
+       let ctx = elam (f, "", enot (eapp (s, [f; e1]))) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Higher_order -> []
@@ -286,7 +308,7 @@ let newnodes_fix e g =
      begin try
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
        let e2 = List.fold_left apply xbody args in
-       let ctx = elam (f, "?", enot (eapp (s, [e1; f]))) in
+       let ctx = elam (f, "", enot (eapp (s, [e1; f]))) in
        let unfolded = apply ctx e2 in
        mknode unfolded ctx fix
      with Higher_order -> []
@@ -295,17 +317,9 @@ let newnodes_fix e g =
 ;;
 
 let newnodes e g =
-  let r = newnodes_match_redex e g in
-  let m =
-    if r = [] then begin
-      try newnodes_match_cases e g
-      with Empty -> []
-    end else begin
-      r
-    end
-  in
     newnodes_fix e g
-  @ m
+  @ (try newnodes_match_cases e g with Empty -> [])
+  @ (try newnodes_match_cases_eq e g with Empty -> [])
   @ (try newnodes_injective e g with Empty -> [])
   @ (try newnodes_induction e g with Empty -> [])
 ;;
@@ -358,11 +372,11 @@ let to_llproof tr_expr mlp args =
               let params = List.map (fun _ -> Expr.newvar ()) args in
               let result = if name <> g then a1 else List.nth params i in
               let body = eapp ("$match-case", [evar (name); result]) in
-              List.fold_right (fun v e -> elam (v, "?", e)) params body
+              List.fold_right (fun v e -> elam (v, "", e)) params body
             in
             let cases = List.map mk_case cons in
             let x = Expr.newvar () in
-            let proj = elam (x, "?", eapp ("$match", x :: cases)) in
+            let proj = elam (x, "", eapp ("$match", x :: cases)) in
             let node = {
               conc = union tc (diff accu.conc [hyp]);
               rule = Rextension ("zenon_induct_f_equal",
@@ -390,7 +404,7 @@ let to_llproof tr_expr mlp args =
      let node = {
        conc = List.map tr_expr mlp.mlconc;
        rule = Rextension ("zenon_induct_match_redex",
-                          [tc; th], [tc], [ [th] ]);
+                          [tc], [tc], [ [th] ]);
        hyps = hyps;
      } in
      (node, add)
@@ -401,9 +415,9 @@ let to_llproof tr_expr mlp args =
      begin try
        let (tname, targs, ntargs) = parse_type t in
        let nx = Expr.newvar () in
-       let foldx = elam (nx, "?", eapp ("$fix", [r; nx] @ args)) in
+       let foldx = elam (nx, "", eapp ("$fix", [r; nx] @ args)) in
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
-       let unfx = elam (nx, "?", List.fold_left apply xbody (nx :: args)) in
+       let unfx = elam (nx, "", List.fold_left apply xbody (nx :: args)) in
        let node = {
          conc = List.map tr_expr mlp.mlconc;
          rule = Rextension ("zenon_induct_fix",
@@ -419,16 +433,11 @@ let to_llproof tr_expr mlp args =
       let tc = tr_expr c in
       let tctx = tr_expr ctx in
       let tm = tr_expr m in
-      let rec mk_branches l =
-        match l with
-        | [] -> []
-        | h1 :: h2 :: t -> [tr_expr h1; tr_expr h2] :: mk_branches t
-        | _ -> assert false
-      in
+      let listify x = [x] in
       let node = {
         conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_induct_cases", [ty; tctx; tm], [tc],
-                           mk_branches branches);
+                           List.map listify branches);
         hyps = hyps;
       } in
       (node, add)
@@ -456,8 +465,25 @@ let add_phrase x =
 
 let postprocess p = p;;
 
-let add_formula e = ();;
-let remove_formula e = ();;
+let add_formula e =
+  match e with
+  | Eapp ("=", [e1; e2], _) when constr_head e2 -> HE.add eqs e1 e2
+  | _ ->
+    match get_matching e with
+    | Some (ctx, ee, cases) when not (constr_head ee) ->
+        HE.add matches ee (ctx, cases)
+    | _ -> ()
+;;
+
+let remove_formula e =
+  match e with
+  | Eapp ("=", [e1; e2], _) when constr_head e2 -> HE.remove eqs e1
+  | _ ->
+    match get_matching e with
+    | Some (ctx, ee, cases) when not (constr_head ee) ->
+       HE.remove matches ee
+    | _ -> ()
+;;
 
 let declare_context_coq oc =
   fprintf oc "Require Import zenon_induct.\n";

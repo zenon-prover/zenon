@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.32 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.33 2009-04-24 15:45:17 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -351,13 +351,13 @@ let elam (v, t, e) = he_merge (Elam (v, t, e, priv_lam v t e));;
 let rec all_list vs body =
   match vs with
   | [] -> body
-  | h::t -> eall (h, "?", all_list t body)
+  | h::t -> eall (h, "", all_list t body)
 ;;
 
 let rec ex_list vs body =
   match vs with
   | [] -> body
-  | h::t -> eex (h, "?", ex_list t body)
+  | h::t -> eex (h, "", ex_list t body)
 ;;
 
 type t = expr;;
