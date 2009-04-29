@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.47 2009-04-24 15:45:17 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.48 2009-04-29 12:07:04 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -340,19 +340,16 @@ let rec trtree env node =
      let typargs = List.map (fun _ -> Cwild) args in
      let make_hyp h (c, cargs) =
        let vars = List.map (fun x -> Expr.newname ()) cargs in
-       let mkbody prf v = Capp (Cvar "zenon_induct_ex_all",
-                                   [Cwild; Cwild; prf; Cvar v])
-       in
        let shape =
          match vars with
-         | [] -> eapp ("=", [e1; evar c])
+         | [] -> enot (enot (eapp ("=", [e1; evar c])))
          | _ ->
             let vvars = List.map evar vars in
-            let base = eapp ("=", [e1; eapp (c, vvars)]) in
-            let f v accu = eex (v, "", accu) in
-            List.fold_right f vvars base
+            let base = enot (eapp ("=", [e1; eapp (c, vvars)])) in
+            enot (all_list vvars base)
        in
-       let sub = mklam shape (trtree env h) in
+       let sub = Capp (Cvar "NNPP", [Cwild; mklam shape (trtree env h)]) in
+       let mkbody prf v = Capp (prf, [Cvar v]) in
        let body = List.fold_left mkbody sub vars in
        let abstract_induct arg body =
          match arg with
@@ -366,7 +363,7 @@ let rec trtree env node =
      let recargs = List.map2 make_hyp hyps cstrs in
      let pred =
        let v = Expr.newvar () in
-       trexpr (elam (v, "", eimply (eapp ("=", [e1; v]), efalse)))
+       trexpr (elam (v, "", enot (eapp ("=", [e1; v]))))
      in
      let refl = Capp (Cvar "refl_equal", [tropt e1]) in
      Capp (Cvar (sprintf "@%s_ind" ty),

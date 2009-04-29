@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.3 2009-04-24 15:45:17 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.4 2009-04-29 12:07:04 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -139,8 +139,8 @@ let make_match_branches ctx e cases =
              let sub = List.map2 (fun x y -> (x, y)) vars rv in
              (eapp (constr, rv), rv, Expr.substitute sub body)
         in
-        let shape = eapp ("=", [e; pattern]) in
-        [ex_list rvars shape]
+        let shape = enot (eapp ("=", [e; pattern])) in
+        [enot (all_list rvars shape)]
       in
       List.map f c
 ;;

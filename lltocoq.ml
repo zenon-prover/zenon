@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.45 2009-04-24 15:45:17 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.46 2009-04-29 12:07:04 doligez Exp $";;
 
 open Printf;;
 
@@ -213,30 +213,25 @@ let p_rule oc r =
      poc "case_eq (%a); [\n    " p_expr e1;
      let rec get_params case =
        match case with
-       | Eex (v, _, body, _) ->
+       | Eall (v, _, body, _) ->
           let (vs, e, constr) = get_params body in
           let vv = Expr.newvar () in
           (vv :: vs, substitute [(v, vv)] e, constr)
-       | Eapp ("=", [_; Evar (v, _)], _) -> ([], case, v)
-       | Eapp ("=", [_; Eapp (v, _, _)], _) -> ([], case, v)
+       | Enot (Eapp ("=", [_; Evar (v, _)], _), _) -> ([], case, v)
+       | Enot (Eapp ("=", [_; Eapp (v, _, _)], _), _) -> ([], case, v)
+       | Enot (body, _) -> get_params body
        | _ -> assert false
      in
      let solo l = match l with [x] -> x | _ -> assert false in
      let params = List.map get_params (List.map solo hs) in
      let p_case oc (vs, eqn, constr) =
-       let eq_name = getname eqn in
-       match vs with
-       | [] ->
-          let ehyp = eapp ("=", [e1; evar constr]) in
-          fprintf oc "zenon_intro %s\n" (getname ehyp);
-       | _ ->
-          let ehyp0 = eapp ("=", [e1; eapp (constr, vs)]) in
-          let add_ex v h = eex (v, "", h) in
-          let ehyp = List.fold_right add_ex vs ehyp0 in
-          fprintf oc "intros %a %s; assert (%s : %a); ["
-                  (p_list "" p_expr " ") vs eq_name (getname ehyp) p_expr ehyp;
-          fprintf oc "%a; exact %s | idtac]\n"
-                  (p_list "exists " p_expr "; ") vs eq_name;
+       let shape = match vs with
+         | [] -> evar constr
+         | _ -> eapp (constr, vs)
+       in
+       let ahyp0 = enot (eapp ("=", [e1; shape])) in
+       let ahyp = enot (all_list vs ahyp0) in
+       fprintf oc "apply NNPP; zenon_intro %s\n" (getname ahyp);
      in
      fprintf oc "%a].\n" (p_list "" p_case "  | ") params;
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
