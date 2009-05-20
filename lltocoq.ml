@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.46 2009-04-29 12:07:04 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.47 2009-05-20 21:35:34 doligez Exp $";;
 
 open Printf;;
 
@@ -222,8 +222,7 @@ let p_rule oc r =
        | Enot (body, _) -> get_params body
        | _ -> assert false
      in
-     let solo l = match l with [x] -> x | _ -> assert false in
-     let params = List.map get_params (List.map solo hs) in
+     let params = List.map get_params (List.flatten hs) in
      let p_case oc (vs, eqn, constr) =
        let shape = match vs with
          | [] -> evar constr

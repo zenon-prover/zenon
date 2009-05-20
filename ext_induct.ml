@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.4 2009-04-29 12:07:04 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.5 2009-05-20 21:35:34 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -222,8 +222,41 @@ let newnodes_match_cases_eq e g =
   | _ -> []
 ;;
 
+let make_induction_branch p con =
+  assert false
+;;
+
 let newnodes_induction e g =
-  []  (* FIXME TODO *)
+  match e with
+(*
+  | Enot (Eall (v, ty, body, _), _) ->
+     begin try
+       let tycon = get_tycon ty in
+       let (args, cons) = Hashtbl.find type_table tycon in
+       let p = elam (v, ty, body) in
+       let br = List.map (make_induction_branch p) cons in
+         nrule = Ext ("induct", "induction_notall",
+                      e :: evar (tycon) :: p :: List.flatten br);
+         nprio = Inst e;
+         nbranches = Array.of_list br;
+       }]
+     with Not_found -[]
+  | Eex (v, ty, body, _) ->
+     begin try
+       let tycon = get_tycon ty in
+       let (args, cons) = Hashtbl.find type_table tycon in
+       let p = elam (v, ty, enot (body)) in
+       let br = List.map (make_induction_branch p) cons in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("induct", "induction_ex",
+                      e :: evar (tycon) :: p :: List.flatten br);
+         nprio = Inst e;
+         nbranches = Array.of_list br;
+       }]
+     with Not_found -> []
+*)
+  | _ -> []
 ;;
 
 let newnodes_injective e g =
