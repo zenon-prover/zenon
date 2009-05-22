@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.62 2009-04-03 15:50:36 doligez Exp $
+# $Id: configure,v 1.63 2009-05-22 10:07:46 weis Exp $
 
 ########################################################################
 #
@@ -77,15 +77,15 @@ abort_configuration_not_writable_tools_prefix_directory () {
 }
 
 include_project_configuration_variables () {
-  if test -r .project_config_var; then
-    . .project_config_var;
-    #echo ".project_config_var loaded" >&2;
+  if test -r ./.project_config_var; then
+    . ./.project_config_var;
+    #echo "./.project_config_var loaded" >&2;
   else
     abort_configuration &&
     echo "There is no ./.project_config_var file." >&2
     abort_remedy \
       "Define the project specific configuration variables \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1
   fi
 }
@@ -99,7 +99,7 @@ check_include () {
     echo "The variable PROJECT_NAME is empty." >&2
     abort_remedy \
       "Bind PROJECT_NAME to the name of the project \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${PROJECT_NAME_TEXT}"; then
@@ -107,7 +107,7 @@ check_include () {
     echo "The variable PROJECT_NAME_TEXT is empty." >&2
     abort_remedy \
       "Bind PROJECT_NAME_TEXT to the text of the project name \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${PROJECT_WEB_SERVER}"; then
@@ -116,7 +116,7 @@ check_include () {
     abort_remedy \
       "Bind PROJECT_WEB_SERVER to the name of \
        the web server for the project \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${PROJECT_WEB_SITE_DIR}"; then
@@ -126,7 +126,7 @@ check_include () {
       "Bind PROJECT_WEB_SITE_DIR to the root directory \
        of the project web site (in the web server hierarchy) \
        (e.g. /home/www/${PROJECT_NAME}) \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${PROJECT_FIRST_YEAR}"; then
@@ -135,7 +135,7 @@ check_include () {
     abort_remedy \
       "Bind PROJECT_FIRST_YEAR to the first year of development \
        for the project \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${VERSION_NUMBER_MAIN}"; then
@@ -144,7 +144,7 @@ check_include () {
     abort_remedy \
       "Bind VERSION_NUMBER_MAIN to the project \
        main version number (e.g. 0) \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${VERSION_NUMBER_SUB}"; then
@@ -153,7 +153,7 @@ check_include () {
     abort_remedy \
       "Bind VERSION_NUMBER_SUB to the the project \
        sub version number (e.g. 0) \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
   if test -z "${VERSION_NUMBER_PATCH}"; then
@@ -162,7 +162,7 @@ check_include () {
     abort_remedy \
       "Bind VERSION_NUMBER_PATCH to the project \
        version patch level (e.g. 0) \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
 
@@ -172,7 +172,7 @@ check_include () {
     abort_remedy \
       "Bind PROJECT_MAN_EXT to the project \
        manual page extension (e.g. 1) \
-       in the file .project_config_var.";
+       in the file ./.project_config_var.";
     exit 1;
   fi
 }
@@ -195,7 +195,7 @@ set_project_specific_variables () {
 #
 # Needs the definitions of the project specific variables
 # TOOLS_EXTERNAL and TOOLS_INTERNAL, as defined
-# in the file .project_config_var.
+# in the file ./.project_config_var.
 #
 # TOOLS_PROJECT should be equal to TOOLS_EXTERNAL + TOOLS_INTERNAL.
 #
@@ -302,11 +302,11 @@ set_command_defaults () {
 # have been processed.
 #
 # For variables in group (1), intrinsic defaults, are project dependent:
-# they are all defined in file .project_config_var with
+# they are all defined in file ./.project_config_var with
 # their associated setting procedure ``set_intrinsic_defaults''.
 #
 # For variables in group (2) and (3), intrinsic defaults are defined
-# in the file .project_config_var.
+# in the file ./.project_config_var.
 
 # Then the procedure set_defaults is called before parsing options,
 # and the procedure set_variables is called after parsing options.
@@ -1000,7 +1000,7 @@ set_defaults () {
 
   # Perform some verifications about the project definition.
   check_include &&
- 
+
  # Computing defaults.
   set_intrinsic_defaults &&
   set_command_defaults &&
