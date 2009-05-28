@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.21 2009-05-20 21:35:34 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.22 2009-05-28 11:55:03 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -637,6 +637,7 @@ let built_in_defs =
                   eapp ("coq_builtins.bi__not_b", [x])));
     Def (DefReal ("_bar__lt__gt__bar_", "basics._bar__lt__gt__bar_", [x; y],
                   eapp ("coq_builtins.bi__xor_b", [x; y])));
+
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
                   eapp ("Datatypes.pair", [x; y])));
     Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
@@ -651,6 +652,16 @@ let built_in_defs =
                [ ("Datatypes.pair", [Param "A"; Param "B"]) ]);
     Inductive ("basics.bool__t", [],
                [ ("true", []); ("false", []) ]);
+
+    (* deprecated, kept for compatibility only *)
+    Def (DefReal ("and_b", "basics.and_b", [x; y],
+                  eapp ("basics._amper__amper_", [x; y])));
+    Def (DefReal ("or_b", "basics.or_b", [x; y],
+                  eapp ("basics._bar__bar_", [x; y])));
+    Def (DefReal ("not_b", "basics.not_b", [x; y],
+                  eapp ("basics._tilda__tilda_", [x; y])));
+    Def (DefReal ("xor_b", "basics.xor_b", [x; y],
+                  eapp ("basics._bar__lt__gt__bar_", [x; y])));
   ]
 ;;
 
