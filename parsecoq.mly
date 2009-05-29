@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.27 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.28 2009-05-29 14:28:55 doligez Exp $";;
 
 open Printf;;
 
@@ -429,6 +429,8 @@ constr_list:
 constr_type:
   | arg_type                          { [] }
   | arg_type DASH_GT_ constr_type     { $1 :: $3 }
+  | LPAREN_ arg_type DASH_GT_ constr_type RPAREN_
+                                      { $2 :: $4 }
 ;
 
 arg_type:
