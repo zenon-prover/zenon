@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.48 2009-04-29 12:07:04 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.49 2009-05-29 14:29:19 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -158,23 +158,6 @@ let trpred env v ty p = Clam (v, cty ty, trexpr env p);;
 
 let mklam env v t = Clam (getname v, tropt env v, t);;
 let mklams env args t = List.fold_right (mklam env) args t;;
-
-(*
-let mkcase env (c, args) hyp =
-  let xs = List.map (fun _ -> Expr.newname ()) args in
-  let f h x = Capp (Cvar ("zenon_induct_ex_all"),
-                    [Cwild; Cwild; h; trexpr env (evar (x))]) in
-  let inner = List.fold_left f hyp xs in
-  let f h a =
-    match a with
-    | Phrase.Param _ -> h
-    | Phrase.Self -> Clam ("_", Cwild, h)
-  in
-  let with_ind = List.fold_left f inner args in
-  let f h v = Clam (v, Cwild, h) in
-  List.fold_left f with_ind (List.rev xs)
-;;
-*)
 
 let mkfixcase (c, args) =
   let mklam e arg =
@@ -351,14 +334,12 @@ let rec trtree env node =
        let sub = Capp (Cvar "NNPP", [Cwild; mklam shape (trtree env h)]) in
        let mkbody prf v = Capp (prf, [Cvar v]) in
        let body = List.fold_left mkbody sub vars in
-       let abstract_induct arg body =
+       let abstract v arg body =
          match arg with
-         | Phrase.Self -> Clam ("_", Cwild, body)
-         | Phrase.Param _ -> body
+         | Phrase.Self -> Clam (v, Cwild, Clam ("_", Cwild, body))
+         | Phrase.Param _ -> Clam (v, Cwild, body)
        in
-       let ibody = List.fold_right abstract_induct cargs body in
-       let abstract v body = Clam (v, Cwild, body) in
-       List.fold_right abstract vars ibody
+       List.fold_right2 abstract vars cargs body
      in
      let recargs = List.map2 make_hyp hyps cstrs in
      let pred =
