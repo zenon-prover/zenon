@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.28 2009-05-29 14:28:55 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.29 2009-06-08 15:52:30 doligez Exp $";;
 
 open Printf;;
 
@@ -441,12 +441,14 @@ arg_type:
 junk:
   | /* empty */                       { () }
   | IDENT junk                        { () }
+  | STAR_ junk                        { () }
+  | PERCENT_ junk                     { () }
   | NUM junk                          { () }
   | LPAREN_RPAREN_ junk               { () }
   | PERIOD_ junk                      { () }
   | COLON_ junk                       { () }
-  | PERIOD_LPAREN_ junk RPAREN_       { () }
-  | LPAREN_ junk RPAREN_              { () }
+  | PERIOD_LPAREN_ junk RPAREN_ junk  { () }
+  | LPAREN_ junk RPAREN_ junk         { () }
 ;
 
 %%

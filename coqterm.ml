@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.49 2009-05-29 14:29:19 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.50 2009-06-08 15:52:30 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -492,10 +492,10 @@ let flush_buf oc =
   let i = ref 0 in
   while !i + !rem_len <= len do
     try
-      for j = !rem_len - 1 downto 0 do
+      for j = !rem_len - 1 downto 1 do
         test_cut j s.[!i + j];
       done;
-      if !rem_len < line_len then raise (Cut_before 0);
+      if !rem_len < line_len then test_cut 0 s.[!i];
       for j = !rem_len to len - !i - 1 do
         test_cut j s.[!i + j];
       done;
@@ -528,6 +528,7 @@ let make_lemma_type t =
   let make_funtype (v, ty1) ty2 =
     match ty1 with
     | Cty ty -> Call (v, ty, ty2)
+    | Cwild -> Call (v, "", ty2)
     | _ -> Cimply (ty1, ty2)
   in
   List.fold_right make_funtype tys (cty "False")
