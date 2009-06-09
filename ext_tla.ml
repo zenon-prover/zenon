@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.24 2009-01-27 15:34:56 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.25 2009-06-09 12:37:20 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -294,68 +294,73 @@ let apply f e =
   | _ -> assert false
 ;;
 
-let rec rewrites in_expr ctx e mknode =
-  let lamctx = let x = Expr.newvar () in elam (x, "", ctx x) in
+let rewrites in_expr x ctx e mknode =
+  let lamctx = elam (x, "", ctx) in
+  let appctx e = substitute [(x, e)] ctx in
   let mk_boolcase name e1 e2 =
     let h1a = eapp ("=", [e; etrue]) in
-    let h1b = ctx (etrue) in
+    let h1b = appctx (etrue) in
     let h2a = eapp ("=", [e; efalse]) in
-    let h2b = ctx (efalse) in
-    mknode ("boolcase_" ^ name) [ctx e; h1a; h1b; h2a; h2b; lamctx; e1; e2]
+    let h2b = appctx (efalse) in
+    mknode ("boolcase_" ^ name) [appctx e; h1a; h1b; h2a; h2b; lamctx; e1; e2]
            [] [| [h1a; h1b]; [h2a; h2b] |]
   in
   match e with
   | _ when in_expr && Index.member e ->
-     let h1 = ctx (etrue) in
-     mknode "trueistrue" [ctx e; e; h1; lamctx; e] [e] [| [h1] |]
+     let h1 = appctx (etrue) in
+     mknode "trueistrue" [appctx e; e; h1; lamctx; e] [e] [| [h1] |]
   | Evar (f, _) when in_expr && Index.has_def f ->
      let (d, params, body) = Index.get_def f in
      if params = [] then begin
-       let unfolded = ctx body in
-       mknode "definition" [ctx e; unfolded; e] [] [| [unfolded] |]
+       let unfolded = appctx body in
+       mknode "definition" [appctx e; unfolded; e] [] [| [unfolded] |]
      end else
        []
   | Eapp (f, args, _) when in_expr && Index.has_def f ->
      let (d, params, body) = Index.get_def f in
      if List.length params = List.length args then begin
        let s = List.combine params args in
-       let unfolded = ctx (substitute s body) in
-       mknode "definition" [ctx e; unfolded; e] [] [| [unfolded] |]
+       let unfolded = appctx (substitute s body) in
+       mknode "definition" [appctx e; unfolded; e] [] [| [unfolded] |]
      end else
        []
   | Eapp ("TLA.fapply", [Eapp ("TLA.Fcn", [s; Elam (v, _, b, _) as l], _); a], _)
   -> let h1 = enot (eapp ("TLA.in", [a; s])) in
-     let h2 = ctx (Expr.substitute [(v, a)] b) in
-     mknode "fapplyfcn" [ctx e; h1; h2; lamctx; s; l; a] [] [| [h1]; [h2] |]
+     let h2 = appctx (Expr.substitute [(v, a)] b) in
+     mknode "fapplyfcn" [appctx e; h1; h2; lamctx; s; l; a] [] [| [h1]; [h2] |]
   | Eapp ("TLA.fapply", [Eapp ("TLA.except", [f; v; e1], _); w], _) ->
      let indom = eapp ("TLA.in", [w; eapp ("TLA.DOMAIN", [f])]) in
      let h1a = indom in
      let h1b = eapp ("=", [v; w]) in
-     let h1c = ctx e1 in
+     let h1c = appctx e1 in
      let h2a = indom in
      let h2b = enot (eapp ("=", [v; w])) in
-     let h2c = ctx (eapp ("TLA.fapply", [f; w])) in
+     let h2c = appctx (eapp ("TLA.fapply", [f; w])) in
      let h3 = enot indom in
-     mknode "fapplyexcept" [ctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
+     mknode "fapplyexcept" [appctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
                             lamctx; f; v; e1; w]
             [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
+(*
   | Eapp ("TLA.fapply", [f; a], _) ->
-     rewrites true (fun x -> ctx (eapp ("TLA.fapply", [x; a]))) f mknode
-     @ rewrites true (fun x -> ctx (eapp ("TLA.fapply", [f; x]))) a mknode
+     rewrites true x (appctx (eapp ("TLA.fapply", [x; a]))) f mknode
+     @ rewrites true x (appctx (eapp ("TLA.fapply", [f; x]))) a mknode
+*)
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
-     let h1 = ctx (eapp ("TLA.DOMAIN", [f])) in
-     mknode "domain_except" [ctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
+     let h1 = appctx (eapp ("TLA.DOMAIN", [f])) in
+     mknode "domain_except" [appctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
-     let h1 = ctx (s) in
-     mknode "domain_fcn" [ctx e; h1; lamctx; s; l] [] [| [h1] |]
+     let h1 = appctx (s) in
+     mknode "domain_fcn" [appctx e; h1; lamctx; s; l] [] [| [h1] |]
+(*
   | Eapp ("TLA.DOMAIN", [f], _) ->
-     rewrites true (fun x -> ctx (eapp ("TLA.DOMAIN", [x]))) f mknode
+     rewrites true x (appctx (eapp ("TLA.DOMAIN", [x]))) f mknode
+*)
   | Enot (e1, _) when in_expr ->
      let h1a = eapp ("=", [e; etrue]) in
-     let h1b = ctx (etrue) in
+     let h1b = appctx (etrue) in
      let h2a = eapp ("=", [e; efalse]) in
-     let h2b = ctx (efalse) in
-     mknode ("boolcase_not") [ctx e; h1a; h1b; h2a; h2b; lamctx; e1]
+     let h2b = appctx (efalse) in
+     mknode ("boolcase_not") [appctx e; h1a; h1b; h2a; h2b; lamctx; e1]
             [] [| [h1a; h1b]; [h2a; h2b] |]
   | Eand (e1, e2, _) when in_expr -> mk_boolcase "and" e1 e2
   | Eor (e1, e2, _) when in_expr -> mk_boolcase "or" e1 e2
@@ -365,23 +370,23 @@ let rec rewrites in_expr ctx e mknode =
   (* FIXME missing : Eall, Eex *)
 
   | Eapp ("TLA.cond", [Etrue; e1; e2], _) ->
-     let h1 = ctx (e1) in
-     mknode "iftrue" [ctx e; h1; lamctx; e1; e2] [] [| [h1] |]
+     let h1 = appctx (e1) in
+     mknode "iftrue" [appctx e; h1; lamctx; e1; e2] [] [| [h1] |]
   | Eapp ("TLA.cond", [Efalse; e1; e2], _) ->
-     let h1 = ctx (e2) in
-     mknode "iffalse" [ctx e; h1; lamctx; e1; e2] [] [| [h1] |]
+     let h1 = appctx (e2) in
+     mknode "iffalse" [appctx e; h1; lamctx; e1; e2] [] [| [h1] |]
   | Eapp ("TLA.cond", [e0; e1; e2], _) ->
      let h1a = e0 in
-     let h1b = ctx (e1) in
+     let h1b = appctx (e1) in
      let h2a = enot (e0) in
-     let h2b = ctx (e2) in
-     mknode "ifthenelse" [ctx e; h1a; h1b; h2a; h2b; lamctx; e0; e1; e2] []
+     let h2b = appctx (e2) in
+     mknode "ifthenelse" [appctx e; h1a; h1b; h2a; h2b; lamctx; e0; e1; e2] []
             [| [h1a; h1b]; [h2a; h2b] |]
   | _ -> []
 ;;
 
-let rec find_rewrites in_expr ctx e mknode =
-  let local = rewrites in_expr ctx e mknode in
+let rec find_rewrites in_expr x ctx e mknode =
+  let local = rewrites in_expr x ctx e mknode in
   match e with
   | _ when local <> [] -> local
   | Eapp (p, args, _) ->
@@ -389,15 +394,16 @@ let rec find_rewrites in_expr ctx e mknode =
        match rightarg with
        | [] -> []
        | h::t ->
-          let newctx x = ctx (eapp (p, List.rev_append leftarg (x :: t)))
-          in
-          begin match find_rewrites true newctx h mknode with
+          let e1 = eapp (p, List.rev_append leftarg (x :: t)) in
+          let newctx = substitute [(x, e1)] ctx in
+          begin match find_rewrites true x newctx h mknode with
           | [] -> loop (h::leftarg) t
           | l -> l
           end
      in
      loop [] args
-  | Enot (e1, _) -> find_rewrites false (fun x -> (ctx (enot x))) e1 mknode
+  | Enot (e1, _) ->
+     find_rewrites false x (substitute [(x, enot x)] ctx) e1 mknode
   | _ -> []
 ;;
 
@@ -435,7 +441,8 @@ let newnodes_rewrites e g =
          nbranches = branches;
        }]
   in
-  find_rewrites false (fun x -> x) e mknode
+  let x = Expr.newvar () in
+  find_rewrites false x x e mknode
 ;;
 
 let newnodes e g =
