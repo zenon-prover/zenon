@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.46 2009-04-24 15:45:17 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.47 2009-06-29 13:00:56 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -131,8 +131,10 @@ let rec make_inequals_aux l1 l2 =
 let make_inequals l1 l2 = Array.of_list (make_inequals_aux l1 l2);;
 
 let arity_warning s =
-  if s <> "TLA.set" then
-    Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
+  match s with
+  | "TLA.set" | "TLA.tuple" -> ()
+  | _ ->
+     Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
 ;;
 
 let higher_order_warning s =
@@ -1112,15 +1114,14 @@ let find_open_branch node brstate =
         in
         let l1 = List.rev_map score l in
         let cmp (len1, size1, _) (len2, size2, _) =
-(*
-          if len1 =%= len2 then size1 - size2
-          else if len1 =%= 0 then -1
-          else if len2 =%= 0 then 1
-          else len2 - len1
-*)
-          if len1 =%= len2
-          then size1 - size2
-          else len2 - len1
+          match node.nrule with
+          | P_NotP _ | P_NotP_sym _ ->
+             if len1 =%= len2 then size1 - size2
+             else len1 - len2
+          | _ ->
+            if len1 =%= len2
+            then size1 - size2
+            else len2 - len1
         in
         let l2 = List.sort cmp l1 in
         if !Globals.random_flag then begin

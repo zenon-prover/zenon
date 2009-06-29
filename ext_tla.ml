@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.25 2009-06-09 12:37:20 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.26 2009-06-29 13:00:56 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -31,6 +31,7 @@ let tla_set_constructors = [
   "TLA.setOfAll";
   "TLA.FuncSet";
   "TLA.DOMAIN";
+  "TLA.Product";
 ];;
 
 let is_set_expr e =
@@ -440,6 +441,7 @@ let newnodes_rewrites e g =
          ngoal = g;
          nbranches = branches;
        }]
+       @ (if name = "ifthenelse" then [Stop] else [])
   in
   let x = Expr.newvar () in
   find_rewrites false x x e mknode
