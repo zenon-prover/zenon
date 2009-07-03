@@ -15,7 +15,7 @@ parsetptp.mli
 .config_var
 .config_var_for_shell
 zenon
-zenon.opt
+zenon.bin
 zenon.byt
 gmon.out
 .DS_Store
