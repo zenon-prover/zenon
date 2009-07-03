@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.13 2008-12-16 14:31:24 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.14 2009-07-03 15:52:23 doligez Exp $  *)
 
 open Expr;;
 
@@ -138,13 +138,11 @@ type rule =
 
      ********************)
 
-  | Rex of expr * string
+  | Rex of expr * expr
     (*
-             P{z}
-       ----------------- Rex (Eex (x, ty, P{x}, _), z)
+         P{tau x.~P(x)}
+       ----------------- Rex (Eex (x, ty, P{x}, _), tau x.~P(x))
        Eex (x, ty, P{x})
-
-       (z n'a pas d'autre occurrence dans l'hypothese)
 
      ********************)
 
@@ -164,13 +162,11 @@ type rule =
 
      *********************)
 
-  | Rnotall of expr * string
+  | Rnotall of expr * expr
     (*
-              Enot(P{z})
-       ------------------------- Rnotall (Eall (x, ty, P{x}, _), z)
+            Enot(P{tau(P)})
+       ------------------------- Rnotall (Eall (x, ty, P{x}, _), tau(P))
        Enot (Eall (x, ty, P{x}))
-
-       (z n'a pas d'autre occurrence dans l'hypothese)
 
      *********************)
 
@@ -225,7 +221,7 @@ type rule =
 
      ********************)
 
-  | Rlemma of string * string list
+  | Rlemma of string * expr list
     (*
        ----------- Rlemma (name, args)
             C
@@ -244,9 +240,10 @@ type prooftree = {
 };;
 
 type lemma = {
-  name : string;                    (* nom du lemme *)
-  params : (string * string) list;  (* parametres, avec leurs types *)
-  proof : prooftree;                (* preuve *)
+  name : string;                           (* nom du lemme *)
+  params : (string * string * expr) list;  (* parametres, avec leurs types
+                                              et leurs actuals *)
+  proof : prooftree;                       (* preuve *)
 };;
 
 type proof = lemma list;;

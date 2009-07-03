@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.47 2009-04-24 15:45:17 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.48 2009-07-03 15:52:23 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -84,15 +84,6 @@ let get_meta_type s =
   ident_to_type (String.sub s ofs (len - ofs))
 ;;
 
-let make_tau_name p =
-  match p with
-  | Etau (Evar (v, _), _, _, _) when is_prefix "zenon_" v ->
-     sprintf "%s_%s" tau_prefix (base26 (Index.get_number p))
-  | Etau (Evar (v, _), _, _, _) ->
-     sprintf "%s%s_%s" tau_prefix v (base26 (Index.get_number p))
-  | _ -> assert false
-;;
-
 let term_tbl = HE.create 9997;;
 
 let memo tbl f x =
@@ -122,7 +113,7 @@ let rec xtr_expr a =
   | Eall (v, t, e, _) -> eall (v, t, tr_expr e)
   | Eex (v, t, e, _) -> eex (v, t, tr_expr e)
 
-  | Etau _ -> evar (make_tau_name a)
+  | Etau (v, t, e, _) -> etau (v, t, tr_expr e)
   | Elam (v, ty, e1, _) -> elam (v, ty, tr_expr e1)
 
 and tr_expr a = memo expr_tbl xtr_expr a
@@ -140,10 +131,10 @@ let tr_rule r =
   | NotOr (p, q) -> LL.Rnotconnect (LL.Or, tr_expr p, tr_expr q)
   | NotImpl (p, q) -> LL.Rnotconnect (LL.Imply, tr_expr p, tr_expr q)
   | NotAll (Enot (Eall (v, t, p, _) as pp, _)) ->
-      LL.Rnotall (tr_expr pp, make_tau_name (etau (v, t, enot (remove_scope p))))
+      LL.Rnotall (tr_expr pp, etau (v, t, enot (remove_scope p)))
   | NotAll _ -> assert false
   | Ex (Eex (v, t, p, _) as pp) ->
-      LL.Rex (tr_expr pp, make_tau_name (etau (v, t, remove_scope p)))
+      LL.Rex (tr_expr pp, etau (v, t, remove_scope p))
   | Ex _ -> assert false
   | All (p, t) -> LL.Rall (tr_expr p, tr_expr t)
   | NotEx (Enot (p, _), t) -> LL.Rnotex (tr_expr p, tr_expr t)
@@ -184,19 +175,28 @@ let tr_rule r =
   | Close_refl (s, _) (* when s <> "=" *) -> assert false
 ;;
 
+let rec triple_mem x l =
+  match l with
+  | [] -> false
+  | (y, _, _) :: t when x = y -> true
+  | _ :: t -> triple_mem x t
+;;
+
 let rec merge l1 l2 =
   match l1 with
   | [] -> l2
-  | (v,t) as vt :: vts ->
-      if List.mem_assoc v l2
-      then merge vts l2
-      else merge vts (vt :: l2)
+  | (v,t,a) as vta :: vtas ->
+      if triple_mem v l2
+      then merge vtas l2
+      else merge vtas (vta :: l2)
 ;;
 
 let rec get_params accu p =
   match p with
   | Evar (v, _) -> accu
-  | Emeta (m, _) -> merge [(make_meta_name m, get_type m)] accu
+  | Emeta (m, _) ->
+     let name = make_meta_name m in
+     merge [(name, get_type m, evar (name))] accu
   | Eapp (_, es, _) -> List.fold_left get_params accu es
 
   | Enot (e, _) -> get_params accu e
@@ -208,7 +208,9 @@ let rec get_params accu p =
   | Efalse -> accu
   | Eall (v, t, e, _) -> get_params accu e
   | Eex (v, t, e, _) -> get_params accu e
-  | Etau (v, t, _, _) -> merge [(make_tau_name p, t)] accu
+  | Etau (v, t, _, _) ->
+     let name = Index.make_tau_name p in
+     merge [(name, t, p)] accu
   | Elam (v, t, e, _) -> get_params accu e
 ;;
 
@@ -218,7 +220,7 @@ let lemma_tbl = (Hashtbl.create 997
 let get_lemma p =
   let name = lemma_name (-p.mlrefc) in
   let (lemma, extras) = Hashtbl.find lemma_tbl name in
-  let args = List.map fst lemma.LL.params in
+  let args = List.map (fun (_, _, x) -> x) lemma.LL.params in
   ({
     LL.conc = lemma.LL.proof.LL.conc;
     LL.rule = LL.Rlemma (lemma.LL.name, args);

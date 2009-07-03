@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.13 2008-12-16 14:31:24 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.14 2009-07-03 15:52:23 doligez Exp $";;
 
 open Expr;;
 
@@ -20,16 +20,16 @@ type rule =
   | Rnotnot of expr
   | Rconnect of binop * expr * expr
   | Rnotconnect of binop * expr * expr
-  | Rex of expr * string
+  | Rex of expr * expr
   | Rall of expr * expr
   | Rnotex of expr * expr
-  | Rnotall of expr * string
+  | Rnotall of expr * expr
   | Rpnotp of expr * expr
   | Rnotequal of expr * expr
   | Rcongruence of expr * expr * expr
   | Rdefinition of string * string * expr * expr
   | Rextension of string * expr list * expr list * expr list list
-  | Rlemma of string * string list
+  | Rlemma of string * expr list
 ;;
 
 type prooftree = {
@@ -39,9 +39,9 @@ type prooftree = {
 };;
 
 type lemma = {
-  name : string;                    (* nom du lemme *)
-  params : (string * string) list;  (* parametres, avec leurs types *)
-  proof : prooftree;                (* preuve *)
+  name : string;
+  params : (string * string * Expr.expr) list;
+  proof : prooftree;
 };;
 
 type proof = lemma list;;
@@ -124,8 +124,9 @@ let rec opt t =
   with Not_found ->
   match t.rule with
   | Rlemma (name, _) ->
+     let args = List.map (fun (_, _, x) -> x) (get_lemma name).params in
      { conc = nconc; hyps = nhyps;
-       rule = Rlemma (name, List.map fst (get_lemma name).params) }
+       rule = Rlemma (name, args) }
   | _ -> { t with conc = nconc; hyps = nhyps }
 ;;
 
@@ -135,9 +136,7 @@ let optimise p =
   Hashtbl.clear lemmas;
   let f accu lemma =
     let newproof = opt lemma.proof in
-    let f (name, typ) = List.exists (occurs name) newproof.conc in
-    let newparams = List.filter f lemma.params in
-    let newlemma = { lemma with proof = newproof; params = newparams } in
+    let newlemma = { lemma with proof = newproof } in
     Hashtbl.add lemmas newlemma.name newlemma;
     newlemma :: accu
   in

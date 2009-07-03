@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.29 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.30 2009-07-03 15:52:23 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -419,12 +419,14 @@ let rec llproof_expr o e =
       pro "Ex %a, " print_vartype (v, t); llproof_expr o p;
   | Elam (v, t, p, _) ->
       pro "(lambda %a, " print_vartype (v, t); llproof_expr o p; pro ")";
+  | Etau (v, t, p, _) ->
+      pro "(tau %a, " print_vartype (v, t); llproof_expr o p; pro ")";
   | Eapp (s, [e1; e2], _) when is_infix_op s ->
      pro "("; llproof_expr o e1; pro " %s " s; llproof_expr o e2; pro ")";
   | Eapp (s, [], _) -> pro "%s" s;
   | Eapp (s, args, _) -> pro "%s(" s; llproof_expr_list o args; pro ")";
   | Evar (s, _) -> pro "%s" s;
-  | Emeta _ | Etau _
+  | Emeta _
     -> assert false;
 
 and llproof_expr_list o l =
@@ -468,7 +470,12 @@ let llproof_rule o r =
       pr ", ";
       llproof_expr o q;
       pr ")";
-  | Rex (p, v) -> pr "---ex ("; llproof_expr o p; pr ", %s)" v;
+  | Rex (p, e) ->
+      pr "---ex (";
+      llproof_expr o p;
+      pr ", ";
+      llproof_expr o e;
+      pr ")";
   | Rall (p, t) ->
       pr "---all (";
       llproof_expr o p;
@@ -481,7 +488,12 @@ let llproof_rule o r =
       pr ", ";
       llproof_expr o t;
       pr ")";
-  | Rnotall (p, v) -> pr "---notall ("; llproof_expr o p; pr ", %s)" v;
+  | Rnotall (p, e) ->
+      pr "---notall (";
+      llproof_expr o p;
+      pr ", ";
+      llproof_expr o e;
+      pr ")";
   | Rpnotp (p, q) ->
       pr "---pnotp (";
       llproof_expr o p;
@@ -510,7 +522,7 @@ let llproof_rule o r =
       pr ")";
   | Rlemma (name, args) ->
       pr "---lemma %s [ " name;
-      List.iter (fun x -> pr "%s " x) args;
+      List.iter (fun x -> llproof_expr o x; pr " ") args;
       pr "]";
 ;;
 
@@ -525,7 +537,7 @@ let rec llproof_tree o i t =
   incr nodes;
 ;;
 
-let print_idtype o (v, t) =
+let print_idtype o (v, t, act) =
   if t = univ_name
   then oprintf o "%s " v
   else oprintf o "%s:\"%s\" " v t

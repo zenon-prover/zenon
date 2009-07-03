@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.22 2009-05-29 14:30:15 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.23 2009-07-03 15:52:23 doligez Exp $";;
 
 open Printf;;
 
@@ -262,11 +262,11 @@ let rec p_tree hyps i dict oc proof =
      p_sub dict hs proof.hyps;
   | Rnotnot (e1) ->
      alpha "notnot" (enot (enot e1)) [e1] proof.hyps;
-  | Rex (Eex (x, t, e1, _) as p, v) ->
-     delta "ex" p v false (elam (x, t, e1)) proof.hyps;
+  | Rex (Eex (x, t, e1, _) as conc, e2) ->
+     delta "ex_choose" false (elam (x, t, e1)) e2 conc proof.hyps;
   | Rex _ -> assert false
-  | Rnotall (Eall (x, t, e1, _) as p, v) ->
-     delta "notall" p v true (elam (x, t, e1)) proof.hyps;
+  | Rnotall (Eall (x, t, e1, _) as nconc, e2) ->
+     delta "notall_choose" true (elam (x, t, e1)) e2 (enot nconc) proof.hyps;
   | Rnotall _ -> assert false
   | Rall (Eall (x, t, e1, _) as conc, e2) ->
      gamma "all" false (elam (x, t, e1)) e2 conc proof.hyps;
@@ -275,7 +275,12 @@ let rec p_tree hyps i dict oc proof =
      gamma "notex" true (elam (x, t, e1)) e2 (enot nconc) proof.hyps;
   | Rnotex _ -> assert false
   | Rlemma (l, a) ->
-     let pr dict oc x = fprintf oc "?%s=%s" x x in
+     let pr dict oc x =
+       match x with
+       | Evar (v, _) -> fprintf oc "?%s=%s" v v
+       | Etau _ -> ()
+       | _ -> assert false
+     in
      let pr_hyp dict oc h = fprintf oc "%s" (hname hyps h) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s [where %a, OF %a])\n" l
@@ -401,25 +406,16 @@ and p_gamma hyps i dict oc lem neg lam e conc sub =
           lem (p_expr dict2) lam (p_expr dict2) e (hname hyps conc);
   p_tree hyps i dict2 oc t;
 
-and p_delta hyps i dict oc lem h0 v neg lam sub =
+and p_delta hyps i dict oc lem neg lam e conc sub =
   let t = match sub with [t] -> t | _ -> assert false in
   let (ng, negs) = if neg then (enot, "~") else ((fun x -> x), "") in
-  let h00 = ng h0 in
-  let n00 = hname hyps h00 in
-  iprintf i oc "show FALSE\n";
-  iprintf i oc "proof (rule zenon_%s [OF %s])\n" lem n00;
-  iprintf (iinc i) oc "fix %s\n" v;
-  let h =
-    match lam with
-    | Elam (x, _, e1, _) -> ng (substitute [(x, evar (v))] e1)
-    | _ -> assert false
-  in
-  let n_h = hname hyps h in
-  iprintf (iinc i) oc "assume %s: \"%s%a\"" n_h negs
-          (p_apply dict) (lam, evar (v));
-  let dict2 = p_is dict oc h in
-  p_tree hyps (iinc i) dict2 oc t;
-  iprintf i oc "qed\n";
+  let body = ng (apply lam e) in
+  let n_body = hname hyps body in
+  iprintf i oc "have %s: \"%s%a\"" n_body negs (p_apply dict) (lam, e);
+  let dict2 = p_is dict oc body in
+  iprintf i oc "by (rule zenon_%s_0 [of \"%a\", OF %s])\n"
+          lem (p_expr dict2) lam (hname hyps conc);
+  p_tree hyps i dict2 oc t;
 
 and p_sub_equal hyps i dict oc e1 e2 prf =
   let eq = eapp ("=", [e1; e2]) in
@@ -466,11 +462,17 @@ and p_subst hyps i dict oc mk l1 l2 rl2 prev =
 
 let p_lemma hyps i dict oc lem =
   iprintf i oc "have %s: \"" lem.name;
-  List.iter (fun (x, y) -> fprintf oc "!!%s." x) lem.params;
+  let f (x, y, e) =
+    match e with
+    | Evar _ -> true
+    | Etau _ -> false
+    | _ -> assert false
+  in
+  List.iter (fun (x, y, _) -> fprintf oc "!!%s." x) (List.filter f lem.params);
   List.iter (fun x -> fprintf oc " %a ==>" (p_expr dict) x) lem.proof.conc;
   fprintf oc " FALSE\"\n";
   iprintf i oc "proof -\n";
-  List.iter (fun (x, y) -> iprintf (iinc i) oc "fix \"%s\"\n" x) lem.params;
+  List.iter (fun (x, y, _) -> iprintf (iinc i) oc "fix \"%s\"\n" x) lem.params;
   let p_asm dict x =
     iprintf (iinc i) oc "assume %s:\"%a\"" (hname hyps x) (p_expr dict) x;
     p_is dict oc x

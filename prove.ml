@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.47 2009-06-29 13:00:56 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.48 2009-07-03 15:52:23 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -414,100 +414,11 @@ let rec get_values_set e =
   | _ -> ([], true)
 ;;
 
-(*****************
-let rec add_scope_p v tau e =
-  match e with
-  | _ when not (has_free_var v e) -> e
-  | Enot (e1, _) -> enot (add_scope_n v tau e1)
-  | Eor (e1, e2, _) -> eor (add_scope_p v tau e1, add_scope_p v tau e2)
-  | Eimply (e1, e2, _) -> eimply (add_scope_n v tau e1, add_scope_n v tau e2)
-  | Eex (w, t, e1, _) -> eex (w, t, add_scope_p v tau e1)
-  | Eand (e1, e2, _) when not (has_free_var v e1) ->
-     eand (e1, add_scope_p v tau e2)
-  | Eand (e1, e2, _) when not (has_free_var v e2) ->
-     eand (add_scope_p v tau e1, e2)
-  | Eapp ("$scope", Elam (w, t, e1, _) :: rest, _)
-    when not (List.exists (has_free_var v) rest) ->
-     eapp ("$scope", elam (w, t, add_scope_p v tau e1) :: rest)
-  | _ ->
-     match get_values_p [] v e with
-     | None -> substitute [(evar v, tau)] e
-     | Some vs -> eapp ("$scope", elam (evar v, "", e) :: tau :: vs)
-
-and add_scope_n v tau e =
-  match e with
-  | _ when not (has_free_var v e) -> e
-  | Enot (e1, _) -> enot (add_scope_p v tau e1)
-  | Eand (e1, e2, _) -> eand (add_scope_n v tau e1, add_scope_n v tau e2)
-  | Eall (w, t, e1, _) -> eall (w, t, add_scope_n v tau e1)
-  | Eor (e1, e2, _) when not (has_free_var v e1) ->
-     eor (e1, add_scope_n v tau e2)
-  | Eor (e1, e2, _) when not (has_free_var v e2) ->
-     eor (add_scope_n v tau e1, e2)
-  | Eimply (e1, e2, _) when not (has_free_var v e1) ->
-     eimply (e1, add_scope_n v tau e2)
-  | Eimply (e1, e2, _) when not (has_free_var v e2) ->
-     eimply (add_scope_p v tau e1, e2)
-  | Eapp ("$scope", Elam (w, t, e1, _) :: rest, _)
-    when not (List.exists (has_free_var v) rest) ->
-     eapp ("$scope", elam (w, t, add_scope_n v tau e1) :: rest)
-  | _ ->
-     match get_values_n [] v e with
-     | None -> substitute [(evar v, tau)] e
-     | Some vs -> eapp ("$scope", elam (evar v, "", e) :: tau :: vs)
-
-and get_values_p env v e =
-  match e with
-  | _ when not (has_free_var v e) -> None
-  | Eapp ("=", [v1; e1], _) when Expr.equal v1 (evar v) ->
-     if interferes env [e1] then None else Some [e1]
-  | Eapp ("=", [e1; v1], _) when Expr.equal v1 (evar v) ->
-     if interferes env [e1] then None else Some [e1]
-  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_p env v (apply lam tau)
-  | Eapp ("TLA.in", [v1; s], _) when Expr.equal v1 (evar v) ->
-     begin match get_values_set s with
-     | (_, true) -> None
-     | (vs, false) when interferes env vs -> None
-     | (vs, false) -> Some vs
-     end
-  | Enot (e1, _) -> get_values_n env v e1
-  | Eand (e1, e2, _) -> orelse (get_values_p env v) e1 (get_values_p env v) e2
-  | Eor (e1, e2, _) -> andalso (get_values_p env v) e1 (get_values_p env v) e2
-  | Eimply (e1, e2, _) ->
-     andalso (get_values_n env v) e1 (get_values_p env v) e2
-  | Eequiv (e1, e2, _) -> None
-  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 (evar v) -> None
-  | Eall (Evar (nv1, _), t, e1, _)
-  | Eex (Evar (nv1, _), t, e1, _)
-  -> get_values_p (nv1 :: env) v e1
-  | _ -> None
-
-and get_values_n env v e =
-  match e with
-  | _ when not (has_free_var v e) -> None
-  | Eapp ("$scope", lam :: tau :: _, _) -> get_values_n env v (apply lam tau)
-  | Enot (e1, _) -> get_values_p env v e1
-  | Eand (e1, e2, _) -> andalso (get_values_n env v) e1 (get_values_n env v) e2
-  | Eor (e1, e2, _) -> orelse (get_values_n env v) e1 (get_values_n env v) e2
-  | Eimply (e1, e2, _) -> orelse (get_values_p env v) e1 (get_values_n env v) e2
-  | Eequiv (e1, e2, _) -> None
-  | Eall (v1, _, _, _) | Eex (v1, _, _, _) when Expr.equal v1 (evar v) -> None
-  | Eall (Evar (nv1, _), t, e1, _)
-  | Eex (Evar (nv1, _), t, e1, _)
-  -> get_values_n (nv1 :: env) v e1
-  | _ -> None
-;;
-*****************)
 
 let newnodes_delta st fm g =
   match fm with
   | Eex (v, t, p, _) ->
      let h = substitute [(v, etau (v, t, p))] p in
-(*
-     let p1 = remove_scope p in
-     let tau = etau (v, t, p1) in
-     let h = add_scope_p (get_var_name v) tau p in
-*)
      add_node st {
        nconc = [fm];
        nrule = Ex (fm);
@@ -517,11 +428,6 @@ let newnodes_delta st fm g =
      }, true
   | Enot (Eall (v, t, p, _), _) ->
      let h = substitute [(v, etau (v, t, enot p))] (enot p) in
-(*
-     let np1 = enot (remove_scope p) in
-     let tau = etau (v, t, np1) in
-     let h = enot (add_scope_n (get_var_name v) tau p) in
-*)
      add_node st {
        nconc = [fm];
        nrule = NotAll (fm);
@@ -529,42 +435,6 @@ let newnodes_delta st fm g =
        ngoal = g;
        nbranches = [| [h] |];
      }, true
-(*
-  | Eapp ("$scope", [lam; tau; v1], _) ->
-     add_node st {
-       nconc = [fm];
-       nrule = Miniscope (lam, tau, [v1]);
-       nprio = Prop;
-       ngoal = g;
-       nbranches = [| [apply lam v1] |];
-     }, true
-  | Eapp ("$scope", lam :: tau :: _, _) ->
-     add_node st {
-       nconc = [fm];
-       nrule = Miniscope (lam, tau, []);
-       nprio = Prop;
-       ngoal = g;
-       nbranches = [| [apply lam tau] |];
-     }, true
-  | Enot (Eapp ("$scope", [Elam (x, ty, e1, _); tau; v1], _), _) ->
-     let lam = elam (x, ty, enot (e1)) in
-     add_node st {
-       nconc = [fm];
-       nrule = Miniscope (lam, tau, [v1]);
-       nprio = Prop;
-       ngoal = g;
-       nbranches = [| [apply lam v1] |];
-     }, true
-  | Enot (Eapp ("$scope", Elam (x, ty, e1, _) :: tau :: _, _), _) ->
-     let lam = elam (x, ty, enot (e1)) in
-     add_node st {
-       nconc = [fm];
-       nrule = Miniscope (lam, tau, []);
-       nprio = Prop;
-       ngoal = g;
-       nbranches = [| [apply lam tau] |];
-     }, true
-*)
   | _ -> st, false
 ;;
 
@@ -974,6 +844,7 @@ let newnodes_useless st fm g =
   | Etrue | Enot (Efalse, _)
     -> st, true
 
+(*  NOTE: meta can happen with TLA+
   | Emeta _ | Elam _ | Enot ((Emeta _ | Elam _), _)
     ->
       if !Error.warnings_flag then begin
@@ -982,6 +853,7 @@ let newnodes_useless st fm g =
         eprintf "\n";
       end;
       st, true
+*)
   | _ -> (st, false)
 ;;
 
@@ -1087,6 +959,15 @@ let count_meta_list l =
   List.length (sort_uniq (List.flatten (List.map get_metas l)))
 ;;
 
+let rec not_trivial e =
+  match e with
+  | Enot (Eapp ("=", ([Emeta _; _] | [_; Emeta _]), _), _) -> false
+  | Eand (e1, e2, _) | Eor (e1, e2, _) -> not_trivial e1 || not_trivial e2
+  | _ -> true
+;;
+
+let count_nontrivial l = List.length (List.filter not_trivial l);;
+
 let rndstate = ref (Random.State.make [| 0 |]);;
 
 let find_open_branch node brstate =
@@ -1110,10 +991,15 @@ let find_open_branch node brstate =
           let fs = node.nbranches.(i) in
           let f accu x = accu + Expr.size x in
           let s = List.fold_left f 0 fs in
-          (count_meta_list fs, s, i)
+          (count_nontrivial fs, count_meta_list fs, s, i)
         in
         let l1 = List.rev_map score l in
-        let cmp (len1, size1, _) (len2, size2, _) =
+        let cmp (nt1, len1, size1, _) (nt2, len2, size2, _) =
+          if nt1 =%= 0 then -1
+          else if nt2 =%= 0 then 1
+          else if len1 <> len2 then len2 - len1
+          else size1 - size2
+(*
           match node.nrule with
           | P_NotP _ | P_NotP_sym _ ->
              if len1 =%= len2 then size1 - size2
@@ -1122,15 +1008,16 @@ let find_open_branch node brstate =
             if len1 =%= len2
             then size1 - size2
             else len2 - len1
+*)
         in
         let l2 = List.sort cmp l1 in
         if !Globals.random_flag then begin
           let l = List.length l2 in
           let n = Random.State.int !rndstate l in
-          match List.nth l2 n with (_, _, i) -> Some i
+          match List.nth l2 n with (_, _, _, i) -> Some i
         end else begin
           match l2 with
-          | (_, _, i) :: _ -> Some i
+          | (_, _, _, i) :: _ -> Some i
           | _ -> assert false
         end
   end

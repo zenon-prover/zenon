@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.11 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.12 2009-07-03 15:52:23 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -362,4 +362,13 @@ let get_formula i =
   if i < 0 || i >= Array.length !formnums then raise Not_found;
   if !formnums.(i) == dummy then raise Not_found;
   !formnums.(i)
+;;
+
+let make_tau_name p =
+  match p with
+  | Etau (Evar (v, _), _, _, _) when is_prefix "zenon_" v ->
+     Printf.sprintf "%s_%s" Namespace.tau_prefix (base26 (get_number p))
+  | Etau (Evar (v, _), _, _, _) ->
+     Printf.sprintf "%s%s_%s" Namespace.tau_prefix v (base26 (get_number p))
+  | _ -> assert false
 ;;

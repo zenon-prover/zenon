@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.26 2009-06-29 13:00:56 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.27 2009-07-03 15:52:23 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -55,6 +55,12 @@ let is_fcn_expr e =
   | _ -> false
 ;;
 
+let is_notequiv e =
+  match e with
+  | Eapp ("$notequiv", _, _) -> true
+  | _ -> false
+;;
+
 let mkbranches hs = Array.of_list (List.map (fun x -> [x]) hs);;
 
 let rec decompose_add e =
@@ -74,33 +80,66 @@ let newnodes_prop e g =
       nbranches = branches;
     } ]
   in
-  let nometa e =
-    match e with
-    | Emeta _ | Elam _ -> false
-    | _ -> true
+  let mknode_cut prio name args branches =
+    [ Node {
+      nconc = [];
+      nrule = Ext ("tla", name, args);
+      nprio = prio;
+      ngoal = g;
+      nbranches = branches;
+    } ]
+  in
+  let mknode_inst m term =
+    match m with
+    | Eall (v, t, p, _) ->
+       let n = Expr.substitute [(v, term)] p in
+       [ Node {
+         nconc = [m];
+         nrule = All (m, term);
+         nprio = Inst m;
+         ngoal = g;
+         nbranches = [| [n] |];
+       } ]
+    | Eex (v, t, p, _) ->
+       let n = Expr.substitute [(v, term)] (enot p) in
+       let nm = enot (m) in
+       [ Node {
+         nconc = [nm];
+         nrule = NotEx (nm, term);
+         nprio = Inst m;
+         ngoal = g;
+         nbranches = [| [n] |];
+       } ]
+    | _ -> assert false
   in
   match e with
-  | Eapp ("=", [e1; Etrue], _) when nometa e1 ->
+  | Eapp ("=", [e1; Etrue], _) ->
      mknode Prop "eq_x_true" [e; e1; e1] [| [e1] |]
 
-  | Eapp ("=", [Etrue; e1], _) when nometa e1 ->
+  | Eapp ("=", [Etrue; e1], _) ->
      mknode Prop "eq_true_x" [e; e1; e1] [| [e1] |]
 
-  | Enot (Eapp ("=", [e1; Etrue], _), _) when nometa e1 ->
+  | Enot (Eapp ("=", [e1; Etrue], _), _) ->
      let h1 = enot (e1) in
      mknode Prop "noteq_x_true" [e; h1; e1] [| [h1] |]
 
-  | Enot (Eapp ("=", [Etrue; e1], _), _) when nometa e1 ->
+  | Enot (Eapp ("=", [Etrue; e1], _), _) ->
      let h1 = enot (e1) in
      mknode Prop "noteq_true_x" [e; h1; e1] [| [h1] |]
 
-  | Eapp ("=", [e1; Efalse], _) when nometa e1 ->
+  | Eapp ("=", [e1; Efalse], _) ->
      let h = enot (e1) in
      mknode Prop "eq_x_false" [e; h; e1] [| [h] |]
 
-  | Eapp ("=", [Efalse; e1], _) when nometa e1 ->
+  | Eapp ("=", [Efalse; e1], _) ->
      let h = enot (e1) in
      mknode Prop "eq_false_x" [e; h; e1] [| [h] |]
+
+  | Emeta (e1, _) ->
+     mknode_inst e1 efalse
+
+  | Enot (Emeta (e1, _), _) ->
+     mknode_inst e1 etrue
 
   | Eapp ("TLA.in", [e1; Evar ("TLA.emptyset", _)], _) ->
     mknode Prop "in_emptyset" [e; e1] [| |]
@@ -140,10 +179,10 @@ let newnodes_prop e g =
   (* infinity -- needed ? *)
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _) ->
-     let h1 = eapp ("TLA.subseteq", [e1; s]) in
+     let h1 = eapp ("subseteq", [e1; s]) in
      mknode Prop "in_SUBSET" [e; h1; e1; s] [| [h1] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _), _) ->
-     let h1 = enot (eapp ("TLA.subseteq", [e1; s])) in
+     let h1 = enot (eapp ("subseteq", [e1; s])) in
      mknode Prop "notin_SUBSET" [e; h1; e1; s] [| [h1] |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.UNION", [s], _)], _) ->
@@ -286,6 +325,28 @@ let newnodes_prop e g =
      let h = enot (eand (eand (eand (h0, h1), h2), h3)) in
      mknode (Inst h3) "notfunequal" [e; h; e1; e2] [| [h] |]
 
+  | Enot (Eapp ("=", [Etau (v1, t1, p1, _); Etau (v2, t2, p2, _)], _), _)
+    when not (is_notequiv p1) && not (is_notequiv p2) ->
+     let x = Expr.newvar () in
+     let p1x = substitute [(v1, x)] p1 in
+     let p2x = substitute [(v2, x)] p2 in
+     let h = eex (x, t1, eapp ("$notequiv", [p1x; p2x])) in
+     mknode Arity "choose_diff_choose"
+            [e; h; elam (v1, t1, p1); elam (v2, t2, p2)] [| [h] |]
+
+  | Eapp ("$notequiv", [e1; e2], _) ->
+     let h = enot (eequiv (e1, e2)) in
+     mknode Arity "notequivdef" [] [| [h] |]
+
+  | Enot (Eapp ("=", [e1; Etau (v2, t2, p2, _)], _), _)
+  | Enot (Eapp ("=", [Etau (v2, t2, p2, _); e1], _), _)
+  ->
+     let h1 = eex (v2, t2, p2) in
+     let h2a = enot (eex (v2, t2, p2)) in
+     let h2b = enot (substitute [(v2, e1)] p2) in
+     mknode_cut Arity "notequalchoose" [h1; h2a; h2b; elam (v2, t2, p2); e1]
+                [| [h1]; [h2a; h2b] |]
+
   | _ -> []
 ;;
 
@@ -383,6 +444,10 @@ let rewrites in_expr x ctx e mknode =
      let h2b = appctx (e2) in
      mknode "ifthenelse" [appctx e; h1a; h1b; h2a; h2b; lamctx; e0; e1; e2] []
             [| [h1a; h1b]; [h2a; h2b] |]
+  | Etau (v, t, b, _) ->
+     let h1 = eex (v, t, b) in
+     let h2 = enot (h1) in
+     mknode "cut" [h1] [] [| [h1]; [h2] |]
   | _ -> []
 ;;
 
@@ -433,6 +498,18 @@ let newnodes_rewrites e g =
           }]
        | _ -> assert false
        end
+    | "cut" ->
+      begin match args with
+      | [h] ->
+         [ Node {
+           nconc = add_con;
+           nrule = Cut (h);
+           nprio = Arity;
+           ngoal = g;
+           nbranches = branches;
+         }]
+      | _ -> assert false
+      end
     | _ ->
        [ Node {
          nconc = e :: add_con;
@@ -647,6 +724,33 @@ let to_llproof tr_expr mlp args =
        | _ -> (sub, ext)
      in
      mkproof s mlp.mlconc
+  | Ext (_, "notequivdef", _) ->
+     begin match args with
+     | [| a |] -> a
+     | _ -> assert false
+     end
+
+  | Ext (_, "notequalchoose", [h1; h2a; h2b; p; e1]) ->
+     let (sub1, ext1, sub2, ext2) =
+       match args with
+       | [| (sub1, ext1); (sub2, ext2) |] -> (sub1, ext1, sub2, ext2)
+       | _ -> assert false
+     in
+     let ext2x = Expr.diff ext2 [h2a] in
+     let extras = Expr.diff (Expr.union ext1 ext2x) mlp.mlconc in
+     let nh2a = match h2a with Enot (e1, _) -> e1 | _ -> assert false in
+     let n0 = {
+       Llproof.conc = List.map tr_expr ([h2a] @@ mlp.mlconc @@ ext2x);
+       Llproof.rule = Llproof.Rnotex (tr_expr nh2a, tr_expr e1);
+       Llproof.hyps = [sub2];
+     } in
+     let n1 = {
+       Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
+       Llproof.rule = Llproof.Rcut (tr_expr h1);
+       Llproof.hyps = [sub1; n0];
+     }
+     in (n1, extras)
+
   | _ ->
      let (name, meta, con, hyps) = to_llargs mlp.mlrule in
      let tmeta = List.map tr_expr meta in
@@ -667,7 +771,66 @@ let preprocess l = l;;
 
 let add_phrase p = ();;
 
-let postprocess p = p;;
+let rec pp_expr e =
+  match e with
+  | Evar _ -> e
+  | Emeta _ -> assert false
+  | Eapp ("$notequiv", [e1; e2], _) -> enot (eequiv (pp_expr e1, pp_expr e2))
+  | Eapp ("$notequiv", _, _) -> assert false
+  | Eapp (s, args, _) -> eapp (s, List.map pp_expr args)
+  | Enot (e1, _) -> enot (pp_expr e1)
+  | Eand (e1, e2, _) -> eand (pp_expr e1, pp_expr e2)
+  | Eor (e1, e2, _) -> eor (pp_expr e1, pp_expr e2)
+  | Eimply (e1, e2, _) -> eimply (pp_expr e1, pp_expr e2)
+  | Eequiv (e1, e2, _) -> eequiv (pp_expr e1, pp_expr e2)
+  | Etrue | Efalse -> e
+  | Eall (v, t, e1, _) -> eall (pp_expr v, t, pp_expr e1)
+  | Eex (v, t, e1, _) -> eex (pp_expr v, t, pp_expr e1)
+  | Etau (v, t, e1, _) -> etau (pp_expr v, t, pp_expr e1)
+  | Elam (v, t, e1, _) -> elam (pp_expr v, t, pp_expr e1)
+;;
+
+module LL = Llproof;;
+
+let pp_rule r =
+  match r with
+  | LL.Rfalse | LL.Rnottrue -> r
+  | LL.Raxiom (e) -> LL.Raxiom (pp_expr e)
+  | LL.Rcut (e) -> LL.Rcut (pp_expr e)
+  | LL.Rnoteq (e) -> LL.Rnoteq (pp_expr e)
+  | LL.Reqsym (e1, e2) -> LL.Reqsym (pp_expr e1, pp_expr e2)
+  | LL.Rnotnot (e) -> LL.Rnotnot (pp_expr e)
+  | LL.Rconnect (op, e1, e2) -> LL.Rconnect (op, pp_expr e1, pp_expr e2)
+  | LL.Rnotconnect (op, e1, e2) -> LL.Rnotconnect (op, pp_expr e1, pp_expr e2)
+  | LL.Rex (e1, e2) -> LL.Rex (pp_expr e1, pp_expr e2)
+  | LL.Rall (e1, e2) -> LL.Rall (pp_expr e1, pp_expr e2)
+  | LL.Rnotex (e1, e2) -> LL.Rnotex (pp_expr e1, pp_expr e2)
+  | LL.Rnotall (e1, e2) -> LL.Rnotall (pp_expr e1, pp_expr e2)
+  | LL.Rpnotp (e1, e2) -> LL.Rpnotp (pp_expr e1, pp_expr e2)
+  | LL.Rnotequal (e1, e2) -> LL.Rnotequal (pp_expr e1, pp_expr e2)
+  | LL.Rcongruence (e1, e2, e3) ->
+     LL.Rcongruence (pp_expr e1, pp_expr e2, pp_expr e3)
+  | LL.Rdefinition (nm, id, e1, e2) ->
+     LL.Rdefinition (nm, id, pp_expr e1, pp_expr e2)
+  | LL.Rextension (n, a, cs, hss) ->
+     LL.Rextension (n, List.map pp_expr a, List.map pp_expr cs,
+                 List.map (List.map pp_expr) hss)
+  | LL.Rlemma (n, args) -> LL.Rlemma (n, List.map pp_expr args)
+;;
+
+let rec pp_prooftree t = {
+  LL.conc = List.map pp_expr t.LL.conc;
+  LL.rule = pp_rule t.LL.rule;
+  LL.hyps = List.map pp_prooftree t.LL.hyps;
+};;
+
+let pp_lemma l = {
+  LL.name = l.LL.name;
+  LL.params = List.map (fun (n, t, e) -> (n, t, pp_expr e)) l.LL.params;
+  LL.proof = pp_prooftree l.LL.proof;
+};;
+
+let postprocess p = List.map pp_lemma p;;
 
 let declare_context_coq oc = [];;
 

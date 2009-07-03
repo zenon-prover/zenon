@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.12 2008-12-05 15:23:08 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.13 2009-07-03 15:52:23 doligez Exp $";;
 
 open Printf;;
 
@@ -175,7 +175,10 @@ id_expr_list_expr:
   | expr
       { [$1] }
   | IDENT expr id_expr_list_expr
-      { (evar $1) :: $2 :: $3 }
+      { match $3 with
+        | [] -> assert false
+        | body :: vals -> elam (evar ($1), "", body) :: $2 :: vals
+      }
 ;
 
 constr_list:

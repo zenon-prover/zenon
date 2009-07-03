@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.47 2009-05-20 21:35:34 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.48 2009-07-03 15:52:23 doligez Exp $";;
 
 open Printf;;
 
@@ -73,17 +73,17 @@ let rec p_expr oc e =
       poc "True";
   | Efalse ->
       poc "False";
-  | Eall (Evar (x, _), t, e, _) ->
-      poc "(forall %s : %a, %a)" x p_type t p_expr e;
+  | Eall (Evar (x, _), t, e1, _) ->
+      poc "(forall %s : %a, %a)" x p_type t p_expr e1;
   | Eall _ -> assert false
-  | Eex (Evar (x, _), t, e, _) ->
-      poc "(exists %s : %a, %a)" x p_type t p_expr e;
+  | Eex (Evar (x, _), t, e1, _) ->
+      poc "(exists %s : %a, %a)" x p_type t p_expr e1;
   | Eex _ -> assert false
-  | Elam (Evar (x, _), t, e, _) ->
-      poc "(fun %s : %a => %a)" x p_type t p_expr e;
+  | Elam (Evar (x, _), t, e1, _) ->
+      poc "(fun %s : %a => %a)" x p_type t p_expr e1;
   | Elam _ -> assert false
   | Emeta _ -> assert false
-  | Etau _ -> assert false
+  | Etau _ -> poc "%s" (Index.make_tau_name e);
 
 and p_expr_list oc l = p_list " " p_expr "" oc l;
 
@@ -106,7 +106,7 @@ let rec p_nand oc l =
 
 let rec p_bound_vars oc l =
   match l with
-  | (v, ty) :: t -> fprintf oc " (%s : %a)" v p_type ty; p_bound_vars oc t;
+  | (v, ty, _) :: t -> fprintf oc " (%s : %a)" v p_type ty; p_bound_vars oc t;
   | [] -> ()
 ;;
 
@@ -254,13 +254,15 @@ let p_rule oc r =
       end;
   | Rnotnot (p as e) ->
       poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
-  | Rex (Eex (x, _, e, _) as p, v) ->
+  | Rex (Eex (x, _, e, _) as p, t) ->
       let h0 = getname p in
+      let v = Index.make_tau_name t in
       let h1 = getname (substitute [(x, evar v)] e) in
       poc "elim %s. zenon_intro %s. zenon_intro %s.\n" h0 v h1;
   | Rex _ -> assert false
-  | Rnotall (Eall (x, _, e, _) as p, v) ->
+  | Rnotall (Eall (x, _, e, _) as p, t) ->
       let h0 = getname (enot p) in
+      let v = Index.make_tau_name t in
       let h1 = getname (enot (substitute [(x, evar v)] e)) in
       poc "apply %s. zenon_intro %s. apply NNPP. zenon_intro %s.\n" h0 v h1;
   | Rnotall _ -> assert false
@@ -275,8 +277,13 @@ let p_rule oc r =
       poc "apply %s. exists %a. apply NNPP. zenon_intro %s.\n" h0 p_expr t h1;
   | Rnotex _ -> assert false
   | Rlemma (name, args) ->
-      let args1 = List.filter (fun x -> not (Mltoll.is_meta x)) args in
-      poc "apply (%s%a); trivial.\n" name p_id_list args1;
+      let is_meta x =
+        match x with
+        | Evar (v, _) -> Mltoll.is_meta v
+        | _ -> false
+      in
+      let args1 = List.filter is_meta args in
+      poc "apply (%s%a); trivial.\n" name p_expr_list args1;
   | Rcut (e) ->
       let h0 = getname e in
       let h1 = getname (enot e) in
@@ -347,7 +354,7 @@ let p_script_thm oc proof =
   p_end oc;
 ;;
 
-let notmeta (v, _) = not (Mltoll.is_meta v);;
+let notmeta (v, _, _) = not (Mltoll.is_meta v);;
 
 let rec p_lemmas oc l =
   match l with

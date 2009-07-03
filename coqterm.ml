@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.50 2009-06-08 15:52:30 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.51 2009-07-03 15:52:23 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -141,7 +141,7 @@ let rec trexpr env e =
   | Eall _ -> assert false
   | Eex (Evar (v, _), t, e1, _) -> Cex (v, t, trexpr (v::env) e1)
   | Eex _ -> assert false
-  | Etau _ -> assert false
+  | Etau _ -> Cvar (Index.make_tau_name e)
   | Elam (Evar (v, _), t, e1, _) -> Clam (v, cty t, trexpr (v::env) e1)
   | Elam _ -> assert false
 
@@ -249,14 +249,16 @@ let rec trtree env node =
       Capp (Cvar "zenon_notequiv", [tropt p; tropt q; lam1; lam2; concl])
   | Rex (Eex (Evar (x, _) as vx, ty, px, _) as exp, z) ->
       let sub = tr_subtree_1 hyps in
-      let pz = substitute [(vx, evar z)] px in
-      let lam = Clam (z, cty ty, mklam pz sub) in
+      let zz = Index.make_tau_name z in
+      let pz = substitute [(vx, evar zz)] px in
+      let lam = Clam (zz, cty ty, mklam pz sub) in
       Capp (Cvar "zenon_ex", [cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
   | Rnotall (Eall (Evar (x, _) as vx, ty, px, _) as allp, z) ->
       let sub = tr_subtree_1 hyps in
-      let npz = enot (substitute [(vx, evar z)] px) in
-      let lam = Clam (z, cty ty, mklam npz sub) in
+      let zz = Index.make_tau_name z in
+      let npz = enot (substitute [(vx, evar zz)] px) in
+      let lam = Clam (zz, cty ty, mklam npz sub) in
       let concl = getv (enot allp) in
       Capp (Cvar "zenon_notall", [cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false
@@ -409,8 +411,8 @@ let rec rm_lambdas l term =
 let compare_hyps (name1, _) (name2, _) = Pervasives.compare name1 name2;;
 
 let make_lemma { name = name; params = params; proof = proof } =
-  let pars = List.map (fun (x, y) -> (x, cty y)) params in
-  let parenv = List.map fst params in
+  let pars = List.map (fun (x, y, _) -> (x, cty y)) params in
+  let parenv = List.map (fun (x, _, _) -> x) params in
   let f x = is_goal x || not (is_mapped x) in
   let hyps = List.filter f proof.conc in
   let hyps0 = List.map (fun x -> (getname x, trexpr parenv x)) hyps in

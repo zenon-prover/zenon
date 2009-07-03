@@ -28,8 +28,10 @@ watch.cmx: version.cmx phrase.cmx namespace.cmx misc.cmx llproof.cmx expr.cmx \
     error.cmx watch.cmi 
 eqrel.cmo: version.cmi mlproof.cmi expr.cmi eqrel.cmi 
 eqrel.cmx: version.cmx mlproof.cmx expr.cmx eqrel.cmi 
-index.cmo: version.cmi mlproof.cmi misc.cmi globals.cmi expr.cmi index.cmi 
-index.cmx: version.cmx mlproof.cmx misc.cmx globals.cmx expr.cmx index.cmi 
+index.cmo: version.cmi namespace.cmi mlproof.cmi misc.cmi globals.cmi \
+    expr.cmi index.cmi 
+index.cmx: version.cmx namespace.cmx mlproof.cmx misc.cmx globals.cmx \
+    expr.cmx index.cmi 
 print.cmo: version.cmi phrase.cmi namespace.cmi mlproof.cmi llproof.cmi \
     index.cmi expr.cmi print.cmi 
 print.cmx: version.cmx phrase.cmx namespace.cmx mlproof.cmx llproof.cmx \
@@ -89,19 +91,21 @@ ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
 ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
     extension.cmx expr.cmx ext_equiv.cmi 
 ext_induct.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
-    llproof.cmi extension.cmi expr.cmi error.cmi eqrel.cmi ext_induct.cmi 
+    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
+    ext_induct.cmi 
 ext_induct.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
-    llproof.cmx extension.cmx expr.cmx error.cmx eqrel.cmx ext_induct.cmi 
+    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
+    ext_induct.cmi 
 coqterm.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
     llproof.cmi index.cmi globals.cmi extension.cmi expr.cmi error.cmi \
     coqterm.cmi 
 coqterm.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
     llproof.cmx index.cmx globals.cmx extension.cmx expr.cmx error.cmx \
     coqterm.cmi 
-lltocoq.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi globals.cmi \
-    expr.cmi error.cmi coqterm.cmi lltocoq.cmi 
-lltocoq.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx globals.cmx \
-    expr.cmx error.cmx coqterm.cmx lltocoq.cmi 
+lltocoq.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi index.cmi \
+    globals.cmi expr.cmi error.cmi coqterm.cmi lltocoq.cmi 
+lltocoq.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx index.cmx \
+    globals.cmx expr.cmx error.cmx coqterm.cmx lltocoq.cmi 
 lltoisar.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
     llproof.cmi index.cmi globals.cmi expr.cmi coqterm.cmi lltoisar.cmi 
 lltoisar.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
@@ -142,8 +146,8 @@ tptp.cmi: phrase.cmi
 coqterm.cmi: phrase.cmi llproof.cmi expr.cmi 
 lltocoq.cmi: phrase.cmi llproof.cmi 
 lltoisar.cmi: phrase.cmi llproof.cmi 
-zenon.vo zenon.glob: zenon.v
-zenon_coqbool.vo zenon_coqbool.glob: zenon_coqbool.v
-zenon_equiv.vo zenon_equiv.glob: zenon_equiv.v
-zenon_induct.vo zenon_induct.glob: zenon_induct.v
-zenon_focal.vo zenon_focal.glob: zenon_focal.v
+zenon.vo: zenon.v
+zenon_coqbool.vo: zenon_coqbool.v
+zenon_equiv.vo: zenon_equiv.v zenon.vo
+zenon_induct.vo: zenon_induct.v
+zenon_focal.vo: zenon_focal.v
