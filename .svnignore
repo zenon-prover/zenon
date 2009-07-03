@@ -1,6 +1,10 @@
 ## after changing, run "svn propset svn:ignore -F .svnignore -R ."
 CVS
 *.output
+*.cm*
+*.annot
+*.vo
+*.byt
 parsecoq.ml
 parsecoq.mli
 lexcoq.ml
