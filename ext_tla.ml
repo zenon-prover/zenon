@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.27 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.28 2009-07-06 09:28:51 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -350,6 +350,13 @@ let newnodes_prop e g =
   | _ -> []
 ;;
 
+let rec mk_case_branches ctx l cond =
+  match l with
+  | [] -> [ [cond] ]
+  | [e] -> [ [cond; ctx e] ]
+  | c :: e :: t -> [c; ctx e] :: mk_case_branches ctx t (eand (enot (c), cond))
+;;
+
 let apply f e =
   match f with
   | Elam (v, _, b, _) -> Expr.substitute [(v, e)] b
@@ -444,6 +451,10 @@ let rewrites in_expr x ctx e mknode =
      let h2b = appctx (e2) in
      mknode "ifthenelse" [appctx e; h1a; h1b; h2a; h2b; lamctx; e0; e1; e2] []
             [| [h1a; h1b]; [h2a; h2b] |]
+  | Eapp ("TLA.CASE", args, _) ->
+     let branches = mk_case_branches appctx args etrue in
+     let c = appctx e in
+     mknode "case" (c :: List.flatten branches) [c] (Array.of_list branches)
   | Etau (v, t, b, _) ->
      let h1 = eex (v, t, b) in
      let h2 = enot (h1) in
@@ -528,6 +539,13 @@ let newnodes e g =
   newnodes_prop e g @ newnodes_rewrites e g
 ;;
 
+let rec split_case_branches l =
+  match l with
+  | [] -> []
+  | [e] -> [ [e] ]
+  | c :: e :: t -> [c; e] :: split_case_branches t
+;;
+
 let to_llargs r =
   let alpha r =
     match r with
@@ -545,6 +563,12 @@ let to_llargs r =
     match r with
     | Ext (_, name, c :: h1a :: h1b :: h2a :: h2b :: args) ->
        ("zenon_" ^ name, args, [c], [ [h1a; h1b]; [h2a; h2b] ])
+    | _ -> assert false
+  in
+  let cut12 r =
+    match r with
+    | Ext (_, name, h1 :: h2a :: h2b :: args) ->
+       ("zenon_" ^ name, args, [], [ [h1]; [h2a; h2b] ])
     | _ -> assert false
   in
   let single r =
@@ -590,6 +614,9 @@ let to_llargs r =
   | Ext (_, "notisafcn_onearg", _) -> close r
   | Ext (_, "notisafcn_extend", _) -> close r
   | Ext (_, "ifthenelse", _) -> beta2 r
+  | Ext (_, "notequalchoose", _) -> cut12 r
+  | Ext (_, "case", c :: args) ->
+     ("zenon_case", [], [c], split_case_branches args)
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
@@ -729,28 +756,6 @@ let to_llproof tr_expr mlp args =
      | [| a |] -> a
      | _ -> assert false
      end
-
-  | Ext (_, "notequalchoose", [h1; h2a; h2b; p; e1]) ->
-     let (sub1, ext1, sub2, ext2) =
-       match args with
-       | [| (sub1, ext1); (sub2, ext2) |] -> (sub1, ext1, sub2, ext2)
-       | _ -> assert false
-     in
-     let ext2x = Expr.diff ext2 [h2a] in
-     let extras = Expr.diff (Expr.union ext1 ext2x) mlp.mlconc in
-     let nh2a = match h2a with Enot (e1, _) -> e1 | _ -> assert false in
-     let n0 = {
-       Llproof.conc = List.map tr_expr ([h2a] @@ mlp.mlconc @@ ext2x);
-       Llproof.rule = Llproof.Rnotex (tr_expr nh2a, tr_expr e1);
-       Llproof.hyps = [sub2];
-     } in
-     let n1 = {
-       Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
-       Llproof.rule = Llproof.Rcut (tr_expr h1);
-       Llproof.hyps = [sub1; n0];
-     }
-     in (n1, extras)
-
   | _ ->
      let (name, meta, con, hyps) = to_llargs mlp.mlrule in
      let tmeta = List.map tr_expr meta in

@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.23 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.24 2009-07-06 09:28:51 doligez Exp $";;
 
 open Printf;;
 
@@ -96,6 +96,8 @@ let rec p_expr env dict oc e =
       poc "{%a}" (p_expr_list env dict) l;
   | Eapp ("TLA.tuple", l, _) ->
       poc "<<%a>>" (p_expr_list env dict) l;
+  | Eapp ("TLA.CASE", l, _) ->
+      poc "i'CASE (<<%a>>)" (p_expr_list env dict) l;
   | Eapp (f, [e1; e2], _) when is_infix f ->
       poc "(%a%s%a)" (p_expr env dict) e1 (tr_infix f) (p_expr env dict) e2;
   | Eapp (f, l, _) ->
@@ -222,6 +224,10 @@ let rec p_tree hyps i dict oc proof =
   | Rnotconnect (Equiv, e1, e2) ->
      beta "notequiv" (enot (eequiv (e1, e2)))
           [[enot (e1); e2]; [e1; enot (e2)]] proof.hyps;
+  | Rextension ("zenon_case", args, con, hs) ->
+     Error.warn "proof involving CASE: will not be checked by Isabelle";
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "ML_command {* set quick_and_dirty; *} sorry\n";
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
