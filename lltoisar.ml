@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.24 2009-07-06 09:28:51 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.25 2009-07-06 10:11:34 doligez Exp $";;
 
 open Printf;;
 
@@ -97,7 +97,7 @@ let rec p_expr env dict oc e =
   | Eapp ("TLA.tuple", l, _) ->
       poc "<<%a>>" (p_expr_list env dict) l;
   | Eapp ("TLA.CASE", l, _) ->
-      poc "i'CASE (<<%a>>)" (p_expr_list env dict) l;
+      poc "xxx'CASE (<<%a>>)" (p_expr_list env dict) l;
   | Eapp (f, [e1; e2], _) when is_infix f ->
       poc "(%a%s%a)" (p_expr env dict) e1 (tr_infix f) (p_expr env dict) e2;
   | Eapp (f, l, _) ->
