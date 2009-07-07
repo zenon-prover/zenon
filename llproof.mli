@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.14 2009-07-03 15:52:23 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.15 2009-07-07 14:18:19 doligez Exp $  *)
 
 open Expr;;
 
@@ -240,10 +240,9 @@ type prooftree = {
 };;
 
 type lemma = {
-  name : string;                           (* nom du lemme *)
-  params : (string * string * expr) list;  (* parametres, avec leurs types
-                                              et leurs actuals *)
-  proof : prooftree;                       (* preuve *)
+  name : string;                  (* nom du lemme *)
+  params : (string * expr) list;  (* (type, actual) *)
+  proof : prooftree;              (* preuve *)
 };;
 
 type proof = lemma list;;

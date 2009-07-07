@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.26 2009-07-07 11:32:03 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.27 2009-07-07 14:18:19 doligez Exp $";;
 
 open Printf;;
 
@@ -468,13 +468,14 @@ and p_subst hyps i dict oc mk l1 l2 rl2 prev =
 
 let p_lemma hyps i dict oc lem =
   iprintf i oc "have %s: \"" lem.name;
-  let f (x, y, e) =
+  let f (ty, e) accu =
     match e with
-    | Evar _ -> true
-    | Etau _ -> false
+    | Evar (x, _) -> x :: accu
+    | Etau _ -> accu
     | _ -> assert false
   in
-  List.iter (fun (x, y, _) -> fprintf oc "!!%s. " x) (List.filter f lem.params);
+  let params = List.fold_right f lem.params [] in
+  List.iter (fprintf oc "!!%s. ") params;
   List.iter (fun x -> fprintf oc "%a ==> " (p_expr dict) x) lem.proof.conc;
   fprintf oc "FALSE\"";
 
@@ -488,7 +489,7 @@ let p_lemma hyps i dict oc lem =
     fprintf oc "FALSE\")\n";
   end;
   iprintf i oc "proof -\n";
-  List.iter (fun (x, y, _) -> iprintf (iinc i) oc "fix \"%s\"\n" x) lem.params;
+  List.iter (iprintf (iinc i) oc "fix \"%s\"\n") params;
   let p_asm dict x =
     iprintf (iinc i) oc "assume %s:\"%a\"" (hname hyps x) (p_expr dict) x;
     p_is dict oc x

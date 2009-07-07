@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.14 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.15 2009-07-07 14:18:19 doligez Exp $";;
 
 open Expr;;
 
@@ -40,7 +40,7 @@ type prooftree = {
 
 type lemma = {
   name : string;
-  params : (string * string * Expr.expr) list;
+  params : (string * Expr.expr) list;
   proof : prooftree;
 };;
 
@@ -124,7 +124,7 @@ let rec opt t =
   with Not_found ->
   match t.rule with
   | Rlemma (name, _) ->
-     let args = List.map (fun (_, _, x) -> x) (get_lemma name).params in
+     let args = List.map snd (get_lemma name).params in
      { conc = nconc; hyps = nhyps;
        rule = Rlemma (name, args) }
   | _ -> { t with conc = nconc; hyps = nhyps }

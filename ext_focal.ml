@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.22 2009-05-28 11:55:03 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.23 2009-07-07 14:18:19 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -768,7 +768,10 @@ and process_rule r =
   | Rlemma (_, _) -> r
 ;;
 
-let process_lemma l = { l with proof = process_prooftree l.proof };;
+let process_lemma l = { l with
+  params = List.map (fun (ty, e) -> (ty, process_expr e)) l.params;
+  proof = process_prooftree l.proof;
+};;
 let postprocess p = List.map process_lemma p;;
 
 let declare_context_coq oc =

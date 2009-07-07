@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.48 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.49 2009-07-07 14:18:19 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -175,20 +175,13 @@ let tr_rule r =
   | Close_refl (s, _) (* when s <> "=" *) -> assert false
 ;;
 
-let rec triple_mem x l =
-  match l with
-  | [] -> false
-  | (y, _, _) :: t when x = y -> true
-  | _ :: t -> triple_mem x t
-;;
-
 let rec merge l1 l2 =
   match l1 with
   | [] -> l2
-  | (v,t,a) as vta :: vtas ->
-      if triple_mem v l2
-      then merge vtas l2
-      else merge vtas (vta :: l2)
+  | (t,a) as ta :: tas ->
+      if List.exists (fun (x, y) -> Expr.equal a y) l2
+      then merge tas l2
+      else merge tas (ta :: l2)
 ;;
 
 let rec get_params accu p =
@@ -196,7 +189,7 @@ let rec get_params accu p =
   | Evar (v, _) -> accu
   | Emeta (m, _) ->
      let name = make_meta_name m in
-     merge [(name, get_type m, evar (name))] accu
+     merge [(get_type m, evar (name))] accu
   | Eapp (_, es, _) -> List.fold_left get_params accu es
 
   | Enot (e, _) -> get_params accu e
@@ -209,8 +202,7 @@ let rec get_params accu p =
   | Eall (v, t, e, _) -> get_params accu e
   | Eex (v, t, e, _) -> get_params accu e
   | Etau (v, t, _, _) ->
-     let name = Index.make_tau_name p in
-     merge [(name, t, p)] accu
+     merge [(t, p)] accu
   | Elam (v, t, e, _) -> get_params accu e
 ;;
 
@@ -220,7 +212,7 @@ let lemma_tbl = (Hashtbl.create 997
 let get_lemma p =
   let name = lemma_name (-p.mlrefc) in
   let (lemma, extras) = Hashtbl.find lemma_tbl name in
-  let args = List.map (fun (_, _, x) -> x) lemma.LL.params in
+  let args = List.map snd lemma.LL.params in
   ({
     LL.conc = lemma.LL.proof.LL.conc;
     LL.rule = LL.Rlemma (lemma.LL.name, args);
@@ -234,7 +226,7 @@ let make_lemma llprf extras mlprf =
   mlprf.mlrefc <- - !lemma_num;
   let l = {
     LL.name = name;
-    LL.params = List.fold_left get_params [] mlprf.mlconc;
+    LL.params = List.fold_left get_params [] llprf.LL.conc;
     LL.proof = llprf;
   } in
   Hashtbl.add lemma_tbl name (l, extras);

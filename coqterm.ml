@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.52 2009-07-07 13:14:34 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.53 2009-07-07 14:18:19 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -400,7 +400,7 @@ and mk_eq_node env (ctx, a, b) h sub =
 let rec make_lambdas l term =
   match l with
   | [] -> term
-  | (e, ty) :: t -> Clam (e, ty, make_lambdas t term)
+  | (ty, e) :: t -> Clam (e, ty, make_lambdas t term)
 ;;
 
 let rec rm_lambdas l term =
@@ -413,14 +413,21 @@ let rec rm_lambdas l term =
 let compare_hyps (name1, _) (name2, _) = Pervasives.compare name1 name2;;
 
 let make_lemma { name = name; params = params; proof = proof } =
-  let pars = List.map (fun (x, y, _) -> (x, cty y)) params in
-  let parenv = List.map (fun (x, _, _) -> x) params in
+  let f (ty, e) =
+    match e with
+    | Evar (v, _) -> (ty, v)
+    | Etau _ -> (ty, Index.make_tau_name e)
+    | _ -> assert false
+  in
+  let rawparams = List.map f params in
+  let pars = List.map (fun (ty, v) -> (cty ty, v)) rawparams in
+  let parenv = List.map snd rawparams in
   let f x = is_goal x || not (is_mapped x) in
   let hyps = List.filter f proof.conc in
-  let hyps0 = List.map (fun x -> (getname x, trexpr parenv x)) hyps in
+  let hyps0 = List.map (fun x -> (trexpr parenv x, getname x)) hyps in
   let hyps1 = List.sort compare_hyps hyps0 in
   let formals = pars @ hyps1 in
-  let actuals = List.map fst formals in
+  let actuals = List.map snd formals in
   (make_lambdas formals (trtree parenv proof), name, actuals)
 ;;
 

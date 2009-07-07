@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.49 2009-07-07 13:14:34 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.50 2009-07-07 14:18:19 doligez Exp $";;
 
 open Printf;;
 
@@ -106,7 +106,9 @@ let rec p_nand oc l =
 
 let rec p_bound_vars oc l =
   match l with
-  | (v, ty, _) :: t -> fprintf oc " (%s : %a)" v p_type ty; p_bound_vars oc t;
+  | (ty, arg) :: t ->
+     fprintf oc " (%a : %a)" p_expr arg p_type ty;
+     p_bound_vars oc t;
   | [] -> ()
 ;;
 
@@ -185,6 +187,12 @@ let apply_beta2 oc lem h0 h1a h1b h2a h2b =
                 | zenon_intro %s; zenon_intro %s ].\n"
              lem (getname h0) (getname h1a) (getname h1b)
              (getname h2a) (getname h2b);
+;;
+
+let notmeta x =
+  match x with
+  | Evar (v, _) -> not (Mltoll.is_meta v)
+  | _ -> true
 ;;
 
 let p_rule oc r =
@@ -279,12 +287,7 @@ let p_rule oc r =
       poc "apply %s. exists %a. apply NNPP. zenon_intro %s.\n" h0 p_expr t h1;
   | Rnotex _ -> assert false
   | Rlemma (name, args) ->
-      let is_meta x =
-        match x with
-        | Evar (v, _) -> Mltoll.is_meta v
-        | _ -> false
-      in
-      let args1 = List.filter is_meta args in
+      let args1 = List.filter notmeta args in
       poc "apply (%s%a); trivial.\n" name p_expr_list args1;
   | Rcut (e) ->
       let h0 = getname e in
@@ -356,13 +359,11 @@ let p_script_thm oc proof =
   p_end oc;
 ;;
 
-let notmeta (v, _, _) = not (Mltoll.is_meta v);;
-
 let rec p_lemmas oc l =
   match l with
   | [] -> ()
   | lem :: t ->
-     let params = List.filter notmeta lem.params in
+     let params = List.filter (fun (ty, v) -> notmeta v) lem.params in
      declare_lemma oc lem.name params lem.proof.conc;
      p_script_lemma oc (List.length params) lem.proof;
      fprintf oc "(* end of lemma %s *)\n" lem.name;
@@ -373,7 +374,7 @@ let p_theorem oc phrases l =
   match l with
   | [] -> assert false
   | thm :: lemmas ->
-     let params = List.filter notmeta thm.params in
+     let params = List.filter (fun (ty, v) -> notmeta v) thm.params in
      declare_theorem oc thm.name params thm.proof.conc phrases;
      p_lemmas oc (List.rev lemmas);
      p_script_thm oc thm.proof;

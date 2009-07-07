@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.30 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.31 2009-07-07 14:18:19 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -537,10 +537,16 @@ let rec llproof_tree o i t =
   incr nodes;
 ;;
 
-let print_idtype o (v, t, act) =
-  if t = univ_name
-  then oprintf o "%s " v
-  else oprintf o "%s:\"%s\" " v t
+let print_idtype o (ty, act) =
+  if ty = univ_name
+  then begin
+    llproof_expr o act;
+    oprintf o " ";
+  end else begin
+    oprintf o "(";
+    llproof_expr o act;
+    oprintf o "):\"%s\" " ty
+  end
 ;;
 
 let llproof_lemma o {name=name; params=params; proof=tree} =

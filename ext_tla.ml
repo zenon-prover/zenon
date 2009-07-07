@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.28 2009-07-06 09:28:51 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.29 2009-07-07 14:18:19 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -831,7 +831,7 @@ let rec pp_prooftree t = {
 
 let pp_lemma l = {
   LL.name = l.LL.name;
-  LL.params = List.map (fun (n, t, e) -> (n, t, pp_expr e)) l.LL.params;
+  LL.params = List.map (fun (t, e) -> (t, pp_expr e)) l.LL.params;
   LL.proof = pp_prooftree l.LL.proof;
 };;
 
