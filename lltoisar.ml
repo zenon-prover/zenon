@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.25 2009-07-06 10:11:34 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.26 2009-07-07 11:32:03 doligez Exp $";;
 
 open Printf;;
 
@@ -474,16 +474,26 @@ let p_lemma hyps i dict oc lem =
     | Etau _ -> false
     | _ -> assert false
   in
-  List.iter (fun (x, y, _) -> fprintf oc "!!%s." x) (List.filter f lem.params);
-  List.iter (fun x -> fprintf oc " %a ==>" (p_expr dict) x) lem.proof.conc;
-  fprintf oc " FALSE\"\n";
+  List.iter (fun (x, y, _) -> fprintf oc "!!%s. " x) (List.filter f lem.params);
+  List.iter (fun x -> fprintf oc "%a ==> " (p_expr dict) x) lem.proof.conc;
+  fprintf oc "FALSE\"";
+
+  let f (pats, dict) e = let (p, dict1) = mk_pat dict e in (p :: pats, dict1) in
+  let (pats, dict1) = List.fold_left f ([], dict) lem.proof.conc in
+  if List.for_all ((=) "_") pats then begin
+    fprintf oc "\n";
+  end else begin
+    fprintf oc " (is \"";
+    List.iter (fprintf oc "%s ==> ") (List.rev pats);
+    fprintf oc "FALSE\")\n";
+  end;
   iprintf i oc "proof -\n";
   List.iter (fun (x, y, _) -> iprintf (iinc i) oc "fix \"%s\"\n" x) lem.params;
   let p_asm dict x =
     iprintf (iinc i) oc "assume %s:\"%a\"" (hname hyps x) (p_expr dict) x;
     p_is dict oc x
   in
-  let dict2 = List.fold_left p_asm dict lem.proof.conc in
+  let dict2 = List.fold_left p_asm dict1 lem.proof.conc in
   p_tree hyps (iinc i) dict2 oc lem.proof;
   iprintf i oc "qed\n";
 ;;
