@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.51 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.52 2009-07-07 13:14:34 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -249,16 +249,18 @@ let rec trtree env node =
       Capp (Cvar "zenon_notequiv", [tropt p; tropt q; lam1; lam2; concl])
   | Rex (Eex (Evar (x, _) as vx, ty, px, _) as exp, z) ->
       let sub = tr_subtree_1 hyps in
-      let zz = Index.make_tau_name z in
-      let pz = substitute [(vx, evar zz)] px in
-      let lam = Clam (zz, cty ty, mklam pz sub) in
+      let zz = etau (vx, ty, px) in
+      let zzn = Index.make_tau_name zz in
+      let pzz = substitute [(vx, zz)] px in
+      let lam = Clam (zzn, cty ty, mklam pzz sub) in
       Capp (Cvar "zenon_ex", [cty ty; trpred x ty px; lam; getv exp])
   | Rex _ -> assert false
   | Rnotall (Eall (Evar (x, _) as vx, ty, px, _) as allp, z) ->
       let sub = tr_subtree_1 hyps in
-      let zz = Index.make_tau_name z in
-      let npz = enot (substitute [(vx, evar zz)] px) in
-      let lam = Clam (zz, cty ty, mklam npz sub) in
+      let zz = etau (vx, ty, enot (px)) in
+      let zzn = Index.make_tau_name (zz) in
+      let pzz = substitute [(vx, zz)] px in
+      let lam = Clam (zzn, cty ty, mklam (enot (pzz)) sub) in
       let concl = getv (enot allp) in
       Capp (Cvar "zenon_notall", [cty ty; trpred x ty px; lam; concl])
   | Rnotall _ -> assert false

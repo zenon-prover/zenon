@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.48 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.49 2009-07-07 13:14:34 doligez Exp $";;
 
 open Printf;;
 
@@ -254,17 +254,19 @@ let p_rule oc r =
       end;
   | Rnotnot (p as e) ->
       poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
-  | Rex (Eex (x, _, e, _) as p, t) ->
+  | Rex (Eex (vx, ty, e, _) as p, t) ->
       let h0 = getname p in
-      let v = Index.make_tau_name t in
-      let h1 = getname (substitute [(x, evar v)] e) in
-      poc "elim %s. zenon_intro %s. zenon_intro %s.\n" h0 v h1;
+      let zz = etau (vx, ty, e) in
+      let zzn = Index.make_tau_name zz in
+      let h1 = getname (substitute [(vx, zz)] e) in
+      poc "elim %s. zenon_intro %s. zenon_intro %s.\n" h0 zzn h1;
   | Rex _ -> assert false
-  | Rnotall (Eall (x, _, e, _) as p, t) ->
+  | Rnotall (Eall (vx, ty, e, _) as p, t) ->
       let h0 = getname (enot p) in
-      let v = Index.make_tau_name t in
-      let h1 = getname (enot (substitute [(x, evar v)] e)) in
-      poc "apply %s. zenon_intro %s. apply NNPP. zenon_intro %s.\n" h0 v h1;
+      let zz = etau (vx, ty, enot (e)) in
+      let zzn = Index.make_tau_name zz in
+      let h1 = getname (enot (substitute [(vx, zz)] e)) in
+      poc "apply %s. zenon_intro %s. apply NNPP. zenon_intro %s.\n" h0 zzn h1;
   | Rnotall _ -> assert false
   | Rall (Eall (x, _, e, _) as p, t) ->
       let h0 = getname p in
