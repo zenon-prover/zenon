@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.27 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.28 2009-07-10 09:59:07 doligez Exp $";;
 
 open Printf;;
 
@@ -104,8 +104,8 @@ let rec p_expr env dict oc e =
       poc "%s(%a)" (tr_prefix f) (p_expr_list env dict) l;
   | Enot (Eapp ("=", [e1; e2], _), _) ->
       poc "(%a~=%a)" (p_expr env dict) e1 (p_expr env dict) e2;
-  | Enot (e, _) ->
-      poc "(~%a)" (p_expr env dict) e;
+  | Enot (e1, _) ->
+      poc "(~%a)" (p_expr env dict) e1;
   | Eand (e1, e2, _) ->
       poc "(%a&%a)" (p_expr env dict) e1 (p_expr env dict) e2;
   | Eor (e1, e2, _) ->
@@ -281,16 +281,18 @@ let rec p_tree hyps i dict oc proof =
      gamma "notex" true (elam (x, t, e1)) e2 (enot nconc) proof.hyps;
   | Rnotex _ -> assert false
   | Rlemma (l, a) ->
-     let pr dict oc x =
-       match x with
-       | Evar (v, _) -> fprintf oc "?%s=%s" v v
-       | Etau _ -> ()
-       | _ -> assert false
+     let rec filter_vars l =
+      match l with
+      | [] -> []
+      | Evar (v, _) :: t -> v :: filter_vars t
+      | Etau _ :: t -> filter_vars t
+      | _ -> assert false
      in
+     let pr dict oc v = fprintf oc "?%s=%s" v v in
      let pr_hyp dict oc h = fprintf oc "%s" (hname hyps h) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s [where %a, OF %a])\n" l
-             (p_list dict "" pr " and ") a
+             (p_list dict "" pr " and ") (filter_vars a)
              (p_list dict "" pr_hyp " ") proof.conc;
   | Rcut (e1) ->
      iprintf i oc "show FALSE\n";
