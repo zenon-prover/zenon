@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.53 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.54 2009-07-16 12:06:34 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -842,7 +842,8 @@ let declare_context oc phrases =
   if not !Globals.quiet_flag then fprintf oc "(* BEGIN-CONTEXT *)\n";
   fprintf oc "Add LoadPath \"%s\".\n" !Globals.load_path;
   fprintf oc "Require Import zenon.\n";
-  let ext_decl = Extension.declare_context_coq oc in
+  Extension.declare_context_coq oc;
+  let ext_decl = Extension.predef () in
   fprintf oc "Parameter %s : Set.\n" univ_name;
   fprintf oc "Parameter %s : %s.\n" any_name univ_name;
   let sigs = get_signatures phrases ext_decl in

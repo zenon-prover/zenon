@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.7 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: ext_equiv.ml,v 1.8 2009-07-16 12:06:34 doligez Exp $";;
 
 (* Extension for trees of equivalences and negations. *)
 
@@ -235,8 +235,9 @@ let to_llproof tr_prop tr_term mlp args =
 
 let declare_context_coq oc =
   Printf.fprintf oc "Require Import zenon_equiv.\n";
-  []
 ;;
+
+let predef () = [];;
 
 Extension.register {
   Extension.name = "equiv";
@@ -248,4 +249,5 @@ Extension.register {
   Extension.postprocess = (fun x -> x);
   Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
   Extension.declare_context_coq = declare_context_coq;
+  Extension.predef = predef;
 };;

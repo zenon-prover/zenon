@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: ext_recfun.ml,v 1.1 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: ext_recfun.ml,v 1.2 2009-07-16 12:06:34 doligez Exp $";;
 
 (* Extension for recursive function definitions. *)
 
@@ -45,7 +45,9 @@ let to_llproof tr_expr mlp args =
   in (nn, extras)
 ;;
 
-let declare_context_coq oc = [];;
+let declare_context_coq oc = ();;
+
+let predef () = [];;
 
 Extension.register {
   Extension.name = "recfun";
@@ -57,4 +59,5 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.predef = predef;
 };;

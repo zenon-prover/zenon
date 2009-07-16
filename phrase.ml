@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.17 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.18 2009-07-16 12:06:34 doligez Exp $";;
 
 open Expr;;
 
@@ -58,45 +58,50 @@ let rec check_body env s e =
     -> check_body (v::env) s f
 ;;
 
-let rec is_def env e =
+let rec is_def predef env e =
   match e with
-  | Eall (v, t, f, _) -> is_def (v::env) f
-  | Eequiv (Eapp ("=", _, _), _, _)
-  | Eequiv (_, Eapp ("=", _, _), _)
-    -> false
-  | Eequiv (Eapp (s, args, _), body, _)
-  | Eequiv (body, Eapp (s, args, _), _)
-    -> check_args env args && check_body [] s body
-  | Eequiv (Evar (s, _), body, _)
-  | Eequiv (body, Evar (s, _), _)
-    -> env = [] && check_body [] s body
-  | Eapp ("=", [Evar (s, _); body], _)
-  | Eapp ("=", [body; Evar (s, _)], _)
-    -> env = [] && check_body [] s body
-  | Eapp ("=", [Eapp (s, args, _); body], _)
-  | Eapp ("=", [body; Eapp (s, args, _)], _)
-    -> check_args env args && check_body [] s body
+  | Eall (v, t, f, _) -> is_def predef (v::env) f
+  | Eequiv (Eapp (s, args, _), body, _) when not (List.mem s predef) ->
+     check_args env args && check_body [] s body
+  | Eequiv (body, Eapp (s, args, _), _) when not (List.mem s predef) ->
+     check_args env args && check_body [] s body
+  | Eequiv (Evar (s, _), body, _) when not (List.mem s predef) ->
+     env = [] && check_body [] s body
+  | Eequiv (body, Evar (s, _), _) when not (List.mem s predef) ->
+     env = [] && check_body [] s body
+  | Eapp ("=", [Evar (s, _); body], _) when not (List.mem s predef) ->
+     env = [] && check_body [] s body
+  | Eapp ("=", [body; Evar (s, _)], _) when not (List.mem s predef) ->
+     env = [] && check_body [] s body
+  | Eapp ("=", [Eapp (s, args, _); body], _) when not (List.mem s predef) ->
+     check_args env args && check_body [] s body
+  | Eapp ("=", [body; Eapp (s, args, _)], _) when not (List.mem s predef) ->
+     check_args env args && check_body [] s body
   | _ -> false
 ;;
 
-let rec make_def orig env e =
+let rec make_def predef orig env e =
   match e with
-  | Eall (v, t, f, _) -> make_def orig (v::env) f
-  | Eequiv (Eapp (s, args, _), body, _) when check_args env args ->
+  | Eall (v, t, f, _) -> make_def predef orig (v::env) f
+  | Eequiv (Eapp (s, args, _), body, _)
+    when not (List.mem s predef) && check_args env args ->
       DefPseudo (orig, s, extract_args args, body)
-  | Eequiv (body, Eapp (s, args, _), _) when check_args env args ->
+  | Eequiv (body, Eapp (s, args, _), _) when
+    not (List.mem s predef) && check_args env args ->
       DefPseudo (orig, s, extract_args args, body)
-  | Eequiv (Evar (s, _), body, _) ->
+  | Eequiv (Evar (s, _), body, _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eequiv (body, Evar (s, _), _) ->
+  | Eequiv (body, Evar (s, _), _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eapp ("=", [Evar (s, _); body], _) ->
+  | Eapp ("=", [Evar (s, _); body], _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eapp ("=", [body; Evar (s, _)], _) ->
+  | Eapp ("=", [body; Evar (s, _)], _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eapp ("=", [Eapp (s, args, _); body], _) when check_args env args ->
+  | Eapp ("=", [Eapp (s, args, _); body], _)
+    when not (List.mem s predef) && check_args env args ->
       DefPseudo (orig, s, extract_args args, body)
-  | Eapp ("=", [body; Eapp (s, args, _)], _) when check_args env args ->
+  | Eapp ("=", [body; Eapp (s, args, _)], _)
+    when not (List.mem s predef) && check_args env args ->
       DefPseudo (orig, s, extract_args args, body)
   | _ -> assert false
 ;;
@@ -163,38 +168,38 @@ let get_symbol = function
   | _ -> assert false
 ;;
 
-let rec xseparate deps multi defs hyps l =
+let rec xseparate predef deps multi defs hyps l =
   match l with
   | [] -> (List.rev defs, List.rev hyps)
-  | Def d :: t -> xseparate deps multi (d :: defs) hyps t
-  | Hyp (_, e, p) :: t when is_def [] e ->
-      let d = make_def (e, p) [] e in
+  | Def d :: t -> xseparate predef deps multi (d :: defs) hyps t
+  | Hyp (_, e, p) :: t when is_def predef [] e ->
+      let d = make_def predef (e, p) [] e in
       let sym = get_symbol d in
       let newdep = extract_dep d in
       if List.mem sym multi || looping newdep deps then
-        xseparate deps multi defs ((e, p) :: hyps) t
+        xseparate predef deps multi defs ((e, p) :: hyps) t
       else if is_redef d defs then
         let (ndefs, ep2) = remove_def [] sym defs in
-        xseparate (List.remove_assoc sym deps) (sym::multi) ndefs
+        xseparate predef (List.remove_assoc sym deps) (sym::multi) ndefs
                   ((e, p) :: ep2 :: hyps) t
       else
-        xseparate (newdep :: deps) multi (d :: defs) hyps t
-  | Hyp (_, e, p) :: t -> xseparate deps multi defs ((e, p) :: hyps) t
-  | Sig _ :: t -> xseparate deps multi defs hyps t
-  | Inductive _ :: t -> xseparate deps multi defs hyps t
+        xseparate predef (newdep :: deps) multi (d :: defs) hyps t
+  | Hyp (_, e, p) :: t -> xseparate predef deps multi defs ((e, p) :: hyps) t
+  | Sig _ :: t -> xseparate predef deps multi defs hyps t
+  | Inductive _ :: t -> xseparate predef deps multi defs hyps t
 ;;
 
-let change_to_def body =
-  if is_def [] body then begin
-    match make_def (body, 0) [] body with
+let separate predef l = xseparate predef [] [] [] [] l;;
+
+let change_to_def predef body =
+  if is_def predef [] body then begin
+    match make_def predef (body, 0) [] body with
     | DefPseudo (_, s, args, def) -> DefReal ("", s, args, def)
     | _ -> assert false
   end else begin
     raise (Invalid_argument "change_to_def")
   end
 ;;
-
-let separate l = xseparate [] [] [] [] l;;
 
 type tpphrase =
   | Include of string

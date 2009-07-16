@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.29 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.30 2009-07-16 12:06:34 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -32,6 +32,27 @@ let tla_set_constructors = [
   "TLA.FuncSet";
   "TLA.DOMAIN";
   "TLA.Product";
+(*
+  "i'dotdot";
+*)
+  "Nat";
+  "Int";
+  "Seq";
+];;
+
+let tla_fcn_constructors = [
+  "TLA.Fcn";
+  "TLA.except";
+  "TLA.oneArg";
+  "TLA.extend";
+];;
+
+let tla_other_symbols = [
+  "TLA.in";
+  "TLA.isAFcn";
+  "TLA.cond";
+  "TLA.CASE";
+  "TLA.tuple";
 ];;
 
 let is_set_expr e =
@@ -40,13 +61,6 @@ let is_set_expr e =
   | Eapp (f, _, _) -> List.mem f tla_set_constructors
   | _ -> false
 ;;
-
-let tla_fcn_constructors = [
-  "TLA.Fcn";
-  "TLA.except";
-  "TLA.oneArg";
-  "TLA.extend";
-];;
 
 let is_fcn_expr e =
   match e with
@@ -70,6 +84,22 @@ let rec decompose_add e =
   | _ -> ([], e)
 ;;
 
+let rec get_values_set e =
+  match e with
+  | Evar ("TLA.emptyset", _) -> ([], false)
+  | Eapp ("TLA.upair", [e1; e2], _) -> ([e1; e2], false)
+  | Eapp ("TLA.set", l, _) -> (l, false)
+  | Eapp ("TLA.add", [e1; e2], _) ->
+     let (vs, rest) = get_values_set e2 in
+     (e1 :: vs, rest)
+  | Eapp ("TLA.union", [e1; e2], _) ->
+     let (vs1, rest1) = get_values_set e1 in
+     let (vs2, rest2) = get_values_set e2 in
+     (vs1 @ vs2, rest1 || rest2)
+(*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
+  | _ -> ([], true)
+;;
+
 let newnodes_prop e g =
   let mknode prio name args branches =
     [ Node {
@@ -89,14 +119,14 @@ let newnodes_prop e g =
       nbranches = branches;
     } ]
   in
-  let mknode_inst m term =
+  let mknode_inst prio m term =
     match m with
     | Eall (v, t, p, _) ->
        let n = Expr.substitute [(v, term)] p in
        [ Node {
          nconc = [m];
          nrule = All (m, term);
-         nprio = Inst m;
+         nprio = prio;
          ngoal = g;
          nbranches = [| [n] |];
        } ]
@@ -106,7 +136,7 @@ let newnodes_prop e g =
        [ Node {
          nconc = [nm];
          nrule = NotEx (nm, term);
-         nprio = Inst m;
+         nprio = prio;
          ngoal = g;
          nbranches = [| [n] |];
        } ]
@@ -136,10 +166,10 @@ let newnodes_prop e g =
      mknode Prop "eq_false_x" [e; h; e1] [| [h] |]
 
   | Emeta (e1, _) ->
-     mknode_inst e1 efalse
+     mknode_inst Arity e1 efalse
 
   | Enot (Emeta (e1, _), _) ->
-     mknode_inst e1 etrue
+     mknode_inst Arity e1 etrue
 
   | Eapp ("TLA.in", [e1; Evar ("TLA.emptyset", _)], _) ->
     mknode Prop "in_emptyset" [e; e1] [| |]
@@ -277,6 +307,16 @@ let newnodes_prop e g =
      mknode (Inst h3) "notin_funcset" [e; h1; h2; h3; f; a; b]
             [| [h1]; [h2]; [h3] |]
 
+  | Eapp ("=", [e1; Evar ("TLA.emptyset", _)], _) ->
+     let x = Expr.newvar () in
+     let h = eall (x, "", enot (eapp ("TLA.in", [x; e1]))) in
+     mknode Arity "setequalempty" [e; h; e1] [| [h] |]
+
+  | Eapp ("=", [Evar ("TLA.emptyset", _); e1], _) ->
+     let x = Expr.newvar () in
+     let h = eall (x, "", enot (eapp ("TLA.in", [x; e1]))) in
+     mknode Arity "setemptyequal" [e; h; e1] [| [h] |]
+
   | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
      let h = eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
@@ -344,8 +384,26 @@ let newnodes_prop e g =
      let h1 = eex (v2, t2, p2) in
      let h2a = enot (eex (v2, t2, p2)) in
      let h2b = enot (substitute [(v2, e1)] p2) in
-     mknode_cut Arity "notequalchoose" [h1; h2a; h2b; elam (v2, t2, p2); e1]
+     mknode_cut (Inst h2a) "notequalchoose"
+                [h1; h2a; h2b; elam (v2, t2, p2); e1]
                 [| [h1]; [h2a; h2b] |]
+
+  | Eall (v, t, Eimply (Eapp ("TLA.in",
+                              [vv; ( Eapp (("TLA.add" | "TLA.upair" | "TLA.set"
+                                            | "TLA.union"), _, _)
+                                   | Evar ("TLA.emptyset", _)
+                                   ) as s], _), _, _), _) ->
+     let (elems, rest) = get_values_set s in
+     let nodes = List.map (fun elem -> mknode_inst Arity e elem) elems in
+     List.flatten nodes @ (if rest then [] else [Stop])
+  | Enot ((Eex (v, t, Eand (Eapp ("TLA.in",
+                                  [vv; ( Eapp (("TLA.add" | "TLA.upair"
+                                                | "TLA.set" | "TLA.union"), _, _)
+                                       | Evar ("TLA.emptyset", _)
+                                       ) as s], _), _, _), _) as ex), _) ->
+     let (elems, rest) = get_values_set s in
+     let nodes = List.map (fun elem -> mknode_inst Arity ex elem) elems in
+     List.flatten nodes @ (if rest then [] else [Stop])
 
   | _ -> []
 ;;
@@ -837,7 +895,9 @@ let pp_lemma l = {
 
 let postprocess p = List.map pp_lemma p;;
 
-let declare_context_coq oc = [];;
+let declare_context_coq oc = ();;
+
+let predef () = tla_set_constructors @ tla_fcn_constructors @ tla_other_symbols;;
 
 Extension.register {
   Extension.name = "tla";
@@ -849,4 +909,5 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.predef = predef;
 };;

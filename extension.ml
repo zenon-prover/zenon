@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.11 2008-11-24 15:28:27 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.12 2009-07-16 12:06:34 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -18,7 +18,8 @@ type t = {
   add_phrase : Phrase.phrase -> unit;
   postprocess : Llproof.proof -> Llproof.proof;
   to_llproof : translator;
-  declare_context_coq : out_channel -> string list;
+  declare_context_coq : out_channel -> unit;
+  predef : unit -> string list;
 };;
 
 let theories = ref ([] : t list);;
@@ -79,9 +80,9 @@ let to_llproof tr_expr node subs =
 ;;
 
 let declare_context_coq oc =
-  let f ext decl =
-    let dd = ext.declare_context_coq oc in
-    dd @ decl
-  in
-  List.fold_right f !active []
+  List.iter (fun ext -> ext.declare_context_coq oc) !active
+;;
+
+let predef () =
+  List.flatten (["="] :: List.map (fun ext -> ext.predef ()) !active)
 ;;

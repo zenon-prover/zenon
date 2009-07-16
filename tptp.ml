@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.17 2008-08-14 14:02:09 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.18 2009-07-16 12:06:34 doligez Exp $";;
 
 open Printf;;
 
@@ -78,7 +78,7 @@ let rec make_annot_expr e =
 ;;
 
 let make_definition name form body p =
-  try Def (Phrase.change_to_def body)
+  try Def (Phrase.change_to_def (Extension.predef ()) body)
   with Invalid_argument _ ->
     let msg = sprintf "annotated formula %s is not a definition" name in
     Error.warn msg;

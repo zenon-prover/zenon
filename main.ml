@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.50 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.51 2009-07-16 12:06:34 doligez Exp $";;
 
 open Printf;;
 
@@ -325,7 +325,7 @@ let main () =
     let phrases = List.map fst phrases_dep in
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
-    let (defs, hyps) = Phrase.separate ppphrases in
+    let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
     if !debug_flag then begin

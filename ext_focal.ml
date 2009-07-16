@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.23 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.24 2009-07-16 12:06:34 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -777,6 +777,9 @@ let postprocess p = List.map process_lemma p;;
 let declare_context_coq oc =
   fprintf oc "Require Import zenon_focal.\n";
   fprintf oc "Require Import basics.\n";
+;;
+
+let predef () =
   names_of_equality @
     ["bool"; "Is_true"; "coq_builtins.bi__not_b"; "coq_builtins.bi__and_b";
      "coq_builtins.bi__or_b";
@@ -797,4 +800,5 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.predef = predef;
 };;

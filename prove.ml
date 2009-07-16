@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.48 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.49 2009-07-16 12:06:34 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -399,22 +399,6 @@ let interferes env vs =
 
 let has_free_var v e = List.mem v (get_fv e);;
 
-let rec get_values_set e =
-  match e with
-  | Eapp ("TLA.upair", [e1; e2], _) -> ([e1; e2], false)
-  | Eapp ("TLA.add", [e1; e2], _) ->
-     let (vs, rest) = get_values_set e2 in
-     (e1 :: vs, rest)
-  | Evar ("TLA.emptyset", _) -> ([], false)
-  | Eapp ("TLA.union", [e1; e2], _) ->
-     let (vs1, rest1) = get_values_set e1 in
-     let (vs2, rest2) = get_values_set e2 in
-     (vs1 @ vs2, rest1 || rest2)
-(*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
-  | _ -> ([], true)
-;;
-
-
 let newnodes_delta st fm g =
   match fm with
   | Eex (v, t, p, _) ->
@@ -436,72 +420,6 @@ let newnodes_delta st fm g =
        nbranches = [| [h] |];
      }, true
   | _ -> st, false
-;;
-
-let newnodes_gamma_bounded st fm g =
-  match fm with
-  | Eall (v, t,
-          (Eimply (Eapp ("TLA.in",
-                         [vv; Eapp ("TLA.add", _, _) as s], _), _, _) as p), _)
-    when Extension.is_active "tla" ->
-     let (elems, rest) = get_values_set s in
-     let mknode st elem =
-       add_node st {
-         nconc = [fm];
-         nrule = All (fm, elem);
-         nprio = Arity;
-         ngoal = g;
-         nbranches = [| [Expr.substitute [(v, elem)] p] |];
-       }
-     in
-     (List.fold_left mknode st elems, not rest)
-  | Eall (v, t,
-          (Eimply (Eapp ("TLA.in",
-                         [vv; Eapp ("TLA.set", elems, _)], _), _, _) as p), _)
-    when Extension.is_active "tla" ->
-     let mknode st elem =
-       add_node st {
-         nconc = [fm];
-         nrule = All (fm, elem);
-         nprio = Arity;
-         ngoal = g;
-         nbranches = [| [Expr.substitute [(v, elem)] p] |];
-       }
-     in
-     (List.fold_left mknode st elems, true)
-  | Enot (Eex (v, t,
-               (Eand (Eapp ("TLA.in",
-                            [vv;
-                             Eapp ("TLA.add", _, _) as s], _), _, _)
-                  as p), _), _)
-    when Extension.is_active "tla" ->
-     let (elems, rest) = get_values_set s in
-     let mknode st elem =
-       add_node st {
-         nconc = [fm];
-         nrule = NotEx (fm, elem);
-         nprio = Arity;
-         ngoal = g;
-         nbranches = [| [enot (Expr.substitute [(v, elem)] p)] |];
-       }
-     in
-     (List.fold_left mknode st elems, not rest)
-  | Enot (Eex (v, t,
-               (Eand (Eapp ("TLA.in",
-                            [vv; Eapp ("TLA.set", elems, _)], _), _, _)
-                  as p), _), _)
-    when Extension.is_active "tla" ->
-     let mknode st elem =
-       add_node st {
-         nconc = [fm];
-         nrule = NotEx (fm, elem);
-         nprio = Arity;
-         ngoal = g;
-         nbranches = [| [enot (Expr.substitute [(v, elem)] p)] |];
-       }
-     in
-     (List.fold_left mknode st elems, true)
-  | _ -> (st, false)
 ;;
 
 let newnodes_gamma st fm g =
@@ -878,7 +796,6 @@ let add_nodes st fm g =
       newnodes_alpha;
       newnodes_beta;
       newnodes_delta;
-      newnodes_gamma_bounded;
       newnodes_gamma;
       newnodes_unfold;
       newnodes_refl;
@@ -962,6 +879,10 @@ let count_meta_list l =
 let rec not_trivial e =
   match e with
   | Enot (Eapp ("=", ([Emeta _; _] | [_; Emeta _]), _), _) -> false
+  | Enot (Eapp ("TLA.in", [Emeta _;
+                           ( Evar ("TLA.emptyset", _)
+                           | Eapp ("TLA.set", _, _)
+                           | Eapp ("TLA.add", _, _))], _), _) -> true
   | Eand (e1, e2, _) | Eor (e1, e2, _) -> not_trivial e1 || not_trivial e2
   | _ -> true
 ;;
@@ -995,8 +916,8 @@ let find_open_branch node brstate =
         in
         let l1 = List.rev_map score l in
         let cmp (nt1, len1, size1, _) (nt2, len2, size2, _) =
-          if nt1 =%= 0 then -1
-          else if nt2 =%= 0 then 1
+          if nt1 =%= 0 then 1
+          else if nt2 =%= 0 then -1
           else if len1 <> len2 then len2 - len1
           else size1 - size2
 (*
@@ -1050,7 +971,9 @@ let add_virtual_branch n =
       branches.(len) <- with_metas @@ branches.(len);
     done;
 
-    if List.length branches.(len) < 2 || is_equiv n.nrule then begin
+    if List.length (List.filter not_trivial branches.(len)) < 2
+       || is_equiv n.nrule
+    then begin
       brstate.(len) <- Closed dummy_proof;
     end;
     ({n with nbranches = branches}, brstate)
@@ -1201,8 +1124,12 @@ and next_node stk st =
       let st1 = {(*st with*) queue = q1} in
       match reduce_branches n with
       | Some n1 ->
+(*
           let (n2, brstate) = add_virtual_branch n1 in
           next_branch stk n2 st1 brstate
+*)
+         let brstate = Array.make (Array.length n.nbranches) Open in
+         next_branch stk n1 st1 brstate
       | None -> next_node stk st1
 
 and next_branch stk n st brstate =
@@ -1218,8 +1145,11 @@ and next_branch stk n st brstate =
         refute (fr :: stk) st (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
       end
   | None ->
+(*
       let (n1, brstate1) = remove_virtual_branch n brstate in
       let result = make_result n1 brstate1 in
+*)
+      let result = make_result n brstate in
       unwind stk result
 
 and unwind stk res =

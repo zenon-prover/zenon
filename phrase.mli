@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: phrase.mli,v 1.11 2008-11-14 20:28:02 doligez Exp $  *)
+(*  $Id: phrase.mli,v 1.12 2009-07-16 12:06:34 doligez Exp $  *)
 
 open Expr;;
 
@@ -23,7 +23,9 @@ type zphrase =
   | Zinclude of string
 ;;
 
-val separate : phrase list -> definition list * (expr * int) list;;
+val separate :
+  string list -> phrase list -> definition list * (expr * int) list
+;;
 
 type tpphrase =
   | Include of string
@@ -31,6 +33,6 @@ type tpphrase =
   | Annotation of string
 ;;
 
-val change_to_def : expr -> definition;;
+val change_to_def : string list -> expr -> definition;;
 (** Turn a def-shaped formula into a (real) definition.
     Raise [Invalid_argument] if the argument is not def-shaped. *)

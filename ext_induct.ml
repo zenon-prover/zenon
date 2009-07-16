@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.5 2009-05-20 21:35:34 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.6 2009-07-16 12:06:34 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -520,8 +520,9 @@ let remove_formula e =
 
 let declare_context_coq oc =
   fprintf oc "Require Import zenon_induct.\n";
-  []
 ;;
+
+let predef () = [];;
 
 Extension.register {
   Extension.name = "induct";
@@ -533,4 +534,5 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.predef = predef;
 };;
