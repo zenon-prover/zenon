@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.30 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.31 2009-07-20 13:10:24 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -53,6 +53,7 @@ let tla_other_symbols = [
   "TLA.cond";
   "TLA.CASE";
   "TLA.tuple";
+  "TLA.fapply";
 ];;
 
 let is_set_expr e =
@@ -205,6 +206,9 @@ let newnodes_prop e g =
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.set", elems, _) as s], _), _) ->
      let helems = List.map (fun x -> enot (eapp ("=", [e1; x]))) elems in
      mknode Prop "notin_set" [e; e1; s] [| helems |]
+
+  | Enot (Eapp ("TLA.in", [e1; Emeta (m, _)], _), _) ->
+     mknode_inst (Inst m) m (eapp ("TLA.set", [e1]))
 
   (* infinity -- needed ? *)
 
@@ -405,6 +409,19 @@ let newnodes_prop e g =
      let nodes = List.map (fun elem -> mknode_inst Arity ex elem) elems in
      List.flatten nodes @ (if rest then [] else [Stop])
 
+  | Enot (Eapp ("TLA.in", [Evar ("0", _); Evar ("Nat", _)], _), _) ->
+     mknode Prop "in_nat_0" [e] [| |]
+  | Enot (Eapp ("TLA.in", [Evar ("1", _); Evar ("Nat", _)], _), _) ->
+     mknode Prop "in_nat_1" [e] [| |]
+  | Enot (Eapp ("TLA.in", [Evar ("2", _); Evar ("Nat", _)], _), _) ->
+     mknode Prop "in_nat_2" [e] [| |]
+  | Enot (Eapp ("TLA.in", [Eapp ("TLA.fapply", [Evar ("Succ", _); e1], _);
+                           Evar ("Nat", _)], _), _) ->
+     let h = enot (eapp ("TLA.in", [e1; evar "nat"])) in
+     mknode Prop "in_nat_succ" [e; h; e1] [| [h] |]
+  | Enot (Eapp ("TLA.in", [Emeta (m, _); Evar ("Nat", _)], _), _) ->
+     mknode_inst (Inst m) m (evar "0")
+
   | _ -> []
 ;;
 
@@ -424,7 +441,15 @@ let apply f e =
 let rewrites in_expr x ctx e mknode =
   let lamctx = elam (x, "", ctx) in
   let appctx e = substitute [(x, e)] ctx in
-  let mk_boolcase name e1 e2 =
+  let mk_boolcase_1 name e1 =
+    let h1a = eapp ("=", [e; etrue]) in
+    let h1b = appctx (etrue) in
+    let h2a = eapp ("=", [e; efalse]) in
+    let h2b = appctx (efalse) in
+    mknode ("boolcase_" ^ name) [appctx e; h1a; h1b; h2a; h2b; lamctx; e1]
+           [] [| [h1a; h1b]; [h2a; h2b] |]
+  in
+  let mk_boolcase_2 name e1 e2 =
     let h1a = eapp ("=", [e; etrue]) in
     let h1b = appctx (etrue) in
     let h2a = eapp ("=", [e; efalse]) in
@@ -436,6 +461,7 @@ let rewrites in_expr x ctx e mknode =
   | _ when in_expr && Index.member e ->
      let h1 = appctx (etrue) in
      mknode "trueistrue" [appctx e; e; h1; lamctx; e] [e] [| [h1] |]
+  | Eapp ("$notequiv", [e1; e2], _) -> []
   | Evar (f, _) when in_expr && Index.has_def f ->
      let (d, params, body) = Index.get_def f in
      if params = [] then begin
@@ -447,7 +473,7 @@ let rewrites in_expr x ctx e mknode =
      let (d, params, body) = Index.get_def f in
      if List.length params = List.length args then begin
        let s = List.combine params args in
-       let unfolded = appctx (substitute s body) in
+       let unfolded = appctx (substitute_2nd s body) in
        mknode "definition" [appctx e; unfolded; e] [] [| [unfolded] |]
      end else
        []
@@ -467,34 +493,20 @@ let rewrites in_expr x ctx e mknode =
      mknode "fapplyexcept" [appctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
                             lamctx; f; v; e1; w]
             [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
-(*
-  | Eapp ("TLA.fapply", [f; a], _) ->
-     rewrites true x (appctx (eapp ("TLA.fapply", [x; a]))) f mknode
-     @ rewrites true x (appctx (eapp ("TLA.fapply", [f; x]))) a mknode
-*)
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = appctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [appctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
      let h1 = appctx (s) in
      mknode "domain_fcn" [appctx e; h1; lamctx; s; l] [] [| [h1] |]
-(*
-  | Eapp ("TLA.DOMAIN", [f], _) ->
-     rewrites true x (appctx (eapp ("TLA.DOMAIN", [x]))) f mknode
-*)
-  | Enot (e1, _) when in_expr ->
-     let h1a = eapp ("=", [e; etrue]) in
-     let h1b = appctx (etrue) in
-     let h2a = eapp ("=", [e; efalse]) in
-     let h2b = appctx (efalse) in
-     mknode ("boolcase_not") [appctx e; h1a; h1b; h2a; h2b; lamctx; e1]
-            [] [| [h1a; h1b]; [h2a; h2b] |]
-  | Eand (e1, e2, _) when in_expr -> mk_boolcase "and" e1 e2
-  | Eor (e1, e2, _) when in_expr -> mk_boolcase "or" e1 e2
-  | Eimply (e1, e2, _) when in_expr -> mk_boolcase "imply" e1 e2
-  | Eequiv (e1, e2, _) when in_expr -> mk_boolcase "equiv" e1 e2
-  | Eapp ("=", [e1; e2], _) when in_expr -> mk_boolcase "equal" e1 e2
-  (* FIXME missing : Eall, Eex *)
+  | Enot (e1, _) when in_expr -> mk_boolcase_1 "not" e1
+  | Eand (e1, e2, _) when in_expr -> mk_boolcase_2 "and" e1 e2
+  | Eor (e1, e2, _) when in_expr -> mk_boolcase_2 "or" e1 e2
+  | Eimply (e1, e2, _) when in_expr -> mk_boolcase_2 "imply" e1 e2
+  | Eequiv (e1, e2, _) when in_expr -> mk_boolcase_2 "equiv" e1 e2
+  | Eapp ("=", [e1; e2], _) when in_expr -> mk_boolcase_2 "equal" e1 e2
+  | Eall (v, t, p, _) when in_expr -> mk_boolcase_1 "all" (elam (v, t, p))
+  | Eex (v, t, p, _) when in_expr -> mk_boolcase_1 "ex" (elam (v, t, p))
 
   | Eapp ("TLA.cond", [Etrue; e1; e2], _) ->
      let h1 = appctx (e1) in
@@ -524,6 +536,7 @@ let rec find_rewrites in_expr x ctx e mknode =
   let local = rewrites in_expr x ctx e mknode in
   match e with
   | _ when local <> [] -> local
+  | Eapp ("$notequiv", [e1; e2], _) -> []
   | Eapp (p, args, _) ->
      let rec loop leftarg rightarg =
        match rightarg with
@@ -641,6 +654,9 @@ let to_llargs r =
   in
   match r with
   | Ext (_, "in_emptyset", [c; e1]) -> ("zenon_in_emptyset", [e1], [c], [])
+  | Ext (_, "in_nat_0", [c]) -> ("zenon_in_nat_0", [], [c], [])
+  | Ext (_, "in_nat_1", [c]) -> ("zenon_in_nat_1", [], [c], [])
+  | Ext (_, "in_nat_2", [c]) -> ("zenon_in_nat_2", [], [c], [])
   | Ext (_, "in_upair", _) -> beta r
   | Ext (_, "notin_upair", _) -> alpha r
   | Ext (_, "in_cup", _) -> beta r
@@ -667,6 +683,8 @@ let to_llargs r =
   | Ext (_, "boolcase_or", _) -> beta2 r
   | Ext (_, "boolcase_imply", _) -> beta2 r
   | Ext (_, "boolcase_equiv", _) -> beta2 r
+  | Ext (_, "boolcase_all", _) -> beta2 r
+  | Ext (_, "boolcase_ex", _) -> beta2 r
   | Ext (_, "notisafcn_fcn", _) -> close r
   | Ext (_, "notisafcn_except", _) -> close r
   | Ext (_, "notisafcn_onearg", _) -> close r
