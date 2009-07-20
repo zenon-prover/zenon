@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.31 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.32 2009-07-20 13:10:19 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -195,6 +195,7 @@ let get_rule_name = function
   | NotTrue -> "NotTrue", []
   | NotNot (e) -> "NotNot", [e]
   | NotAll (e) -> "NotAll", [e]
+  | NotAllEx (e) -> "NotAllEx", [e]
   | Ex (e) -> "Exists", [e]
   | NotEqual (e1, e2) -> "NotEqual", [e1; e2]
   | And (e1, e2) -> "And", [e1; e2]
@@ -288,6 +289,7 @@ let hlrule_name = function
   | NotOr (e1, e2) -> "NotOr", [enot (eor (e1, e2))]
   | NotImpl (e1, e2) -> "NotImply", [enot (eimply (e1, e2))]
   | NotAll (e) -> "NotAll", [e]
+  | NotAllEx (e) -> "NotAllEx", [e]
   | Ex (e) -> "Exists", [e]
   | All (e1, e2) -> "All", [e1]
   | NotEx (e1, e2) -> "NotExists", [e1]

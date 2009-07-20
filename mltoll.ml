@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.49 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.50 2009-07-20 13:10:19 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -131,10 +131,10 @@ let tr_rule r =
   | NotOr (p, q) -> LL.Rnotconnect (LL.Or, tr_expr p, tr_expr q)
   | NotImpl (p, q) -> LL.Rnotconnect (LL.Imply, tr_expr p, tr_expr q)
   | NotAll (Enot (Eall (v, t, p, _) as pp, _)) ->
-      LL.Rnotall (tr_expr pp, etau (v, t, enot (remove_scope p)))
+      LL.Rnotall (tr_expr pp, tr_expr (etau (v, t, enot (remove_scope p))))
   | NotAll _ -> assert false
   | Ex (Eex (v, t, p, _) as pp) ->
-      LL.Rex (tr_expr pp, etau (v, t, remove_scope p))
+      LL.Rex (tr_expr pp, tr_expr (etau (v, t, remove_scope p)))
   | Ex _ -> assert false
   | All (p, t) -> LL.Rall (tr_expr p, tr_expr t)
   | NotEx (Enot (p, _), t) -> LL.Rnotex (tr_expr p, tr_expr t)
@@ -153,6 +153,11 @@ let tr_rule r =
   | Cut (p) -> LL.Rcut (tr_expr p)
   | Congruence (p, a, b) -> LL.Rcongruence (tr_expr p, tr_expr a, tr_expr b)
 
+  | Ext ("", "notallex", [Elam (v, t, p, _) as lam]) ->
+     let c = enot (eall (v, t, p)) in
+     let h = eex (v, t, enot p) in
+     LL.Rextension ("zenon_notallex", [lam], [c], [[h]])
+
   (* derived rules, handled by translate_derived: *)
   | ConjTree _
   | DisjTree _
@@ -170,6 +175,7 @@ let tr_rule r =
   | Definition (DefPseudo _, _, _)
   | Definition (DefRec _, _, _)
   | Miniscope _
+  | NotAllEx _
     -> assert false
 
   | Close_refl (s, _) (* when s <> "=" *) -> assert false
@@ -264,11 +270,13 @@ let is_derived = function
   | NotExPartial _
   | Refl _
   | Trans _ | Trans_sym _ | TransEq _ | TransEq2 _ | TransEq_sym _
+  | NotAllEx _
     -> true
 
   | Cut _ -> false
   | Congruence _ -> false
   | Miniscope _ -> true
+  | Ext ("", _, _) -> false
   | Ext _ -> true
 ;;
 
@@ -997,11 +1005,16 @@ and translate_derived p =
      let n2 = make_cut (eapp ("=", [tau; va])) n1 n0 in
      to_llproof n2
   | Miniscope (lam, tau, []) ->
-     begin match p.mlhyps with
-     | [| h1 |] -> to_llproof h1
-     | _ -> assert false
-     end
+     to_llproof (gethyps1 p)
   | Miniscope _ -> assert false
+  | NotAllEx (Enot (Eall (v, t, body, _), _) as nap) ->
+     let ep = eex (v, t, enot body) in
+     let lam = elam (v, t, body) in
+     let n0 = gethyps1 p in
+     let n1 = make_ex ep n0 in
+     let n2 = make_node [nap] (Ext ("", "notallex", [lam])) [[ep]] [n1] in
+     to_llproof n2
+  | NotAllEx _ -> assert false
   | Ext _ ->
       let sub = Array.map to_llproof p.mlhyps in
       Extension.to_llproof tr_expr p sub

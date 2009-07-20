@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.49 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.50 2009-07-20 13:10:19 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -411,13 +411,14 @@ let newnodes_delta st fm g =
        nbranches = [| [h] |];
      }, true
   | Enot (Eall (v, t, p, _), _) ->
-     let h = substitute [(v, etau (v, t, enot p))] (enot p) in
+     let h1 = substitute [(v, etau (v, t, enot p))] (enot p) in
+     let h2 = eex (v, t, enot p) in
      add_node st {
        nconc = [fm];
-       nrule = NotAll (fm);
+       nrule = NotAllEx (fm);
        nprio = Prop;
        ngoal = g;
-       nbranches = [| [h] |];
+       nbranches = [| [h1; h2] |];
      }, true
   | _ -> st, false
 ;;
@@ -521,6 +522,43 @@ let newnodes_unfold st fm g =
   | _ -> st, false
 ;;
 
+let rec can_instantiate m e =
+  match e with
+  | Evar _ -> true
+  | Emeta (m1, _) -> not (List.exists (Expr.equal m) (get_metas m1))
+  | Eapp (s, es, _) -> List.for_all (can_instantiate m) es
+  | Enot (e1, _) -> can_instantiate m e1
+  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _)
+    -> can_instantiate m e1 && can_instantiate m e2
+  | Etrue | Efalse -> true
+  | Eall (v, t, e1, _) | Eex (v, t, e1, _) | Etau (v, t, e1, _)
+  | Elam (v, t, e1, _)
+    -> can_instantiate m e1
+;;
+
+let orient_meta m1 m2 =
+  let rec get_metas e =
+    match e with
+    | Evar _ -> []
+    | Emeta (m, _) -> m :: get_metas m
+    | Eapp (s, es, _) -> List.fold_left (fun a e -> get_metas e @@ a) [] es
+    | Enot (e1, _) -> get_metas e1
+    | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+    | Eequiv (e1, e2, _)
+      -> get_metas e1 @@ get_metas e2
+    | Etrue | Efalse -> []
+    | Eall (v, t, e1, _) | Eex (v, t, e1, _) | Etau (v, t, e1, _)
+    | Elam (v, t, e1, _)
+      -> get_metas e1
+  in
+  let l1 = get_metas m1 in
+  let l2 = get_metas m2 in
+  if List.memq m1 l2 then false
+  else if List.memq m2 l1 then true
+  else List.length l1 > List.length l2
+;;
+
 let newnodes_refl st fm g =
   match fm with
   | Enot (Eapp (s, [e1; e2], _), _) when s <> "=" && Eqrel.refl s ->
@@ -532,12 +570,10 @@ let newnodes_refl st fm g =
         nbranches = [| [enot (eapp ("=", [e1; e2]))] |];
       }, false
 
-(*
-  | Enot (Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _), _) -> st, false
-*)
-
-  | Enot (Eapp ("=", [Emeta (m, _); e], _), _) -> make_inst st m e g
-  | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) -> make_inst st m e g
+  | Enot (Eapp ("=", [Emeta (m, _); e], _), _) when can_instantiate m e ->
+     make_inst st m e g
+  | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) when can_instantiate m e ->
+     make_inst st m e g
 
   | _ -> st, false
 ;;
