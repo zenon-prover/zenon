@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.50 2009-07-20 13:10:19 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.51 2009-07-31 14:18:08 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -145,6 +145,9 @@ let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
   | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _) ->
       assert (s1 =%= s2);
+(*
+      if s1 =%= "Is_true" && Extension.is_active "focal" then st else
+*)
       if sym && List.length args2 != 2
          || List.length args1 <> List.length args2
       then (arity_warning s1; st)
@@ -678,6 +681,9 @@ let newnodes_match_trans st fm g =
   try
     let fmg = (fm, g) in
     match fm with
+    | Eapp ("=", [Emeta (m1, _); Emeta (m2, _)], _) ->
+       let nodes = List.map (mknode_transeq false fmg) (Index.find_neg "=") in
+       add_node_list st nodes, false
     | Eapp ("=", [e1; e2], _) ->
         Index.add_trans fm;
         let h1 = Index.get_head e1 in
@@ -919,6 +925,7 @@ let rec not_trivial e =
                            ( Evar ("TLA.emptyset", _)
                            | Eapp ("TLA.set", _, _)
                            | Eapp ("TLA.add", _, _))], _), _) -> true
+  | Enot (Eapp ("TLA.in", [Emeta _; _], _), _) -> false
   | Eand (e1, e2, _) | Eor (e1, e2, _) -> not_trivial e1 || not_trivial e2
   | _ -> true
 ;;

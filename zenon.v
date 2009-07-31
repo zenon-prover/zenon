@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.10 2009-04-24 15:45:17 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.11 2009-07-31 14:18:08 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -67,6 +67,13 @@ Lemma zenon_notall : forall (T : Type) (P : T -> Prop),
   (forall z : T, (~(P z) -> False)) -> (~(forall x : T, (P x)) -> False).
 Proof. intros T P Ha Hb. apply Hb. intro. apply NNPP. exact (Ha x). Qed.
 
+Lemma zenon_notallex : forall (T : Type) (P : T -> Prop),
+  ((exists x : T, ~ (P x)) -> False) -> (~(forall x : T, (P x)) -> False).
+Proof.
+  firstorder. apply H0. intro x. apply NNPP. intro nPx. apply (H x nPx).
+Qed.
+Implicit Arguments zenon_notallex [T].
+
 Lemma zenon_subst :
   forall (T : Type) (P : T -> Prop) (a b : T),
   (a <> b -> False) -> (P b -> False) -> (P a -> False).
@@ -99,6 +106,8 @@ Definition zenon_notimply_s := fun P Q c h => zenon_notimply P Q h c.
 Definition zenon_notequiv_s := fun P Q c h i => zenon_notequiv P Q h i c.
 Definition zenon_ex_s := fun T P c h => zenon_ex T P h c.
 Definition zenon_notall_s := fun T P c h => zenon_notall T P h c.
+Definition zenon_notallex_s := fun T P c h => @zenon_notallex T P h c.
+Implicit Arguments zenon_notallex_s [T].
 
 Definition zenon_subst_s := fun T P x y c h i => zenon_subst T P x y h i c.
 Definition zenon_pnotp_s := fun P Q c h i => zenon_pnotp P Q h i c.

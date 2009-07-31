@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.50 2009-07-07 14:18:19 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.51 2009-07-31 14:18:08 doligez Exp $";;
 
 open Printf;;
 
@@ -242,6 +242,17 @@ let p_rule oc r =
      in
      fprintf oc "%a].\n" (p_list "" p_case "  | ") params;
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
+  | Rextension ("zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs) ->
+     fprintf oc "apply %s.\n" (getname c);
+     fprintf oc "apply %s_ind; [" ty;
+     let p_case oc h =
+       match h with
+       | [h] -> fprintf oc "apply NNPP; zenon_intro %s" (getname h);
+       | _ -> assert false
+     in
+     p_list "" p_case " | " oc hs;
+     fprintf oc "].\n";
+  | Rextension ("zenon_induct_induction_notall", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
      let (_, cstrs) = Coqterm.get_induct ty in
@@ -251,7 +262,12 @@ let p_rule oc r =
        List.iter (fun _ -> fprintf oc "intro; ") args;
        fprintf oc "intro zenon_tmp; rewrite zenon_tmp in *; auto\n";
      in
-     p_list "" p_case "  | " oc cstrs;
+     begin match a with
+     | Eapp (s, _, _) | Evar (s, _) when List.mem_assoc s cstrs ->
+        p_list "" p_case "  | " oc (List.filter (fun (x, _) -> x = s) cstrs);
+     | _ ->
+        p_list "" p_case "  | " oc cstrs;
+     end;
      poc "].\n";
   | Rextension ("zenon_induct_fix", _, _, _) -> assert false
   | Rextension (name, args, conc, hyps) ->

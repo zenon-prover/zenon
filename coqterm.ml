@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.54 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.55 2009-07-31 14:18:08 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -354,6 +354,20 @@ let rec trtree env node =
      Capp (Cvar (sprintf "@%s_ind" ty),
            typargs @ pred :: recargs @ tropt e1 :: [refl])
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
+  | Rextension ("zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs) ->
+     let (args, _) = get_induct ty in
+     let typargs = List.map (fun _ -> Cwild) args in
+     let mksub h prf =
+       match h with
+       | [h] -> Capp (Cvar "NNPP", [Cwild; mklam h (trtree env prf)])
+       | _ -> assert false
+     in
+     let hypargs = List.map2 mksub hs hyps in
+     let tp = trexpr p in
+     let ap = Capp (Cvar (sprintf "@%s_ind" ty), typargs @ tp :: hypargs) in
+     let nap = getname c in
+     Capp (Cvar nap, [ap])
+  | Rextension ("zenon_induct_induction_notall", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
      let (args, cstrs) = get_induct ty in

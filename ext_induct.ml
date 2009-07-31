@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.6 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.7 2009-07-31 14:18:08 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -39,6 +39,24 @@ let constr_head e =
   match e with
   | Eapp (s, _, _) | Evar (s, _) when is_constr s -> true
   | _ -> false
+;;
+
+let rec remove_parens i j s =
+  if i >= j then ""
+  else if s.[i] = ' ' then remove_parens (i + 1) j s
+  else if s.[j - 1] = ' ' then remove_parens i (j - 1) s
+  else if s.[i] = '(' && s.[j - 1] = ')' then remove_parens (i + 1) (j - 1) s
+  else String.sub s i (j - i)
+;;
+
+let remove_parens s = remove_parens 0 (String.length s) s;;
+
+let parse_type t =
+  match string_split (remove_parens t) with
+  | [] -> assert false
+  | c :: a ->
+     (* TODO check type arity vs declaration *)
+     (c, String.concat " " a, List.length a)
 ;;
 
 module HE = Hashtbl.Make (Expr);;
@@ -222,40 +240,75 @@ let newnodes_match_cases_eq e g =
   | _ -> []
 ;;
 
-let make_induction_branch p con =
-  assert false
+let make_induction_branch ty p (con, args) =
+  let rec f vars args =
+    match args with
+    | Param s :: t ->
+       let x = Expr.newvar () in
+       eall (x, s, f (x :: vars) t)
+    | Self :: t ->
+       let x = Expr.newvar () in
+       eall (x, ty, eimply (apply p x, f (x :: vars) t))
+    | [] ->
+       let v = if vars = [] then evar (con) else eapp (con, List.rev vars) in
+       apply p v
+  in
+  [enot (f [] args)]
 ;;
 
 let newnodes_induction e g =
   match e with
-(*
+  | Enot (Eall (_, "", _, _), _) -> []
   | Enot (Eall (v, ty, body, _), _) ->
      begin try
-       let tycon = get_tycon ty in
+       let (tycon, _, _) = parse_type ty in
        let (args, cons) = Hashtbl.find type_table tycon in
        let p = elam (v, ty, body) in
-       let br = List.map (make_induction_branch p) cons in
+       let br = List.map (make_induction_branch ty p) cons in
+       [ Node {
+         nconc = [e];
          nrule = Ext ("induct", "induction_notall",
                       e :: evar (tycon) :: p :: List.flatten br);
          nprio = Inst e;
          nbranches = Array.of_list br;
+         ngoal = g;
        }]
-     with Not_found -[]
+     with Not_found -> []
+     end
+  | Eex (_, "", _, _) -> []
+  | Eex (v, ty, Enot (body, _), _) ->
+     begin try
+       let (tycon, _, _) = parse_type ty in
+       let (args, cons) = Hashtbl.find type_table tycon in
+       let p = elam (v, ty, body) in
+       let br = List.map (make_induction_branch ty p) cons in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("induct", "induction_exnot",
+                      e :: evar (tycon) :: p :: List.flatten br);
+         nprio = Inst e;
+         nbranches = Array.of_list br;
+         ngoal = g;
+       }]
+     with Not_found -> []
+     end
   | Eex (v, ty, body, _) ->
      begin try
-       let tycon = get_tycon ty in
+       let (tycon, _, _) = parse_type ty in
        let (args, cons) = Hashtbl.find type_table tycon in
-       let p = elam (v, ty, enot (body)) in
-       let br = List.map (make_induction_branch p) cons in
+       let np = elam (v, ty, enot (body)) in
+       let p = elam (v, ty, body) in
+       let br = List.map (make_induction_branch ty np) cons in
        [ Node {
          nconc = [e];
          nrule = Ext ("induct", "induction_ex",
                       e :: evar (tycon) :: p :: List.flatten br);
          nprio = Inst e;
          nbranches = Array.of_list br;
+         ngoal = g;
        }]
      with Not_found -> []
-*)
+     end
   | _ -> []
 ;;
 
@@ -295,12 +348,33 @@ let newnodes_fix e g =
     [Node {
       nconc = [e];
       nrule = Ext ("induct", "fix", [e; unfolded; ctx; fix]);
-      nprio = Arity;
+      nprio = Inst e;
       ngoal = g;
       nbranches = [| [unfolded] |];
     }; Stop]
   in
   match e with
+  | Eapp ("Is_true",
+          [Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix], _) ->
+     begin try
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let e2 = List.fold_left apply xbody args in
+       let ctx = elam (f, "", eapp ("Is_true", [f])) in
+       let unfolded = apply ctx e2 in
+       mknode unfolded ctx fix
+     with Higher_order -> []
+     end
+  | Enot (Eapp ("Is_true",
+                [Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix],
+                _), _) ->
+     begin try
+       let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
+       let e2 = List.fold_left apply xbody args in
+       let ctx = elam (f, "", enot (eapp ("Is_true", [f]))) in
+       let unfolded = apply ctx e2 in
+       mknode unfolded ctx fix
+     with Higher_order -> []
+     end
   | Eapp (s, [Eapp ("$fix", (Elam (f, _, body, _) as r) :: args, _) as fix;
               e1], _)
     when Eqrel.any s ->
@@ -358,24 +432,6 @@ let newnodes e g =
 ;;
 
 open Llproof;;
-
-let rec remove_parens i j s =
-  if i >= j then ""
-  else if s.[i] = ' ' then remove_parens (i + 1) j s
-  else if s.[j - 1] = ' ' then remove_parens i (j - 1) s
-  else if s.[i] = '(' && s.[j - 1] = ')' then remove_parens (i + 1) (j - 1) s
-  else String.sub s i (j - i)
-;;
-
-let remove_parens s = remove_parens 0 (String.length s) s;;
-
-let parse_type t =
-  match string_split (remove_parens t) with
-  | [] -> assert false
-  | c :: a ->
-     (* TODO check type arity vs declaration *)
-     (c, String.concat " " a, List.length a)
-;;
 
 let to_llproof tr_expr mlp args =
   let argl = Array.to_list args in
@@ -466,7 +522,7 @@ let to_llproof tr_expr mlp args =
       let tc = tr_expr c in
       let tctx = tr_expr ctx in
       let tm = tr_expr m in
-      let listify x = [x] in
+      let listify x = [tr_expr x] in
       let node = {
         conc = List.map tr_expr mlp.mlconc;
         rule = Rextension ("zenon_induct_cases", [ty; tctx; tm], [tc],
@@ -474,6 +530,63 @@ let to_llproof tr_expr mlp args =
         hyps = hyps;
       } in
       (node, add)
+  | Ext ("induct", "induction_notall", c :: ty :: p :: branches) ->
+     let tc = tr_expr c in
+     let tp = tr_expr p in
+     let listify x = [tr_expr x] in
+     let node = {
+       conc = List.map tr_expr mlp.mlconc;
+       rule = Rextension ("zenon_induct_induction_notall",
+                          [ty; tp], [tc], List.map listify branches);
+       hyps = hyps;
+     } in
+     (node, add)
+  | Ext ("induct", "induction_exnot", c :: ty :: p :: branches) ->
+     let tc = tr_expr c in
+     let tp = tr_expr p in
+     let listify x = [tr_expr x] in
+     let c0 =
+       match p with
+       | Elam (v, tyv, body, _) -> enot (eall (v, tyv, body))
+       | _ -> assert false
+     in
+     let conc0 = c0 :: (Expr.diff mlp.mlconc [c]) in
+     let n0 = {
+       conc = List.map tr_expr conc0;
+       rule = Rextension ("zenon_induct_induction_notall",
+                          [ty; tp], [tr_expr c0], List.map listify branches);
+       hyps = hyps;
+     } in
+     let n1 = {
+       conc = List.map tr_expr mlp.mlconc;
+       rule = Rextension ("zenon_induct_allexnot", [ty; tp], [tc], [[c0]]);
+       hyps = [n0];
+     } in
+     (n1, add)
+  | Ext ("induct", "induction_ex", c :: ty :: p :: branches) ->
+     let tc = tr_expr c in
+     let tp = tr_expr p in
+     let listify x = [tr_expr x] in
+     let (c0, np) =
+       match p with
+       | Elam (v, tyv, body, _) ->
+          (enot (eall (v, tyv, enot (body))), elam (v, tyv, enot (body)))
+       | _ -> assert false
+     in
+     let tnp = tr_expr np in
+     let conc0 = c0 :: (Expr.diff mlp.mlconc [c]) in
+     let n0 = {
+       conc = List.map tr_expr conc0;
+       rule = Rextension ("zenon_induct_induction_notall",
+                          [ty; tnp], [tr_expr c0], List.map listify branches);
+       hyps = hyps;
+     } in
+     let n1 = {
+       conc = List.map tr_expr mlp.mlconc;
+       rule = Rextension ("zenon_induct_allnotex", [ty; tp], [tc], [[c0]]);
+       hyps = [n0];
+     } in
+     (n1, add)
   | _ -> assert false
 ;;
 

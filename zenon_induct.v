@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-(*  $Id: zenon_induct.v,v 1.4 2009-05-20 21:35:34 doligez Exp $  *)
+(*  $Id: zenon_induct.v,v 1.5 2009-07-31 14:18:08 doligez Exp $  *)
 
 Lemma zenon_induct_match_redex : forall A : Prop,
   (A -> False) -> (A -> False).
@@ -24,3 +24,19 @@ Implicit Arguments zenon_induct_f_equal_s [t1 t2].
 Lemma zenon_induct_case_subs : forall (T : Type) (b a : T) P,
   (b = a -> P(a) -> False) -> b = a -> P(b) -> False.
   Proof. intros T b a P H e pa. subst b. apply H; auto. Qed.
+
+Lemma zenon_induct_allexnot : forall (T : Type) (P : T -> Prop),
+  ((~ forall x, (P x)) -> False) -> (exists x, ~(P x)) -> False.
+  Proof. firstorder. Qed.
+
+Lemma zenon_induct_allnotex : forall (T : Type) (P : T -> Prop),
+  ((~forall x, ~(P x)) -> False) -> (exists x, (P x)) -> False.
+  Proof. firstorder. Qed.
+
+
+Definition zenon_induct_allexnot_s :=
+  fun T P c h => zenon_induct_allexnot T P h c
+.
+Definition zenon_induct_allnotex_s :=
+  fun T P c h => zenon_induct_allnotex T P h c
+.
