@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.7 2009-07-31 14:18:08 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.8 2009-08-05 14:47:43 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -184,7 +184,7 @@ let make_match_congruence e g ctx ee cases rhs =
   let p = elam (x, "", ctx (eapp ("$match", x :: cases))) in
   [ Node {
     nconc = [e; eapp ("=", [ee; rhs])];
-    nrule = Congruence (p, ee, rhs);
+    nrule = CongruenceLR (p, ee, rhs);
     nprio = Arity;
     ngoal = g;
     nbranches = [| [apply p rhs] |];
@@ -230,7 +230,7 @@ let newnodes_match_cases_eq e g =
        let p = elam (x, "", ctx (eapp ("$match", x :: cases))) in
        Node {
          nconc = [apply p e1; e];
-         nrule = Congruence (p, e1, e2);
+         nrule = CongruenceLR (p, e1, e2);
          nprio = Arity;
          ngoal = g;
          nbranches = [| [apply p e2] |];

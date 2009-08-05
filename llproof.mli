@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.15 2009-07-07 14:18:19 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.16 2009-08-05 14:47:43 doligez Exp $  *)
 
 open Expr;;
 
@@ -190,11 +190,18 @@ type rule =
 
      ********************)
 
-  | Rcongruence of expr * expr * expr
+  | RcongruenceLR of expr * expr * expr
     (*
            apply P b
        ------------------ Rcongruence (P, a, b)
          apply P a, a=b
+    *)
+
+  | RcongruenceRL of expr * expr * expr
+    (*
+           apply P b
+       ------------------ Rcongruence (P, a, b)
+         apply P a, b=a
     *)
 
   | Rdefinition of string * string * expr * expr

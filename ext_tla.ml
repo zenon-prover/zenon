@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.31 2009-07-20 13:10:24 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.32 2009-08-05 14:47:43 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -100,6 +100,8 @@ let rec get_values_set e =
 (*| Eapp ("TLA.FuncSet", ...) -> cross-product TODO? *)
   | _ -> ([], true)
 ;;
+
+let is_var e = match e with Evar _ -> true | _ -> false;;
 
 let newnodes_prop e g =
   let mknode prio name args branches =
@@ -346,7 +348,9 @@ let newnodes_prop e g =
   | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.extend", [f; g], _)], _), _) ->
      mknode Prop "notisafcn_extend" [e; f; g] [| |]
 
-  | Eapp ("=", [e1; e2], _) when is_fcn_expr e1 || is_fcn_expr e2 ->
+  | Eapp ("=", [e1; e2], _)
+    when (is_fcn_expr e1 || is_fcn_expr e2)
+        (* && not (is_var e1) && not (is_var e2) *) ->
      let x = Expr.newvar () in
      let h1 = eequiv (eapp ("TLA.isAFcn", [e1]), eapp ("TLA.isAFcn", [e2])) in
      let h2 = eapp ("=", [eapp ("TLA.DOMAIN", [e1]); eapp ("TLA.DOMAIN", [e2])])
@@ -422,6 +426,31 @@ let newnodes_prop e g =
   | Enot (Eapp ("TLA.in", [Emeta (m, _); Evar ("Nat", _)], _), _) ->
      mknode_inst (Inst m) m (evar "0")
 
+  | _ -> []
+;;
+
+let do_substitutions v p g =
+  let rhs = Index.find_eq_lr v in
+  let lhs = Index.find_eq_rl v in
+  let f lr e =
+    let eqn = eapp ("=", if lr then [v; e] else [e; v]) in
+    Node {
+      nconc = [apply p v; eqn];
+      nrule = if lr then CongruenceLR (p, v, e) else CongruenceRL (p, v, e);
+      nprio = Arity;
+      ngoal = g;
+      nbranches = [| [apply p e] |];
+    }
+  in
+  List.map (f true) rhs @@ List.map (f false) lhs
+;;
+
+let newnodes_subst e g =
+  match e with
+  | Enot (Eapp ("TLA.in", [Evar _ as v; s], _), _) ->
+     do_substitutions v (elam (v, "", e)) g
+  | Enot (Eapp ("TLA.in", [Eapp ("TLA.apply", [Evar _ as v; arg], _); s], _), _)
+    -> do_substitutions v (elam (v, "", e)) g
   | _ -> []
 ;;
 
@@ -607,7 +636,7 @@ let newnodes_rewrites e g =
 ;;
 
 let newnodes e g =
-  newnodes_prop e g @ newnodes_rewrites e g
+  newnodes_prop e g @ newnodes_rewrites e g @ newnodes_subst e g
 ;;
 
 let rec split_case_branches l =
@@ -889,8 +918,10 @@ let pp_rule r =
   | LL.Rnotall (e1, e2) -> LL.Rnotall (pp_expr e1, pp_expr e2)
   | LL.Rpnotp (e1, e2) -> LL.Rpnotp (pp_expr e1, pp_expr e2)
   | LL.Rnotequal (e1, e2) -> LL.Rnotequal (pp_expr e1, pp_expr e2)
-  | LL.Rcongruence (e1, e2, e3) ->
-     LL.Rcongruence (pp_expr e1, pp_expr e2, pp_expr e3)
+  | LL.RcongruenceLR (e1, e2, e3) ->
+     LL.RcongruenceLR (pp_expr e1, pp_expr e2, pp_expr e3)
+  | LL.RcongruenceRL (e1, e2, e3) ->
+     LL.RcongruenceRL (pp_expr e1, pp_expr e2, pp_expr e3)
   | LL.Rdefinition (nm, id, e1, e2) ->
      LL.Rdefinition (nm, id, pp_expr e1, pp_expr e2)
   | LL.Rextension (n, a, cs, hss) ->

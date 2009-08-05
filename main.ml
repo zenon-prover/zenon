@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.52 2009-07-20 13:09:08 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.53 2009-08-05 14:47:43 doligez Exp $";;
 
 open Printf;;
 
@@ -367,9 +367,13 @@ let main () =
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
     end;
-  with Prove.NoProof ->
-    retcode := 10;
-    if not !quiet_flag then printf "(* NO-PROOF *)\n";
+  with
+  | Prove.NoProof ->
+     retcode := 12;
+     if not !quiet_flag then printf "(* NO-PROOF *)\n";
+  | Prove.LimitsExceeded ->
+     retcode := 13;
+     if not !quiet_flag then printf "(* NO-PROOF *)\n";
   end;
   if !stats_flag then begin
     eprintf "nodes searched: %d\n" !Globals.inferences;

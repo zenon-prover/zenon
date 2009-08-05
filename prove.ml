@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.51 2009-07-31 14:18:08 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.52 2009-08-05 14:47:43 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -143,6 +143,10 @@ let higher_order_warning s =
 
 let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
+  | Eapp ("TLA.in", [e1; Evar _ as s1], _),
+      Enot (Eapp (_, [e2; s2], _), _)
+    when not (Expr.equal s1 s2) && not (is_meta e1 || is_meta e2 || is_meta s2)
+    -> st
   | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _) ->
       assert (s1 =%= s2);
 (*
@@ -921,11 +925,8 @@ let count_meta_list l =
 let rec not_trivial e =
   match e with
   | Enot (Eapp ("=", ([Emeta _; _] | [_; Emeta _]), _), _) -> false
-  | Enot (Eapp ("TLA.in", [Emeta _;
-                           ( Evar ("TLA.emptyset", _)
-                           | Eapp ("TLA.set", _, _)
-                           | Eapp ("TLA.add", _, _))], _), _) -> true
-  | Enot (Eapp ("TLA.in", [Emeta _; _], _), _) -> false
+  | Enot (Eapp ("TLA.in", [Emeta _; Evar ("TLA.emptyset", _)], _), _) -> true
+  | Enot (Eapp ("TLA.in", [Emeta _; Evar _], _), _) -> false
   | Eand (e1, e2, _) | Eor (e1, e2, _) -> not_trivial e1 || not_trivial e2
   | _ -> true
 ;;
@@ -1073,6 +1074,7 @@ let good_head q =
 ;;
 
 exception NoProof;;
+exception LimitsExceeded;;
 
 let progress_period = ref 100;;
 let progress_counter = ref !progress_period;;
@@ -1095,19 +1097,19 @@ let periodic c =
     Progress.end_progress "";
     Error.err "could not find a proof within the time limit";
     flush stderr;
-    raise NoProof;
+    raise LimitsExceeded;
   end;
   if float heap_size > !Globals.size_limit then begin
     Progress.end_progress "";
     Error.err "could not find a proof within the memory size limit";
     flush stderr;
-    raise NoProof;
+    raise LimitsExceeded;
   end;
   if !steps > !Globals.step_limit then begin
     Progress.end_progress "";
     Error.err "could not find a proof within the inference steps limit";
     flush stderr;
-    raise NoProof;
+    raise LimitsExceeded;
   end;
 ;;
 
@@ -1273,7 +1275,7 @@ let prove defs l =
         Progress.end_progress "";
         p
     | Open | Backtrack -> assert false
-  with NoProof ->
+  with e ->
     Progress.end_progress " no proof";
-    raise NoProof
+    raise e
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.11 2009-07-31 14:18:08 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.12 2009-08-05 14:47:43 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -87,10 +87,15 @@ Lemma zenon_notequal : forall (T : Type) (a b : T),
   (a = b) -> (a <> b -> False).
 Proof. auto. Qed.
 
-Lemma zenon_congruence :
+Lemma zenon_congruence_lr :
   forall (T : Type) (P : T -> Type) (a b : T),
   (P b -> False) -> (P a -> a = b -> False).
 Proof. intros T P a b h1 h2 heq. rewrite heq in h2; auto. Qed.
+
+Lemma zenon_congruence_rl :
+  forall (T : Type) (P : T -> Type) (a b : T),
+  (P b -> False) -> (P a -> b = a -> False).
+Proof. intros T P a b h1 h2 heq. rewrite <- heq in h2; auto. Qed.
 
 Ltac zenon_intro id :=
   intro id || let nid := fresh in (intro nid; clear nid)
@@ -113,8 +118,10 @@ Definition zenon_subst_s := fun T P x y c h i => zenon_subst T P x y h i c.
 Definition zenon_pnotp_s := fun P Q c h i => zenon_pnotp P Q h i c.
 Definition zenon_notequal_s := fun T x y c h => zenon_notequal T x y h c.
 
-Definition zenon_congruence_s :=
-  fun T P a b c1 c2 h => zenon_congruence T P a b h c1 c2.
+Definition zenon_congruence_lr_s :=
+  fun T P a b c1 c2 h => zenon_congruence_lr T P a b h c1 c2.
+Definition zenon_congruence_rl_s :=
+  fun T P a b c1 c2 h => zenon_congruence_rl T P a b h c1 c2.
 
 Lemma zenon_equal_base : forall (T : Type) (f : T), f = f.
 Proof. auto. Qed.

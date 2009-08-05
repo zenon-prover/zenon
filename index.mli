@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.8 2009-07-03 15:52:23 doligez Exp $  *)
+(*  $Id: index.mli,v 1.9 2009-08-05 14:47:43 doligez Exp $  *)
 
 open Expr;;
 
@@ -15,6 +15,9 @@ val get_all : unit -> (expr * goalness) list;;
 
 val find_pos : string -> (expr * goalness) list;;
 val find_neg : string -> (expr * goalness) list;;
+
+val find_eq_lr : expr -> expr list;;
+val find_eq_rl : expr -> expr list;;
 
 (* ==== transitive relations ==== *)
 

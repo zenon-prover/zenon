@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: mlproof.mli,v 1.9 2009-07-20 13:10:19 doligez Exp $  *)
+(*  $Id: mlproof.mli,v 1.10 2009-08-05 14:47:43 doligez Exp $  *)
 
 open Expr;;
 
@@ -55,8 +55,10 @@ type rule =
                                                                 [a b -rcd]*)
 
   | Cut of expr                 (*   / p | -p                   [p]*)
-  | Congruence of expr * expr * expr
+  | CongruenceLR of expr * expr * expr
                                 (* p[a],a=b / p[b]              [p a b]*)
+  | CongruenceRL of expr * expr * expr
+                                (* p[a],b=a / p[b]              [p a b]*)
   | Miniscope of expr * expr * expr list
       (* $scope (f, t, v1, ...) / f[v1] | ... | t != v1, ... , f[t]
                                                                 [f t v1 ...] *)
@@ -99,7 +101,8 @@ val make_neqv : expr -> expr -> proof -> proof -> proof;;
 val make_pnp : expr -> expr -> proof list -> proof;;
 val make_pnps : string -> expr -> expr -> proof -> proof -> proof;;
 val make_neql : expr -> expr -> proof list -> proof;;
-val make_congr : expr -> expr -> expr -> proof -> proof;;
+val make_conglr : expr -> expr -> expr -> proof -> proof;;
+val make_congrl : expr -> expr -> expr -> proof -> proof;;
 val make_def : definition -> expr -> expr -> proof -> proof;;
 
 val make_cut : expr -> proof -> proof -> proof;;

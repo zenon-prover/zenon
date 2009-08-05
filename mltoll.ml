@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.50 2009-07-20 13:10:19 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.51 2009-08-05 14:47:43 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -151,7 +151,8 @@ let tr_rule r =
       LL.Rdefinition (name, sym, tr_expr folded, tr_expr unfolded)
 
   | Cut (p) -> LL.Rcut (tr_expr p)
-  | Congruence (p, a, b) -> LL.Rcongruence (tr_expr p, tr_expr a, tr_expr b)
+  | CongruenceLR (p, a, b) -> LL.RcongruenceLR (tr_expr p, tr_expr a, tr_expr b)
+  | CongruenceRL (p, a, b) -> LL.RcongruenceRL (tr_expr p, tr_expr a, tr_expr b)
 
   | Ext ("", "notallex", [Elam (v, t, p, _) as lam]) ->
      let c = enot (eall (v, t, p)) in
@@ -274,7 +275,8 @@ let is_derived = function
     -> true
 
   | Cut _ -> false
-  | Congruence _ -> false
+  | CongruenceLR _ -> false
+  | CongruenceRL _ -> false
   | Miniscope _ -> true
   | Ext ("", _, _) -> false
   | Ext _ -> true
@@ -751,12 +753,6 @@ let expand_trans_equal a b c d n1 n2 =
   n4
 ;;
 
-let make_sym x y n0 =
-  let n1 = make_cls "=" x y in
-  let n2 = make_cut (eapp ("=", [y; x])) n0 n1 in
-  n2
-;;
-
 let orelse f1 a1 f2 a2 =
   match f1 a1 with
   | None -> f2 a2
@@ -1001,7 +997,7 @@ and translate_derived p =
        | Some n0 -> n0
        | _ -> assert false
      in
-     let n1 = make_congr lam tau va n_eq in
+     let n1 = make_conglr lam tau va n_eq in
      let n2 = make_cut (eapp ("=", [tau; va])) n1 n0 in
      to_llproof n2
   | Miniscope (lam, tau, []) ->
@@ -1028,7 +1024,8 @@ and translate_derived p =
   | NotEqual _
   | Definition (DefReal _, _, _)
   | Cut _
-  | Congruence _
+  | CongruenceLR _
+  | CongruenceRL _
     -> assert false
 
 and translate_pseudo_def p def_hyp s args folded unfolded =
@@ -1058,19 +1055,18 @@ and translate_pseudo_def_base p def_hyp s args folded unfolded =
   | Eapp ("=", [_; _], _) when Expr.equal folded (enot def_hyp) ->
       make_node [folded; def_hyp] (Close def_hyp) [] []
   | Eapp ("=", [xx; yy], _) ->
-     let sym = match def_hyp with
+     let make_cong = match def_hyp with
        | Eapp ("=", [Eapp (s1, _, _); body], _)
        | Eapp ("=", [Evar (s1, _); body], _)
-         when s1 = s -> false
+         when s1 = s -> make_conglr
        | Eapp ("=", [body; Eapp (s1, _, _)], _)
        | Eapp ("=", [body; Evar (s1, _)], _)
-         when s1 = s -> true
+         when s1 = s -> make_congrl
        | _ -> assert false
      in
      let x = Expr.newvar () in
      let (ctx, a, b) = find_diff x folded unfolded in
-     let n1 = make_congr (elam (x, "", ctx)) a b n0 in
-     if sym then make_sym xx yy n1 else n1
+     make_cong (elam (x, "", ctx)) a b n0
   | _ -> assert false
 
 and translate_rec_def p eqn s args folded unfolded =

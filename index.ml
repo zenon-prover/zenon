@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.12 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.13 2009-08-05 14:47:43 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -220,8 +220,33 @@ let find_all_negtrans_right head =
 
 (* ==== *)
 
+let eq_lr = (HE.create tblsize : Expr.t HE.t);;
+let eq_rl = (HE.create tblsize : Expr.t HE.t);;
+
+let add_eq e =
+  match e with
+  | Eapp ("=", [e1; e2], _) ->
+     HE.add eq_lr e1 e2;
+     HE.add eq_rl e2 e1;
+  | _ -> ()
+;;
+
+let remove_eq e =
+  match e with
+  | Eapp ("=", [e1; e2], _) ->
+     HE.remove eq_lr e1;
+     HE.remove eq_rl e2;
+  | _ -> ()
+;;
+
+let find_eq_lr e = HE.find_all eq_lr e;;
+let find_eq_rl e = HE.find_all eq_rl e;;
+
+(* ==== *)
+
 let add e g =
   HE.add allforms e g;
+  add_eq e;
   incr cur_num_forms;
   if !cur_num_forms > !Globals.top_num_forms
   then Globals.top_num_forms := !cur_num_forms;
@@ -235,6 +260,7 @@ let remove e =
   remove_trans e;
   remove_negtrans e;
   negpos remove_element e;
+  remove_eq e;
   HE.remove allforms e;
   begin try (HE.find proofs e).present <- false with Not_found -> (); end;
 ;;

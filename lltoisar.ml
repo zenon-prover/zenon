@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.28 2009-07-10 09:59:07 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.29 2009-08-05 14:47:43 doligez Exp $";;
 
 open Printf;;
 
@@ -363,7 +363,7 @@ let rec p_tree hyps i dict oc proof =
   | Rfalse ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s)\n" (hname hyps efalse);
-  | Rcongruence (p, a, b) ->
+  | RcongruenceLR (p, a, b) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let h0 = eapp ("=", [a; b]) in
      let h1 = apply p a in
@@ -372,6 +372,17 @@ let rec p_tree hyps i dict oc proof =
      let dict2 = p_is dict oc c in
      iprintf i oc "by (rule subst [of \"%a\" \"%a\" \"%a\", OF %s %s])\n"
              (p_expr dict2) a (p_expr dict2) b (p_expr dict2) p
+             (hname hyps h0) (hname hyps h1);
+     p_tree hyps i dict2 oc t;
+  | RcongruenceRL (p, a, b) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let h0 = eapp ("=", [b; a]) in
+     let h1 = apply p a in
+     let c = apply p b in
+     iprintf i oc "have %s: \"%a\"" (hname hyps c) (p_expr dict) c;
+     let dict2 = p_is dict oc c in
+     iprintf i oc "by (rule ssubst [of \"%a\" \"%a\" \"%a\", OF %s %s])\n"
+             (p_expr dict2) b (p_expr dict2) a (p_expr dict2) p
              (hname hyps h0) (hname hyps h1);
      p_tree hyps i dict2 oc t;
 

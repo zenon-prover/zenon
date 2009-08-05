@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.55 2009-07-31 14:18:08 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.56 2009-08-05 14:47:43 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -297,13 +297,21 @@ let rec trtree env node =
      let neq = enot (eapp ("=", [ff; gg])) in
      Capp (List.fold_right2 (mk_eq_node env) args hyps base, [getv neq])
   | Rnotequal _ -> assert false
-  | Rcongruence (p, a, b) ->
+  | RcongruenceLR (p, a, b) ->
      let sub = tr_subtree_1 hyps in
      let h = apply p b in
      let lam = mklam h sub in
      let concl1 = getv (apply p a) in
      let concl2 = getv (eapp ("=", [a; b])) in
-     Capp (Cvar "zenon_congruence",
+     Capp (Cvar "zenon_congruence_lr",
+           [Cwild; trexpr p; trexpr a; trexpr b; lam; concl1; concl2])
+  | RcongruenceRL (p, a, b) ->
+     let sub = tr_subtree_1 hyps in
+     let h = apply p b in
+     let lam = mklam h sub in
+     let concl1 = getv (apply p a) in
+     let concl2 = getv (eapp ("=", [b; a])) in
+     Capp (Cvar "zenon_congruence_rl",
            [Cwild; trexpr p; trexpr a; trexpr b; lam; concl1; concl2])
   | Rdefinition (name, sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in

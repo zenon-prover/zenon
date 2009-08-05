@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.32 2009-07-20 13:10:19 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.33 2009-08-05 14:47:43 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -224,7 +224,8 @@ let get_rule_name = function
   | TransEq2 (e1, e2, e3) -> "TransEq2", [e1; e2; e3]
   | TransEq_sym (e1, e2, e3) -> "TransEq-sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
-  | Congruence (p, a, b) -> "Congruence", [p; a; b]
+  | CongruenceLR (p, a, b) -> "CongruenceLR", [p; a; b]
+  | CongruenceRL (p, a, b) -> "CongruenceRL", [p; a; b]
   | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
 ;;
@@ -316,7 +317,8 @@ let hlrule_name = function
   | TransEq2 (e1, e2, e3) -> "TransEq2", [e1; e2; e3]
   | TransEq_sym (e1, e2, e3) -> "TransEq-sym", [e1; e2; e3]
   | Cut (e1) -> "Cut", [e1]
-  | Congruence (p, a, b) -> "Congruence", [p; a; b]
+  | CongruenceLR (p, a, b) -> "CongruenceLR", [p; a; b]
+  | CongruenceRL (p, a, b) -> "CongruenceRL", [p; a; b]
   | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> ("Extension/"^th^"/"^ru), args
 ;;
@@ -508,8 +510,16 @@ let llproof_rule o r =
       pr ", ";
       llproof_expr o u;
       pr ")";
-  | Rcongruence (p, a, b) ->
-      pr "---congruence (";
+  | RcongruenceLR (p, a, b) ->
+      pr "---congruenceLR (";
+      llproof_expr o p;
+      pr ", ";
+      llproof_expr o a;
+      pr ", ";
+      llproof_expr o b;
+      pr ")";
+  | RcongruenceRL (p, a, b) ->
+      pr "---congruenceRL (";
       llproof_expr o p;
       pr ", ";
       llproof_expr o a;
