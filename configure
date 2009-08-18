@@ -2,7 +2,7 @@
 
 #**********************************************************************#
 #                                                                      #
-#                        FoCaLize compiler                             #
+#                        FoCaLiZe compiler                             #
 #                                                                      #
 #            François Pessaux                                          #
 #            Pierre Weis                                               #
@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.63 2009-05-22 10:07:46 weis Exp $
+# $Id: configure,v 1.64 2009-08-18 10:10:02 weis Exp $
 
 ########################################################################
 #
@@ -573,23 +573,23 @@ set_tools_prefix_defaults () {
   # Defaults for Focalizec.
   DEFAULT_FOCALIZEC_PREFIX="${DEFAULT_PREFIX}"
   DEFAULT_FOCALIZEC_BIN_DIR="${DEFAULT_FOCALIZEC_PREFIX}/bin"
-  DEFAULT_FOCALIZEC_LIB_DIR="${DEFAULT_FOCALIZEC_PREFIX}/lib/focalizec"
+  DEFAULT_FOCALIZEC_LIB_DIR="${DEFAULT_FOCALIZEC_PREFIX}/lib/${FOCALIZEC_NAME}"
 
   if ${DEFAULT_STATIC_EXTERNAL}; then
-    DEFAULT_FOCALIZEC_COMPILER="${DEFAULT_FOCALIZEC_BIN_DIR}/focalizec";
+    DEFAULT_FOCALIZEC_COMPILER="${DEFAULT_FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME}";
   else
-    DEFAULT_FOCALIZEC_COMPILER="focalizec";
+    DEFAULT_FOCALIZEC_COMPILER="${FOCALIZEC_NAME}";
   fi
 
   # Defaults for Focalizedep.
   DEFAULT_FOCALIZEDEP_PREFIX="${DEFAULT_PREFIX}"
   DEFAULT_FOCALIZEDEP_BIN_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/bin"
-  DEFAULT_FOCALIZEDEP_LIB_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/lib/focalizedep"
+  DEFAULT_FOCALIZEDEP_LIB_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/lib/${FOCALIZEDEP_NAME}"
 
   if ${DEFAULT_STATIC_EXTERNAL}; then
-    DEFAULT_FOCALIZEDEP_COMPILER="${DEFAULT_FOCALIZEDEP_BIN_DIR}/focalizedep";
+    DEFAULT_FOCALIZEDEP_COMPILER="${DEFAULT_FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME}";
   else
-    DEFAULT_FOCALIZEDEP_COMPILER="focalizedep";
+    DEFAULT_FOCALIZEDEP_COMPILER="${FOCALIZEDEP_NAME}";
   fi
 
 }
@@ -755,10 +755,10 @@ set_tools_prefix () {
     FOCALIZEC_BIN_DIR="${FOCALIZEC_PREFIX}/bin";
   fi
   if test -z "${FOCALIZEC_LIB_DIR}"; then
-    FOCALIZEC_LIB_DIR="${FOCALIZEC_PREFIX}/lib/focalizec";
+    FOCALIZEC_LIB_DIR="${FOCALIZEC_PREFIX}/lib/${FOCALIZEC_NAME}";
   fi
   if test -z "${FOCALIZEC_COMPILER}"; then
-    FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/focalizec";
+    FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME}";
   fi
 
   # Settings for Focalizedep.
@@ -770,10 +770,10 @@ set_tools_prefix () {
     FOCALIZEDEP_BIN_DIR="${FOCALIZEDEP_PREFIX}/bin";
   fi
   if test -z "${FOCALIZEDEP_LIB_DIR}"; then
-    FOCALIZEDEP_LIB_DIR="${FOCALIZEDEP_PREFIX}/lib/focalizedep";
+    FOCALIZEDEP_LIB_DIR="${FOCALIZEDEP_PREFIX}/lib/${FOCALIZEDEP_NAME}";
   fi
   if test -z "${FOCALIZEDEP_COMPILER}"; then
-    FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/focalizedep";
+    FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME}";
   fi
 
 }
