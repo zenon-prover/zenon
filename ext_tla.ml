@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.32 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.33 2009-08-18 09:46:40 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -300,17 +300,22 @@ let newnodes_prop e g =
                         eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
      in
      mknode (Inst h3) "in_funcset" [e; h1; h2; h3; f; a; b] [| [h1; h2; h3] |]
+
   | Enot (Eapp ("TLA.in", [f; Eapp ("TLA.FuncSet", [a; b], _)], _), _) ->
      let h1 = enot (eapp ("TLA.isAFcn", [f])) in
-     let h2 = enot (eapp ("=", [eapp ("TLA.DOMAIN", [f]); a]))
-     in
+     let h2 = enot (eapp ("=", [eapp ("TLA.DOMAIN", [f]); a])) in
      let x = Expr.newvar () in
      let h3 = enot (
                eall (x, "",
                      eimply (eapp ("TLA.in", [x; a]),
                              eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b]))))
      in
-     mknode (Inst h3) "notin_funcset" [e; h1; h2; h3; f; a; b]
+     let prio =
+       match f with
+       | Eapp (s, _, _) when List.mem s tla_fcn_constructors -> Arity
+       | _ -> Inst h3
+     in
+     mknode prio "notin_funcset" [e; h1; h2; h3; f; a; b]
             [| [h1]; [h2]; [h3] |]
 
   | Eapp ("=", [e1; Evar ("TLA.emptyset", _)], _) ->
@@ -448,9 +453,9 @@ let do_substitutions v p g =
 let newnodes_subst e g =
   match e with
   | Enot (Eapp ("TLA.in", [Evar _ as v; s], _), _) ->
-     do_substitutions v (elam (v, "", e)) g
-  | Enot (Eapp ("TLA.in", [Eapp ("TLA.apply", [Evar _ as v; arg], _); s], _), _)
-    -> do_substitutions v (elam (v, "", e)) g
+     let x = Expr.newvar () in
+     let lam = elam (x, "", enot (eapp ("TLA.in", [x; s]))) in
+     do_substitutions v lam g
   | _ -> []
 ;;
 
@@ -522,6 +527,15 @@ let rewrites in_expr x ctx e mknode =
      mknode "fapplyexcept" [appctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
                             lamctx; f; v; e1; w]
             [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
+  | Eapp ("TLA.fapply", [Evar _ as f; arg], _) ->
+     let g =   (* yuck *)
+       match mknode "" [] [] [| |] with
+       | [Node {ngoal = g}] -> g
+       | _ -> assert false
+     in
+     let x = Expr.newvar () in
+     let lam = elam (x, "", appctx (eapp ("TLA.fapply", [x; arg]))) in
+     do_substitutions f lam g
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = appctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [appctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
@@ -586,41 +600,35 @@ let rec find_rewrites in_expr x ctx e mknode =
 
 let newnodes_rewrites e g =
   let mknode name args add_con branches =
-    match name with
-    | "definition" ->
-       begin match args with
-       | [folded; unfolded; Evar (f, _)] ->
-          let (def, params, body) = Index.get_def f in
-          [ Node {
-            nconc = e :: add_con;
-            nrule = Definition (def, folded, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = branches;
-          }]
-       | [folded; unfolded; Eapp (f, args, _)] ->
-          let (def, params, body) = Index.get_def f in
-          [ Node {
-            nconc = e :: add_con;
-            nrule = Definition (def, folded, unfolded);
-            nprio = Arity;
-            ngoal = g;
-            nbranches = branches;
-          }]
-       | _ -> assert false
-       end
-    | "cut" ->
-      begin match args with
-      | [h] ->
-         [ Node {
-           nconc = add_con;
-           nrule = Cut (h);
-           nprio = Arity;
-           ngoal = g;
-           nbranches = branches;
-         }]
-      | _ -> assert false
-      end
+    match name, args with
+    | "definition", [folded; unfolded; Evar (f, _)] ->
+       let (def, params, body) = Index.get_def f in
+       [ Node {
+         nconc = e :: add_con;
+         nrule = Definition (def, folded, unfolded);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = branches;
+       }]
+    | "definition", [folded; unfolded; Eapp (f, args, _)] ->
+       let (def, params, body) = Index.get_def f in
+       [ Node {
+         nconc = e :: add_con;
+         nrule = Definition (def, folded, unfolded);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = branches;
+       }]
+    | "definition", _ -> assert false
+    | "cut", [h] ->
+       [ Node {
+         nconc = add_con;
+         nrule = Cut (h);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = branches;
+       }]
+    | "cut", _ -> assert false
     | _ ->
        [ Node {
          nconc = e :: add_con;

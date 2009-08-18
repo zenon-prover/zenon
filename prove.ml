@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.52 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.53 2009-08-18 09:46:40 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -459,13 +459,14 @@ let newnodes_unfold st fm g =
   let mk_unfold ctx p args =
     try
       let (d, params, body) = Index.get_def p in
+      let prio = match d with DefRec _ -> Inst fm | _ -> Prop in
       match params, args, body with
       | [], Some aa, Evar (b, _) ->
          let unfolded = ctx (eapp (b, aa)) in
          add_node st {
            nconc = [fm];
            nrule = Definition (d, fm, unfolded);
-           nprio = Prop;
+           nprio = prio;
            ngoal = g;
            nbranches = [| [unfolded] |];
          }, true
@@ -476,7 +477,7 @@ let newnodes_unfold st fm g =
          add_node st {
            nconc = [fm];
            nrule = Definition (d, fm, unfolded);
-           nprio = Prop;
+           nprio = prio;
            ngoal = g;
            nbranches = [| [unfolded] |];
          }, true

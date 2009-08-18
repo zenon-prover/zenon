@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.25 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.26 2009-08-18 09:46:40 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -67,13 +67,14 @@ let newnodes_istrue e g =
   let mk_unfold ctx p args =
     try
       let (d, params, body) = Index.get_def p in
+      let prio = match d with DefRec _ -> Inst e | _ -> Prop in
       match params, args, body with
       | [], Some aa, Evar (b, _) ->
          let unfolded = ctx (eapp (b, aa)) in
          [ Node {
            nconc = [e];
            nrule = Definition (d, e, unfolded);
-           nprio = Arity;
+           nprio = prio;
            ngoal = g;
            nbranches = [| [unfolded] |];
          }; Stop ]
@@ -84,7 +85,7 @@ let newnodes_istrue e g =
          [ Node {
            nconc = [e];
            nrule = Definition (d, e, unfolded);
-           nprio = Arity;
+           nprio = prio;
            ngoal = g;
            nbranches = [| [unfolded] |];
          }; Stop ]
