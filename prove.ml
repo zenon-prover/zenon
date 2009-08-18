@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.53 2009-08-18 09:46:40 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.54 2009-08-18 15:35:46 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -530,6 +530,7 @@ let newnodes_unfold st fm g =
   | _ -> st, false
 ;;
 
+(*
 let rec can_instantiate m e =
   match e with
   | Evar _ -> true
@@ -544,6 +545,8 @@ let rec can_instantiate m e =
   | Elam (v, t, e1, _)
     -> can_instantiate m e1
 ;;
+*)
+let can_instantiate _ _ = true;;
 
 let orient_meta m1 m2 =
   let rec get_metas e =
@@ -578,6 +581,10 @@ let newnodes_refl st fm g =
         nbranches = [| [enot (eapp ("=", [e1; e2]))] |];
       }, false
 
+  | Enot (Eapp ("=", [Emeta (m1, _) as e1; Emeta (m2, _) as e2], _), _)
+    when can_instantiate m1 e2 && can_instantiate m2 e1 ->
+     let (st1, _) = make_inst st m2 e1 g in
+     make_inst st1 m1 e2 g
   | Enot (Eapp ("=", [Emeta (m, _); e], _), _) when can_instantiate m e ->
      make_inst st m e g
   | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) when can_instantiate m e ->
@@ -957,10 +964,10 @@ let find_open_branch node brstate =
           let fs = node.nbranches.(i) in
           let f accu x = accu + Expr.size x in
           let s = List.fold_left f 0 fs in
-          (count_nontrivial fs, count_meta_list fs, s, i)
+          (fs, count_nontrivial fs, count_meta_list fs, s, i)
         in
         let l1 = List.rev_map score l in
-        let cmp (nt1, len1, size1, _) (nt2, len2, size2, _) =
+        let cmp (fs1, nt1, len1, size1, _) (fs2, nt2, len2, size2, _) =
           if nt1 =%= 0 then 1
           else if nt2 =%= 0 then -1
           else if len1 <> len2 then len2 - len1
@@ -980,10 +987,10 @@ let find_open_branch node brstate =
         if !Globals.random_flag then begin
           let l = List.length l2 in
           let n = Random.State.int !rndstate l in
-          match List.nth l2 n with (_, _, _, i) -> Some i
+          match List.nth l2 n with (_, _, _, _, i) -> Some i
         end else begin
           match l2 with
-          | (_, _, _, i) :: _ -> Some i
+          | (_, _, _, _, i) :: _ -> Some i
           | _ -> assert false
         end
   end

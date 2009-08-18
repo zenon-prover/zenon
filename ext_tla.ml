@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.33 2009-08-18 09:46:40 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.34 2009-08-18 15:35:46 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 (* Symbols: TLA.in *)
@@ -384,7 +384,7 @@ let newnodes_prop e g =
      let p1x = substitute [(v1, x)] p1 in
      let p2x = substitute [(v2, x)] p2 in
      let h = eex (x, t1, eapp ("$notequiv", [p1x; p2x])) in
-     mknode Arity "choose_diff_choose"
+     mknode (Inst h) "choose_diff_choose"
             [e; h; elam (v1, t1, p1); elam (v2, t2, p2)] [| [h] |]
 
   | Eapp ("$notequiv", [e1; e2], _) ->
