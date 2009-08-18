@@ -1,6 +1,6 @@
 #**********************************************************************#
 #                                                                      #
-#                        FoCaLize compiler                             #
+#                        FoCaLiZe compiler                             #
 #                                                                      #
 #            François Pessaux                                          #
 #            Pierre Weis                                               #
@@ -13,9 +13,9 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.4 2009-04-03 15:50:36 doligez Exp $
+# $Id: .project_config_var,v 1.5 2009-08-18 10:09:00 weis Exp $
 
-# The configuration variables specific to FoCaLize.
+# The configuration variables specific to FoCaLiZe.
 
 set_project_id () {
 
@@ -42,7 +42,8 @@ set_project_id () {
   # (Also defined in ./Makefile.config if any.)
   TOOLS_INTERNAL=""
 
-  # The list of tools specific for the project (and not stand alone internal tools).
+  # The list of tools specifically provided by the project
+  # (not one of the stand alone internal projects).
   PROJECT_DELIVERABLES="zenon"
 
   # The manual extension for the man page of the project
@@ -74,10 +75,11 @@ set_intrinsic_defaults () {
 
   # Do we use a tools specific prefix directory for the project ?
   DEFAULT_USE_TOOLS_PREFIX_DIRECTORY=false
-  DEFAULT_TOOLS_PREFIX=~/pkg
+  DEFAULT_TOOLS_PREFIX=$HOME/pkg
   
-  # Do we use a 'full project name' private sub directory inside ${TOOLS_PREFIX}
-  # for the installation of the external/internal tools of the project ?
+  # Do we use a 'full project name' private sub directory inside the
+  # ${TOOLS_PREFIX} directory for the installation of the external/internal
+  # tools of the project ?
   DEFAULT_USE_PROJECT_SUB_DIRECTORY=false
 
   # Intrinsic defaults for Caml
