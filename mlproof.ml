@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.12 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: mlproof.ml,v 1.13 2009-08-20 18:38:14 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -14,8 +14,8 @@ type rule =
   | And of expr * expr          (* p/\q   /  p, q       *)
   | NotOr of expr * expr        (* -(p\/q)  /  -p, -q   *)
   | NotImpl of expr * expr      (* -(p=>q)  /  p, -q    *)
-  | NotAll of expr              (* -A.p  /  -p(t(p))    *)
-  | NotAllEx of expr            (* -A.p  /  -p(t(p)), E.(-p) *)
+  | NotAll of expr              (* -A.p  /  -p(t(-p))   *)
+  | NotAllEx of expr            (* -A.p  /  -p(t(-p)), E.(-p) *)
   | Ex of expr                  (* E.p  /  p(t(p))      *)
   | All of expr * expr          (* A.p  /  p(e)         *)
   | NotEx of expr * expr        (* -E.p  /  -p(e)       *)

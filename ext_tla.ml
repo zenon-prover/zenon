@@ -1,8 +1,7 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.34 2009-08-18 15:35:46 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.35 2009-08-20 18:38:14 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
-(* Symbols: TLA.in *)
 
 open Printf;;
 
@@ -434,6 +433,8 @@ let newnodes_prop e g =
   | _ -> []
 ;;
 
+let has_subst e = Index.find_eq_lr e <> [] || Index.find_eq_rl e <> [];;
+
 let do_substitutions v p g =
   let rhs = Index.find_eq_lr v in
   let lhs = Index.find_eq_rl v in
@@ -450,13 +451,51 @@ let do_substitutions v p g =
   List.map (f true) rhs @@ List.map (f false) lhs
 ;;
 
-let newnodes_subst e g =
+let rec newnodes_subst x ctx e g =
+  let appctx e = substitute [(x, e)] ctx in
   match e with
-  | Enot (Eapp ("TLA.in", [Evar _ as v; s], _), _) ->
-     let x = Expr.newvar () in
-     let lam = elam (x, "", enot (eapp ("TLA.in", [x; s]))) in
-     do_substitutions v lam g
+  | Evar _ -> []
+  | Emeta _ -> []
+  | Enot (e1, _) -> newnodes_subst x (appctx (enot x)) e1 g
+
+  | Eapp ("TLA.in", [Evar _ as e1; e2], _) when has_subst e1 ->
+     let nctx = appctx (eapp ("TLA.in", [x; e2])) in
+     do_substitutions e1 (elam (x, "", nctx)) g
+  | Eapp ("TLA.in", [e1; Evar _ as e2], _) when has_subst e2 ->
+     let nctx = appctx (eapp ("TLA.in", [e1; x])) in
+     do_substitutions e2 (elam (x, "", nctx)) g
+
+  | Eapp ("TLA.fapply", [Evar _ as e1; e2], _) when has_subst e1 ->
+     let nctx = appctx (eapp ("TLA.fapply", [x; e2])) in
+     do_substitutions e1 (elam (x, "", nctx)) g
+
+  | Eapp ("TLA.isAFcn", [Evar _ as e1], _) when has_subst e1 ->
+     let nctx = appctx (eapp ("TLA.isAFcn", [x])) in
+     do_substitutions e1 (elam (x, "", nctx)) g
+
+  | Eapp ("TLA.DOMAIN", [Evar _ as e1], _) when has_subst e1 ->
+     let nctx = appctx (eapp ("TLA.DOMAIN", [x])) in
+     do_substitutions e1 (elam (x, "", nctx)) g
+
+  | Eapp (f, args, _) ->
+     let rec loop leftarg rightarg =
+       match rightarg with
+       | [] -> []
+       | h::t ->
+          let e1 = eapp (f, List.rev_append leftarg (x :: t)) in
+          let newctx = appctx e1 in
+          let rw = newnodes_subst x newctx h g in
+          if rw <> [] then rw
+          else loop (h::leftarg) t
+     in
+     loop [] args
+
   | _ -> []
+;;
+
+let newnodes_subst e g =
+  let x = Expr.newvar () in
+  newnodes_subst x x e g
 ;;
 
 let rec mk_case_branches ctx l cond =
@@ -469,6 +508,14 @@ let rec mk_case_branches ctx l cond =
 let apply f e =
   match f with
   | Elam (v, _, b, _) -> Expr.substitute [(v, e)] b
+  | _ -> assert false
+;;
+
+let has_ex e =
+  match e with
+  | Etau (v, t, (Enot (p, _) as np), _) ->
+     Index.member (eex (v, t, np)) || Index.member (enot (eall (v, t, p)))
+  | Etau (v, t, p, _) -> Index.member (eex (v, t, p))
   | _ -> assert false
 ;;
 
@@ -527,15 +574,6 @@ let rewrites in_expr x ctx e mknode =
      mknode "fapplyexcept" [appctx e; h1a; h1b; h1c; h2a; h2b; h2c; h3;
                             lamctx; f; v; e1; w]
             [] [| [h1a; h1b; h1c]; [h2a; h2b; h2c]; [h3] |]
-  | Eapp ("TLA.fapply", [Evar _ as f; arg], _) ->
-     let g =   (* yuck *)
-       match mknode "" [] [] [| |] with
-       | [Node {ngoal = g}] -> g
-       | _ -> assert false
-     in
-     let x = Expr.newvar () in
-     let lam = elam (x, "", appctx (eapp ("TLA.fapply", [x; arg]))) in
-     do_substitutions f lam g
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = appctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [appctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
@@ -568,7 +606,7 @@ let rewrites in_expr x ctx e mknode =
      let branches = mk_case_branches appctx args etrue in
      let c = appctx e in
      mknode "case" (c :: List.flatten branches) [c] (Array.of_list branches)
-  | Etau (v, t, b, _) ->
+  | Etau (v, t, b, _) when not (has_ex e) ->
      let h1 = eex (v, t, b) in
      let h2 = enot (h1) in
      mknode "cut" [h1] [] [| [h1]; [h2] |]

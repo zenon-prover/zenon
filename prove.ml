@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.55 2009-08-20 12:08:03 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.56 2009-08-20 18:38:14 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -141,27 +141,55 @@ let higher_order_warning s =
   Error.warn (sprintf "symbol %s is used in higher-order substitution" s);
 ;;
 
+let rec good_match_e e1 e2 =
+  match e1, e2 with
+  | Evar (v1, _), Evar (v2, _) -> v1 =%= v2
+  | Emeta _, _ -> true
+  | _, Emeta _ -> true
+  | Eapp (s1, args1, _), Eapp (s2, args2, _) -> s1 =%= s2
+  | Enot (e1, _), Enot (e2, _) -> good_match_e e1 e2
+  | Eand (e1, e2, _), Eand (e3, e4, _)
+  | Eor (e1, e2, _), Eor (e3, e4, _)
+  | Eimply (e1, e2, _), Eimply (e3, e4, _)
+  | Eequiv (e1, e2, _), Eequiv (e3, e4, _)
+  -> good_match_e e1 e3 || good_match_e e2 e4
+  | Etrue, Etrue -> true
+  | Efalse, Efalse -> true
+  | Eall _, _ | Eex _, _ | Elam _, _ -> false
+  | Etau _, Etau _ -> Expr.equal e1 e2
+  | _ -> false
+;;
+
+let good_match l1 l2 =
+  match l1, l2 with
+  | [], [] -> true
+  | _ -> List.for_all2 good_match_e l1 l2
+;;
+
 let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
   | Eapp ("TLA.in", [e1; Evar _ as s1], _),
       Enot (Eapp (_, [e2; s2], _), _)
     when not (Expr.equal s1 s2) && not (is_meta e1 || is_meta e2 || is_meta s2)
     -> st
+  | Eapp ("Is_true", _, _), _ when Extension.is_active "focal" -> st
   | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _) ->
       assert (s1 =%= s2);
-(*
-      if s1 =%= "Is_true" && Extension.is_active "focal" then st else
-*)
       if sym && List.length args2 != 2
          || List.length args1 <> List.length args2
       then (arity_warning s1; st)
       else
         let myrule = if sym then P_NotP_sym (s1, p, np) else P_NotP (p, np) in
         let myargs1 = if sym then List.rev args1 else args1 in
+        let prio =
+          if good_match args1 args2 then
+            if s1 =%= "=" then Arity_eq else Arity
+          else Inst p
+        in
         add_node st {
           nconc = [p; np];
           nrule = myrule;
-          nprio = if s1 =%= "=" then Arity_eq else Arity;
+          nprio = prio;
           ngoal = min g ng;
           nbranches = make_inequals myargs1 args2;
         }
