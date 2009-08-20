@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.8 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.9 2009-08-20 12:08:03 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -135,10 +135,14 @@ let get_matching e =
      Some ((fun x -> x), ee, cases)
   | Enot (Eapp ("$match", ee :: cases, _), _) ->
      Some ((fun x -> enot (x)), ee, cases)
-  (* FIXME these last two should only be done when ext_focal is active *)
+  (* FIXME these last 4 should only be done when ext_focal is active *)
   | Eapp ("Is_true", [Eapp ("$match", ee :: cases, _)], _) ->
      Some ((fun x -> eapp ("Is_true", [x])), ee, cases)
+  | Eapp ("Is_true**$match", ee :: cases, _) ->
+     Some ((fun x -> eapp ("Is_true", [x])), ee, cases)
   | Enot (Eapp ("Is_true", [Eapp ("$match", ee :: cases, _)], _), _) ->
+     Some ((fun x -> enot (eapp ("Is_true", [x]))), ee, cases)
+  | Enot (Eapp ("Is_true**$match", ee :: cases, _), _) ->
      Some ((fun x -> enot (eapp ("Is_true", [x]))), ee, cases)
   | _ -> None
 ;;

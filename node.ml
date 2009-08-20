@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.16 2008-12-18 17:00:41 doligez Exp $";;
+Version.add "$Id: node.ml,v 1.17 2009-08-20 12:08:03 doligez Exp $";;
 
 open Expr;;
 open Printf;;
@@ -103,6 +103,21 @@ let insert_by_goalness l n =
   list_insert gness nh l
 ;;
 
+let rec can_instantiate m e =
+  match e with
+  | Evar _ -> true
+  | Emeta (m1, _) -> not (List.exists (Expr.equal m) (get_metas m1))
+  | Eapp (s, es, _) -> List.for_all (can_instantiate m) es
+  | Enot (e1, _) -> can_instantiate m e1
+  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _)
+    -> can_instantiate m e1 && can_instantiate m e2
+  | Etrue | Efalse -> true
+  | Eall (v, t, e1, _) | Eex (v, t, e1, _) | Etau (v, t, e1, _)
+  | Elam (v, t, e1, _)
+    -> can_instantiate m e1
+;;
+
 let insert q n =
   match n.nprio with
   | Prop ->
@@ -119,11 +134,13 @@ let insert q n =
   | Arity_eq -> {q with eq_back = n::q.eq_back}
   | Inst _ ->
       begin match n.nrule with
-      | Mlproof.All _ | Mlproof.NotEx _ ->
-          { q with
-            inst_back = n::q.inst_back;
-            inst_size = insert_by_goalness q.inst_size n;
-          }
+      | Mlproof.All (m, e)
+      | Mlproof.NotEx (Enot (m, _), e)
+      when can_instantiate m e ->
+       { q with
+         inst_back = n::q.inst_back;
+         inst_size = insert_by_goalness q.inst_size n;
+       }
       | _ -> {q with inst_back = n::q.inst_back}
       end
 ;;

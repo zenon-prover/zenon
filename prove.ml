@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.54 2009-08-18 15:35:46 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.55 2009-08-20 12:08:03 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -530,24 +530,6 @@ let newnodes_unfold st fm g =
   | _ -> st, false
 ;;
 
-(*
-let rec can_instantiate m e =
-  match e with
-  | Evar _ -> true
-  | Emeta (m1, _) -> not (List.exists (Expr.equal m) (get_metas m1))
-  | Eapp (s, es, _) -> List.for_all (can_instantiate m) es
-  | Enot (e1, _) -> can_instantiate m e1
-  | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
-  | Eequiv (e1, e2, _)
-    -> can_instantiate m e1 && can_instantiate m e2
-  | Etrue | Efalse -> true
-  | Eall (v, t, e1, _) | Eex (v, t, e1, _) | Etau (v, t, e1, _)
-  | Elam (v, t, e1, _)
-    -> can_instantiate m e1
-;;
-*)
-let can_instantiate _ _ = true;;
-
 let orient_meta m1 m2 =
   let rec get_metas e =
     match e with
@@ -581,14 +563,11 @@ let newnodes_refl st fm g =
         nbranches = [| [enot (eapp ("=", [e1; e2]))] |];
       }, false
 
-  | Enot (Eapp ("=", [Emeta (m1, _) as e1; Emeta (m2, _) as e2], _), _)
-    when can_instantiate m1 e2 && can_instantiate m2 e1 ->
+  | Enot (Eapp ("=", [Emeta (m1, _) as e1; Emeta (m2, _) as e2], _), _) ->
      let (st1, _) = make_inst st m2 e1 g in
      make_inst st1 m1 e2 g
-  | Enot (Eapp ("=", [Emeta (m, _); e], _), _) when can_instantiate m e ->
-     make_inst st m e g
-  | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) when can_instantiate m e ->
-     make_inst st m e g
+  | Enot (Eapp ("=", [Emeta (m, _); e], _), _) -> make_inst st m e g
+  | Enot (Eapp ("=", [e; Emeta (m, _)], _), _) -> make_inst st m e g
 
   | _ -> st, false
 ;;
