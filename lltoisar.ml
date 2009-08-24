@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.29 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.30 2009-08-24 12:15:23 doligez Exp $";;
 
 open Printf;;
 
@@ -97,7 +97,7 @@ let rec p_expr env dict oc e =
   | Eapp ("TLA.tuple", l, _) ->
       poc "<<%a>>" (p_expr_list env dict) l;
   | Eapp ("TLA.CASE", l, _) ->
-      poc "xxx'CASE (<<%a>>)" (p_expr_list env dict) l;
+      poc "(CASE %a)" (p_case_arms env dict) l;
   | Eapp (f, [e1; e2], _) when is_infix f ->
       poc "(%a%s%a)" (p_expr env dict) e1 (tr_infix f) (p_expr env dict) e2;
   | Eapp (f, l, _) ->
@@ -134,6 +134,16 @@ let rec p_expr env dict oc e =
 
 
 and p_expr_list env dict oc l = p_list dict "" (p_expr env) ", " oc l;
+
+and p_case_arms env dict oc l =
+  match l with
+  | [] -> assert false
+  | [e] -> fprintf oc "OTHER -> %a" (p_expr env dict) e
+  | [c; e] ->
+     fprintf oc "%a -> %a" (p_expr env dict) c (p_expr env dict) e;
+  | c :: e :: t ->
+     fprintf oc "%a -> %a [] " (p_expr env dict) c (p_expr env dict) e;
+     p_case_arms env dict oc t;
 ;;
 
 let p_expr dict oc e = p_expr [] dict oc e;;
