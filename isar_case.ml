@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: isar_case.ml,v 1.1 2009-09-11 13:24:21 doligez Exp $";;
+Version.add "$Id: isar_case.ml,v 1.2 2009-09-11 18:15:29 doligez Exp $";;
 
 open Printf;;
 
@@ -29,24 +29,32 @@ let print_seq n sep letter oc =
 ;;
 
 let template = "
-  fixes P c1x e1x,,, c2x e2x c3x e3x...
-  assumes h: \"P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...)\"
-             (is \"P (?cas)\")
-  assumes h1: \"c1x ==> P (e1x) ==> FALSE\"
+  \"!! P c1x e1x,,, c2x e2x c3x e3x... .
+    P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...) ==>
+    (c1x ==> P (e1x) ==> FALSE) ==>
 ,,,
-  assumes h2: \"c2x ==> P (e2x) ==> FALSE\"
-  assumes h3: \"c3x ==> P (e3x) ==> FALSE\"
+    (c2x ==> P (e2x) ==> FALSE) ==>
+    (c3x ==> P (e3x) ==> FALSE) ==>
 ...
-  assumes hoth: \"(~c1x,,, ==> ~c2x ==> ~c3x... ==> FALSE)\"
-  shows FALSE
+    (...~c3x & ~c2x & ,,,~c1x & TRUE ==> FALSE) ==>
+    FALSE\"
 proof -
+  fix P c1x e1x,,, c2x e2x c3x e3x...
+  assume h: \"P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...)\"
+            (is \"P (?cas)\")
+  assume h1: \"c1x ==> P (e1x) ==> FALSE\"
+,,,
+  assume h2: \"c2x ==> P (e2x) ==> FALSE\"
+  assume h3: \"c3x ==> P (e3x) ==> FALSE\"
+...
+  assume hoth: \"...~c3x & ~c2x & ,,,~c1x & TRUE ==> FALSE\"
   def cs == \"<<c1x,,,, c2x, c3x...>>\" (is \"?cs\")
   def es == \"<<e1x,,,, e2x, e3x...>>\" (is \"?es\")
   def arms == \"UNION {CaseArm (?cs[i], ?es[i]) : i \\\\in DOMAIN ?cs}\"
               (is \"?arms\")
   def cas == \"?cas\"
   have h0: \"P (cas)\" using h by (fold cas_def)
-  def dcs == \"...c3x | c2x |,,, c1x\" (is \"?dcs\")
+  def dcs == \"...c3x | c2x | ,,,c1x\" (is \"?dcs\")
   show FALSE
   proof (rule zenon_em [of \"?dcs\"])
     assume ha: \"~(?dcs)\"
@@ -77,7 +85,8 @@ proof -
       using hb by (unfold Ex_def, auto)
     have hf0: \"?cas \\\\in arms\"
       using hc by (unfold arms_def, fold Case_def)
-    have hf3: \"cas \\\\in UNION {CaseArm (?scs[i], ?ses[i]) : i \\\\in DOMAIN ?scs}\"
+    have hf3: \"cas \\\\in UNION {CaseArm (?scs[i], ?ses[i])
+                                  : i \\\\in DOMAIN ?scs}\"
               (is \"?hf3\")
       using hf0 by (fold cas_def, unfold arms_def,
                     simp only: zenon_seqify_appseq zenon_seqify_empty)
@@ -119,29 +128,38 @@ qed
 ";;
 
 let template_other = "
-  fixes P oth c1x e1x,,, c2x e2x c3x e3x...
-  assumes h: \"P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...
-                  [] OTHER -> oth)\"
-             (is \"P (?cas)\")
-  assumes h1: \"c1x ==> P (e1x) ==> FALSE\"
+  \"!! P oth c1x e1x,,, c2x e2x c3x e3x... .
+    P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x... [] OTHER -> oth) ==>
+    (c1x ==> P (e1x) ==> FALSE) ==>
 ,,,
-  assumes h2: \"c2x ==> P (e2x) ==> FALSE\"
-  assumes h3: \"c3x ==> P (e3x) ==> FALSE\"
+    (c2x ==> P (e2x) ==> FALSE) ==>
+    (c3x ==> P (e3x) ==> FALSE) ==>
 ...
-  assumes hoth: \"(~c1x,,, ==> ~c2x ==> ~c3x... ==> P (oth) ==> FALSE)\"
-  shows FALSE
+    (...~c3x & ~c2x & ,,,~c1x & TRUE ==> P (oth) ==> FALSE) ==>
+    FALSE\"
 proof -
+  fix P oth c1x e1x,,, c2x e2x c3x e3x...
+  assume h: \"P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...
+                 [] OTHER -> oth)\"
+            (is \"P (?cas)\")
+  assume h1: \"c1x ==> P (e1x) ==> FALSE\"
+,,,
+  assume h2: \"c2x ==> P (e2x) ==> FALSE\"
+  assume h3: \"c3x ==> P (e3x) ==> FALSE\"
+...
+  assume hoth: \"...~c3x & ~c2x & ,,,~c1x & TRUE ==> P (oth) ==> FALSE\"
   def cs == \"<<c1x,,,, c2x, c3x...>>\" (is \"?cs\")
   def es == \"<<e1x,,,, e2x, e3x...>>\" (is \"?es\")
   def arms == \"UNION {CaseArm (?cs[i], ?es[i]) : i \\\\in DOMAIN ?cs}\"
               (is \"?arms\")
   def cas == \"?cas\"
   have h0: \"P (cas)\" using h by (fold cas_def)
-  def dcs == \"...c3x | c2x |,,,c1x | FALSE\" (is \"?dcs\")
+  def dcs == \"...c3x | c2x | ,,,c1x | FALSE\" (is \"?dcs\")
   def scs == \"zenon_seqify (zenon_appseq (,,,zenon_appseq (zenon_appseq (...
                              <<>>, c1x),,,, c2x), c3x)...)\"
              (is \"?scs\")
-  have hscs : \"?cs = ?scs\" by (simp only: zenon_seqify_appseq zenon_seqify_empty)
+  have hscs : \"?cs = ?scs\"
+    by (simp only: zenon_seqify_appseq zenon_seqify_empty)
   def ses == \"zenon_seqify (zenon_appseq (,,,zenon_appseq (zenon_appseq (...
                              <<>>, e1x),,,, e2x), e3x)...)\"
              (is \"?ses\")
@@ -158,7 +176,8 @@ proof -
       using h by (unfold CaseOther_def, fold arms_def armoth_def)
     have hc: \"arms \\\\cup armoth
               = UNION {CaseArm (?scs[i], ?ses[i]) : i \\\\in DOMAIN ?scs}
-                \\\\cup CaseArm (\\<forall> i \\<in> DOMAIN ?scs : ~?scs[i], oth)\"
+                \\\\cup CaseArm (\\<forall> i \\<in> DOMAIN ?scs : ~?scs[i],
+                                 oth)\"
              (is \"_ = ?sarmsoth\")
       using hscs hses by (unfold arms_def armoth_def, auto)
     have hd: \"~(?dcs) & ?hlen & arms \\<union> armoth = ?sarmsoth\"
@@ -191,7 +210,8 @@ proof -
     have hb: \"\\\\E x : x \\\\in arms \\\\cup armoth\"
       using zenon_case_domain [OF ha2, where es = \"?es\"]
       by (unfold arms_def, blast)
-    have hc: \"(CHOOSE x : x \\\\in arms \\\\cup armoth) \\\\in arms \\\\cup armoth\"
+    have hc: \"(CHOOSE x : x \\\\in arms \\\\cup armoth)
+               \\\\in arms \\\\cup armoth\"
       using hb by (unfold Ex_def, auto)
     have hf0: \"?cas \\\\in arms \\\\cup armoth\"
       using hc by (unfold arms_def armoth_def, fold CaseOther_def)
@@ -199,7 +219,8 @@ proof -
       using hf0 by (fold cas_def)
     have hf2: \"cas \\\\in arms\"
       using hf1 ha4 by auto
-    have hf3: \"cas \\\\in UNION {CaseArm (?scs[i], ?ses[i]) : i \\\\in DOMAIN ?scs}\"
+    have hf3: \"cas \\\\in UNION {CaseArm (?scs[i], ?ses[i])
+                                  : i \\\\in DOMAIN ?scs}\"
               (is \"?hf3\")
       using hf2 by (unfold arms_def,
                     simp only: zenon_seqify_appseq zenon_seqify_empty)

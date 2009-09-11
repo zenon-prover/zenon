@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.30 2009-08-24 12:15:23 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.31 2009-09-11 18:15:29 doligez Exp $";;
 
 open Printf;;
 
@@ -234,10 +234,33 @@ let rec p_tree hyps i dict oc proof =
   | Rnotconnect (Equiv, e1, e2) ->
      beta "notequiv" (enot (eequiv (e1, e2)))
           [[enot (e1); e2]; [e1; enot (e2)]] proof.hyps;
-  | Rextension ("zenon_case", args, con, hs) ->
-     Error.warn "proof involving CASE: will not be checked by Isabelle";
+  | Rextension ("zenon_case", [p], [con], hs) ->
+     let arity = List.length hs - 1 in
+     let other =
+       let rec loop l =
+         match l with
+         | [ [x] ] -> false
+         | [ [x; y] ] -> true
+         | h :: t -> loop t
+         | _ -> assert false
+       in loop hs
+     in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "ML_command {* set quick_and_dirty; *} sorry\n";
+     iprintf i oc "proof (rule zenon_case%s%d [of \"%a\", OF %s])\n"
+                  (if other then "other" else "") arity
+                  (p_expr dict) p (hname hyps con);
+     let rec p_sub dict l1 l2 =
+       match l1, l2 with
+       | h::hs, t::ts ->
+          let dict2 = p_sequent hyps (iinc i) dict oc h in
+          p_tree hyps (iinc i) dict2 oc t;
+          iprintf i oc "%s\n" (if hs = [] then "qed" else "next");
+          p_sub dict hs ts;
+       | [], [] -> ()
+       | _ -> assert false
+     in
+     p_sub dict hs proof.hyps;
+  | Rextension ("zenon_case", _, _, _) -> assert false
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
@@ -541,6 +564,33 @@ let mk_hyp_dict phrases =
   List.fold_left f Hypdict.empty phrases
 ;;
 
+let rec get_case_rules accu prf =
+  let accu1 =
+    match prf.rule with
+    | Rextension ("zenon_case", _, _, hs) ->
+       let arity = List.length hs - 1 in
+       let other =
+         let rec loop l =
+           match l with
+           | [ [x] ] -> false
+           | [ [x; y] ] -> true
+           | h :: t -> loop t
+           | _ -> assert false
+         in loop hs
+       in
+       if arity > 5 then (arity, other) :: accu else accu
+    | _ -> accu
+  in
+  List.fold_left get_case_rules accu1 prf.hyps
+;;
+
+let add_case_rules oc lemmas =
+  let f lem = get_case_rules [] lem.proof in
+  let rules = List.flatten (List.map f lemmas) in
+  let rules1 = Misc.list_uniq (List.sort Pervasives.compare rules) in
+  List.iter (fun (n, oth) -> Isar_case.print_case "have" n oth oc) rules1;
+;;
+
 let p_theorem oc thm phrases lemmas =
   let ngoal = get_ngoal phrases in
   let goal =
@@ -551,6 +601,7 @@ let p_theorem oc thm phrases lemmas =
   let hyps = List.filter (fun x -> x <> ngoal) thm.proof.conc in
   let hypnames = mk_hyp_dict phrases in
   iprintf 0 oc "proof (rule zenon_nnpp)\n";
+  add_case_rules oc (thm :: lemmas);
   let i = iinc 0 in
   let p_asm dict x =
     if Hypdict.mem (Index.get_number x) hypnames then dict else begin

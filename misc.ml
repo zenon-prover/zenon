@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.15 2008-12-18 17:00:41 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.16 2009-09-11 18:15:29 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -122,6 +122,19 @@ let rec list_map4 f l1 l2 l3 l4 =
      f h1 h2 h3 h4 :: list_map4 f t1 t2 t3 t4
   | [], [], [], [] -> []
   | _ -> raise (Invalid_argument "list_map4")
+;;
+
+let rec list_uniq_aux l e accu =
+  match l with
+  | [] -> List.rev (e :: accu)
+  | h :: t when e = h -> list_uniq_aux t e accu
+  | h :: t -> list_uniq_aux t h (e :: accu)
+;;
+
+let list_uniq l =
+  match l with
+  | [] -> []
+  | h :: t -> list_uniq_aux t h []
 ;;
 
 let debug = Printf.eprintf;;

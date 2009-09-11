@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.37 2009-09-11 13:27:10 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.38 2009-09-11 18:15:29 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -572,6 +572,8 @@ let rec newnodes_subst x ctx e g =
      let nctx = appctx (eapp ("TLA.DOMAIN", [x])) in
      do_substitutions e1 (elam (x, "", nctx)) g
 
+  | Eapp (("$notequiv" | "TLA.cond" | "TLA.CASE"), _, _) -> []
+
   | Eapp (f, args, _) ->
      let rec loop leftarg rightarg =
        match rightarg with
@@ -700,7 +702,8 @@ let rewrites in_expr x ctx e mknode =
   | Eapp ("TLA.CASE", args, _) ->
      let branches = mk_case_branches appctx args etrue in
      let c = appctx e in
-     mknode "case" (c :: List.flatten branches) [c] (Array.of_list branches)
+     mknode "case" (c :: lamctx :: List.flatten branches) [c]
+            (Array.of_list branches)
   | Etau (v, t, b, _) when not (has_ex e) ->
      let h1 = eex (v, t, b) in
      let h2 = enot (h1) in
@@ -868,8 +871,8 @@ let to_llargs r =
   | Ext (_, "notisafcn_extend", _) -> close r
   | Ext (_, "ifthenelse", _) -> beta2 r
   | Ext (_, "notequalchoose", _) -> cut12 r
-  | Ext (_, "case", c :: args) ->
-     ("zenon_case", [], [c], split_case_branches args)
+  | Ext (_, "case", c :: p :: args) ->
+     ("zenon_case", [p], [c], split_case_branches args)
   | Ext (_, ("p_eq_l" | "p_eq_r" | "np_eq_l" | "np_eq_r"), _) -> binbeta r
   | Ext (_, name, _) -> single r
   | _ -> assert false
