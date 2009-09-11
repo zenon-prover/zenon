@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.35 2009-08-20 18:38:14 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.36 2009-09-11 13:24:21 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -32,10 +32,10 @@ let tla_set_constructors = [
   "TLA.DOMAIN";
   "TLA.Product";
 (*
-  "i'dotdot";
+  "isa'dotdot";
 *)
   "Nat";
-  "Int";
+  "isa'Int";
   "Seq";
 ];;
 
@@ -433,6 +433,101 @@ let newnodes_prop e g =
   | _ -> []
 ;;
 
+let strip_neg e = match e with Enot (ne, _) -> ne | _ -> assert false;;
+
+let mknode_pos_l (e, e1, e2, g) =
+  let eq = eapp ("=", [e1; e2]) in
+  let h1 = enot (eapp ("=", [e; e1])) in
+  Node {
+    nconc = [e; eq];
+    nrule = Ext ("tla", "p_eq_left", [e; eq; h1; e2; e; e1; e2]);
+    nprio = Arity_eq;
+    ngoal = g;
+    nbranches = [| [h1]; [e2] |];
+  }
+;;
+
+let mknode_pos_r (e, e1, e2, g) =
+  let eq = eapp ("=", [e1; e2]) in
+  let h1 = enot (eapp ("=", [e; e2])) in
+  Node {
+    nconc = [e; eq)];
+    nrule = Ext ("tla", "p_eq_right", [e; eq; h1; e1; e; e1; e2]);
+    nprio = Arity_eq;
+    ngoal = g;
+    nbranches = [| [h1]; [e1] |];
+  }
+;;
+
+let mknode_neg_l (e, e1, e2, g) =
+  let ne = strip_neg e in
+  let eq = eapp ("=", [e1; e2]) in
+  let h1 = enot (eapp ("=", [ne; e1])) in
+  let h2 = enot (e2) in
+  Node {
+    nconc = [e; eq)];
+    nrule = Ext ("tla", "np_eq_left", [e; eq; h1; h2; ne; e1; e2]);
+    nprio = Arity_eq;
+    ngoal = g;
+    nbranches = [| [h1]; [h2] |];
+  }
+;;
+
+let mknode_neg_r (e, e1, e2, g) =
+  let ne = strip_neg e in
+  let eq = eapp ("=", [e1; e2]) in
+  let h1 = enot (eapp ("=", [ne; e2])) in
+  let h2 = enot (e1) in
+  Node {
+    nconc = [e; eq];
+    nrule = Ext ("tla", "np_eq_right", [e; eq; h1; h2; ne; e1; e2]);
+    nprio = Arity_eq;
+    ngoal = g;
+    nbranches = [| [h1]; [h2] |];
+  }
+;;
+
+let newnodes_prop_eq e g =
+  let decompose eq =
+    match eq with
+    | Eapp ("=", [e1; e2], _) -> (e, e1, e2, g)
+    | Enot (Eapp ("=", [e1; e2], _), _) -> (e, e1, e2, g)
+    | _ -> assert false
+  in
+  match e with
+  | Eapp (s, args, _) ->
+     let matches_l = Index.find_trans_left "=" (Index.Sym s) in
+     let matches_r = Index.find_trans_right "=" (Index.Sym s) in
+     List.map (fun (eq, _) -> mknode_pos_l (decompose eq)) matches_l
+     @ List.map (fun (eq, _) -> mknode_pos_r (decompose eq)) matches_r
+  | Enot (Eapp (s, args, _), _) ->
+     let matches_l = Index.find_trans_left "=" (Index.Sym s) in
+     let matches_r = Index.find_trans_right "=" (Index.Sym s) in
+     List.map (fun (eq, _) -> mknode_neg_l (decompose eq)) matches_l
+     @ List.map (fun (eq, _) -> mknode_neg_r (decompose eq)) matches_r
+  | _ -> []
+;;
+
+let newnodes_eq_prop_l e g =
+  match e with
+  | Eapp ("=", [Eapp (s, _, _) as e1; e2], _) ->
+     let matches_p = Index.find_pos s in
+     let matches_n = Index.find_neg s in
+     List.map (fun (e, gg) -> mknode_pos_l (e, e1, e2, gg)) matches_p
+     @ List.map (fun (e, gg) -> mknode_neg_l (e, e1, e2, gg)) matches_n
+  | _ -> []
+;;
+
+let newnodes_eq_prop_r e g =
+  match e with
+  | Eapp ("=", [e1; Eapp (s, _, _) as e2], _) ->
+     let matches_p = Index.find_pos s in
+     let matches_n = Index.find_neg s in
+     List.map (fun (e, gg) -> mknode_pos_r (e, e1, e2, gg)) matches_p
+     @ List.map (fun (e, gg) -> mknode_neg_r (e, e1, e2, gg)) matches_n
+  | _ -> []
+;;
+
 let has_subst e = Index.find_eq_lr e <> [] || Index.find_eq_rl e <> [];;
 
 let do_substitutions v p g =
@@ -683,6 +778,7 @@ let newnodes_rewrites e g =
 
 let newnodes e g =
   newnodes_prop e g @ newnodes_rewrites e g @ newnodes_subst e g
+  @ newnodes_prop_eq e g @ newnodes_eq_prop_l e g @ newnodes_eq_prop_r e g
 ;;
 
 let rec split_case_branches l =
@@ -727,6 +823,11 @@ let to_llargs r =
     | Ext (_, name, c :: args) -> ("zenon_" ^ name, args, [c], [])
     | _ -> assert false
   in
+  let binbeta r =
+    match r with
+    | Ext (_, name, c1 :: c2 :: h1 :: h2 :: args) ->
+       ("zenon_" ^ name, args, [c1; c2], [ [h1]; [h2] ])
+    | _ -> assert false
   match r with
   | Ext (_, "in_emptyset", [c; e1]) -> ("zenon_in_emptyset", [e1], [c], [])
   | Ext (_, "in_nat_0", [c]) -> ("zenon_in_nat_0", [], [c], [])
@@ -768,6 +869,7 @@ let to_llargs r =
   | Ext (_, "notequalchoose", _) -> cut12 r
   | Ext (_, "case", c :: args) ->
      ("zenon_case", [], [c], split_case_branches args)
+  | Ext (_, "p_eq_l" | "p_eq_r" | "np_eq_l" | "np_eq_r", _) -> binbeta r
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
