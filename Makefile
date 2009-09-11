@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.69 2009-04-03 15:50:36 doligez Exp $
+#  $Id: Makefile,v 1.70 2009-09-11 13:24:21 doligez Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -26,7 +26,7 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
           ext_equiv.ml ext_induct.ml coqterm.ml lltocoq.ml \
-          lltoisar.ml \
+          enum.ml isar_case.ml lltoisar.ml \
           checksum.dummy versionnum.ml main.ml
 
 COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v

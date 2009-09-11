@@ -106,10 +106,16 @@ lltocoq.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi index.cmi \
     globals.cmi expr.cmi error.cmi coqterm.cmi lltocoq.cmi 
 lltocoq.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx index.cmx \
     globals.cmx expr.cmx error.cmx coqterm.cmx lltocoq.cmi 
+enum.cmo: version.cmi enum.cmi 
+enum.cmx: version.cmx enum.cmi 
+isar_case.cmo: version.cmi enum.cmi isar_case.cmi 
+isar_case.cmx: version.cmx enum.cmx isar_case.cmi 
 lltoisar.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
-    llproof.cmi index.cmi globals.cmi expr.cmi coqterm.cmi lltoisar.cmi 
+    llproof.cmi index.cmi globals.cmi expr.cmi error.cmi coqterm.cmi \
+    lltoisar.cmi 
 lltoisar.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
-    llproof.cmx index.cmx globals.cmx expr.cmx coqterm.cmx lltoisar.cmi 
+    llproof.cmx index.cmx globals.cmx expr.cmx error.cmx coqterm.cmx \
+    lltoisar.cmi 
 checksum.cmo: checksum.cmi 
 checksum.cmx: checksum.cmi 
 versionnum.cmo: version.cmi versionnum.cmi 

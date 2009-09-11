@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.36 2009-09-11 13:24:21 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.37 2009-09-11 13:27:10 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -451,7 +451,7 @@ let mknode_pos_r (e, e1, e2, g) =
   let eq = eapp ("=", [e1; e2]) in
   let h1 = enot (eapp ("=", [e; e2])) in
   Node {
-    nconc = [e; eq)];
+    nconc = [e; eq];
     nrule = Ext ("tla", "p_eq_right", [e; eq; h1; e1; e; e1; e2]);
     nprio = Arity_eq;
     ngoal = g;
@@ -465,7 +465,7 @@ let mknode_neg_l (e, e1, e2, g) =
   let h1 = enot (eapp ("=", [ne; e1])) in
   let h2 = enot (e2) in
   Node {
-    nconc = [e; eq)];
+    nconc = [e; eq];
     nrule = Ext ("tla", "np_eq_left", [e; eq; h1; h2; ne; e1; e2]);
     nprio = Arity_eq;
     ngoal = g;
@@ -828,6 +828,7 @@ let to_llargs r =
     | Ext (_, name, c1 :: c2 :: h1 :: h2 :: args) ->
        ("zenon_" ^ name, args, [c1; c2], [ [h1]; [h2] ])
     | _ -> assert false
+  in
   match r with
   | Ext (_, "in_emptyset", [c; e1]) -> ("zenon_in_emptyset", [e1], [c], [])
   | Ext (_, "in_nat_0", [c]) -> ("zenon_in_nat_0", [], [c], [])
@@ -869,7 +870,7 @@ let to_llargs r =
   | Ext (_, "notequalchoose", _) -> cut12 r
   | Ext (_, "case", c :: args) ->
      ("zenon_case", [], [c], split_case_branches args)
-  | Ext (_, "p_eq_l" | "p_eq_r" | "np_eq_l" | "np_eq_r", _) -> binbeta r
+  | Ext (_, ("p_eq_l" | "p_eq_r" | "np_eq_l" | "np_eq_r"), _) -> binbeta r
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
