@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.38 2009-09-11 18:15:29 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.39 2009-09-21 13:46:40 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -15,6 +15,7 @@ let add_formula e = ();;
 let remove_formula e = ();;
 
 let tla_set_constructors = [
+  (* "TLA.BOOLEAN"; is an abbrev in Isabelle *)
   "TLA.emptyset";
   "TLA.upair";
   "TLA.add";
@@ -34,9 +35,10 @@ let tla_set_constructors = [
 (*
   "isa'dotdot";
 *)
-  "Nat";
-  "isa'Int";
-  "Seq";
+  "arith.N";
+  "arith.Z";
+  "arith.R";
+  "TLA.Seq";
 ];;
 
 let tla_fcn_constructors = [
@@ -214,10 +216,10 @@ let newnodes_prop e g =
   (* infinity -- needed ? *)
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _) ->
-     let h1 = eapp ("subseteq", [e1; s]) in
+     let h1 = eapp ("TLA.subseteq", [e1; s]) in
      mknode Prop "in_SUBSET" [e; h1; e1; s] [| [h1] |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.SUBSET", [s], _)], _), _) ->
-     let h1 = enot (eapp ("subseteq", [e1; s])) in
+     let h1 = enot (eapp ("TLA.subseteq", [e1; s])) in
      mknode Prop "notin_SUBSET" [e; h1; e1; s] [| [h1] |]
 
   | Eapp ("TLA.in", [e1; Eapp ("TLA.UNION", [s], _)], _) ->
@@ -417,17 +419,17 @@ let newnodes_prop e g =
      let nodes = List.map (fun elem -> mknode_inst Arity ex elem) elems in
      List.flatten nodes @ (if rest then [] else [Stop])
 
-  | Enot (Eapp ("TLA.in", [Evar ("0", _); Evar ("Nat", _)], _), _) ->
+  | Enot (Eapp ("TLA.in", [Evar ("0", _); Evar ("arith.N", _)], _), _) ->
      mknode Prop "in_nat_0" [e] [| |]
-  | Enot (Eapp ("TLA.in", [Evar ("1", _); Evar ("Nat", _)], _), _) ->
+  | Enot (Eapp ("TLA.in", [Evar ("1", _); Evar ("arith.N", _)], _), _) ->
      mknode Prop "in_nat_1" [e] [| |]
-  | Enot (Eapp ("TLA.in", [Evar ("2", _); Evar ("Nat", _)], _), _) ->
+  | Enot (Eapp ("TLA.in", [Evar ("2", _); Evar ("arith.N", _)], _), _) ->
      mknode Prop "in_nat_2" [e] [| |]
-  | Enot (Eapp ("TLA.in", [Eapp ("TLA.fapply", [Evar ("Succ", _); e1], _);
-                           Evar ("Nat", _)], _), _) ->
-     let h = enot (eapp ("TLA.in", [e1; evar "nat"])) in
+  | Enot (Eapp ("TLA.in", [Eapp ("TLA.fapply", [Evar ("arith.Succ", _); e1], _);
+                           Evar ("arith.N", _)], _), _) ->
+     let h = enot (eapp ("TLA.in", [e1; evar "arith.N"])) in
      mknode Prop "in_nat_succ" [e; h; e1] [| [h] |]
-  | Enot (Eapp ("TLA.in", [Emeta (m, _); Evar ("Nat", _)], _), _) ->
+  | Enot (Eapp ("TLA.in", [Emeta (m, _); Evar ("arith.N", _)], _), _) ->
      mknode_inst (Inst m) m (evar "0")
 
   | _ -> []
@@ -1029,7 +1031,30 @@ let to_llproof tr_expr mlp args =
      in (nn, extras)
 ;;
 
-let preprocess l = l;;
+let built_in_defs =
+  [
+    Def (DefReal ("subset_def", "TLA.subseteq", [evar "A"; evar "B"],
+       eapp ("TLA.bAll", [evar "A";
+                   elam (evar "x", "",
+                         eapp ("TLA.in", [evar "x"; evar "B"]))])));
+    Def (DefReal ("bAll_def", "TLA.bAll", [evar "S"; evar "P"],
+       eall (evar "x", "",
+             eimply (eapp ("TLA.in", [evar "x"; evar "S"]),
+                     eapp ("P", [evar "x"])))));
+    Def (DefReal ("bEx_def", "TLA.bEx", [evar "S"; evar "P"],
+       eex (evar "x", "",
+            eand (eapp ("TLA.in", [evar "x"; evar "S"]),
+                  eapp ("P", [evar "x"])))));
+    Def (DefReal ("bChoose_def", "TLA.bChoice", [evar "S"; evar "P"],
+       etau (evar "x", "",
+            eand (eapp ("TLA.in", [evar "x"; evar "S"]),
+                  eapp ("P", [evar "x"])))));
+    Def (DefReal ("prod_def", "TLA.prod", [evar "A"; evar "B"],
+       eapp ("TLA.Product", [eapp ("TLA.tuple", [evar "A"; evar "B"])])));
+  ]
+;;
+
+let preprocess l = built_in_defs @ l;;
 
 let add_phrase p = ();;
 

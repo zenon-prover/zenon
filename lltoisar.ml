@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.31 2009-09-11 18:15:29 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.32 2009-09-21 13:46:40 doligez Exp $";;
 
 open Printf;;
 
@@ -63,7 +63,16 @@ let tr_infix s =
   | "TLA.setminus" -> "\\\\ "
   | "TLA.in" -> "\\\\in "
   | "TLA.subseteq" -> "\\\\subseteq "
-  | _ -> ""
+  | "arith.add" -> "+."
+  | "arith.sub" -> "-."
+  | "arith.mul" -> "*."
+(*  | "arith.power" -> "^" not defined yet *)
+  | "arith.le" -> " leq "   (* FIXME will change to "<=" *)
+  | "arith.lt" -> " le "    (* FIXME will change to "<" *)
+  | "TLA.concat" -> "\\\\circ "
+  | "TLA.oneArg" -> ":>"
+  | "TLA.extend" -> "@@"
+  | _ -> "" (* see is_infix below *)
 ;;
 
 let is_infix s = tr_infix s <> "";;
@@ -71,14 +80,29 @@ let is_infix s = tr_infix s <> "";;
 let tr_constant s =
   match s with
   | "TLA.emptyset" -> "{}"
-  | "TLA.infinity" -> "infinity"
+  | "arith.N" -> "Nat"
+  | "arith.Z" -> "isInt"              (* FIXME will change *)
+  | "arith.R" -> "isReal"             (* FIXME will change *)
+  | "arith.Infinity" -> "isInfinity"  (* FIXME will change *)
+  | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
+     String.sub s 4 (String.length s - 4)
+  | _ when String.length s > 6 && String.sub s 0 6 = "arith." ->
+     String.sub s 6 (String.length s - 6)
   | _ -> s
 ;;
 
 let tr_prefix s =
-  if String.length s > 4 && String.sub s 0 4 = "TLA."
-  then String.sub s 4 (String.length s - 4)
-  else s
+  match s with
+  | "arith.div" -> "isa'slash"       (* FIXME will change *)
+  | "arith.euclidiv" -> "isa'div"    (* FIXME will change *)
+  | "arith.mod" -> "isa'pc"          (* FIXME will change *)
+  | "arith.opp" -> "isa'uminus"      (* FIXME will change *)
+  | "arith.intrange" -> "isa'dotdot" (* FIXME will change *)
+  | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
+     String.sub s 4 (String.length s - 4)
+  | _ when String.length s > 6 && String.sub s 0 6 = "arith." ->
+     String.sub s 6 (String.length s - 6)
+  | _ -> s
 ;;
 
 let disjoint l1 l2 = not (List.exists (fun x -> List.mem x l1) l2);;
