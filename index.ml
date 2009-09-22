@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.13 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.14 2009-09-22 11:37:26 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -40,6 +40,8 @@ let get_head e =
   | Etau _ -> Tau e
   | Etrue -> Sym "$true"
   | Efalse -> Sym "$false"
+  | Eall _ -> Sym "A."
+  | Eex _ -> Sym "E."
   | _ -> raise No_head
 ;;
 

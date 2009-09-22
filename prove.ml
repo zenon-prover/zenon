@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.56 2009-08-20 18:38:14 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.57 2009-09-22 11:37:26 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -796,6 +796,56 @@ let newnodes_match st fm g =
       List.fold_left do_match st (Index.find_neg s), true
   | _ -> (st, false)
 ;;
+
+(*  goodmatch stuff, not ready yet
+
+type match_type =
+  | Nimp
+  | Nequiv
+  | Neq
+  | Nsub
+  | Nle
+  | Nlt
+;;
+
+let rec get_match env hyps m =
+  match m with
+  | _, Evar (s1, _), e2 when check_env s1 e2 env ->
+     ([(s1, e2)], Expr.size e2, [])
+  | _, e1, e2 when Expr.equal e1 e2 ->
+     ([], Expr.size e2, [])
+  | 
+;;
+
+let mk_goodmatch e1 ne2 =
+  let e2 = match ne2 with Enot (e2, _) -> e2 | _ -> assert false in
+  let (nsym, branches) = get_match [Nimp (e1, e2)] [] (0, []) in
+  if nsym > !Globals.good_match_size
+  then
+    [ Node {
+      ...
+    } ]
+  else []
+in
+
+let newnodes_goodmatch st fm g =
+  match fm with
+  | Eapp (s, args, _) ->
+     List.flatten (List.map (fun n -> mk_goodmatch fm n) (Index.find_neg s))
+  | Enot (Eapp (s, args, _), _) ->
+     List.flatten (List.map (fun p -> mk_goodmatch p fm) (Index.find_pos s))
+  | Eall (v, t, p, _) ->
+     List.flatten (List.map (fun n -> mk_goodmatch fm n) (Index.find_neg "A."))
+  | Enot (Eall (v, t, p, _), _) ->
+     List.flatten (List.map (fun p -> mk_goodmatch p fm) (Index.find_pos "A."))
+  | Eex (v, t, p, _) ->
+     List.flatten (List.map (fun n -> mk_goodmatch fm n) (Index.find_neg "E."))
+  | Enot (Eex (v, t, p, _), _) ->
+     List.flatten (List.map (fun p -> mk_goodmatch p fm) (Index.find_pos "E."))
+  | _ -> (st, false)
+;;
+
+end goodmatch stuff *)
 
 let newnodes_preunif st fm g =
   match fm with

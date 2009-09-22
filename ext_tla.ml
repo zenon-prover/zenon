@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.39 2009-09-21 13:46:40 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.40 2009-09-22 11:37:26 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -435,6 +435,81 @@ let newnodes_prop e g =
   | _ -> []
 ;;
 
+let newnodes_inst_bounded e g =
+  let prio = Inst e in  (* FIXME change to Arity ? *)
+  match e with
+  | Eapp ("TLA.in", [a; s], _) when not (has_metas a) ->
+     let get_p (e1, _) =
+       match e1 with
+       | Eapp ("TLA.bAll", [s1; p], _) when Expr.equal s1 s -> [(e1, p)]
+       | Enot (Eapp ("TLA.bEx", [s1; p], _), _) when Expr.equal s1 s ->
+         [(e1, p)]
+       | _ -> []
+     in
+     let univ = List.flatten (List.map get_p (Index.find_pos "TLA.bAll")) in
+     let exist = List.flatten (List.map get_p (Index.find_neg "TLA.bEx")) in
+     let mk_inst_all (f, p) =
+       let h = apply p a in
+       Node {
+         nconc = [e; f];
+         nrule = Ext ("tla", "all_in", [f; e; h]);
+         nprio = prio;
+         ngoal = g;
+         nbranches = [| [h] |];
+       }
+     in
+     let mk_inst_notex (f, p) =
+       let h = enot (apply p a) in
+       Node {
+         nconc = [e; f];
+         nrule = Ext ("tla", "notex_in", [f; e; h]);
+         nprio = prio;
+         ngoal = g;
+         nbranches = [| [h] |];
+       }
+     in
+     List.map mk_inst_all univ @@ List.map mk_inst_notex exist
+  | Eapp ("TLA.bAll", [s; p], _) ->
+     let get_value (f, _) =
+       match f with
+       | Eapp ("TLA.in", [a; s1], _) when not (has_metas a) && Expr.equal s s1 ->
+          [(f, a)]
+       | _ -> []
+     in
+     let values = List.flatten (List.map get_value (Index.find_pos "TLA.in")) in
+     let mk_inst (f, v) =
+       let h = apply p v in
+       Node {
+         nconc = [f; e];
+         nrule = Ext ("tla", "all_in", [e; f; h]);
+         nprio = prio;
+         ngoal = g;
+         nbranches = [| [h] |];
+       }
+     in
+     List.map mk_inst values
+  | Enot (Eapp ("TLA.bEx", [s; p], _), _) ->
+     let get_value (f, _) =
+       match f with
+       | Eapp ("TLA.in", [a; s1], _) when not (has_metas a) && Expr.equal s s1 ->
+          [(f, a)]
+       | _ -> []
+     in
+     let values = List.flatten (List.map get_value (Index.find_pos "TLA.in")) in
+     let mk_inst (f, v) =
+       let h = enot (apply p v) in
+       Node {
+         nconc = [f; e];
+         nrule = Ext ("tla", "notex_in", [e; f; h]);
+         nprio = prio;
+         ngoal = g;
+         nbranches = [| [h] |];
+       }
+     in
+     List.map mk_inst values
+  | _ -> []
+;;
+
 let strip_neg e = match e with Enot (ne, _) -> ne | _ -> assert false;;
 
 let mknode_pos_l (e, e1, e2, g) =
@@ -784,6 +859,7 @@ let newnodes_rewrites e g =
 let newnodes e g =
   newnodes_prop e g @ newnodes_rewrites e g @ newnodes_subst e g
   @ newnodes_prop_eq e g @ newnodes_eq_prop_l e g @ newnodes_eq_prop_r e g
+  @ newnodes_inst_bounded e g
 ;;
 
 let rec split_case_branches l =
@@ -826,6 +902,12 @@ let to_llargs r =
   let close r =
     match r with
     | Ext (_, name, c :: args) -> ("zenon_" ^ name, args, [c], [])
+    | _ -> assert false
+  in
+  let binsingle r =
+    match r with
+    | Ext (_, name, c1 :: c2 :: h :: args) ->
+        ("zenon_" ^ name, args, [c1; c2], [[h]])
     | _ -> assert false
   in
   let binbeta r =
@@ -876,6 +958,7 @@ let to_llargs r =
   | Ext (_, "case", c :: p :: args) ->
      ("zenon_case", [p], [c], split_case_branches args)
   | Ext (_, ("p_eq_l" | "p_eq_r" | "np_eq_l" | "np_eq_r"), _) -> binbeta r
+  | Ext (_, ("all_in" | "notex_in"), _) -> binsingle r
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
