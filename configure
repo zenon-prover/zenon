@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.64 2009-08-18 10:10:02 weis Exp $
+# $Id: configure,v 1.65 2009-10-01 07:36:08 weis Exp $
 
 ########################################################################
 #
@@ -1001,7 +1001,7 @@ set_defaults () {
   # Perform some verifications about the project definition.
   check_include &&
 
- # Computing defaults.
+  # Computing defaults.
   set_intrinsic_defaults &&
   set_command_defaults &&
   set_prefix_defaults &&
