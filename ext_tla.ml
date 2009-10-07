@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.40 2009-09-22 11:37:26 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.41 2009-10-07 12:20:34 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -452,7 +452,7 @@ let newnodes_inst_bounded e g =
        let h = apply p a in
        Node {
          nconc = [e; f];
-         nrule = Ext ("tla", "all_in", [f; e; h]);
+         nrule = Ext ("tla", "all_in", [e; f; h]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
@@ -462,7 +462,7 @@ let newnodes_inst_bounded e g =
        let h = enot (apply p a) in
        Node {
          nconc = [e; f];
-         nrule = Ext ("tla", "notex_in", [f; e; h]);
+         nrule = Ext ("tla", "notex_in", [e; f; h]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
@@ -481,7 +481,7 @@ let newnodes_inst_bounded e g =
        let h = apply p v in
        Node {
          nconc = [f; e];
-         nrule = Ext ("tla", "all_in", [e; f; h]);
+         nrule = Ext ("tla", "all_in", [f; e; h]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
@@ -500,7 +500,7 @@ let newnodes_inst_bounded e g =
        let h = enot (apply p v) in
        Node {
          nconc = [f; e];
-         nrule = Ext ("tla", "notex_in", [e; f; h]);
+         nrule = Ext ("tla", "notex_in", [f; e; h]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
