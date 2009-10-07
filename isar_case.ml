@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: isar_case.ml,v 1.2 2009-09-11 18:15:29 doligez Exp $";;
+Version.add "$Id: isar_case.ml,v 1.3 2009-10-07 12:20:59 doligez Exp $";;
 
 open Printf;;
 
@@ -29,49 +29,46 @@ let print_seq n sep letter oc =
 ;;
 
 let template = "
-  \"!! P c1x e1x,,, c2x e2x c3x e3x... .
-    P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...) ==>
+  \"!! P @@@c1x e1x c2x e2x... .
+    P (CASE @@@c1x -> e1x [] c2x -> e2x...) ==>
+@@@
     (c1x ==> P (e1x) ==> FALSE) ==>
-,,,
     (c2x ==> P (e2x) ==> FALSE) ==>
-    (c3x ==> P (e3x) ==> FALSE) ==>
 ...
-    (...~c3x & ~c2x & ,,,~c1x & TRUE ==> FALSE) ==>
+    (...~c2x & ~c1x@@@ & TRUE ==> FALSE) ==>
     FALSE\"
 proof -
-  fix P c1x e1x,,, c2x e2x c3x e3x...
-  assume h: \"P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...)\"
+  fix P @@@c1x e1x c2x e2x...
+  assume h: \"P (CASE @@@c1x -> e1x [] c2x -> e2x...)\"
             (is \"P (?cas)\")
+@@@
   assume h1: \"c1x ==> P (e1x) ==> FALSE\"
-,,,
   assume h2: \"c2x ==> P (e2x) ==> FALSE\"
-  assume h3: \"c3x ==> P (e3x) ==> FALSE\"
 ...
-  assume hoth: \"...~c3x & ~c2x & ,,,~c1x & TRUE ==> FALSE\"
-  def cs == \"<<c1x,,,, c2x, c3x...>>\" (is \"?cs\")
-  def es == \"<<e1x,,,, e2x, e3x...>>\" (is \"?es\")
+  assume hoth: \"...~c2x & ~c1x@@@ & TRUE ==> FALSE\"
+  def cs == \"<<@@@c1x, c2x...>>\" (is \"?cs\")
+  def es == \"<<@@@e1x, e2x...>>\" (is \"?es\")
   def arms == \"UNION {CaseArm (?cs[i], ?es[i]) : i \\\\in DOMAIN ?cs}\"
               (is \"?arms\")
   def cas == \"?cas\"
   have h0: \"P (cas)\" using h by (fold cas_def)
-  def dcs == \"...c3x | c2x | ,,,c1x\" (is \"?dcs\")
+  def dcs == \"...c2x | c1x@@@\" (is \"?dcs\")
   show FALSE
   proof (rule zenon_em [of \"?dcs\"])
     assume ha: \"~(?dcs)\"
+@@@
     have hh1: \"~c1x\" using ha by blast
-,,,
     have hh2: \"~c2x\" using ha by blast
-    have hh3: \"~c3x\" using ha by blast
 ...
     show FALSE
-      using hoth hh1,,, hh2 hh3... by blast
+      using hoth @@@hh1 hh2... by blast
   next
     assume ha: \"?dcs\"
-    def scs == \"zenon_seqify (zenon_appseq (,,,zenon_appseq (zenon_appseq (...
-                               <<>>, c1x),,,, c2x), c3x)...)\"
+    def scs == \"zenon_seqify (@@@zenon_appseq (zenon_appseq (...
+                               <<>>, @@@c1x), c2x)...)\"
                (is \"?scs\")
-    def ses == \"zenon_seqify (zenon_appseq (,,,zenon_appseq (zenon_appseq (...
-                               <<>>, e1x),,,, e2x), e3x)...)\"
+    def ses == \"zenon_seqify (@@@zenon_appseq (zenon_appseq (...
+                               <<>>, @@@e1x), e2x)...)\"
                (is \"?ses\")
     have ha1: \"\\<exists> i \\<in> DOMAIN ?scs : ?scs[i]\"
       using ha zenon_case_seq_empty
@@ -95,28 +92,25 @@ proof -
     have hf5: \"?hf4 & ?hf3\"
       by (rule conjI [OF hf4 hf3])
     have hf: \"
-               ...cas \\\\in CaseArm (c3x, e3x)
-             | cas \\\\in CaseArm (c2x, e2x)
-             | ,,,cas \\\\in CaseArm (c1x, e1x)
+               ...cas \\\\in CaseArm (c2x, e2x)
+             | cas \\\\in CaseArm (c1x, e1x)@@@
              | cas \\\\in UNION {CaseArm (zenon_seqify (<<>>)[i],
                                           zenon_seqify (<<>>)[i])
                                  : i \\\\in DOMAIN zenon_seqify (<<>>)}
              \" (is \"_ | ?gxx\")
       using hf5 by (simp only: zenon_case_union_simpl, blast)
+@@@
     have hg1x: \"cas \\\\in CaseArm (c1x, e1x) => FALSE\"
       using h0 h1 by auto
-,,,
     have hg2x: \"cas \\\\in CaseArm (c2x, e2x) => FALSE\"
       using h0 h2 by auto
-    have hg3x: \"cas \\\\in CaseArm (c3x, e3x) => FALSE\"
-      using h0 h3 by auto
 ...
     from hf
     have hh0: \"?gxx\" ...(is \"_ | ?g1\")
       by (rule zenon_disjE1 [OF _ hg3x])
     then have hh1: \"?g1\" (is \"_ | ?g0\")
       by (rule zenon_disjE1 [OF _ hg2x])
-    then have hh0: \"?g0\",,,
+    then have hh0: \"?g0\"@@@[n-1]
       by (rule zenon_disjE1 [OF _ hg1x])
     have hi: \"cas \\\\in UNION {CaseArm (<<>>[i], <<>>[i])
                                  : i \\\\in DOMAIN <<>>}\"
@@ -128,40 +122,37 @@ qed
 ";;
 
 let template_other = "
-  \"!! P oth c1x e1x,,, c2x e2x c3x e3x... .
-    P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x... [] OTHER -> oth) ==>
+  \"!! P oth @@@c1x e1x c2x e2x... .
+    P (CASE @@@c1x -> e1x [] c2x -> e2x... [] OTHER -> oth) ==>
+@@@
     (c1x ==> P (e1x) ==> FALSE) ==>
-,,,
     (c2x ==> P (e2x) ==> FALSE) ==>
-    (c3x ==> P (e3x) ==> FALSE) ==>
 ...
-    (...~c3x & ~c2x & ,,,~c1x & TRUE ==> P (oth) ==> FALSE) ==>
+    (...~c2x & ~c1x@@@ & TRUE ==> P (oth) ==> FALSE) ==>
     FALSE\"
 proof -
-  fix P oth c1x e1x,,, c2x e2x c3x e3x...
-  assume h: \"P (CASE c1x -> e1x,,, [] c2x -> e2x [] c3x -> e3x...
-                 [] OTHER -> oth)\"
+  fix P oth @@@c1x e1x c2x e2x...
+  assume h: \"P (CASE @@@c1x -> e1x [] c2x -> e2x... [] OTHER -> oth)\"
             (is \"P (?cas)\")
+@@@
   assume h1: \"c1x ==> P (e1x) ==> FALSE\"
-,,,
   assume h2: \"c2x ==> P (e2x) ==> FALSE\"
-  assume h3: \"c3x ==> P (e3x) ==> FALSE\"
 ...
-  assume hoth: \"...~c3x & ~c2x & ,,,~c1x & TRUE ==> P (oth) ==> FALSE\"
-  def cs == \"<<c1x,,,, c2x, c3x...>>\" (is \"?cs\")
-  def es == \"<<e1x,,,, e2x, e3x...>>\" (is \"?es\")
+  assume hoth: \"...~c2x & ~c1x@@@ & TRUE ==> P (oth) ==> FALSE\"
+  def cs == \"<<@@@c1x, c2x...>>\" (is \"?cs\")
+  def es == \"<<@@@e1x, e2x...>>\" (is \"?es\")
   def arms == \"UNION {CaseArm (?cs[i], ?es[i]) : i \\\\in DOMAIN ?cs}\"
               (is \"?arms\")
   def cas == \"?cas\"
   have h0: \"P (cas)\" using h by (fold cas_def)
-  def dcs == \"...c3x | c2x | ,,,c1x | FALSE\" (is \"?dcs\")
-  def scs == \"zenon_seqify (zenon_appseq (,,,zenon_appseq (zenon_appseq (...
-                             <<>>, c1x),,,, c2x), c3x)...)\"
+  def dcs == \"...c2x | c1x@@@ | FALSE\" (is \"?dcs\")
+  def scs == \"zenon_seqify (@@@zenon_appseq (zenon_appseq (...
+                             <<>>, @@@c1x), c2x), c3x...)\"
              (is \"?scs\")
   have hscs : \"?cs = ?scs\"
     by (simp only: zenon_seqify_appseq zenon_seqify_empty)
-  def ses == \"zenon_seqify (zenon_appseq (,,,zenon_appseq (zenon_appseq (...
-                             <<>>, e1x),,,, e2x), e3x)...)\"
+  def ses == \"zenon_seqify (@@@zenon_appseq (zenon_appseq (...
+                             <<>>, @@@e1x), e2x)...)\"
              (is \"?ses\")
   have hses : \"?es = ?ses\"
     by (simp only: zenon_seqify_appseq zenon_seqify_empty)
@@ -188,13 +179,12 @@ proof -
       using he by auto
     have hg: \"P (oth)\"
       using hb hf by auto
+@@@
     have hh1: \"~c1x\" using ha by blast
-,,,
     have hh2: \"~c2x\" using ha by blast
-    have hh3: \"~c3x\" using ha by blast
 ...
     show FALSE
-      using hg hoth hh1,,, hh2 hh3... by blast
+      using hg hoth @@@hh1 hh2... by blast
   next
     assume ha: \"?dcs\"
     have ha1: \"\\<exists> i \\<in> DOMAIN ?scs : ?scs[i]\"
@@ -227,28 +217,25 @@ proof -
     have hf5: \"?hlen & ?hf3\"
       by (rule conjI [OF hlen hf3])
     have hf: \"
-               ...cas \\\\in CaseArm (c3x, e3x)
-             | cas \\\\in CaseArm (c2x, e2x)
-             | ,,,cas \\\\in CaseArm (c1x, e1x)
+               ...cas \\\\in CaseArm (c2x, e2x)
+             | cas \\\\in CaseArm (c1x, e1x)@@@
              | cas \\\\in UNION {CaseArm (zenon_seqify (<<>>)[i],
                                           zenon_seqify (<<>>)[i])
                                  : i \\\\in DOMAIN zenon_seqify (<<>>)}
              \" (is \"_ | ?gxx\")
       using hf5 by (simp only: zenon_case_union_simpl, blast)
+@@@
     have hg1x: \"cas \\\\in CaseArm (c1x, e1x) => FALSE\"
       using h0 h1 by auto
-,,,
     have hg2x: \"cas \\\\in CaseArm (c2x, e2x) => FALSE\"
       using h0 h2 by auto
-    have hg3x: \"cas \\\\in CaseArm (c3x, e3x) => FALSE\"
-      using h0 h3 by auto
 ...
     from hf
     have hh0: \"?gxx\" ...(is \"_ | ?g1\")
       by (rule zenon_disjE1 [OF _ hg3x])
     then have hh1: \"?g1\" (is \"_ | ?g0\")
       by (rule zenon_disjE1 [OF _ hg2x])
-    then have hh0: \"?g0\",,,
+    then have hh0: \"?g0\"@@@[n-1]
       by (rule zenon_disjE1 [OF _ hg1x])
     have hi: \"cas \\\\in UNION {CaseArm (<<>>[i], <<>>[i])
                                  : i \\\\in DOMAIN <<>>}\"
@@ -263,7 +250,7 @@ let print_case kind n other oc =
   assert (n > 0);
   fprintf oc "%s zenon_case%s%d :" kind (if other then "other" else "") n;
   let tpl = if other then template_other else template in
-  output_string oc (Enum.expand_text (n-1) tpl);
+  output_string oc (Enum.expand_text n tpl);
 ;;
 
 let print_up_to n file =

@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: enum.ml,v 1.1 2009-09-11 13:24:21 doligez Exp $";;
+Version.add "$Id: enum.ml,v 1.2 2009-10-07 12:20:59 doligez Exp $";;
 
 type lexeme =
   | String of string
@@ -37,6 +37,8 @@ type token =
 ;;
 
 exception Mismatch;;
+exception Bad_template of string;;
+exception Bad_number of int;;
 
 let split_string s =
   let l = String.length s in
@@ -143,33 +145,36 @@ let split_sep2 pre mid1 mid2 suf =
 ;;
 
 let parse s =
-  let l = lex s 0 in
-  let len = List.length l in
-  match l with
-  | [] -> ([], "")
-  | [String x] -> split_string x
-  | [Int x] -> split_int x
-  | _ when len mod 4 = 0 ->
-     let pre = prefix (len / 2 - 1) l in
-     let suf = suffix (len / 2 + 1) l in
-     let mid1 = List.nth l (len / 2 - 1) in
-     let mid2 = List.nth l (len / 2) in
-     let (pre1, sep, suf1) = split_sep2 (last suf) mid1 mid2 (List.hd pre) in
-     (correlate (pre @ pre1) (suf1 @ suf), sep)
-  | _ when len mod 2 = 1 ->
-     let pre = prefix (len / 2) l in
-     let suf = suffix (len / 2 + 1) l in
-     let mid =
-       match List.nth l (len / 2) with
-       | Int _ -> raise Mismatch
-       | String s -> s
-     in
-     let (pre1, sep, suf1) = split_sep (last suf) mid (List.hd pre) in
-     (correlate (pre @ pre1) (suf1 @ suf), sep)
-  | _ -> raise Mismatch
+  try
+    let l = lex s 0 in
+    let len = List.length l in
+    match l with
+    | [] -> ([], "")
+    | [String x] -> split_string x
+    | [Int x] -> split_int x
+    | _ when len mod 4 = 0 ->
+       let pre = prefix (len / 2 - 1) l in
+       let suf = suffix (len / 2 + 1) l in
+       let mid1 = List.nth l (len / 2 - 1) in
+       let mid2 = List.nth l (len / 2) in
+       let (pre1, sep, suf1) = split_sep2 (last suf) mid1 mid2 (List.hd pre) in
+       (correlate (pre @ pre1) (suf1 @ suf), sep)
+    | _ when len mod 2 = 1 ->
+       let pre = prefix (len / 2) l in
+       let suf = suffix (len / 2 + 1) l in
+       let mid =
+         match List.nth l (len / 2) with
+         | Int _ -> raise Mismatch
+         | String s -> s
+       in
+       let (pre1, sep, suf1) = split_sep (last suf) mid (List.hd pre) in
+       (correlate (pre @ pre1) (suf1 @ suf), sep)
+    | _ -> raise Mismatch
+  with Mismatch -> raise (Bad_template s)
 ;;
 
 let expand_string n s =
+  if n < 0 then raise (Bad_number n);
   let (pattern, sep) = parse s in
   let rec instance l i accu =
     match l with
@@ -189,6 +194,7 @@ let expand_string n s =
 ;;
 
 let expand_string_rev n s =
+  if n < 0 then raise (Bad_number n);
   let (pattern, sep) = parse s in
   let rec instance l i accu =
     match l with
@@ -208,8 +214,8 @@ let expand_string_rev n s =
 ;;
 
 
-let check3 c s i =
-  i + 3 <= String.length s && s.[i] = c && s.[i+1] = c && s.[i+2] = c
+let check2 c s i =
+  i + 1 < String.length s && s.[i] = c && s.[i+1] = c
 ;;
 
 let trim_nl s =
@@ -219,7 +225,30 @@ let trim_nl s =
   else if l >= 4 && s.[0] = '\r' && s.[1] = '\n'
           && s.[l-2] = '\r' && s.[l-1] = '\n'
   then String.sub s 2 (l - 4)
-  else raise Mismatch
+  else raise (Bad_template s)
+;;
+
+let rec read_num s i0 scale i accu =
+  if i < String.length s then begin
+    match s.[i] with
+    | '0' .. '9' ->
+       let newaccu = (10 * accu + Char.code (s.[i]) - Char.code ('0')) in
+       read_num s i0 scale (i+1) newaccu
+    | ']' -> (scale * accu, i+1)
+    | _ -> (0, i0)
+  end else
+    (0, i0)
+;;
+
+let read_suffix s i =
+  if i + 2 < String.length s && s.[i] = '[' && s.[i+1] = 'n' then begin
+    match s.[i+2] with
+    | ']' -> (0, i+3)
+    | '-' -> read_num s i (-1) (i+3) 0
+    | '+' -> read_num s i 1 (i+3) 0
+    | _ -> (0, i)
+  end else
+    (0, i)
 ;;
 
 let expand_text n s =
@@ -227,34 +256,36 @@ let expand_text n s =
     let cur () = String.sub s i0 (i - i0) in
     if i >= String.length s
     then cur () :: accu
-    else if s.[i] = ',' && check3 ',' s i
+    else if s.[i] = '@' && check2 '@' s (i+1)
     then expand (i + 3) (i + 3) (cur () :: accu)
-    else if s.[i] = '.' && check3 '.' s i
+    else if s.[i] = '.' && check2 '.' s (i+1)
     then expand_rev (i + 3) (i + 3) (cur () :: accu)
     else copy i0 (i + 1) accu
   and expand i0 i accu =
     let cur () = String.sub s i0 (i - i0) in
     if i >= String.length s
-    then raise Mismatch
-    else if s.[i] = '.' && check3 '.' s i
+    then raise (Bad_template s)
+    else if s.[i] = '.' && check2 '.' s (i+1)
     then begin
       let pat = cur () in
-      let exp = try expand_string n pat
-        with Mismatch -> expand_string n (trim_nl pat)
+      let (p, iend) = read_suffix s (i+3) in
+      let exp = try expand_string (n + p) pat
+        with Bad_template _ -> expand_string (n + p) (trim_nl pat)
       in
-      copy (i + 3) (i + 3) (exp :: accu)
+      copy iend iend (exp :: accu)
     end else expand i0 (i + 1) accu
   and expand_rev i0 i accu =
     let cur () = String.sub s i0 (i - i0) in
     if i >= String.length s
-    then raise Mismatch
-    else if s.[i] = ',' && check3 ',' s i
+    then raise (Bad_template s)
+    else if s.[i] = '@' && check2 '@' s (i+1)
     then begin
       let pat = cur () in
-      let exp = try expand_string_rev n pat
-        with Mismatch -> expand_string_rev n (trim_nl pat)
+      let (p, iend) = read_suffix s (i+3) in
+      let exp = try expand_string_rev (n + p) pat
+        with Bad_template _ -> expand_string_rev (n + p) (trim_nl pat)
       in
-      copy (i + 3) (i + 3) (exp :: accu)
+      copy iend iend (exp :: accu)
     end else expand_rev i0 (i + 1) accu
   in
   String.concat "" (List.rev (copy 0 0 []))
