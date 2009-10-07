@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: isar_case.ml,v 1.3 2009-10-07 12:20:59 doligez Exp $";;
+Version.add "$Id: isar_case.ml,v 1.4 2009-10-07 14:42:11 doligez Exp $";;
 
 open Printf;;
 
@@ -147,7 +147,7 @@ proof -
   have h0: \"P (cas)\" using h by (fold cas_def)
   def dcs == \"...c2x | c1x@@@ | FALSE\" (is \"?dcs\")
   def scs == \"zenon_seqify (@@@zenon_appseq (zenon_appseq (...
-                             <<>>, @@@c1x), c2x), c3x...)\"
+                             <<>>, @@@c1x), c2x)...)\"
              (is \"?scs\")
   have hscs : \"?cs = ?scs\"
     by (simp only: zenon_seqify_appseq zenon_seqify_empty)
