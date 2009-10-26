@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.32 2009-09-21 13:46:40 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.33 2009-10-26 15:01:04 doligez Exp $";;
 
 open Printf;;
 
@@ -63,12 +63,12 @@ let tr_infix s =
   | "TLA.setminus" -> "\\\\ "
   | "TLA.in" -> "\\\\in "
   | "TLA.subseteq" -> "\\\\subseteq "
-  | "arith.add" -> "+."
-  | "arith.sub" -> "-."
-  | "arith.mul" -> "*."
+  | "arith.add" -> "+"
+  | "arith.sub" -> "-"
+  | "arith.mul" -> "*"
 (*  | "arith.power" -> "^" not defined yet *)
-  | "arith.le" -> " leq "   (* FIXME will change to "<=" *)
-  | "arith.lt" -> " le "    (* FIXME will change to "<" *)
+  | "arith.le" -> " <= "
+  | "arith.lt" -> " < "
   | "TLA.concat" -> "\\\\circ "
   | "TLA.oneArg" -> ":>"
   | "TLA.extend" -> "@@"
@@ -81,7 +81,7 @@ let tr_constant s =
   match s with
   | "TLA.emptyset" -> "{}"
   | "arith.N" -> "Nat"
-  | "arith.Z" -> "isInt"              (* FIXME will change *)
+  | "arith.Z" -> "Int"
   | "arith.R" -> "isReal"             (* FIXME will change *)
   | "arith.Infinity" -> "isInfinity"  (* FIXME will change *)
   | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
@@ -96,7 +96,7 @@ let tr_prefix s =
   | "arith.div" -> "isa'slash"       (* FIXME will change *)
   | "arith.euclidiv" -> "isa'div"    (* FIXME will change *)
   | "arith.mod" -> "isa'pc"          (* FIXME will change *)
-  | "arith.opp" -> "isa'uminus"      (* FIXME will change *)
+  | "arith.minus" -> " -."
   | "arith.intrange" -> "isa'dotdot" (* FIXME will change *)
   | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
      String.sub s 4 (String.length s - 4)

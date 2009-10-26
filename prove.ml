@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.57 2009-09-22 11:37:26 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.58 2009-10-26 15:01:04 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -800,26 +800,66 @@ let newnodes_match st fm g =
 (*  goodmatch stuff, not ready yet
 
 type match_type =
-  | Nimp
+  | Nimply
   | Nequiv
-  | Neq
-  | Nsub
+  | Nequal
+  | Nsubset
   | Nle
   | Nlt
 ;;
 
-let rec get_match env hyps m =
-  match m with
-  | _, Evar (s1, _), e2 when check_env s1 e2 env ->
-     ([(s1, e2)], Expr.size e2, [])
-  | _, e1, e2 when Expr.equal e1 e2 ->
-     ([], Expr.size e2, [])
+exception Mismatch;;
+
+(* env: list of (left-var, right-var, inst-left-p)
+   mt: match_type
+   e1: left-e
+   e2: right-e
+   lr: bool (left-to-right)
+*)
+
+let rec get_match env mt e1 e2 lr =
+  match mt, e1, e2, lr with
+  | Nlt, Evar (s1, _), e2, true when is_bound s1 env true -> raise Mismatch
+  | Nlt, e1, Evar (s2, _), false when is_bound s2 env false -> raise Mismatch
+  | _, Evar (s1, _), e2, true when check_env s1 e2 env true -> ([(s1, e2)], [])
+  | _, e1, Evar (s2, _), false when check_env s2 e1 env false -> ([(s2, e1)], [])
+  | Nlt, e1, e2, _ when Expr.equal e1 e2 -> raise Mismatch
+  | _, e1, e2 when Expr.equal e1 e2 -> ([], [])
+  | Nimply, Enot (e1, _), Enot (e2, _), _ -> get_match env Nimply e1 e2 (not lr)
+  | Nimply, Eand (e1a, e1b, _), Eand (e2a, e2b), _ ->
+     let insta, nodesa = get_match env Nimply e1a e2a lr in
+     let instb, nodesb = get_match env Nimply e1b e2b lr in
+     (merge_inst insta instb, nodesa @ nodesb)
+  | Nimply, Eor (e1a, e1b, _), Eor (e2a, e2b), _ ->
+     let insta, nodesa = get_match env Nimply e1a e2a lr in
+     let instb, nodesb = get_match env Nimply e1b e2b lr in
+     (merge_inst insta instb, nodesa @ nodesb)
+  | Nimply, Eimply (e1a, e1b, _), Eimply (e2a, e2b), _ ->
+     let insta, nodesa = get_match env Nimply e1a e2a (not lr) in
+     let instb, nodesb = get_match env Nimply e1b e2b lr in
+     (merge_inst insta instb, nodesa @ nodesb)
+  | Nimply, Eequiv (e1a, e1b, _), Eequiv (e2a, e2b), _ ->
+     let insta, nodesa = get_match env Nequiv e1a e2a true in
+     let instb, nodesb = get_match env Nequiv e1b e2b true in
+     (merge_inst insta instb, nodesa @ nodesb)
+  | Nimply, Efalse, _, true -> ([], [])
+  | Nimply, _, Efalse, false -> ([], [])
+  | Nimply, _, Etrue, true -> ([], [])
+  | Nimply, Etrue, _, false -> ([], [])
+  | Nimply, Eall (x1, t1, b1, _), Eall (x2, t2, b2, _), _ ->
+     let newenv = (x1, x2, lr) :: env in
+     let inst, nodes = get_match newenv Nimply b1 b2 lr in
+     (erase_inst x1 x2 lr inst, nodes)
+  | Nimply, Eex (x1, t1, b1, _), Eex (x2, t2, b2, _), _ ->
+     let newenv = (x1, x2, not lr) :: env in
+     let inst, nodes = get_match newenv Nimply b1 b2 (not lr) in
+     (erase_inst x1 x2 (not lr) inst, nodes
   | 
 ;;
 
 let mk_goodmatch e1 ne2 =
   let e2 = match ne2 with Enot (e2, _) -> e2 | _ -> assert false in
-  let (nsym, branches) = get_match [Nimp (e1, e2)] [] (0, []) in
+  let (nsym, branches) = get_match [Nimply (e1, e2)] [] (0, []) in
   if nsym > !Globals.good_match_size
   then
     [ Node {
@@ -1194,6 +1234,9 @@ let rec refute_aux stk st forms =
       end else begin
         next_node stk st
       end
+  | (Etrue, _) :: fms
+  | (Enot (Efalse, _), _) :: fms
+    -> refute_aux stk st fms
   | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
       refute_aux stk st fms
   | (fm, g) :: fms ->

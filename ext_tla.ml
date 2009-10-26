@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.41 2009-10-07 12:20:34 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.42 2009-10-26 15:01:04 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -18,7 +18,7 @@ let tla_set_constructors = [
   (* "TLA.BOOLEAN"; is an abbrev in Isabelle *)
   "TLA.emptyset";
   "TLA.upair";
-  "TLA.add";
+  "TLA.addElt";
   "TLA.set";
   "TLA.infinity";
   "TLA.SUBSET";
@@ -81,7 +81,7 @@ let mkbranches hs = Array.of_list (List.map (fun x -> [x]) hs);;
 
 let rec decompose_add e =
   match e with
-  | Eapp ("TLA.add", [e1; e2], _) ->
+  | Eapp ("TLA.addElt", [e1; e2], _) ->
      let (l, rest) = decompose_add e2 in (e1 :: l, rest)
   | _ -> ([], e)
 ;;
@@ -91,7 +91,7 @@ let rec get_values_set e =
   | Evar ("TLA.emptyset", _) -> ([], false)
   | Eapp ("TLA.upair", [e1; e2], _) -> ([e1; e2], false)
   | Eapp ("TLA.set", l, _) -> (l, false)
-  | Eapp ("TLA.add", [e1; e2], _) ->
+  | Eapp ("TLA.addElt", [e1; e2], _) ->
      let (vs, rest) = get_values_set e2 in
      (e1 :: vs, rest)
   | Eapp ("TLA.union", [e1; e2], _) ->
@@ -187,25 +187,25 @@ let newnodes_prop e g =
     let h2 = enot (eapp ("=", [e1; e3])) in
     mknode Prop "notin_upair" [e; h1; h2; e1; e2; e3] [| [h1; h2] |]
 
-  | Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _) as s], _) ->
+  | Eapp ("TLA.in", [e1; Eapp ("TLA.addElt", [e2; e3], _) as s], _) ->
      let (elems, rest) = decompose_add s in
      let helems = List.map (fun x -> eapp ("=", [e1; x])) elems in
      let hs =
        if Expr.equal rest (evar "TLA.emptyset") then helems
        else helems @ [eapp ("TLA.in", [e1; rest])]
      in
-     mknode Prop "in_add" [e; e1; s] (mkbranches hs)
+     mknode Prop "in_addElt" [e; e1; s] (mkbranches hs)
   | Eapp ("TLA.in", [e1; Eapp ("TLA.set", elems, _) as s], _) ->
      let helems = List.map (fun x -> eapp ("=", [e1; x])) elems in
      mknode Prop "in_set" [e; e1; s] (mkbranches helems)
-  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.add", [e2; e3], _) as s], _), _) ->
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.addElt", [e2; e3], _) as s], _), _) ->
      let (elems, rest) = decompose_add s in
      let helems = List.map (fun x -> enot (eapp ("=", [e1; x]))) elems in
      let hs =
        if Expr.equal rest (evar "TLA.emptyset") then helems
        else enot (eapp ("TLA.in", [e1; rest])) :: helems
      in
-     mknode Prop "notin_add" [e; e1; s] [| hs |]
+     mknode Prop "notin_addElt" [e; e1; s] [| hs |]
   | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.set", elems, _) as s], _), _) ->
      let helems = List.map (fun x -> enot (eapp ("=", [e1; x]))) elems in
      mknode Prop "notin_set" [e; e1; s] [| helems |]
@@ -403,15 +403,15 @@ let newnodes_prop e g =
                 [| [h1]; [h2a; h2b] |]
 
   | Eall (v, t, Eimply (Eapp ("TLA.in",
-                              [vv; ( Eapp (("TLA.add" | "TLA.upair" | "TLA.set"
-                                            | "TLA.union"), _, _)
+                              [vv; ( Eapp (("TLA.addElt" | "TLA.upair"
+                                            | "TLA.set" | "TLA.union"), _, _)
                                    | Evar ("TLA.emptyset", _)
                                    ) as s], _), _, _), _) ->
      let (elems, rest) = get_values_set s in
      let nodes = List.map (fun elem -> mknode_inst Arity e elem) elems in
      List.flatten nodes @ (if rest then [] else [Stop])
   | Enot ((Eex (v, t, Eand (Eapp ("TLA.in",
-                                  [vv; ( Eapp (("TLA.add" | "TLA.upair"
+                                  [vv; ( Eapp (("TLA.addElt" | "TLA.upair"
                                                 | "TLA.set" | "TLA.union"), _, _)
                                        | Evar ("TLA.emptyset", _)
                                        ) as s], _), _, _), _) as ex), _) ->
@@ -965,14 +965,14 @@ let to_llargs r =
 
 let is_simple r =
   match r with
-  | Ext (_, "in_add", _) -> false
-  | Ext (_, "notin_add", _) -> false
+  | Ext (_, "in_addElt", _) -> false
+  | Ext (_, "notin_addElt", _) -> false
   | _ -> true
 ;;
 
 let to_llproof tr_expr mlp args =
   match mlp.mlrule with
-  | Ext (_, "in_add", [c; x; s]) ->
+  | Ext (_, "in_addElt", [c; x; s]) ->
      let subexts = Array.to_list args in
      let tre = tr_expr in
      let trl l = List.map tr_expr l in
@@ -987,7 +987,7 @@ let to_llproof tr_expr mlp args =
            Llproof.hyps = [];
          } in
          (n0, [])
-       | Eapp ("TLA.add", [y; s1], _), ((sub, ext) :: t) ->
+       | Eapp ("TLA.addElt", [y; s1], _), ((sub, ext) :: t) ->
           let concl = eapp ("TLA.in", [x; s]) in
           let h1 = eapp ("=", [x; y]) in
           let h2 = eapp ("TLA.in", [x; s1]) in
@@ -995,7 +995,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff (Expr.union ext ext1) myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_in_add",
+            Llproof.rule = Llproof.Rextension ("zenon_in_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ [tre h1]; [tre h2] ]);
             Llproof.hyps = [sub; sub1];
@@ -1029,7 +1029,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff (Expr.union ext ext1) myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_in_add",
+            Llproof.rule = Llproof.Rextension ("zenon_in_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ [tre h1]; [tre h2] ]);
             Llproof.hyps = [sub; sub1];
@@ -1038,7 +1038,7 @@ let to_llproof tr_expr mlp args =
         | _ -> assert false
      in
      mkproof s subexts mlp.mlconc
-  | Ext (_, "notin_add", [c; x; s]) ->
+  | Ext (_, "notin_addElt", [c; x; s]) ->
      let (sub, ext) =
        match args with
        | [| (sub, ext) |] -> (sub, ext)
@@ -1048,7 +1048,7 @@ let to_llproof tr_expr mlp args =
      let trl l = List.map tr_expr l in
      let rec mkproof s myconc =
        match s with
-       | Eapp ("TLA.add", [y; s1], _) ->
+       | Eapp ("TLA.addElt", [y; s1], _) ->
           let concl = enot (eapp ("TLA.in", [x; s])) in
           let h1 = enot (eapp ("=", [x; y])) in
           let h2 = enot (eapp ("TLA.in", [x; s1])) in
@@ -1056,7 +1056,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff ext1 myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_notin_add",
+            Llproof.rule = Llproof.Rextension ("zenon_notin_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ trl [h1; h2] ]);
             Llproof.hyps = [sub1];
@@ -1084,7 +1084,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff ext1 myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_notin_add",
+            Llproof.rule = Llproof.Rextension ("zenon_notin_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ trl [h1; h2] ]);
             Llproof.hyps = [sub1];
