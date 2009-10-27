@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.33 2009-10-26 15:01:04 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.34 2009-10-27 14:08:36 doligez Exp $";;
 
 open Printf;;
 
@@ -116,6 +116,9 @@ let rec p_expr env dict oc e =
       poc "(CHOOSE x : TRUE)";
   | Evar (v, _) ->
       poc "%s" (tr_constant v);
+  | Eapp ("$string", [Evar (s, _)], _) when String.length s >= 2 ->
+      poc "''%s''" (String.sub s 1 (String.length s - 2))
+  | Eapp ("$string", _, _) -> assert false
   | Eapp ("TLA.set", l, _) ->
       poc "{%a}" (p_expr_list env dict) l;
   | Eapp ("TLA.tuple", l, _) ->
@@ -285,6 +288,10 @@ let rec p_tree hyps i dict oc proof =
      in
      p_sub dict hs proof.hyps;
   | Rextension ("zenon_case", _, _, _) -> assert false
+  | Rextension ("zenon_stringequal", [v1; v2], [con], []) ->
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "using %s by auto\n" (hname hyps con);
+  | Rextension ("zenon_stringequal", _, _, _) -> assert false
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in

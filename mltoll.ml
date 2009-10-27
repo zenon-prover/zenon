@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.52 2009-10-26 15:01:04 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.53 2009-10-27 14:08:36 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -158,6 +158,9 @@ let tr_rule r =
      let c = enot (eall (v, t, p)) in
      let h = eex (v, t, enot p) in
      LL.Rextension ("zenon_notallex", [lam], [c], [[h]])
+  | Ext ("", "stringequal", [Evar (s1, _) as v1; Evar (s2, _) as v2]) ->
+     let c = eapp ("=", [eapp ("$string", [v1]); eapp ("$string", [v2])]) in
+     LL.Rextension ("zenon_stringequal", [v1; v2], [c], [])
 
   (* derived rules, handled by translate_derived: *)
   | ConjTree _

@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.13 2009-07-03 15:52:23 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.14 2009-10-27 14:08:36 doligez Exp $";;
 
 open Printf;;
 
@@ -45,6 +45,8 @@ let gen_hyp_name () =
   incr hyp_counter;
   sprintf "%s%d" anon_prefix !hyp_counter
 ;;
+
+let mk_string s = evar ("\"" ^ s ^ "\"");;
 
 %}
 
@@ -108,6 +110,7 @@ phrase:
 
 expr:
   | IDENT                                { evar $1 }
+  | STRING                               { eapp ("$string", [mk_string $1]) }
   | OPEN IDENT expr_list CLOSE           { eapp ($2, $3) }
   | OPEN NOT expr CLOSE                  { enot ($3) }
   | OPEN AND expr expr_list CLOSE        { mkand $3 $4 }
@@ -155,7 +158,6 @@ int_opt:
 ;
 
 hyp_name:
-  | /* empty */       { gen_hyp_name () }
   | STRING            { $1 }
 ;
 

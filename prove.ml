@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.58 2009-10-26 15:01:04 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.59 2009-10-27 14:08:36 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -293,6 +293,15 @@ let newnodes_closure st fm g =
       ngoal = g;
       nbranches = [| |];
     }, true
+  | Eapp ("=", [Eapp ("$string", [v1], _);
+                Eapp ("$string", [v2], _)], _) when not (Expr.equal v1 v2) ->
+     add_node st {
+       nconc = [fm];
+       nrule = Ext ("", "stringequal", [v1; v2]);
+       nprio = Prop;
+       ngoal = g;
+       nbranches = [| |];
+     }, true
   | _ -> st, false
 ;;
 

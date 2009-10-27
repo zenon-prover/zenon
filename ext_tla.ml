@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.42 2009-10-26 15:01:04 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.43 2009-10-27 14:08:36 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -42,6 +42,7 @@ let tla_set_constructors = [
 ];;
 
 let tla_fcn_constructors = [
+(* Note: $string is not here, even though strings are functions *)
   "TLA.Fcn";
   "TLA.except";
   "TLA.oneArg";
@@ -636,6 +637,12 @@ let rec newnodes_subst x ctx e g =
   | Eapp ("TLA.in", [e1; Evar _ as e2], _) when has_subst e2 ->
      let nctx = appctx (eapp ("TLA.in", [e1; x])) in
      do_substitutions e2 (elam (x, "", nctx)) g
+
+(* TODO:
+  | Eapp ("TLA.fapply", [Eapp ("$string", [Evar (s, _)], _);
+                         <some nat constant in range>], _) ->
+     get the nth char and convert it to Isabelle notation
+*)
 
   | Eapp ("TLA.fapply", [Evar _ as e1; e2], _) when has_subst e1 ->
      let nctx = appctx (eapp ("TLA.fapply", [x; e2])) in
