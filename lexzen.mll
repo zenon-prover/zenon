@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.11 2008-11-14 20:28:02 doligez Exp $";;
+Version.add "$Id: lexzen.mll,v 1.12 2009-11-24 15:08:01 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;
@@ -12,7 +12,10 @@ let newline = ('\010' | '\013' | "\013\010")
 let space = [' ' '\009' '\012']
 let idstart = ['A'-'Z' 'a'-'z' '_' '0'-'9']
 let idchar =  ['A'-'Z' 'a'-'z' '0'-'9' '_' '\'' '.']
-let stringchar = [^ '\000'-'\031' '\"' '\127'-'\255']
+let stringchar = [^ '\000'-'\031' '\"' '\\' '\127'-'\255']
+let hexdigit = ['0'-'9' 'A'-'F' 'a'-'f']
+let stringescape = '\\' (['a' 'b' 'f' 'n' 'r' 't' 'v' '\'' '\"' '\\' '?'] |
+                         ('x' hexdigit hexdigit))
 
 rule token = parse
   | '#' [^ '\010' '\013'] * { token lexbuf }
@@ -58,9 +61,22 @@ rule token = parse
   | "t."        { TAU }
   | "="         { EQUAL }
 
-  | "\"" stringchar* "\"" {
+  | "\"" (stringchar | stringescape)* "\"" {
       let s = Lexing.lexeme lexbuf in
       STRING (String.sub s 1 (String.length s - 2))
+    }
+
+  | "\"" (stringchar | stringescape)* "\\" stringchar {
+      let s = Lexing.lexeme lexbuf in
+      let msg = sprintf "bad escape in string: \\%c" s.[String.length s - 1] in
+      raise (Error.Lex_error msg)
+    }
+
+  | "\"" (stringchar | stringescape)* "\\"? _ {
+      let s = Lexing.lexeme lexbuf in
+      let c = String.escaped (String.sub s (String.length s - 1) 1) in
+      let msg = sprintf "bad character in string: %s" c in
+      raise (Error.Lex_error msg)
     }
 
   | idstart idchar* { IDENT (Lexing.lexeme lexbuf) }

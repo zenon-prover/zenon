@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.59 2009-10-27 14:08:36 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.60 2009-11-24 15:08:01 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -302,6 +302,49 @@ let newnodes_closure st fm g =
        ngoal = g;
        nbranches = [| |];
      }, true
+  | _ -> st, false
+;;
+
+let newnodes_eq_str st fm g =
+  let mk_node (st, b) rule e1 s1 e2 s2 eq =
+    if Expr.equal s1 s2 then (st, b) else
+    add_node st {
+      nconc = [fm; eq];
+      nrule = Ext ("", rule, [e1; s1; e2; s2]);
+      nprio = Prop;
+      ngoal = g;
+      nbranches = [| [enot (eapp ("=", [e1; e2]))] |];
+    }, false
+  in
+  match fm with
+  | Eapp ("=", [e1; Eapp ("$string", [_], _) as s1], _) ->
+     let l = Index.find_eq_str () in
+     let r = Index.find_str_eq () in
+     let fl st (e2, s) =
+       let s2 = eapp ("$string", [evar s]) in
+       let eq = eapp ("=", [e2; s2]) in
+       mk_node st "stringdiffll" e1 s1 e2 s2 eq
+     in
+     let fr st (e2, s) =
+       let s2 = eapp ("$string", [evar s]) in
+       let eq = eapp ("=", [s2; e2]) in
+       mk_node st "stringdifflr" e1 s1 e2 s2 eq
+     in
+     List.fold_left fr (List.fold_left fl (st, false) l) r
+  | Eapp ("=", [Eapp ("$string", [_], _) as s1; e1], _) ->
+     let l = Index.find_eq_str () in
+     let r = Index.find_str_eq () in
+     let fl st (e2, s) =
+       let s2 = eapp ("$string", [evar s]) in
+       let eq = eapp ("=", [e2; s2]) in
+       mk_node st "stringdiffrl" e1 s1 e2 s2 eq
+     in
+     let fr st (e2, s) =
+       let s2 = eapp ("$string", [evar s]) in
+       let eq = eapp ("=", [s2; e2]) in
+       mk_node st "stringdiffrr" e1 s1 e2 s2 eq
+     in
+     List.fold_left fr (List.fold_left fl (st, false) l) r
   | _ -> st, false
 ;;
 
@@ -624,7 +667,7 @@ let newnodes_match_congruence st fm g =
         }, false
       end else (arity_warning f1; (st, false))
 (*
-  FIXME determiner ci c'est utile...
+  FIXME determiner si c'est utile...
   | Enot (Eapp ("=", [Etau (v1, t1, f1, _); Etau (v2, t2, f2, _)], _), _) ->
       let f2a = Expr.substitute [(v2, v1)] f2 in
       let u = Expr.preunify f1 f2a in
@@ -863,7 +906,15 @@ let rec get_match env mt e1 e2 lr =
      let newenv = (x1, x2, not lr) :: env in
      let inst, nodes = get_match newenv Nimply b1 b2 (not lr) in
      (erase_inst x1 x2 (not lr) inst, nodes
-  | 
+  | Nimply, Eapp ("=", [e1a; e1b], _), Eapp ("=", [e2a; e2b], _), _ ->
+     let insta, nodesa = get_match env Nequal e1a e2a true in
+     let instb, nodesb = get_match env Nequal e1b e2b true in
+     (merge_inst insta instb, nodesa @ nodesb)
+  | Nimply, Eapp ("arith.le", [e1a; e1b], _), Eapp ("arith.le", [e1a; e1b], _),
+    _ ->
+     let insta, nodesa = get_match env Nle e2a e1a true in
+     let instb, nodesb = get_match env Nequal e1b e2b true in
+     
 ;;
 
 let mk_goodmatch e1 ne2 =
@@ -955,6 +1006,7 @@ let add_nodes st fm g =
       newnodes_jtree;
       newnodes_alpha;
       newnodes_beta;
+      newnodes_eq_str;
       newnodes_delta;
       newnodes_gamma;
       newnodes_unfold;

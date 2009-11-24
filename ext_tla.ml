@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.43 2009-10-27 14:08:36 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.44 2009-11-24 15:08:01 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -518,7 +518,7 @@ let mknode_pos_l (e, e1, e2, g) =
   let h1 = enot (eapp ("=", [e; e1])) in
   Node {
     nconc = [e; eq];
-    nrule = Ext ("tla", "p_eq_left", [e; eq; h1; e2; e; e1; e2]);
+    nrule = Ext ("tla", "p_eq_l", [e; eq; h1; e2; e; e1; e2]);
     nprio = Arity_eq;
     ngoal = g;
     nbranches = [| [h1]; [e2] |];
@@ -530,7 +530,7 @@ let mknode_pos_r (e, e1, e2, g) =
   let h1 = enot (eapp ("=", [e; e2])) in
   Node {
     nconc = [e; eq];
-    nrule = Ext ("tla", "p_eq_right", [e; eq; h1; e1; e; e1; e2]);
+    nrule = Ext ("tla", "p_eq_r", [e; eq; h1; e1; e; e1; e2]);
     nprio = Arity_eq;
     ngoal = g;
     nbranches = [| [h1]; [e1] |];
@@ -544,7 +544,7 @@ let mknode_neg_l (e, e1, e2, g) =
   let h2 = enot (e2) in
   Node {
     nconc = [e; eq];
-    nrule = Ext ("tla", "np_eq_left", [e; eq; h1; h2; ne; e1; e2]);
+    nrule = Ext ("tla", "np_eq_l", [e; eq; h1; h2; ne; e1; e2]);
     nprio = Arity_eq;
     ngoal = g;
     nbranches = [| [h1]; [h2] |];
@@ -558,7 +558,7 @@ let mknode_neg_r (e, e1, e2, g) =
   let h2 = enot (e1) in
   Node {
     nconc = [e; eq];
-    nrule = Ext ("tla", "np_eq_right", [e; eq; h1; h2; ne; e1; e2]);
+    nrule = Ext ("tla", "np_eq_r", [e; eq; h1; h2; ne; e1; e2]);
     nprio = Arity_eq;
     ngoal = g;
     nbranches = [| [h1]; [h2] |];
@@ -793,6 +793,15 @@ let rewrites in_expr x ctx e mknode =
      let h2 = enot (h1) in
      mknode "cut" [h1] [] [| [h1]; [h2] |]
   | _ -> []
+(*
+     let lr = Index.find_eq_lr e in  (* FIXME filter by orienting equations *)
+     let rl = Index.find_eq_rl e in
+     let rew dir e2 =
+       let h = appctx e2 in
+       mknode ("rewrite" ^ dir) [appctx e; h; lamctx; e; e2] [] [| [h] |]
+     in
+     List.flatten (List.map (rew "lr") lr @ List.map (rew "rl") rl)
+*)
 ;;
 
 let rec find_rewrites in_expr x ctx e mknode =

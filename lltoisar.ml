@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.34 2009-10-27 14:08:36 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.35 2009-11-24 15:08:01 doligez Exp $";;
 
 open Printf;;
 
@@ -288,10 +288,56 @@ let rec p_tree hyps i dict oc proof =
      in
      p_sub dict hs proof.hyps;
   | Rextension ("zenon_case", _, _, _) -> assert false
+
   | Rextension ("zenon_stringequal", [v1; v2], [con], []) ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %s by auto\n" (hname hyps con);
   | Rextension ("zenon_stringequal", _, _, _) -> assert false
+  | Rextension ("zenon_stringdiffll", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let s1nes2 = enot (eapp ("=", [s1; s2])) in
+     iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
+     iprintf i oc "by auto\n";
+     iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+     let dict1 = p_is dict oc h in
+     iprintf i oc "by (rule zenon_stringdiffll [OF %s %s %s])\n"
+             (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
+     p_tree hyps (iinc i) dict1 oc t
+  | Rextension ("zenon_stringdiffll", _, _, _) -> assert false
+  | Rextension ("zenon_stringdifflr", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let s1nes2 = enot (eapp ("=", [s1; s2])) in
+     iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
+     iprintf i oc "by auto\n";
+     iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+     let dict1 = p_is dict oc h in
+     iprintf i oc "by (rule zenon_stringdifflr [OF %s %s %s])\n"
+             (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
+     p_tree hyps (iinc i) dict1 oc t
+  | Rextension ("zenon_stringdifflr", _, _, _) -> assert false
+  | Rextension ("zenon_stringdiffrl", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let s1nes2 = enot (eapp ("=", [s1; s2])) in
+     iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
+     iprintf i oc "by auto\n";
+     iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+     let dict1 = p_is dict oc h in
+     iprintf i oc "by (rule zenon_stringdiffrl [OF %s %s %s])\n"
+             (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
+     p_tree hyps (iinc i) dict1 oc t
+  | Rextension ("zenon_stringdiffrl", _, _, _) -> assert false
+  | Rextension ("zenon_stringdiffrr", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let s1nes2 = enot (eapp ("=", [s1; s2])) in
+     iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
+     iprintf i oc "by auto\n";
+     iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+     let dict1 = p_is dict oc h in
+     iprintf i oc "by (rule zenon_stringdiffrr [OF %s %s %s])\n"
+             (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
+     p_tree hyps (iinc i) dict1 oc t
+  | Rextension ("zenon_stringdiffrr", _, _, _) -> assert false
+
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in

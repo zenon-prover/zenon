@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.14 2009-09-22 11:37:26 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.15 2009-11-24 15:08:01 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -246,9 +246,36 @@ let find_eq_rl e = HE.find_all eq_rl e;;
 
 (* ==== *)
 
+let eq_str = ref [];;
+let str_eq = ref [];;
+
+let add_str e =
+  match e with
+  | Eapp ("=", [e1; Eapp ("$string", [Evar (str, _)], _)], _) ->
+     eq_str := (e1, str) :: !eq_str
+  | Eapp ("=", [Eapp ("$string", [Evar (str, _)], _); e2], _) ->
+     str_eq := (e2, str) :: !str_eq
+  | _ -> ()
+;;
+
+let remove_str e =
+  match e with
+  | Eapp ("=", [e1; Eapp ("$string", [Evar (str, _)], _)], _) ->
+     eq_str := (match !eq_str with _ :: t -> t | _ -> assert false)
+  | Eapp ("=", [Eapp ("$string", [Evar (str, _)], _); e2], _) ->
+     str_eq := (match !str_eq with _ :: t -> t | _ -> assert false)
+  | _ -> ()
+;;
+
+let find_eq_str () = !eq_str;;
+let find_str_eq () = !str_eq;;
+
+(* ==== *)
+
 let add e g =
   HE.add allforms e g;
   add_eq e;
+  add_str e;
   incr cur_num_forms;
   if !cur_num_forms > !Globals.top_num_forms
   then Globals.top_num_forms := !cur_num_forms;
@@ -262,6 +289,7 @@ let remove e =
   remove_trans e;
   remove_negtrans e;
   negpos remove_element e;
+  remove_str e;
   remove_eq e;
   HE.remove allforms e;
   begin try (HE.find proofs e).present <- false with Not_found -> (); end;
