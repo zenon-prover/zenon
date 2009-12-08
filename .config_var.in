@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.20 2009-04-03 15:50:36 doligez Exp $
+#  $Id: .config_var.in,v 1.21 2009-12-08 15:16:02 weis Exp $
 
 #
 # The project identity card.
@@ -117,6 +117,7 @@ FOCALIZEDEP_COMPILER="@FOCALIZEDEP_COMPILER@"
 SUM="@SUM@"
 CONVERT="@CONVERT@"
 GS="@GS@"
+DVIPDF="@DVIPDF@"
 
 # External tools for zvtov
 XMLRPC="@XMLRPC@"

@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.65 2009-10-01 07:36:08 weis Exp $
+# $Id: configure,v 1.66 2009-12-08 15:16:02 weis Exp $
 
 ########################################################################
 #
@@ -250,6 +250,12 @@ set_gs_default () {
   done
 }
 
+set_dvipdf_default () {
+  for i in dvipdfm dvipdf; do
+    if check_command $i; then DEFAULT_DVIPDF=$i; break; fi
+  done
+}
+
 set_xmlrpc_default () {
   for i in xmlrpc; do
     if check_command $i; then DEFAULT_XMLRPC=$i; break; fi
@@ -260,6 +266,7 @@ set_command_defaults () {
   set_sum_default;
   set_convert_default;
   set_gs_default;
+  set_dvipdf_default;
   set_xmlrpc_default;
 }
 
@@ -376,6 +383,13 @@ set_intrinsic () {
       abort_remedy "Choose an executable gs command."
     fi
   fi
+  if test -z "${DVIPDF}"; then DVIPDF="${DEFAULT_DVIPDF}"; else
+    if check_command ${DVIPDF}; then :; else
+      abort_configuration "unavailable command ${DVIPDF}.";
+      abort_remedy "Choose an executable gs command."
+    fi
+  fi
+
 
   # Intrinsic settings for Zvtov.
   if test -z "$USE_XMLRPC"; then USE_XMLRPC=${DEFAULT_USE_XMLRPC}; fi
@@ -1095,6 +1109,9 @@ case ${argc} in
       -gs | --gs)
        GS="$2";
        shift 2;;
+      -dvipdf | --dvipdf)
+       DVIPDF="$2";
+       shift 2;;
       # Zvtov options
       -zvtov_prefix | --zvtov_prefix | \
       -zvtov_installation_prefix | --zvtov_installation_prefix)
@@ -1282,6 +1299,7 @@ build_config_file () {
       -e "s,@SUM@,$SUM," \
       -e "s,@CONVERT@,$CONVERT," \
       -e "s,@GS@,$GS," \
+      -e "s,@DVIPDF@,$DVIPDF," \
   \
       -e "s,@ZVTOV_PREFIX@,$ZVTOV_PREFIX," \
       -e "s,@ZVTOV_LIB_DIR@,$ZVTOV_LIB_DIR," \
