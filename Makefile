@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.70 2009-09-11 13:24:21 doligez Exp $
+#  $Id: Makefile,v 1.71 2010-01-04 17:43:14 weis Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -177,7 +177,7 @@ clean:
 
 .PHONY: unconfigure
 unconfigure:
-	rm -f ./.config_var
+	rm -f ./.config_var rm -f ./.config_var_for_shell
 
 .PHONY: distclean
 distclean: clean unconfigure
