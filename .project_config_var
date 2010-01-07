@@ -13,7 +13,12 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.6 2010-01-06 14:19:57 weis Exp $
+# $Id: .project_config_var,v 1.7 2010-01-07 00:05:04 weis Exp $
+
+# The seed source file for the project.
+# It contains the names of basic entities necessary to define, configure,
+# build, and distribute the entire project. Normally all the variables
+# defined here are never redefined.
 
 # The configuration variables specific to FoCaLiZe.
 
@@ -33,18 +38,33 @@ set_project_id () {
   VERSION_NUMBER_SUB=6
   VERSION_NUMBER_PATCH=2
 
+  VERSION_NUMBER_FULL="${VERSION_NUMBER_MAIN}.${VERSION_NUMBER_SUB}.${VERSION_NUMBER_PATCH}"
+
+  PROJECT_NAME_FULL="${PROJECT_NAME}-${VERSION_NUMBER_FULL}"
+
   # The list of external tools for the project.
   # (Also defined in ./Makefile.config if any.)
-  EXTERNAL_TOOLS=""
+  # Do we use statically known external tools ?
+  # If false, we just call external tools as found in the runtime PATH.
+  DEFAULT_STATIC_EXTERNAL=true
+  CAML_NAME="ocaml"
+  CAMLP5_NAME="camlp5"
+  COQ_NAME="coq"
+  TOOLS_EXTERNAL=""
 
   # The list of internal tools for the project. Those are likely to be
   # stand alone projects inside the main project: its sub-projects.
   # (Also defined in ./Makefile.config if any.)
-  INTERNAL_TOOLS=""
+  TOOLS_INTERNAL=""
 
   # The list of tools specifically provided by the project
   # (not one of the stand alone internal projects).
-  PROJECT_DELIVERABLES="zenon"
+  DEFAULT_STATIC_DELIVERABLES=true
+  ZENON_NAME="zenon"
+  ZVTOV_NAME="zvtov"
+  ZENON_NAME_FULL="${PROJECT_NAME_FULL}"
+
+  DELIVERABLES="${ZENON_NAME}"
 
   # The manual extension for the man page of the project
   PROJECT_MAN_EXT=1
@@ -67,22 +87,37 @@ set_intrinsic_defaults () {
   DEFAULT_PREFIX="/usr/local"
 
   # External tools
-  # Do we use statically known external tools ?
-  DEFAULT_STATIC_EXTERNAL=false
   # Do we make external tools ?
   DEFAULT_MAKE_EXTERNAL=false
+  # Do we perform a fake make for external tools ?
   DEFAULT_MAGIC_MAKE_EXTERNAL=false
 
-  # Do we use a tools specific prefix directory for the project ?
+  # Do we use statically known external tools ?
+  DEFAULT_STATIC_EXTERNAL=false
+
+  # Do we use an external tools specific prefix directory for the project ?
+  # If true, external tools will be installed in TOOLS_PREFIX as defined
+  # after the configuration phase.
   DEFAULT_USE_TOOLS_PREFIX_DIRECTORY=false
-  DEFAULT_TOOLS_PREFIX=$HOME/pkg
+  # The default tools specific prefix directory.
+  # Was once DEFAULT_TOOLS_PREFIX="$DEFAULT_PREFIX"
+  # Unfortunately, there is no way to avoid tools installation during
+  # building phase: to compile Camlp5 the caml compiler must be installed
+  # somewhere and the like to compile Coq, Camlp5 must be installed;
+  # afterwards coq must be installed before compiling focalizec.
+  # We could install all those in some fake place during the building phase,
+  # and then install them in the proper relevant location; unfortunately this
+  # would mean to recompile the all set of external and internal tools twice
+  # which is really costy. Let stay on the safe side and install tools in
+  # some safe place in the home directory of the user.
+  DEFAULT_TOOLS_PREFIX="$HOME/pkg"
   
   # Do we use a 'full project name' private sub directory inside the
   # ${TOOLS_PREFIX} directory for the installation of the external/internal
   # tools of the project ?
   DEFAULT_USE_PROJECT_SUB_DIRECTORY=false
 
-  # Intrinsic defaults for Caml
+  # Intrinsic default flags for Caml compilation.
   DEFAULT_BYT_DEBUG_FLAGS="-g -dtypes"
   DEFAULT_BIN_DEBUG_FLAGS="-dtypes"
 

@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.66 2009-12-08 15:16:02 weis Exp $
+# $Id: configure,v 1.67 2010-01-07 00:05:04 weis Exp $
 
 ########################################################################
 #
@@ -65,15 +65,12 @@ abort_remedy () {
 
 abort_configuration_not_writable_tools_prefix_directory () {
   abort_configuration \
-    "You cannot install EXTERNAL tools in the directory $1: \
-     it is not writable for you.";
+    "You cannot install EXTERNAL tools in the directory $1 that is not writable for you.";
   abort_remedy \
-    "Please, use configure with the \"-tools_prefix\" \
-     option set to a writable directory.";
+    "Enhance your priviledges or set the \"-tools_prefix\" option to a writable directory.";
   echo "Try for instance:";
   echo "./configure -tools_prefix ~/pkg";
-  echo "to install external tools in sub-directory pkg of \
-        your home directory.";
+  echo "to install the external tools in your home directory.";
 }
 
 include_project_configuration_variables () {
@@ -304,13 +301,13 @@ set_command_defaults () {
 # (2) prefix defaults, that depend on ${DEFAULT_PREFIX},
 # (3) tools prefix, that depend on ${DEFAULT_TOOLS_PREFIX}.
 #
-# For those groups we define a procedure that sets the defaults,
+# For each of those groups we define a procedure that sets the defaults,
 # and a procedure that sets the variables after options
 # have been processed.
 #
 # For variables in group (1), intrinsic defaults, are project dependent:
-# they are all defined in file ./.project_config_var with
-# their associated setting procedure ``set_intrinsic_defaults''.
+# they are all initially defined in the file ./.project_config_var.
+# Their associated setting procedure is ``set_intrinsic_defaults''.
 #
 # For variables in group (2) and (3), intrinsic defaults are defined
 # in the file ./.project_config_var.
@@ -332,7 +329,8 @@ set_intrinsic () {
   if test -z "${USE_PROJECT_SUB_DIRECTORY}"; then
     USE_PROJECT_SUB_DIRECTORY="${DEFAULT_USE_PROJECT_SUB_DIRECTORY}"; fi
 
-  # External tools
+  # External tools intrinsic settings.
+
   if test -z "${STATIC_EXTERNAL}"; then
     STATIC_EXTERNAL="${DEFAULT_STATIC_EXTERNAL}"; fi
   if test -z "${MAKE_EXTERNAL}"; then
@@ -361,7 +359,8 @@ set_intrinsic () {
     fi
   fi
 
-  # Internal tools
+  # Internal tools intrinsic settings.
+
   # Intrinsic settings for Zenon.
   if test -z "${USE_COQ_COMPILER}"; then
     USE_COQ_COMPILER="${DEFAULT_USE_COQ_COMPILER}"; fi
@@ -389,7 +388,6 @@ set_intrinsic () {
       abort_remedy "Choose an executable gs command."
     fi
   fi
-
 
   # Intrinsic settings for Zvtov.
   if test -z "$USE_XMLRPC"; then USE_XMLRPC=${DEFAULT_USE_XMLRPC}; fi
@@ -427,11 +425,14 @@ set_intrinsic () {
         XMLRPC_LINK="${DEFAULT_XMLRPC_LINK}"
       fi
     fi
-  fi
+  fi;
 
+  if test -z "${STATIC_DELIVERABLES}"; then
+    STATIC_DELIVERABLES="${DEFAULT_STATIC_DELIVERABLES}";
+  fi;
 }
 
-# Setting (or defining) variables that depend upon ${DEFAULT_PREFIX}.
+# Setting (or defining) default variables that depend upon ${DEFAULT_PREFIX}.
 set_prefix_defaults () {
 
   DEFAULT_BIN_DIR="${DEFAULT_PREFIX}/bin"
@@ -488,21 +489,35 @@ set_tools_prefix_defaults () {
 
   # General defaults for the installation of the external tools
   # of the project.
-  # The normal setting is:
-  # DEFAULT_TOOLS_PREFIX=~/pkg
-  # For Zenon the DEFAULT_TOOLS_PREFIX should be the DEFAULT_PREFIX.
-  if ! ${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}; then
-    DEFAULT_TOOLS_PREFIX="${DEFAULT_PREFIX}";
-  fi
+  # The default setting for DEFAULT_TOOLS_PREFIX should have been set in the
+  # project id card. It is usually: 
+  #   DEFAULT_TOOLS_PREFIX=~/pkg
+  #
+  # If we were asked to use TOOLS_PREFIX_DIRECTORY (the normal case)
+  #   then if DEFAULT_TOOLS_PREFIX is unbound we set it to DEFAULT_LIB_DIR
+  #   otherwise
+  #        if DEFAULT_TOOLS_PREFIX is unbound we set it to DEFAULT_PREFIX.
+  if ${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}; then
+    if -z ${DEFAULT_TOOLS_PREFIX}; then DEFAULT_TOOLS_PREFIX="${DEFAULT_LIB_DIR}";
+    fi;
+  else
+    if -z ${DEFAULT_TOOLS_PREFIX}; then DEFAULT_TOOLS_PREFIX="${DEFAULT_PREFIX}";
+    fi;
+  fi;
 
   # Debug echo "Default tools prefix is now " ${DEFAULT_TOOLS_PREFIX};
 
-  # The normal default binding is
+  # As for the project BIN_DIR LIB_DIR DOC_DIR we introduce a ``project full
+  # name'' sub directory to prevent confusion with other installed versions
+  # of external tools.
+  # The normal default binding is thus
   # DEFAULT_TOOLS_PROJECT_DIR=
   #   "${DEFAULT_TOOLS_PREFIX}/${PROJECT_NAME_FULL}"
-  # For traditional projects (e.g. zenon), there is no
-  # PROJECT_NAME_FULL sub directory: we directly use
-  # the DEFAULT_TOOLS_PREFIX.
+  #   Typically, this gives "/usr/local/lib/``full project name''"
+  # If we were asked to use a PROJECT_NAME_FULL sub directory (the normal
+  #    case),
+  #   then we insert the ``full project name'' after the DEFAULT_TOOLS_PREFIX
+  #   otherwise we directly use the DEFAULT_TOOLS_PREFIX.
   if ${DEFAULT_USE_PROJECT_SUB_DIRECTORY}; then
     DEFAULT_TOOLS_PROJECT_DIR="${DEFAULT_TOOLS_PREFIX}/${PROJECT_NAME_FULL}";
   else
@@ -551,9 +566,9 @@ set_tools_prefix_defaults () {
 
   # The normal default binding for coqc is
   # DEFAULT_COQ_COMPILER="${DEFAULT_TOOLS_PROJECT_BIN_DIR}/coqc"
-  # For traditional projects (e.g. zenon), there is no reasonable value for
-  # ${DEFAULT_TOOLS_PROJECT_BIN_DIR} defined: we thus directly use
-  # "coqc" as default.
+  # For traditional projects (e.g. zenon), no reasonable value for
+  # ${DEFAULT_TOOLS_PROJECT_BIN_DIR} has been defined: we thus directly use
+  # which ever coqc command found in PATH, hence the "coqc" default.
   if ${DEFAULT_STATIC_EXTERNAL}; then
     DEFAULT_COQ_COMPILER="${DEFAULT_COQ_BIN_DIR}/coqc";
     DEFAULT_COQ_DEP_COMPILER="${DEFAULT_COQ_BIN_DIR}/coqdep";
@@ -587,24 +602,24 @@ set_tools_prefix_defaults () {
   # Defaults for Focalizec.
   DEFAULT_FOCALIZEC_PREFIX="${DEFAULT_PREFIX}"
   DEFAULT_FOCALIZEC_BIN_DIR="${DEFAULT_FOCALIZEC_PREFIX}/bin"
-  DEFAULT_FOCALIZEC_LIB_DIR="${DEFAULT_FOCALIZEC_PREFIX}/lib/${FOCALIZEC_NAME}"
+  DEFAULT_FOCALIZEC_LIB_DIR="${DEFAULT_FOCALIZEC_PREFIX}/lib/${FOCALIZEC_NAME_FULL}"
+  DEFAULT_FOCALIZEC_COMPILER="${DEFAULT_FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME_FULL}";
 
-  if ${DEFAULT_STATIC_EXTERNAL}; then
-    DEFAULT_FOCALIZEC_COMPILER="${DEFAULT_FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME}";
-  else
+  if ! ${DEFAULT_STATIC_DELIVERABLES}; then
+    DEFAULT_FOCALIZEC_LIB_DIR="${DEFAULT_FOCALIZEC_PREFIX}/lib/${FOCALIZEC_NAME}";
     DEFAULT_FOCALIZEC_COMPILER="${FOCALIZEC_NAME}";
   fi
 
   # Defaults for Focalizedep.
   DEFAULT_FOCALIZEDEP_PREFIX="${DEFAULT_PREFIX}"
   DEFAULT_FOCALIZEDEP_BIN_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/bin"
-  DEFAULT_FOCALIZEDEP_LIB_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/lib/${FOCALIZEDEP_NAME}"
+  DEFAULT_FOCALIZEDEP_LIB_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/lib/${FOCALIZEDEP_NAME_FULL}"
+  DEFAULT_FOCALIZEDEP_COMPILER="${DEFAULT_FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME_FULL}";
 
-  if ${DEFAULT_STATIC_EXTERNAL}; then
-    DEFAULT_FOCALIZEDEP_COMPILER="${DEFAULT_FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME}";
-  else
+  if ! ${DEFAULT_STATIC_DELIVERABLES}; then
+    DEFAULT_FOCALIZEDEP_LIB_DIR="${DEFAULT_FOCALIZEDEP_PREFIX}/lib/${FOCALIZEDEP_NAME}";
     DEFAULT_FOCALIZEDEP_COMPILER="${FOCALIZEDEP_NAME}";
-  fi
+  fi;
 
 }
 
@@ -644,7 +659,6 @@ set_tools_prefix () {
   if test -z "${CAML_PREFIX}"; then
     CAML_PREFIX="${TOOLS_PROJECT_DIR}";
   fi
-
   if test -z "${CAML_LIB_DIR}"; then
     CAML_LIB_DIR="${CAML_PREFIX}/lib/ocaml";
   fi
@@ -761,34 +775,60 @@ set_tools_prefix () {
   fi
 
   # Settings for Focalizec.
+
   if test -z "${FOCALIZEC_PREFIX}"; then
     FOCALIZEC_PREFIX="${PREFIX}";
-  fi
-
-  if test -z "${FOCALIZEC_BIN_DIR}"; then
-    FOCALIZEC_BIN_DIR="${FOCALIZEC_PREFIX}/bin";
   fi
   if test -z "${FOCALIZEC_LIB_DIR}"; then
     FOCALIZEC_LIB_DIR="${FOCALIZEC_PREFIX}/lib/${FOCALIZEC_NAME}";
   fi
-  if test -z "${FOCALIZEC_COMPILER}"; then
-    FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME}";
-  fi
+  if test -z "${FOCALIZEC_BIN_DIR}"; then
+    FOCALIZEC_BIN_DIR="${FOCALIZEC_PREFIX}/bin";
+    if ${STATIC_DELIVERABLES}; then
+      FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME_FULL}";
+    else
+      FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/${FOCALIZEC_NAME}";
+    fi;
+  else
+    if ${STATIC_DELIVERABLES}; then
+      if test -z "${FOCALIZEC_COMPILER}"; then
+        FOCALIZEC_COMPILER="${FOCALIZEC_BIN_DIR}/focalizec";
+      fi;
+    else
+      abort_configuration \
+       "Cannot use option focalizec_bin_dir when not in static_deliverables mode.";
+      abort_remedy \
+       "Choose static_deliverables mode or remove focalizec_bin_dir option.";
+    fi;
+  fi;
 
   # Settings for Focalizedep.
+
   if test -z "${FOCALIZEDEP_PREFIX}"; then
     FOCALIZEDEP_PREFIX="${PREFIX}";
-  fi
-
-  if test -z "${FOCALIZEDEP_BIN_DIR}"; then
-    FOCALIZEDEP_BIN_DIR="${FOCALIZEDEP_PREFIX}/bin";
   fi
   if test -z "${FOCALIZEDEP_LIB_DIR}"; then
     FOCALIZEDEP_LIB_DIR="${FOCALIZEDEP_PREFIX}/lib/${FOCALIZEDEP_NAME}";
   fi
-  if test -z "${FOCALIZEDEP_COMPILER}"; then
-    FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME}";
-  fi
+  if test -z "${FOCALIZEDEP_BIN_DIR}"; then
+    FOCALIZEDEP_BIN_DIR="${FOCALIZEDEP_PREFIX}/bin";
+    if ${STATIC_DELIVERABLES}; then
+      FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME_FULL}";
+    else
+      FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/${FOCALIZEDEP_NAME}";
+    fi;
+  else
+    if ${STATIC_DELIVERABLES}; then
+      if test -z "${FOCALIZEDEP_COMPILER}"; then
+        FOCALIZEDEP_COMPILER="${FOCALIZEDEP_BIN_DIR}/focalizedep";
+      fi;
+    else
+      abort_configuration \
+       "Cannot use option focalizedep_bin_dir when not in static_deliverables mode.";
+      abort_remedy \
+       "Choose static_deliverables mode or remove focalizedep_bin_dir option.";
+    fi;
+  fi;
 
 }
 
@@ -810,6 +850,7 @@ set_configure_script_variables () {
   TAG_BOLD="\033[1m"
   TAG_UNDERLINE="\033[4m"
   TAG_NORMAL="\033[0m"
+  INTERACTIVE=false
   PREFIX_GIVEN=false
   PREFIX_READ=false
   TOOLS_PREFIX_GIVEN=false
@@ -855,25 +896,28 @@ prefix_summary () {
 }
 
 set_continue_without_asking () {
-  # If PREFIX has been given:
-  # just check if we need to ask for TOOLS_PREFIX, and if not so continue.
-  if ${PREFIX_GIVEN}; then
-    # No project tools: useless to ask for TOOLS_PREFIX, hence continue.
-    if test -z "${TOOLS_PROJECT}"; then
-      CONTINUE_WITHOUT_ASKING=true;
-    else
-      # PREFIX and TOOLS_PREFIX have been given, hence continue.
-      if ${TOOLS_PREFIX_GIVEN}; then
+  if ! ${INTERACTIVE}; then CONTINUE_WITHOUT_ASKING=true; else
+    # If PREFIX has been given:
+    # just check if we need to ask for TOOLS_PREFIX, and if not so continue.
+    if ${PREFIX_GIVEN}; then
+      # No project tools: useless to ask for TOOLS_PREFIX, hence continue.
+      if test -z "${TOOLS_PROJECT}"; then
         CONTINUE_WITHOUT_ASKING=true;
+      else
+        # PREFIX and TOOLS_PREFIX have been given, hence continue.
+        if ${TOOLS_PREFIX_GIVEN}; then
+          CONTINUE_WITHOUT_ASKING=true;
+        fi;
       fi;
     fi;
-  fi
+  fi;
 }
 
 continue_configure () {
   # Don't ask if everything (important) has been given.
   set_continue_without_asking;
   if ! ${CONTINUE_WITHOUT_ASKING}; then
+    prefix_summary;
     echo;
     echo "Ready to continue ?";
     echo "Just press enter to continue."
@@ -886,7 +930,9 @@ continue_configure () {
 }
 
 prefix_main () {
- # I know these are boolean ands but I don't know the shell style for these.
+ # I know these are boolean ands; unfortunately, I cannot find a reliable way
+ # to write a boolean operator that works in shell scripts, other than expansing
+ # the semantics in term of conditional(s).
  if ! ${PREFIX_GIVEN}; then
    if ! ${PREFIX_READ}; then
      read_prefix;
@@ -936,6 +982,8 @@ usage () {
   echo
   echo "debugging options are:"
   echo
+  echo "  [-]-interactive"
+  echo "    run interactively, asking questions"
   echo "  [-]-debug | [-]-enable_debug"
   echo "    enable debugging"
   echo "  [-]-nodebug | [-]-disable_debug"
@@ -1051,7 +1099,7 @@ set_defaults
 #echo ${argc}
 
 case ${argc} in
-  0) prefix_main
+  0) #prefix_main
      ;;
   *)
 
@@ -1140,6 +1188,9 @@ case ${argc} in
       -static_external | --static_external)
        STATIC_EXTERNAL=$2;
        shift 2;;
+      -static_deliverables | --static_deliverables)
+       STATIC_DELIVERABLES=$2;
+       shift 2;;
       -use_tools_prefix_directory | --use_tools_prefix_directory)
        USE_TOOLS_PREFIX_DIRECTORY=$2;
        shift 2;;
@@ -1147,6 +1198,12 @@ case ${argc} in
        USE_PROJECT_SUB_DIRECTORY=$2;
        shift 2;;
       # Generic options
+      -interactive | --interactive)
+       INTERACTIVE=true;
+       shift;;
+      -no_interactive | --no_interactive)
+       INTERACTIVE=false;
+       shift;;
       -debug | --debug)
        DEBUG=$2;
        shift 2;;
@@ -1181,7 +1238,7 @@ case ${argc} in
          echo \
           "is set to \"${PREFIX}\"" >&2 && \
          PREFIX_GIVEN=true;
-         prefix_main;
+         #prefix_main;
        else
          option="$@";
          shift;
@@ -1215,8 +1272,7 @@ check_installation_dirs () {
         abort_configuration \
           "You cannot install in $i, because it is not a directory.";
         abort_remedy \
-          "Please, create a directory where \
-           you can install EXTERNAL tools.";
+          "Please, create a directory where you can install EXTERNAL tools.";
     fi
     if test -w $i; then
       : #echo "  the directory is writable: good." >&2
@@ -1251,7 +1307,7 @@ build_config_file () {
       -e "s,@PROJECT_NAME_FULL@,$PROJECT_NAME_FULL," \
       -e "s,@TOOLS_EXTERNAL@,$TOOLS_EXTERNAL," \
       -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
-      -e "s,@PROJECT_DELIVERABLES@,$PROJECT_DELIVERABLES," \
+      -e "s,@DELIVERABLES@,$DELIVERABLES," \
       -e "s,@PROJECT_MAN_EXT@,$PROJECT_MAN_EXT," \
   \
       -e "s,@ABSOLUTE_ROOT_DIR@,$ABSOLUTE_ROOT_DIR," \
@@ -1270,6 +1326,7 @@ build_config_file () {
       -e "s,@TOOLS_PROJECT_DOC_DIR@,$TOOLS_PROJECT_DOC_DIR," \
       -e "s,@TOOLS_PROJECT_MAN_DIR@,$TOOLS_PROJECT_MAN_DIR," \
   \
+      -e "s,@CAML_NAME@,$CAML_NAME," \
       -e "s,@CAML_PREFIX@,$CAML_PREFIX," \
       -e "s,@CAML_BIN_DIR@,$CAML_BIN_DIR," \
       -e "s,@CAML_LIB_DIR@,$CAML_LIB_DIR," \
@@ -1284,6 +1341,7 @@ build_config_file () {
   \
       -e "s,@CAMLP5_LIB_DIR@,$CAMLP5_LIB_DIR," \
   \
+      -e "s,@COQ_NAME@,$COQ_NAME," \
       -e "s,@COQ_PREFIX@,$COQ_PREFIX," \
       -e "s,@COQ_LIB_DIR@,$COQ_LIB_DIR," \
       -e "s,@COQ_CAML_DIR@,$COQ_CAML_DIR," \
@@ -1292,6 +1350,7 @@ build_config_file () {
       -e "s,@COQ_RC@,$COQ_RC," \
       -e "s,@COQ_MAKE@,$COQ_MAKE," \
   \
+      -e "s,@ZENON_NAME@,$ZENON_NAME," \
       -e "s,@ZENON_PREFIX@,$ZENON_PREFIX," \
       -e "s,@ZENON_LIB_DIR@,$ZENON_LIB_DIR," \
       -e "s,@ZENON_COMPILER@,$ZENON_COMPILER," \
@@ -1301,6 +1360,7 @@ build_config_file () {
       -e "s,@GS@,$GS," \
       -e "s,@DVIPDF@,$DVIPDF," \
   \
+      -e "s,@ZVTOV_NAME@,$ZVTOV_NAME," \
       -e "s,@ZVTOV_PREFIX@,$ZVTOV_PREFIX," \
       -e "s,@ZVTOV_LIB_DIR@,$ZVTOV_LIB_DIR," \
       -e "s,@ZVTOV_COMPILER@,$ZVTOV_COMPILER," \
@@ -1310,10 +1370,15 @@ build_config_file () {
       -e "s,@XMLRPC_LINK@,$XMLRPC_LINK," \
       -e "s,@XMLRPC_MODULE@,$XMLRPC_MODULE," \
   \
+      -e "s,@STATIC_DELIVERABLES@,$STATIC_DELIVERABLES," \
+      -e "s,@FOCALIZEC_NAME@,$FOCALIZEC_NAME," \
+      -e "s,@FOCALIZEC_NAME_FULL@,$FOCALIZEC_NAME_FULL," \
       -e "s,@FOCALIZEC_PREFIX@,$FOCALIZEC_PREFIX," \
       -e "s,@FOCALIZEC_LIB_DIR@,$FOCALIZEC_LIB_DIR," \
       -e "s,@FOCALIZEC_COMPILER@,$FOCALIZEC_COMPILER," \
   \
+      -e "s,@FOCALIZEDEP_NAME@,$FOCALIZEDEP_NAME," \
+      -e "s,@FOCALIZEDEP_NAME_FULL@,$FOCALIZEDEP_NAME_FULL," \
       -e "s,@FOCALIZEDEP_PREFIX@,$FOCALIZEDEP_PREFIX," \
       -e "s,@FOCALIZEDEP_LIB_DIR@,$FOCALIZEDEP_LIB_DIR," \
       -e "s,@FOCALIZEDEP_COMPILER@,$FOCALIZEDEP_COMPILER," \
@@ -1392,7 +1457,13 @@ summarize_configuration () {
 main () {
 #  parse_arguments;
   set_variables &&
-  prefix_main &&
+  # Debug echo "Interactive is ${INTERACTIVE}" &&
+  if ! ${INTERACTIVE};
+    then :
+    else prefix_main
+  fi &&
+  # We do check at configuration time that we will be able to build and install
+  # the mandatory tools that must compile the project afterwards.
   check_installation_dirs &&
   build_configuration_variables &&
   touch_depends &&
@@ -1406,7 +1477,6 @@ main () {
   if test -x ./.configure_distribution; then
     ./.configure_distribution;
   fi &&
-  prefix_summary &&
   continue_configure &&
   summarize_configuration &&
   # Call the Makefile to go on configuring external tools.
