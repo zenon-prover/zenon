@@ -1,9 +1,10 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.21 2009-12-08 15:16:02 weis Exp $
+#  $Id: .config_var.in,v 1.22 2010-01-07 11:37:56 weis Exp $
 
 #
-# The project identity card.
+# (0) The project identity card.
 #
+
 PROJECT_NAME="@PROJECT_NAME@"
 PROJECT_NAME_TEXT="@PROJECT_NAME_TEXT@"
 
@@ -23,28 +24,33 @@ PROJECT_ARCHIVE_NAME="@PROJECT_NAME_FULL@.tgz"
 
 TOOLS_EXTERNAL="@TOOLS_EXTERNAL@"
 TOOLS_INTERNAL="@TOOLS_INTERNAL@"
-
-PROJECT_DELIVERABLES="@PROJECT_DELIVERABLES@"
+DELIVERABLES="@DELIVERABLES@"
 
 PROJECT_MAN_EXT=@PROJECT_MAN_EXT@
 
 DEBUG=@DEBUG@
 
 #
-# The project directories.
+# (1) The project directories.
 #
-# The project sources directory.
+
+# (1.0) The project sources directory.
 ABSOLUTE_ROOT_DIR=@ABSOLUTE_ROOT_DIR@
 
-# The directories where the project installs its own binaries and libraries.
+# (1.1) The project installation directories
+# (i.e. where the project installs its deliverables,
+# that is its own specific binaries and libraries).
+
 PREFIX=@PREFIX@
 BIN_DIR=@BIN_DIR@
 LIB_DIR=@LIB_DIR@
 DOC_DIR=@DOC_DIR@
 MAN_DIR=@MAN_DIR@
 
-# The directories where the project installs its own specific versions
-# of mandatory external tools binaries and libraries (if any).
+# (1.2) The directories where the project installs its internal tools and its own
+# specific versions of mandatory external tools binaries and libraries (if
+# any).
+
 STATIC_EXTERNAL=@STATIC_EXTERNAL@
 TOOLS_PREFIX="@TOOLS_PREFIX@"
 TOOLS_PROJECT_DIR="@TOOLS_PROJECT_DIR@"
@@ -54,9 +60,11 @@ TOOLS_PROJECT_MAN_DIR="@TOOLS_PROJECT_MAN_DIR@"
 TOOLS_PROJECT_DOC_DIR="@TOOLS_PROJECT_DOC_DIR@"
 
 #
-# External tools settings.
+# (2) The external tools settings.
 #
-# Caml tools settings.
+
+# (2.0) Caml tools settings.
+CAML_NAME="@CAML_NAME@"
 CAML_PREFIX="@CAML_PREFIX@"
 CAML_BIN_DIR="@CAML_BIN_DIR@"
 CAML_LIB_DIR="@CAML_LIB_DIR@"
@@ -70,10 +78,11 @@ CAML_DOC_COMPILER="@CAML_DOC_COMPILER@"
 BYT_DEBUG_FLAGS=@BYT_DEBUG_FLAGS@
 BIN_DEBUG_FLAGS=@BIN_DEBUG_FLAGS@
 
-# Camlp5 settings.
+# (2.1) Camlp5 settings.
 CAMLP5_LIB_DIR="@CAMLP5_LIB_DIR@"
 
-# Coq settings.
+# (2.2) Coq settings.
+COQ_NAME="@COQ_NAME@"
 COQ_PREFIX="@COQ_PREFIX@"
 COQ_LIB_DIR="@COQ_LIB_DIR@"
 COQ_CAML_DIR="@COQ_CAML_DIR@"
@@ -83,15 +92,18 @@ COQ_DEP_COMPILER="@COQ_DEP_COMPILER@"
 COQ_MAKE="@COQ_MAKE@"
 
 #
-# Internal tools flags.
+# (3) The internal tools settings.
 #
-# Zenon.
+
+# (3.0) Zenon settings.
+ZENON_NAME="@ZENON_NAME@"
 ZENON_PREFIX="@ZENON_PREFIX@"
 ZENON_LIB_DIR="@ZENON_LIB_DIR@"
 ZENON_COMPILER="@ZENON_COMPILER@"
 USE_COQ_COMPILER=@USE_COQ_COMPILER@
 
-# Zvtov.
+# (3.1) Zvtov settings.
+ZVTOV_NAME="@ZVTOV_NAME@"
 ZVTOV_PREFIX="@ZVTOV_PREFIX@"
 ZVTOV_LIB_DIR="@ZVTOV_LIB_DIR@"
 ZVTOV_COMPILER="@ZVTOV_COMPILER@"
@@ -100,27 +112,43 @@ XMLRPC_FLAGS=@XMLRPC_FLAGS@
 XMLRPC_LINK=@XMLRPC_LINK@
 XMLRPC_MODULE=@XMLRPC_MODULE@
 
-# Focalizec
+#
+# (4) The project deliverables settings.
+#
+
+STATIC_DELIVERABLES=@STATIC_DELIVERABLES@
+# (4.0) Focalizec settings.
+FOCALIZEC_NAME="@FOCALIZEC_NAME@"
+FOCALIZEC_NAME_FULL="@FOCALIZEC_NAME_FULL@"
 FOCALIZEC_PREFIX="@FOCALIZEC_PREFIX@"
 FOCALIZEC_LIB_DIR="@FOCALIZEC_LIB_DIR@"
 FOCALIZEC_COMPILER="@FOCALIZEC_COMPILER@"
 
-# Focalizedep
+# (4.1) Focalizedep settings.
+FOCALIZEDEP_NAME="@FOCALIZEDEP_NAME@"
+FOCALIZEDEP_NAME_FULL="@FOCALIZEDEP_NAME_FULL@"
 FOCALIZEDEP_PREFIX="@FOCALIZEDEP_PREFIX@"
 FOCALIZEDEP_LIB_DIR="@FOCALIZEDEP_LIB_DIR@"
 FOCALIZEDEP_COMPILER="@FOCALIZEDEP_COMPILER@"
 
 #
-# Completely external tools (not installed with the project).
+# (5) The completely external commands and tools
 #
-# External tools for zenon
+# (not installed with the project). 
+#
+
+# (5.0) External tools for zenon
 SUM="@SUM@"
 CONVERT="@CONVERT@"
 GS="@GS@"
 DVIPDF="@DVIPDF@"
 
-# External tools for zvtov
+# (5.1) External tools for zvtov
 XMLRPC="@XMLRPC@"
+
+#
+# (6) Command aliases for this tool compilation and installation.
+#
 
 # Aliases for this tool.
 CAMLBYT=@CAML_BYT_COMPILER@
