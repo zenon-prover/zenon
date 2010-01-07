@@ -13,7 +13,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.7 2010-01-07 00:05:04 weis Exp $
+# $Id: .project_config_var,v 1.8 2010-01-07 22:39:35 weis Exp $
 
 # The seed source file for the project.
 # It contains the names of basic entities necessary to define, configure,
@@ -69,6 +69,8 @@ set_project_id () {
   # The manual extension for the man page of the project
   PROJECT_MAN_EXT=1
 
+  # Do we call make configure to finish the configuration of the project ?
+  CONFIGURE_WITH_MAKE=false
 }
 
 #
@@ -89,8 +91,6 @@ set_intrinsic_defaults () {
   # External tools
   # Do we make external tools ?
   DEFAULT_MAKE_EXTERNAL=false
-  # Do we perform a fake make for external tools ?
-  DEFAULT_MAGIC_MAKE_EXTERNAL=false
 
   # Do we use statically known external tools ?
   DEFAULT_STATIC_EXTERNAL=false

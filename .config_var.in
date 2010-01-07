@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: .config_var.in,v 1.22 2010-01-07 11:37:56 weis Exp $
+#  $Id: .config_var.in,v 1.23 2010-01-07 22:39:35 weis Exp $
 
 #
 # (0) The project identity card.
@@ -27,6 +27,8 @@ TOOLS_INTERNAL="@TOOLS_INTERNAL@"
 DELIVERABLES="@DELIVERABLES@"
 
 PROJECT_MAN_EXT=@PROJECT_MAN_EXT@
+
+CONFIGURE_WITH_MAKE=@CONFIGURE_WITH_MAKE@
 
 DEBUG=@DEBUG@
 
@@ -117,6 +119,7 @@ XMLRPC_MODULE=@XMLRPC_MODULE@
 #
 
 STATIC_DELIVERABLES=@STATIC_DELIVERABLES@
+
 # (4.0) Focalizec settings.
 FOCALIZEC_NAME="@FOCALIZEC_NAME@"
 FOCALIZEC_NAME_FULL="@FOCALIZEC_NAME_FULL@"
@@ -134,7 +137,7 @@ FOCALIZEDEP_COMPILER="@FOCALIZEDEP_COMPILER@"
 #
 # (5) The completely external commands and tools
 #
-# (not installed with the project). 
+# (not installed with the project).
 #
 
 # (5.0) External tools for zenon
@@ -149,6 +152,13 @@ XMLRPC="@XMLRPC@"
 #
 # (6) Command aliases for this tool compilation and installation.
 #
+
+# (Suppose that the tool at hand has already been equiped with a Makefile
+# machinery; suppose, as is highly probable, that this machinery uses other
+# Makefile names for tools or notions that are defined here; then, instead of
+# modifying the existing Makefiles of the tool, we simply define here a
+# compatibility layer to define the tool Makefile own names as synonyms for
+# the equivalent notions defined here.)
 
 # Aliases for this tool.
 CAMLBYT=@CAML_BYT_COMPILER@
