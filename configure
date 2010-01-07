@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.68 2010-01-07 16:56:35 weis Exp $
+# $Id: configure,v 1.69 2010-01-07 22:52:48 weis Exp $
 
 ########################################################################
 #
@@ -333,10 +333,6 @@ set_intrinsic () {
 
   if test -z "${STATIC_EXTERNAL}"; then
     STATIC_EXTERNAL="${DEFAULT_STATIC_EXTERNAL}"; fi
-  if test -z "${MAKE_EXTERNAL}"; then
-    MAKE_EXTERNAL="${DEFAULT_MAKE_EXTERNAL}"; fi
-  if test -z "${MAGIC_MAKE_EXTERNAL}"; then
-    MAGIC_MAKE_EXTERNAL="${DEFAULT_MAGIC_MAKE_EXTERNAL}"; fi
 
   # Intrinsic settings for Caml.
   if test -z "${BYT_DEBUG_FLAGS}"; then
@@ -643,12 +639,7 @@ set_tools_prefix () {
 
   # The list of directories that must be installable during configuration.
   # The normal setting is:
-  # CONFIGURATION_INSTALLABLE_DIRS="${TOOLS_PREFIX)"
-  if ${MAKE_EXTERNAL}; then
-    CONFIGURATION_INSTALLABLE_DIRS="${TOOLS_PREFIX}";
-  else
-    CONFIGURATION_INSTALLABLE_DIRS="";
-  fi
+  CONFIGURATION_INSTALLABLE_DIRS="${TOOLS_PREFIX}";
 
   TOOLS_PROJECT_BIN_DIR="${TOOLS_PROJECT_DIR}/bin"
   TOOLS_PROJECT_LIB_DIR="${TOOLS_PROJECT_DIR}/lib"
@@ -1043,10 +1034,6 @@ usage () {
 #       echo "  [-]-use_project_sub_directory <boolean>"
 #       echo "    use the name of the project as private sub directory for"
 #       echo "    installation of project specific data (including external tools)."
-  echo "  [-]-no_make_external"
-  echo "    <non documented option>."
-  echo "  [-]-magic_make_external"
-  echo "    <unknown option>."
 }
 
 # Setting all variables defaults
@@ -1179,12 +1166,6 @@ case ${argc} in
        XMLRPC_LINK="$2";
        shift 2;;
       # Configure script specific options
-      -no_make_external | --no_make_external)
-       MAKE_EXTERNAL=false;
-       shift;;
-      -magic_make_external | --magic_make_external)
-       MAGIC_MAKE_EXTERNAL=true;
-       shift;;
       -static_external | --static_external)
        STATIC_EXTERNAL=$2;
        shift 2;;
@@ -1309,6 +1290,7 @@ build_config_file () {
       -e "s,@TOOLS_INTERNAL@,$TOOLS_INTERNAL," \
       -e "s,@DELIVERABLES@,$DELIVERABLES," \
       -e "s,@PROJECT_MAN_EXT@,$PROJECT_MAN_EXT," \
+      -e "s,@CONFIGURE_WITH_MAKE@,$CONFIGURE_WITH_MAKE," \
   \
       -e "s,@ABSOLUTE_ROOT_DIR@,$ABSOLUTE_ROOT_DIR," \
       -e "s,@PREFIX@,$PREFIX," \
@@ -1431,15 +1413,6 @@ touch_depends () {
  fi;
 }
 
-#
-# Copying information gathered here to internal tools.
-#
-configure_internal_tools () {
-  for i in ${TOOLS_INTERNAL}; do
-    cp .config_var $i
-  done
-}
-
 summarize_configuration () {
   echo
   echo "*******************************************"
@@ -1467,24 +1440,15 @@ main () {
   check_installation_dirs &&
   build_configuration_variables &&
   touch_depends &&
-  configure_internal_tools &&
   # Now that .config_var_for_shell is built, we can call ./.configure, the
   # script that does the rest of the work that never necessitates user's
   # interaction.
-  if test -x ./.configure; then
-    ./.configure;
-  fi &&
-  if test -x ./.configure_distribution; then
-    ./.configure_distribution;
-  fi &&
+  if test -x ./.configure; then ./.configure; fi &&
+  if test -x ./.configure_distribution; then ./.configure_distribution; fi &&
   continue_configure &&
   summarize_configuration &&
   # Call the Makefile to go on configuring external tools.
-  if ${MAGIC_MAKE_EXTERNAL};
-  then make magic_configure_external_tools;
-  else
-    if ${MAKE_EXTERNAL}; then make configure_external_tools; fi;
-  fi &&
+  if ${CONFIGURE_WITH_MAKE}; then make configure; fi &&
  echo &&
  echo "Done. Now, please invoke: make"
 }
@@ -1495,5 +1459,5 @@ if test ${IER} -ne 0; then
   abort_configuration &&
   exit 1;
 else
- exit 0;
+  exit 0;
 fi
