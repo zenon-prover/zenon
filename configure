@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.67 2010-01-07 00:05:04 weis Exp $
+# $Id: configure,v 1.68 2010-01-07 16:56:35 weis Exp $
 
 ########################################################################
 #
@@ -490,7 +490,7 @@ set_tools_prefix_defaults () {
   # General defaults for the installation of the external tools
   # of the project.
   # The default setting for DEFAULT_TOOLS_PREFIX should have been set in the
-  # project id card. It is usually: 
+  # project id card. It is usually:
   #   DEFAULT_TOOLS_PREFIX=~/pkg
   #
   # If we were asked to use TOOLS_PREFIX_DIRECTORY (the normal case)
@@ -498,10 +498,10 @@ set_tools_prefix_defaults () {
   #   otherwise
   #        if DEFAULT_TOOLS_PREFIX is unbound we set it to DEFAULT_PREFIX.
   if ${DEFAULT_USE_TOOLS_PREFIX_DIRECTORY}; then
-    if -z ${DEFAULT_TOOLS_PREFIX}; then DEFAULT_TOOLS_PREFIX="${DEFAULT_LIB_DIR}";
+    if test -z ${DEFAULT_TOOLS_PREFIX}; then DEFAULT_TOOLS_PREFIX="${DEFAULT_LIB_DIR}";
     fi;
   else
-    if -z ${DEFAULT_TOOLS_PREFIX}; then DEFAULT_TOOLS_PREFIX="${DEFAULT_PREFIX}";
+    if test -z ${DEFAULT_TOOLS_PREFIX}; then DEFAULT_TOOLS_PREFIX="${DEFAULT_PREFIX}";
     fi;
   fi;
 
