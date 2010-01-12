@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.56 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.57 2010-01-12 16:09:35 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -72,8 +72,8 @@ let init_induct phrases =
   induct_map := [];
   let add_induct p =
     match p with
-    | Phrase.Inductive (name, args, cons) ->
-       induct_map := (name, (args, cons)) :: !induct_map;
+    | Phrase.Inductive (name, args, cons, schema) ->
+       induct_map := (name, (args, cons, schema)) :: !induct_map;
     | Phrase.Hyp _ | Phrase.Def _ | Phrase.Sig _ -> ()
   in
   List.iter add_induct phrases;
@@ -331,7 +331,7 @@ let rec trtree env node =
       Capp (Cvar "eq_ind", [trexpr a; caract; Cvar "I"; trexpr b; getv e])
   | Rextension ("zenon_induct_discriminate", _, _, _) -> assert false
   | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
-     let (args, cstrs) = get_induct ty in
+     let (args, cstrs, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
      let make_hyp h (c, cargs) =
        let vars = List.map (fun x -> Expr.newname ()) cargs in
@@ -359,11 +359,10 @@ let rec trtree env node =
        trexpr (elam (v, "", enot (eapp ("=", [e1; v]))))
      in
      let refl = Capp (Cvar "refl_equal", [tropt e1]) in
-     Capp (Cvar (sprintf "@%s_ind" ty),
-           typargs @ pred :: recargs @ tropt e1 :: [refl])
+     Capp (Cvar schema, typargs @ pred :: recargs @ tropt e1 :: [refl])
   | Rextension ("zenon_induct_cases", _, _, _) -> assert false
   | Rextension ("zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs) ->
-     let (args, _) = get_induct ty in
+     let (args, _, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
      let mksub h prf =
        match h with
@@ -372,13 +371,13 @@ let rec trtree env node =
      in
      let hypargs = List.map2 mksub hs hyps in
      let tp = trexpr p in
-     let ap = Capp (Cvar (sprintf "@%s_ind" ty), typargs @ tp :: hypargs) in
+     let ap = Capp (Cvar schema, typargs @ tp :: hypargs) in
      let nap = getname c in
      Capp (Cvar nap, [ap])
   | Rextension ("zenon_induct_induction_notall", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
-     let (args, cstrs) = get_induct ty in
+     let (args, cstrs, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
      let x = Expr.newvar () in
      let p = elam (x, "", eimply (eimply (apply ctx (apply unfx x), efalse),
@@ -386,8 +385,7 @@ let rec trtree env node =
      in
      let brs = List.map mkfixcase cstrs in
      let th = mklam h (tr_subtree_1 hyps) in
-     Capp (Cvar (sprintf "@%s_ind" ty),
-           typargs @ trexpr p :: brs @ [trexpr a; th; getv c])
+     Capp (Cvar schema, typargs @ trexpr p :: brs @ [trexpr a; th; getv c])
   | Rextension ("zenon_induct_fix", _, _, _) -> assert false
   | Rextension (name, args, c, hs) ->
       let metargs = List.map trexpr args in
@@ -759,7 +757,7 @@ let get_signatures ps ext_decl =
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig (sym, args, res) ->
         set_type sym (Declared res);
-    | Phrase.Inductive (ty, args, constrs) ->
+    | Phrase.Inductive (ty, args, constrs, schema) ->
         set_type ty (Declared "Type");  (* FIXME add arguments *)
         List.iter (fun (x, _) -> set_type x (Declared ty)) constrs;
   in
@@ -852,11 +850,12 @@ let declare_hyp oc h =
       fprintf oc "Parameter %s : " sym;
       List.iter (fun x -> fprintf oc "%s -> " (tr_ty x)) args;
       fprintf oc "%s.\n" (tr_ty res);
-  | Phrase.Inductive (name, args, constrs) ->
+  | Phrase.Inductive (name, args, constrs, schema) ->
       fprintf oc "Inductive %s" name;
       List.iter (fprintf oc " %s") args;
       fprintf oc " : Type :=\n";
       List.iter (print_constr oc name args) constrs;
+      fprintf oc " (* %s *)" schema;
       fprintf oc ".\n";
 ;;
 

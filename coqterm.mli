@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: coqterm.mli,v 1.12 2008-12-05 15:23:08 doligez Exp $  *)
+(*  $Id: coqterm.mli,v 1.13 2010-01-12 16:09:35 doligez Exp $  *)
 
 type coqterm;;
 type coqproof;;
@@ -20,7 +20,7 @@ val is_mapped : Expr.expr -> bool;;
 val is_goal : Expr.expr -> bool;;
 val init_induct : Phrase.phrase list -> unit;;
 val get_induct :
-  string -> string list * (string * Phrase.inductive_arg list) list
+  string -> string list * (string * Phrase.inductive_arg list) list * string
 ;;
 val getname : Expr.expr -> string;;
 val synthesize : string -> string;;

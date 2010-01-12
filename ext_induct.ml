@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.9 2009-08-20 12:08:03 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.10 2010-01-12 16:09:35 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -31,7 +31,8 @@ let constructor_table =
 
 let type_table =
   (Hashtbl.create 100 :
-     (string, string list * (string * inductive_arg list) list) Hashtbl.t)
+     (string, string list * (string * inductive_arg list) list * string)
+     Hashtbl.t)
 ;;
 
 let is_constr s = Hashtbl.mem constructor_table s;;
@@ -199,7 +200,7 @@ let newnodes_match_cases e g =
   let mknode ctx ee cases =
     let br = make_match_branches ctx ee cases in
     let tycon = get_type cases in
-    let (args, cons) = Hashtbl.find type_table tycon in
+    let (args, cons, schema) = Hashtbl.find type_table tycon in
     let tyargs = List.fold_left (fun s _ -> " _" ^ s) "" args in
     let x = Expr.newvar () in
     let mctx = elam (x, sprintf "(%s%s)" tycon tyargs,
@@ -249,7 +250,7 @@ let make_induction_branch ty p (con, args) =
     match args with
     | Param s :: t ->
        let x = Expr.newvar () in
-       eall (x, s, f (x :: vars) t)
+       eall (x, "", f (x :: vars) t)
     | Self :: t ->
        let x = Expr.newvar () in
        eall (x, ty, eimply (apply p x, f (x :: vars) t))
@@ -266,7 +267,7 @@ let newnodes_induction e g =
   | Enot (Eall (v, ty, body, _), _) ->
      begin try
        let (tycon, _, _) = parse_type ty in
-       let (args, cons) = Hashtbl.find type_table tycon in
+       let (args, cons, schema) = Hashtbl.find type_table tycon in
        let p = elam (v, ty, body) in
        let br = List.map (make_induction_branch ty p) cons in
        [ Node {
@@ -283,7 +284,7 @@ let newnodes_induction e g =
   | Eex (v, ty, Enot (body, _), _) ->
      begin try
        let (tycon, _, _) = parse_type ty in
-       let (args, cons) = Hashtbl.find type_table tycon in
+       let (args, cons, schema) = Hashtbl.find type_table tycon in
        let p = elam (v, ty, body) in
        let br = List.map (make_induction_branch ty p) cons in
        [ Node {
@@ -299,7 +300,7 @@ let newnodes_induction e g =
   | Eex (v, ty, body, _) ->
      begin try
        let (tycon, _, _) = parse_type ty in
-       let (args, cons) = Hashtbl.find type_table tycon in
+       let (args, cons, schema) = Hashtbl.find type_table tycon in
        let np = elam (v, ty, enot (body)) in
        let p = elam (v, ty, body) in
        let br = List.map (make_induction_branch ty np) cons in
@@ -435,6 +436,15 @@ let newnodes e g =
   @ (try newnodes_induction e g with Empty -> [])
 ;;
 
+let rec get_decreasing_arg e env =
+  match e with
+  | Elam (v, t, body, _) -> get_decreasing_arg body ((v, t) :: env)
+  | Eapp ("$match", v :: _, _) ->
+     (try List.assoc v env
+      with Not_found -> assert false)
+  | _ -> assert false
+;;
+
 open Llproof;;
 
 let to_llproof tr_expr mlp args =
@@ -458,7 +468,7 @@ let to_llproof tr_expr mlp args =
        | a1 :: t1, a2 :: t2 ->
           let hyp = tr_expr (eapp ("=", [a1; a2])) in
           if List.exists (Expr.equal hyp) accu.conc then begin
-            let (_, cons) =
+            let (_, cons, schema) =
               try Hashtbl.find type_table ty with Not_found -> assert false
             in
             let mk_case (name, args) =
@@ -503,10 +513,10 @@ let to_llproof tr_expr mlp args =
      (node, add)
   | Ext ("induct", "fix",
          [folded; unfolded; ctx;
-          Eapp ("$fix", (Elam (f, _, (Elam (_, t, _, _) as body), _) as r)
+          Eapp ("$fix", (Elam (f, _, body, _) as r)
                         :: a :: args, _)]) ->
      begin try
-       let (tname, targs, ntargs) = parse_type t in
+       let (tname, targs, ntargs) = parse_type (get_decreasing_arg body []) in
        let nx = Expr.newvar () in
        let foldx = elam (nx, "", eapp ("$fix", [r; nx] @ args)) in
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
@@ -594,13 +604,13 @@ let to_llproof tr_expr mlp args =
   | _ -> assert false
 ;;
 
-let add_induct_def ty args constrs =
+let add_induct_def ty args constrs schema =
   let f i (name, a) =
     let desc = { cd_num = i; cd_type = ty; cd_args = a; cd_name = name } in
     Hashtbl.add constructor_table name desc;
   in
   list_iteri f constrs;
-  Hashtbl.add type_table ty (args, constrs);
+  Hashtbl.add type_table ty (args, constrs, schema);
 ;;
 
 let preprocess l = l;;
@@ -610,7 +620,8 @@ let add_phrase x =
   | Hyp _ -> ()
   | Def _ -> ()
   | Sig _ -> ()
-  | Inductive (ty, args, constrs) -> add_induct_def ty args constrs;
+  | Inductive (ty, args, constrs, schema) ->
+     add_induct_def ty args constrs schema;
 ;;
 
 let postprocess p = p;;

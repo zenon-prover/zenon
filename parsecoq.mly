@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.30 2009-09-03 12:24:25 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.31 2010-01-12 16:09:35 doligez Exp $";;
 
 open Printf;;
 
@@ -95,7 +95,7 @@ let mk_inductive name bindings constrs =
     else Param (String.concat " " (tcon :: targs))
   in
   let f (cname, args) = (cname, List.map g args) in
-  Inductive (name, args, List.map f constrs)
+  Inductive (name, args, List.map f constrs, name ^ "_ind")
 ;;
 
 let mk_pairs e l =

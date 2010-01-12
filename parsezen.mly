@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.14 2009-10-27 14:08:36 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.15 2010-01-12 16:09:35 doligez Exp $";;
 
 open Printf;;
 
@@ -103,7 +103,7 @@ phrase:
   | SIG IDENT OPEN string_list CLOSE STRING
       { Zsig ($2, $4, $6) }
   | INDSET IDENT OPEN ident_list CLOSE OPEN constr_list CLOSE
-      { Zinductive ($2, $4, $7) }
+      { Zinductive ($2, $4, $7, $2 ^ "_ind") }
   | INCLUDE STRING
       { Zinclude ($2) }
 ;

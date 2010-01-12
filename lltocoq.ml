@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.52 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.53 2010-01-12 16:09:35 doligez Exp $";;
 
 open Printf;;
 
@@ -255,7 +255,7 @@ let p_rule oc r =
   | Rextension ("zenon_induct_induction_notall", _, _, _) -> assert false
   | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
-     let (_, cstrs) = Coqterm.get_induct ty in
+     let (_, cstrs, schema) = Coqterm.get_induct ty in
      poc "assert (%s : %a).\n" (getname h) p_expr h;
      poc "case_eq (%a); [\n    " p_expr a;
      let p_case oc (c, args) =

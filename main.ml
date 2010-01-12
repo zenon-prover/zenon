@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.53 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.54 2010-01-12 16:09:35 doligez Exp $";;
 
 open Printf;;
 
@@ -228,10 +228,10 @@ let zparse_file f =
 let rec expand_includes incpath zphrases =
   let exp p =
     match p with
-    | Phrase.Zhyp (s,e,i) -> [Phrase.Hyp (s,e,i)]
+    | Phrase.Zhyp (s, e, i) -> [Phrase.Hyp (s, e, i)]
     | Phrase.Zdef (d) -> [Phrase.Def (d)]
-    | Phrase.Zsig (s,l,t) -> [Phrase.Sig (s,l,t)]
-    | Phrase.Zinductive (s,a,l) -> [Phrase.Inductive (s,a,l)]
+    | Phrase.Zsig (s, l, t) -> [Phrase.Sig (s, l, t)]
+    | Phrase.Zinductive (s, a, l, sc) -> [Phrase.Inductive (s, a, l, sc)]
     | Phrase.Zinclude f ->
        begin
          let rec loop l =

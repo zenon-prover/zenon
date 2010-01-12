@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.26 2009-08-18 09:46:40 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.27 2010-01-12 16:09:35 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -616,9 +616,11 @@ let rec pp_expr e =
   | Eall (v, t, e, _) -> eall (v, t, pp_expr e)
   | Eex (v, t, e, _) -> eex (v, t, pp_expr e)
   | Etau (v, t, e, _) -> etau (v, t, pp_expr e)
+(*
   | Elam (v, t, e, _) when occurs "basics.list__t" t ->
       let t1 = replace_first "basics.list__t" "List.list" t in
       elam (v, t1, pp_expr e)
+*)
   | Elam (v, t, e, _) -> elam (v, t, pp_expr e)
 ;;
 
@@ -645,14 +647,16 @@ let built_in_defs =
                   eapp ("$match", [xy; elam (x, "", elam (y, "", case))])));
     Def (DefReal ("snd", "basics.snd", [tx; ty; xy],
                   eapp ("$match", [xy; elam (y, "", elam (x, "", case))])));
-    Inductive ("List.list", ["A"], [
+    Inductive ("basics.list__t", ["A"], [
                  ("List.nil", []);
                  ("List.cons", [Param "A"; Self]);
-               ]);
+               ],
+               "@List.list_ind");
     Inductive ("Datatypes.prod", ["A"; "B"],
-               [ ("Datatypes.pair", [Param "A"; Param "B"]) ]);
+               [ ("Datatypes.pair", [Param "A"; Param "B"]) ],
+               "Datatypes.prod_ind");
     Inductive ("basics.bool__t", [],
-               [ ("true", []); ("false", []) ]);
+               [ ("true", []); ("false", []) ], "basics.bool__t_ind");
 
     (* deprecated, kept for compatibility only *)
     Def (DefReal ("and_b", "basics.and_b", [x; y],
