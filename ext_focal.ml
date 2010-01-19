@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.27 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.28 2010-01-19 15:43:08 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -654,7 +654,7 @@ let built_in_defs =
                "@List.list_ind");
     Inductive ("Datatypes.prod", ["A"; "B"],
                [ ("Datatypes.pair", [Param "A"; Param "B"]) ],
-               "Datatypes.prod_ind");
+               "@Datatypes.prod_ind");
     Inductive ("basics.bool__t", [],
                [ ("true", []); ("false", []) ], "basics.bool__t_ind");
 
