@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.73 2010-01-07 16:56:35 weis Exp $
+#  $Id: Makefile,v 1.74 2010-01-26 17:59:03 weis Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -160,7 +160,7 @@ dist: $(ALLSRC)
 
 .PHONY: doc odoc docdir
 doc odoc docdir:
-	@echo "The documentation for zenon is not yet available :(" >&2
+	@cd doc; make all
 
 .PHONY: clean
 clean:
