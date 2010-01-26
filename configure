@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.69 2010-01-07 22:52:48 weis Exp $
+# $Id: configure,v 1.70 2010-01-26 14:50:05 weis Exp $
 
 ########################################################################
 #
@@ -1403,16 +1403,6 @@ build_configuration_variables () {
   build_config_var_for_shell;
 }
 
-# Bootstrapping .depend.
-touch_depends () {
-  touch ./.depend;
-  chmod g+w ./.depend;
-  if test -d tarballs; then
-    touch tarballs/.depend;
-    chmod g+w tarballs/.depend;
- fi;
-}
-
 summarize_configuration () {
   echo
   echo "*******************************************"
@@ -1439,7 +1429,6 @@ main () {
   # the mandatory tools that must compile the project afterwards.
   check_installation_dirs &&
   build_configuration_variables &&
-  touch_depends &&
   # Now that .config_var_for_shell is built, we can call ./.configure, the
   # script that does the rest of the work that never necessitates user's
   # interaction.
