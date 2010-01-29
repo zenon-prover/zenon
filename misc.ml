@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.16 2009-09-11 18:15:29 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.17 2010-01-29 14:50:49 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -135,6 +135,14 @@ let list_uniq l =
   match l with
   | [] -> []
   | h :: t -> list_uniq_aux t h []
+;;
+
+let rec list_nth_tail l n =
+  if n < 0 then raise (Invalid_argument "list_nth_tail");
+  if n = 0 then l else
+  match l with
+  | [] -> raise (Invalid_argument "list_nth_tail")
+  | h :: t -> list_nth_tail t (n - 1)
 ;;
 
 let debug = Printf.eprintf;;

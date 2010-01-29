@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.31 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.32 2010-01-29 14:50:49 doligez Exp $";;
 
 open Printf;;
 
@@ -283,10 +283,10 @@ expr:
       { mk_apply ($1, $2) }
 
   | AROBAS_ IDENT expr1_list %prec apply
-      { mk_arobas_apply ($2, $3) }
+      { mk_eapp ("@", evar ($2) :: $3) }
 
   | AROBAS_ IDENT %prec apply
-      { mk_arobas_apply ($2, []) }
+      { mk_eapp ("@", [evar ($2)]) }
 
   | expr1
       { $1 }
