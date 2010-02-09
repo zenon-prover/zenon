@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.70 2010-01-26 14:50:05 weis Exp $
+# $Id: configure,v 1.71 2010-02-09 21:24:38 weis Exp $
 
 ########################################################################
 #
@@ -747,6 +747,11 @@ set_tools_prefix () {
 
   if test -z "${ZENON_COMPILER}"; then
     ZENON_COMPILER="${ZENON_BIN_DIR}/zenon";
+  fi
+
+  if ! ${USE_COQ_COMPILER}; then
+    COQ_COMPILER=":";
+    COQ_DEP_COMPILER=":";
   fi
 
   # Settings for Zvtov.
