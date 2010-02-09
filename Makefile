@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.74 2010-01-26 17:59:03 weis Exp $
+#  $Id: Makefile,v 1.75 2010-02-09 21:08:36 weis Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -160,7 +160,7 @@ dist: $(ALLSRC)
 
 .PHONY: doc odoc docdir
 doc odoc docdir:
-	@cd doc; make all
+	(cd doc && $(MAKE) $@)
 
 .PHONY: clean
 clean:
