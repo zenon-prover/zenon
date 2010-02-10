@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.44 2009-11-24 15:08:01 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.45 2010-02-10 14:21:17 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -301,6 +301,7 @@ let newnodes_prop e g =
                 eimply (eapp ("TLA.in", [x; a]),
                         eapp ("TLA.in", [eapp ("TLA.fapply", [f; x]); b])))
      in
+     mknode Arity "in_funcset" [e; h1; h2; h3; f; a; b] [| [h1; h2] |] @
      mknode (Inst h3) "in_funcset" [e; h1; h2; h3; f; a; b] [| [h1; h2; h3] |]
 
   | Enot (Eapp ("TLA.in", [f; Eapp ("TLA.FuncSet", [a; b], _)], _), _) ->
