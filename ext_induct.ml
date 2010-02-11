@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.11 2010-01-29 14:50:49 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.12 2010-02-11 16:47:40 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -56,9 +56,8 @@ let remove_parens s = remove_parens 0 (String.length s) s;;
 let parse_type t =
   match string_split (remove_parens t) with
   | [] -> assert false
-  | c :: a ->
-     (* TODO check type arity vs declaration *)
-     (c, String.concat " " a, List.length a)
+  | c :: a -> (c, List.rev (List.map evar a))
+              (* TODO check type arity vs declaration *)
 ;;
 
 module HE = Hashtbl.Make (Expr);;
@@ -247,15 +246,7 @@ let newnodes_match_cases_eq e g =
   | _ -> []
 ;;
 
-let get_under s =
-  try
-    let t = (Hashtbl.find constructor_table s).cd_type in
-    let (args, _, _) = Hashtbl.find type_table t in
-    List.map (fun _ -> evar ("_")) args
-  with Not_found -> assert false
-;;
-
-let make_induction_branch ty p (con, args) =
+let make_induction_branch ty targs p (con, args) =
   let rec f vars args =
     match args with
     | Param s :: t ->
@@ -268,7 +259,7 @@ let make_induction_branch ty p (con, args) =
        let v = eapp ("@", evar con :: List.rev vars) in
        apply p v
   in
-  [enot (f (get_under con) args)]
+  [enot (f targs args)]
 ;;
 
 let newnodes_induction e g =
@@ -276,10 +267,10 @@ let newnodes_induction e g =
   | Enot (Eall (_, "", _, _), _) -> []
   | Enot (Eall (v, ty, body, _), _) ->
      begin try
-       let (tycon, _, _) = parse_type ty in
+       let (tycon, targs) = parse_type ty in
        let (args, cons, schema) = Hashtbl.find type_table tycon in
        let p = elam (v, ty, body) in
-       let br = List.map (make_induction_branch ty p) cons in
+       let br = List.map (make_induction_branch ty targs p) cons in
        [ Node {
          nconc = [e];
          nrule = Ext ("induct", "induction_notall",
@@ -293,10 +284,10 @@ let newnodes_induction e g =
   | Eex (_, "", _, _) -> []
   | Eex (v, ty, Enot (body, _), _) ->
      begin try
-       let (tycon, _, _) = parse_type ty in
+       let (tycon, targs) = parse_type ty in
        let (args, cons, schema) = Hashtbl.find type_table tycon in
        let p = elam (v, ty, body) in
-       let br = List.map (make_induction_branch ty p) cons in
+       let br = List.map (make_induction_branch ty targs p) cons in
        [ Node {
          nconc = [e];
          nrule = Ext ("induct", "induction_exnot",
@@ -309,11 +300,11 @@ let newnodes_induction e g =
      end
   | Eex (v, ty, body, _) ->
      begin try
-       let (tycon, _, _) = parse_type ty in
+       let (tycon, targs) = parse_type ty in
        let (args, cons, schema) = Hashtbl.find type_table tycon in
        let np = elam (v, ty, enot (body)) in
        let p = elam (v, ty, body) in
-       let br = List.map (make_induction_branch ty np) cons in
+       let br = List.map (make_induction_branch ty targs np) cons in
        [ Node {
          nconc = [e];
          nrule = Ext ("induct", "induction_ex",
@@ -526,7 +517,7 @@ let to_llproof tr_expr mlp args =
           Eapp ("$fix", (Elam (f, _, body, _) as r)
                         :: a :: args, _)]) ->
      begin try
-       let (tname, targs, ntargs) = parse_type (get_decreasing_arg body []) in
+       let (tname, _) = parse_type (get_decreasing_arg body []) in
        let nx = Expr.newvar () in
        let foldx = elam (nx, "", eapp ("$fix", [r; nx] @ args)) in
        let xbody = substitute_2nd [(f, eapp ("$fix", [r]))] body in
@@ -635,73 +626,6 @@ let add_phrase x =
 ;;
 
 let postprocess l = l;;
-
-(*
-open Llproof;;
-
-let rec pp_expr e =
-  match e with
-  | Evar (s, _) when is_constr s -> eapp ("@", e :: get_under s)
-  | Evar (s, _) -> e
-  | Emeta _ -> e
-  | Eapp ("$match-case", [constr; body], _) ->
-     eapp ("$match-case", [constr; pp_expr body])
-  | Eapp (s, l, _) when is_constr s ->
-     eapp ("@", evar s :: get_under s @ List.map pp_expr l)
-  | Eapp (s, l, _) -> eapp (s, List.map pp_expr l)
-  | Enot (e1, _) -> enot (pp_expr e1)
-  | Eand (e1, e2, _) -> eand (pp_expr e1, pp_expr e2)
-  | Eor (e1, e2, _) -> eor (pp_expr e1, pp_expr e2)
-  | Eimply (e1, e2, _) -> eimply (pp_expr e1, pp_expr e2)
-  | Eequiv (e1, e2, _) -> eequiv (pp_expr e1, pp_expr e2)
-  | Etrue | Efalse -> e
-  | Eall (v, t, e1, _) -> eall (v, t, pp_expr e1)
-  | Eex (v, t, e1, _) -> eex (v, t, pp_expr e1)
-  | Etau (v, t, e1, _) -> etau (v, t, pp_expr e1)
-  | Elam (v, t, e1, _) -> elam (v, t, pp_expr e1)
-;;
-
-let pp_rule r =
-  match r with
-  | Rfalse | Rnottrue -> r
-  | Raxiom (e) -> Raxiom (pp_expr e)
-  | Rcut (e) -> Rcut (pp_expr e)
-  | Rnoteq (e) -> Rnoteq (pp_expr e)
-  | Reqsym (e1, e2) -> Reqsym (pp_expr e1, pp_expr e2)
-  | Rnotnot (e) -> Rnotnot (pp_expr e)
-  | Rconnect (b, e1, e2) -> Rconnect (b, pp_expr e1, pp_expr e2)
-  | Rnotconnect (b, e1, e2) -> Rnotconnect (b, pp_expr e1, pp_expr e2)
-  | Rex (e1, e2) -> Rex (pp_expr e1, pp_expr e2)
-  | Rall (e1, e2) -> Rall (pp_expr e1, pp_expr e2)
-  | Rnotex (e1, e2) -> Rnotex (pp_expr e1, pp_expr e2)
-  | Rnotall (e1, e2) -> Rnotall (pp_expr e1, pp_expr e2)
-  | Rpnotp (e1, e2) -> Rpnotp (pp_expr e1, pp_expr e2)
-  | Rnotequal (e1, e2) -> Rnotequal (pp_expr e1, pp_expr e2)
-  | RcongruenceLR (e1, e2, e3) ->
-     RcongruenceLR (pp_expr e1, pp_expr e2, pp_expr e3)
-  | RcongruenceRL (e1, e2, e3) ->
-     RcongruenceRL (pp_expr e1, pp_expr e2, pp_expr e3)
-  | Rdefinition (s1, s2, e1, e2) -> Rdefinition (s1, s2, pp_expr e1, pp_expr e2)
-  | Rextension (s, l1, l2, ll3) ->
-     Rextension (s, List.map pp_expr l1, List.map pp_expr l2,
-                 List.map (List.map pp_expr) ll3)
-  | Rlemma (s, l) -> Rlemma (s, List.map pp_expr l)
-;;
-
-let rec pp_prooftree t = {
-  conc = List.map pp_expr t.conc;
-  rule = pp_rule t.rule;
-  hyps = List.map pp_prooftree t.hyps;
-};;
-
-let pp_lemma l = {
-  name = l.name;
-  params = List.map (fun (s, e) -> (s, pp_expr e)) l.params;
-  proof = pp_prooftree l.proof;
-};;
-
-let postprocess p = List.map pp_lemma p;;
-*)
 
 let add_formula e =
   match e with
