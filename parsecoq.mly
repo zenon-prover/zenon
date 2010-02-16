@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.32 2010-01-29 14:50:49 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.33 2010-02-16 17:22:45 doligez Exp $";;
 
 open Printf;;
 
@@ -99,7 +99,7 @@ let mk_inductive name bindings constrs =
 ;;
 
 let mk_pairs e l =
-  let f x y = eapp ("Datatypes.pair", [x; y]) in
+  let f x y = eapp ("@", [evar "Datatypes.pair"; evar "_"; evar "_"; x; y]) in
   List.fold_left f e l
 ;;
 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.57 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.58 2010-02-16 17:22:45 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -336,12 +336,11 @@ let rec trtree env node =
      let make_hyp h (c, cargs) =
        let vars = List.map (fun x -> Expr.newname ()) cargs in
        let shape =
-         match vars with
-         | [] -> enot (enot (eapp ("=", [e1; evar c])))
-         | _ ->
-            let vvars = List.map evar vars in
-            let base = enot (eapp ("=", [e1; eapp (c, vvars)])) in
-            enot (all_list vvars base)
+         let vvars = List.map evar vars in
+         let params = List.map (fun _ -> evar "_") args in
+         let base = enot (eapp ("=", [e1; eapp ("@", evar c :: params @ vvars)]))
+         in
+         enot (all_list vvars base)
        in
        let sub = Capp (Cvar "NNPP", [Cwild; mklam shape (trtree env h)]) in
        let mkbody prf v = Capp (prf, [Cvar v]) in

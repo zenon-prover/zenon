@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.12 2010-02-11 16:47:40 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.13 2010-02-16 17:22:45 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -41,6 +41,27 @@ let constr_head e =
   | Eapp ("@", Evar (s, _) :: _, _) when is_constr s -> true
   | Eapp (s, _, _) | Evar (s, _) when is_constr s -> true
   | _ -> false
+;;
+
+let get_constr e =
+  match e with
+  | Eapp ("@", Evar (s, _) :: _, _) -> s
+  | Eapp (s, _, _) | Evar (s, _) -> s
+  | _ -> assert false
+;;
+
+let get_args e =
+  match e with
+  | Eapp ("@", Evar (s, _) :: a, _) ->
+     begin try
+       let desc = Hashtbl.find constructor_table s in
+       let (params, _, _) = Hashtbl.find type_table desc.cd_type in
+       list_nth_tail a (List.length params)
+     with Not_found -> assert false
+     end
+  | Eapp (s, a, _) -> a
+  | Evar (s, _) -> []
+  | _ -> assert false
 ;;
 
 let rec remove_parens i j s =
@@ -149,20 +170,22 @@ let get_matching e =
   | _ -> None
 ;;
 
+let get_unders constr =
+  try
+    let desc = Hashtbl.find constructor_table constr in
+    let (params, _ , _) = Hashtbl.find type_table desc.cd_type in
+    List.map (fun _ -> evar "_") params
+  with Not_found -> assert false
+;;
+
 let make_match_branches ctx e cases =
   match cases with
   | [] -> Error.warn "empty pattern-matching"; raise Empty
   | _ ->
       let c = normalize_cases cases in
       let f (constr, vars, body) =
-        let (pattern, rvars, rbody) =
-          match vars with
-          | [] -> (evar (constr), [], body)
-          | _ ->
-             let rv = List.map (fun _ -> Expr.newvar ()) vars in
-             let sub = List.map2 (fun x y -> (x, y)) vars rv in
-             (eapp (constr, rv), rv, Expr.substitute sub body)
-        in
+        let rvars = List.map (fun _ -> Expr.newvar ()) vars in
+        let pattern = eapp ("@", evar constr :: (get_unders constr) @ rvars) in
         let shape = enot (eapp ("=", [e; pattern])) in
         [enot (all_list rvars shape)]
       in
@@ -320,25 +343,27 @@ let newnodes_induction e g =
 
 let newnodes_injective e g =
   match e with
-  | Eapp ("=", [Eapp (f1, args1, _); Eapp (f2, args2, _)], _)
-    when f1 = f2 && is_constr f1 ->
-      begin try
-        let ty = evar ((Hashtbl.find constructor_table f1).cd_type) in
-        let branch = List.map2 (fun x y -> eapp ("=", [x; y])) args1 args2 in
-        [ Node {
-          nconc = [e];
-          nrule = Ext ("induct", "injection", [e; ty]);
-          nprio = Arity;
-          ngoal = g;
-          nbranches = [| branch |];
-        } ]
-      with Invalid_argument "List.map2" -> raise Empty
-      end
-  | Eapp ("=", [Eapp (f1, _, _); Eapp (f2, _, _)], _)
-  | Eapp ("=", [Eapp (f1, _, _); Evar (f2, _)], _)
-  | Eapp ("=", [Evar (f1, _); Eapp (f2, _, _)], _)
-  | Eapp ("=", [Evar (f1, _); Evar (f2, _)], _)
-    when f1 <> f2 && is_constr f1 && is_constr f2 ->
+  | Eapp ("=", [e1; e2], _)
+    when constr_head e1 && constr_head e2 && get_constr e1 = get_constr e2 ->
+     begin try
+       let args1 = get_args e1 in
+       let args2 = get_args e2 in
+       let ty = evar ((Hashtbl.find constructor_table (get_constr e1)).cd_type)
+       in
+       let branch = List.map2 (fun x y -> eapp ("=", [x; y])) args1 args2 in
+       [ Node {
+         nconc = [e];
+         nrule = Ext ("induct", "injection", [e; ty]);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| branch |];
+       } ]
+     with
+     | Invalid_argument "List.map2" -> raise Empty
+     | Not_found -> assert false
+     end
+  | Eapp ("=", [e1; e2], _) when constr_head e1 && constr_head e2 ->
+     assert (get_constr e1 <> get_constr e2);
       [ Node {
         nconc = [e];
         nrule = Ext ("induct", "discriminate", [e]);
@@ -453,6 +478,54 @@ let to_llproof tr_expr mlp args =
   let hyps = List.map fst argl in
   let add = List.flatten (List.map snd argl) in
   match mlp.mlrule with
+  | Ext ("induct", "injection",
+         [Eapp ("=", [Eapp ("@", Evar (g, _) :: args1, _) as xx;
+                      Eapp ("@", Evar (_, _) :: args2, _) as yy], _) as con;
+          Evar (ty, _)]) ->
+     let n_under =
+       try
+         let (params, _, _) = (Hashtbl.find type_table ty) in
+         List.length params
+       with Not_found -> assert false
+     in
+     let args1 = list_nth_tail args1 n_under in
+     let args2 = list_nth_tail args2 n_under in
+     let tc = List.map tr_expr mlp.mlconc in
+     let subproof =
+       match hyps with
+       | [sub] -> sub
+       | _ -> assert false
+     in
+     let rec f args1 args2 i accu =
+       match args1, args2 with
+       | [], [] -> accu
+       | a1 :: t1, a2 :: t2 ->
+          let hyp = tr_expr (eapp ("=", [a1; a2])) in
+          if List.exists (Expr.equal hyp) accu.conc then begin
+            let (_, cons, schema) =
+              try Hashtbl.find type_table ty with Not_found -> assert false
+            in
+            let mk_case (name, args) =
+              let params = List.map (fun _ -> Expr.newvar ()) args in
+              let result = if name <> g then a1 else List.nth params i in
+              let body = eapp ("$match-case", [evar (name); result]) in
+              List.fold_right (fun v e -> elam (v, "", e)) params body
+            in
+            let cases = List.map mk_case cons in
+            let x = Expr.newvar () in
+            let proj = elam (x, "", eapp ("$match", x :: cases)) in
+            let node = {
+              conc = union tc (diff accu.conc [hyp]);
+              rule = Rextension ("zenon_induct_f_equal",
+                                 [tr_expr xx; tr_expr yy; tr_expr proj],
+                                 [tr_expr con], [ [hyp] ]);
+              hyps = [accu];
+            } in
+            f t1 t2 (i + 1) node
+          end else f t1 t2 (i + 1) accu
+       | _ -> assert false
+     in
+     (f args1 args2 0 subproof, add)
   | Ext ("induct", "injection",
          [Eapp ("=", [Eapp (g, args1, _) as xx;
                       Eapp (_, args2, _) as yy], _) as con;

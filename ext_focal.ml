@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.28 2010-01-19 15:43:08 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.29 2010-02-16 17:22:45 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -642,7 +642,7 @@ let built_in_defs =
                   eapp ("coq_builtins.bi__xor_b", [x; y])));
 
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
-                  eapp ("Datatypes.pair", [x; y])));
+                  eapp ("Datatypes.pair", [tx; ty; x; y])));
     Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
                   eapp ("$match", [xy; elam (x, "", elam (y, "", case))])));
     Def (DefReal ("snd", "basics.snd", [tx; ty; xy],
