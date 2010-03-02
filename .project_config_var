@@ -13,7 +13,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: .project_config_var,v 1.8 2010-01-07 22:39:35 weis Exp $
+# $Id: .project_config_var,v 1.9 2010-03-02 14:28:43 weis Exp $
 
 # The seed source file for the project.
 # It contains the names of basic entities necessary to define, configure,
@@ -89,6 +89,7 @@ set_intrinsic_defaults () {
   DEFAULT_PREFIX="/usr/local"
 
   # External tools
+
   # Do we make external tools ?
   DEFAULT_MAKE_EXTERNAL=false
 
@@ -99,16 +100,18 @@ set_intrinsic_defaults () {
   # If true, external tools will be installed in TOOLS_PREFIX as defined
   # after the configuration phase.
   DEFAULT_USE_TOOLS_PREFIX_DIRECTORY=false
+
   # The default tools specific prefix directory.
   # Was once DEFAULT_TOOLS_PREFIX="$DEFAULT_PREFIX"
   # Unfortunately, there is no way to avoid tools installation during
   # building phase: to compile Camlp5 the caml compiler must be installed
   # somewhere and the like to compile Coq, Camlp5 must be installed;
-  # afterwards coq must be installed before compiling focalizec.
+  # afterwards coq must be installed before compiling zenon and zenon must be
+  # installed before compiling focalizec.
   # We could install all those in some fake place during the building phase,
-  # and then install them in the proper relevant location; unfortunately this
+  # and then install them in the proper relevant location; unfortunately, this
   # would mean to recompile the all set of external and internal tools twice
-  # which is really costy. Let stay on the safe side and install tools in
+  # which is really costy. Let us stay on the safe side and install tools in
   # some safe place in the home directory of the user.
   DEFAULT_TOOLS_PREFIX="$HOME/pkg"
   
