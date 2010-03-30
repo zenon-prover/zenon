@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.75 2010-02-09 21:08:36 weis Exp $
+#  $Id: Makefile,v 1.76 2010-03-30 16:41:30 doligez Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -21,11 +21,11 @@ CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           progress.ml namespace.ml expr.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
-          print.ml step.ml node.ml extension.ml mltoll.ml prove.ml \
+          print.ml step.ml node.ml extension.ml mltoll.ml \
           parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
           parsecoq.mly lexcoq.mll tptp.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
-          ext_equiv.ml ext_induct.ml coqterm.ml lltocoq.ml \
+          ext_equiv.ml ext_induct.ml prove.ml coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
           checksum.dummy versionnum.ml main.ml
 

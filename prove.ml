@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.61 2010-01-29 14:50:49 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.62 2010-03-30 16:41:30 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -167,6 +167,18 @@ let good_match l1 l2 =
   | _ -> List.for_all2 good_match_e l1 l2
 ;;
 
+let rec constructor_mismatch e1 e2 =
+  let isc = Ext_induct.is_constr in
+  match e1, e2 with
+  | Evar (v1, _), Evar (v2, _) when v1 <> v2 && isc v1 && isc v2 -> true
+  | Eapp (s1, _, _), Eapp (s2, _, _) when s1 <> s2 && isc s1 && isc s2 -> true
+  | Eapp (s1, args1, _), Eapp (s2, args2, _) when s1 =%= s2 && isc s1 ->
+     begin try List.exists2 constructor_mismatch args1 args2
+     with Invalid_argument _ -> false
+     end
+  | _, _ -> false
+;;
+
 let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
   | Eapp ("TLA.in", [e1; Evar _ as s1], _),
@@ -179,7 +191,9 @@ let make_notequiv st sym (p, g) (np, ng) =
       if sym && List.length args2 != 2
          || List.length args1 <> List.length args2
       then (arity_warning s1; st)
-      else
+      else if Extension.is_active "induct"
+              && List.exists2 constructor_mismatch args1 args2 then st
+      else begin
         let myrule = if sym then P_NotP_sym (s1, p, np) else P_NotP (p, np) in
         let myargs1 = if sym then List.rev args1 else args1 in
         let prio =
@@ -194,6 +208,7 @@ let make_notequiv st sym (p, g) (np, ng) =
           ngoal = min g ng;
           nbranches = make_inequals myargs1 args2;
         }
+      end
   | _ -> assert false
 ;;
 
@@ -1084,9 +1099,22 @@ let rec not_meta_eq e =
   | _ -> true
 ;;
 
+let get_root_metas e =
+  let rec is_root e =
+    match e with
+    | Emeta _ -> false
+    | Evar _ | Etrue | Efalse -> true
+    | Eapp (_, args, _) -> List.for_all is_root args
+    | Enot (e1, _) | Eall (_, _, e1, _) | Eex (_, _, e1, _) | Etau (_, _, e1, _)
+      | Elam (_, _, e1, _) -> is_root e1
+    | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
+      | Eequiv (e1, e2, _) -> is_root e1 && is_root e2
+  in List.filter is_root (get_metas e)
+;;
+
 let count_meta_list l =
   let l = List.filter not_meta_eq l in
-  List.length (sort_uniq (List.flatten (List.map get_metas l)))
+  List.length (sort_uniq (List.flatten (List.map get_root_metas l)))
 ;;
 
 let rec not_trivial e =
