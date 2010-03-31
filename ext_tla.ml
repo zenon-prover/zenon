@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.45 2010-02-10 14:21:17 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.46 2010-03-31 15:32:51 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -56,6 +56,7 @@ let tla_other_symbols = [
   "TLA.CASE";
   "TLA.tuple";
   "TLA.fapply";
+  "TLA.box";
 ];;
 
 let is_set_expr e =
@@ -434,6 +435,9 @@ let newnodes_prop e g =
   | Enot (Eapp ("TLA.in", [Emeta (m, _); Evar ("arith.N", _)], _), _) ->
      mknode_inst (Inst m) m (evar "0")
 
+  | Eapp ("TLA.box", [e1], _) ->
+     mknode Prop "box_p" [e; e1] [| [e1] |]
+
   | _ -> []
 ;;
 
@@ -454,7 +458,7 @@ let newnodes_inst_bounded e g =
        let h = apply p a in
        Node {
          nconc = [e; f];
-         nrule = Ext ("tla", "all_in", [e; f; h]);
+         nrule = Ext ("tla", "all_in", [f; e; h; s; p]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
@@ -464,7 +468,7 @@ let newnodes_inst_bounded e g =
        let h = enot (apply p a) in
        Node {
          nconc = [e; f];
-         nrule = Ext ("tla", "notex_in", [e; f; h]);
+         nrule = Ext ("tla", "notex_in", [f; e; h; s; p]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
@@ -483,7 +487,7 @@ let newnodes_inst_bounded e g =
        let h = apply p v in
        Node {
          nconc = [f; e];
-         nrule = Ext ("tla", "all_in", [f; e; h]);
+         nrule = Ext ("tla", "all_in", [e; f; h; s; p]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];
@@ -502,7 +506,7 @@ let newnodes_inst_bounded e g =
        let h = enot (apply p v) in
        Node {
          nconc = [f; e];
-         nrule = Ext ("tla", "notex_in", [f; e; h]);
+         nrule = Ext ("tla", "notex_in", [e; f; h; s; p]);
          nprio = prio;
          ngoal = g;
          nbranches = [| [h] |];

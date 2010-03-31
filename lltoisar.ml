@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.35 2009-11-24 15:08:01 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.36 2010-03-31 15:32:51 doligez Exp $";;
 
 open Printf;;
 
@@ -98,6 +98,7 @@ let tr_prefix s =
   | "arith.mod" -> "isa'pc"          (* FIXME will change *)
   | "arith.minus" -> " -."
   | "arith.intrange" -> "isa'dotdot" (* FIXME will change *)
+  | "TLA.box" -> "isa'box"
   | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
      String.sub s 4 (String.length s - 4)
   | _ when String.length s > 6 && String.sub s 0 6 = "arith." ->
@@ -480,9 +481,8 @@ let rec p_tree hyps i dict oc proof =
      let c = apply p b in
      iprintf i oc "have %s: \"%a\"" (hname hyps c) (p_expr dict) c;
      let dict2 = p_is dict oc c in
-     iprintf i oc "by (rule subst [of \"%a\" \"%a\" \"%a\", OF %s %s])\n"
-             (p_expr dict2) a (p_expr dict2) b (p_expr dict2) p
-             (hname hyps h0) (hname hyps h1);
+     iprintf i oc "by (rule subst [where P=\"%a\", OF %s %s])\n"
+             (p_expr dict2) p (hname hyps h0) (hname hyps h1);
      p_tree hyps i dict2 oc t;
   | RcongruenceRL (p, a, b) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
@@ -491,9 +491,8 @@ let rec p_tree hyps i dict oc proof =
      let c = apply p b in
      iprintf i oc "have %s: \"%a\"" (hname hyps c) (p_expr dict) c;
      let dict2 = p_is dict oc c in
-     iprintf i oc "by (rule ssubst [of \"%a\" \"%a\" \"%a\", OF %s %s])\n"
-             (p_expr dict2) b (p_expr dict2) a (p_expr dict2) p
-             (hname hyps h0) (hname hyps h1);
+     iprintf i oc "by (rule ssubst [where P=\"%a\", OF %s %s])\n"
+             (p_expr dict2) p (hname hyps h0) (hname hyps h1);
      p_tree hyps i dict2 oc t;
 
 and p_alpha hyps i dict oc lem h0 hs sub =
@@ -572,18 +571,19 @@ and p_subst hyps i dict oc mk l1 l2 rl2 prev =
      iprintf (iinc i) oc "thus \"%a\" .\n" (p_expr dict) prev;
      iprintf i oc "qed\n";
   | h1 :: t1, h2 :: t2 ->
-     let newrl2 = h2 :: rl2 in
      if Expr.equal h1 h2 then
-       p_subst hyps i dict oc mk t1 t2 newrl2 prev
+       p_subst hyps i dict oc mk t1 t2 (h2 :: rl2) prev
      else begin
-       let args = List.rev_append newrl2 t1 in
-       let e = mk args in
+       let newrl2 = h2 :: rl2 in
+       let x = newvar () in
+       let p = elam (x, "", mk (List.rev_append rl2 (x :: t1))) in
+       let e = apply p h2 in
        let n_e = hname hyps e in
        iprintf (iinc i) oc "have %s: \"%a\"" n_e (p_expr dict) e;
        let dict2 = p_is dict oc e in
        let eq = eapp ("=", [h1; h2]) in
-       iprintf (iinc i) oc "by (rule subst [OF %s], fact %s)\n" (hname hyps eq)
-               (hname hyps prev);
+       iprintf (iinc i) oc "by (rule subst [where P=\"%a\", OF %s], fact %s)\n"
+               (p_expr dict2) p (hname hyps eq) (hname hyps prev);
        p_subst hyps i dict2 oc mk t1 t2 newrl2 e;
      end;
   | _, _ -> assert false
