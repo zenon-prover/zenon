@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.62 2010-03-30 16:41:30 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.63 2010-04-01 13:08:57 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1099,22 +1099,12 @@ let rec not_meta_eq e =
   | _ -> true
 ;;
 
-let get_root_metas e =
-  let rec is_root e =
-    match e with
-    | Emeta _ -> false
-    | Evar _ | Etrue | Efalse -> true
-    | Eapp (_, args, _) -> List.for_all is_root args
-    | Enot (e1, _) | Eall (_, _, e1, _) | Eex (_, _, e1, _) | Etau (_, _, e1, _)
-      | Elam (_, _, e1, _) -> is_root e1
-    | Eand (e1, e2, _) | Eor (e1, e2, _) | Eimply (e1, e2, _)
-      | Eequiv (e1, e2, _) -> is_root e1 && is_root e2
-  in List.filter is_root (get_metas e)
-;;
+let get_meta_weight e = if get_metas e =%= [] then 1 else 0;;
 
 let count_meta_list l =
   let l = List.filter not_meta_eq l in
-  List.length (sort_uniq (List.flatten (List.map get_root_metas l)))
+  let l = sort_uniq (List.flatten (List.map get_metas l)) in
+  List.fold_left (fun x y -> x + get_meta_weight y) 0 l
 ;;
 
 let rec not_trivial e =
