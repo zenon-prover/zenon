@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.64 2010-04-20 12:01:12 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.65 2010-04-20 12:09:03 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -672,8 +672,8 @@ let newnodes_refl st fm g =
 
 let newnodes_match_congruence st fm g =
   match fm with
-  | Enot (Eapp ("=", [(Eapp ("$string", s1], _);
-                      (Eapp ("$string", s2], _)], _), _)
+  | Enot (Eapp ("=", [Eapp ("$string", [s1], _);
+                      Eapp ("$string", [s2], _)], _), _)
     when not (Expr.equal s1 s2) ->
      (st, false)
   | Enot (Eapp ("=", [(Eapp (f1, a1, _) as e1);
