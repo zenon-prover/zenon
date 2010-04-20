@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.10 2009-11-24 15:08:01 doligez Exp $  *)
+(*  $Id: index.mli,v 1.11 2010-04-20 12:01:12 doligez Exp $  *)
 
 open Expr;;
 
@@ -19,8 +19,13 @@ val find_neg : string -> (expr * goalness) list;;
 val find_eq_lr : expr -> expr list;;
 val find_eq_rl : expr -> expr list;;
 
+val find_eq : expr -> expr list;;
+val find_neq : expr -> expr list;;
+
 val find_eq_str : unit -> (expr * string) list;;
 val find_str_eq : unit -> (expr * string) list;;
+
+val is_meta_set : expr -> bool;;
 
 (* ==== transitive relations ==== *)
 

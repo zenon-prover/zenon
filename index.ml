@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.15 2009-11-24 15:08:01 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.16 2010-04-20 12:01:12 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -224,12 +224,17 @@ let find_all_negtrans_right head =
 
 let eq_lr = (HE.create tblsize : Expr.t HE.t);;
 let eq_rl = (HE.create tblsize : Expr.t HE.t);;
+let neq_lr = (HE.create tblsize : Expr.t HE.t);;
+let neq_rl = (HE.create tblsize : Expr.t HE.t);;
 
 let add_eq e =
   match e with
   | Eapp ("=", [e1; e2], _) ->
      HE.add eq_lr e1 e2;
      HE.add eq_rl e2 e1;
+  | Enot (Eapp ("=", [e1; e2], _), _) ->
+     HE.add neq_lr e1 e2;
+     HE.add neq_rl e2 e1;
   | _ -> ()
 ;;
 
@@ -238,11 +243,45 @@ let remove_eq e =
   | Eapp ("=", [e1; e2], _) ->
      HE.remove eq_lr e1;
      HE.remove eq_rl e2;
+  | Enot (Eapp ("=", [e1; e2], _), _) ->
+     HE.remove neq_lr e1;
+     HE.remove neq_rl e2;
   | _ -> ()
 ;;
 
 let find_eq_lr e = HE.find_all eq_lr e;;
 let find_eq_rl e = HE.find_all eq_rl e;;
+let find_neq_lr e = HE.find_all neq_lr e;;
+let find_neq_rl e = HE.find_all neq_rl e;;
+
+let find_eq e =
+  List.map (fun x -> eapp ("=", [e; x])) (find_eq_lr e)
+  @ List.map (fun x -> eapp ("=", [x; e])) (find_eq_rl e);;
+let find_neq e =
+  List.map (fun x -> enot (eapp ("=", [e; x]))) (find_neq_lr e)
+  @ List.map (fun x -> enot (eapp ("=", [x; e]))) (find_neq_rl e);;
+
+(* ==== *)
+
+let meta_set = (HE.create tblsize : unit HE.t);;
+
+let add_meta_set e =
+  match e with
+  | Eapp ("TLA.in", [Emeta _; e1], _)
+  | Enot (Eapp ("TLA.in", [Emeta _; e1], _), _)
+    -> HE.add meta_set e1 ()
+  | _ -> ()
+;;
+
+let remove_meta_set e =
+  match e with
+  | Eapp ("TLA.in", [Emeta _; e1], _)
+  | Enot (Eapp ("TLA.in", [Emeta _; e1], _), _)
+    -> HE.remove meta_set e1
+  | _ -> ()
+;;
+
+let is_meta_set e = HE.mem meta_set e;;
 
 (* ==== *)
 

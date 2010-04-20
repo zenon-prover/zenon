@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.63 2010-04-01 13:08:57 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.64 2010-04-20 12:01:12 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -183,7 +183,9 @@ let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
   | Eapp ("TLA.in", [e1; Evar _ as s1], _),
       Enot (Eapp (_, [e2; s2], _), _)
-    when not (Expr.equal s1 s2) && not (is_meta e1 || is_meta e2 || is_meta s2)
+    when not (Expr.equal s1 s2)
+         && not (is_meta e1 || is_meta s1 || is_meta e2 || is_meta s2)
+         && not (Expr.equal e1 e2)
     -> st
   | Eapp ("Is_true", _, _), _ when Extension.is_active "focal" -> st
   | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _) ->
@@ -670,6 +672,10 @@ let newnodes_refl st fm g =
 
 let newnodes_match_congruence st fm g =
   match fm with
+  | Enot (Eapp ("=", [(Eapp ("$string", s1], _);
+                      (Eapp ("$string", s2], _)], _), _)
+    when not (Expr.equal s1 s2) ->
+     (st, false)
   | Enot (Eapp ("=", [(Eapp (f1, a1, _) as e1);
                       (Eapp (f2, a2, _) as e2)], _), _)
     when f1 =%= f2 ->
@@ -930,7 +936,7 @@ let rec get_match env mt e1 e2 lr =
     _ ->
      let insta, nodesa = get_match env Nle e2a e1a true in
      let instb, nodesb = get_match env Nequal e1b e2b true in
-     
+     ...
 ;;
 
 let mk_goodmatch e1 ne2 =

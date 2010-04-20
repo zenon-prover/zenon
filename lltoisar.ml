@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.36 2010-03-31 15:32:51 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.37 2010-04-20 12:01:12 doligez Exp $";;
 
 open Printf;;
 
@@ -58,20 +58,21 @@ let rec p_list dict init printer sep oc l =
 let tr_infix s =
   match s with
   | "=" -> "="
-  | "TLA.cup" -> "\\\\cup "
-  | "TLA.cap" -> "\\\\cap "
-  | "TLA.setminus" -> "\\\\ "
-  | "TLA.in" -> "\\\\in "
-  | "TLA.subseteq" -> "\\\\subseteq "
-  | "arith.add" -> "+"
-  | "arith.sub" -> "-"
-  | "arith.mul" -> "*"
-(*  | "arith.power" -> "^" not defined yet *)
+  | "TLA.cup" -> " \\\\cup "
+  | "TLA.cap" -> " \\\\cap "
+  | "TLA.setminus" -> " \\\\ "
+  | "TLA.in" -> " \\\\in "
+  | "TLA.subseteq" -> " \\\\subseteq "
+  | "arith.intrange" -> ".."
+  | "arith.add" -> " + "
+  | "arith.sub" -> " - "
+  | "arith.mul" -> " * "
+(*  | "arith.power" -> " ^ " not defined yet *)
   | "arith.le" -> " <= "
   | "arith.lt" -> " < "
-  | "TLA.concat" -> "\\\\circ "
-  | "TLA.oneArg" -> ":>"
-  | "TLA.extend" -> "@@"
+  | "TLA.concat" -> " \\\\circ "
+  | "TLA.oneArg" -> " :> "
+  | "TLA.extend" -> " @@ "
   | _ -> "" (* see is_infix below *)
 ;;
 
@@ -97,7 +98,6 @@ let tr_prefix s =
   | "arith.euclidiv" -> "isa'div"    (* FIXME will change *)
   | "arith.mod" -> "isa'pc"          (* FIXME will change *)
   | "arith.minus" -> " -."
-  | "arith.intrange" -> "isa'dotdot" (* FIXME will change *)
   | "TLA.box" -> "isa'box"
   | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
      String.sub s 4 (String.length s - 4)
@@ -107,6 +107,21 @@ let tr_prefix s =
 ;;
 
 let disjoint l1 l2 = not (List.exists (fun x -> List.mem x l1) l2);;
+
+let rec is_nat x limit =
+  match x with
+  | _ when limit < 0 -> false
+  | Evar ("0", _) -> true
+  | Eapp ("TLA.fapply", [Evar ("TLA.Succ", _); y], _) -> is_nat y (limit - 1)
+  | _ -> false
+;;
+
+let rec get_nat x =
+  match x with
+  | Evar ("0", _) -> 0
+  | Eapp ("TLA.fapply", [Evar ("TLA.Succ", _); y], _) -> 1 + get_nat y
+  | _ -> assert false
+;;
 
 let rec p_expr env dict oc e =
   let poc fmt = fprintf oc fmt in
@@ -126,6 +141,10 @@ let rec p_expr env dict oc e =
       poc "<<%a>>" (p_expr_list env dict) l;
   | Eapp ("TLA.CASE", l, _) ->
       poc "(CASE %a)" (p_case_arms env dict) l;
+  | Eapp ("TLA.fapply", [Evar ("TLA.Succ", _); x], _) when is_nat x 14 ->
+      poc "%d" (get_nat e)
+  | Eapp ("TLA.fapply", [f; x], _) ->
+      poc "(%a[%a])" (p_expr env dict) f (p_expr env dict) x
   | Eapp (f, [e1; e2], _) when is_infix f ->
       poc "(%a%s%a)" (p_expr env dict) e1 (tr_infix f) (p_expr env dict) e2;
   | Eapp (f, l, _) ->
@@ -227,6 +246,12 @@ let p_is dict oc h =
   | Enot (Eapp ("=", [e1; e2], _), _) -> binary "" e1 "~=" e2 ""
   | Enot (e1, _) -> unary "~" e1 ""
   | _ -> unary "" h ""
+;;
+
+let p_let dict i oc e =
+  let (p, dict1) = mk_pat dict e in
+  if p <> "_" then iprintf i oc "let %s = \"%a\"\n" p (p_expr dict) e;
+  dict1
 ;;
 
 let p_assume hyps i dict oc h =
@@ -339,6 +364,82 @@ let rec p_tree hyps i dict oc proof =
      p_tree hyps (iinc i) dict1 oc t
   | Rextension ("zenon_stringdiffrr", _, _, _) -> assert false
 
+  | Rextension ("zenon_tuple_eq_match", [], [c], [hs]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let p_hyp dict h =
+       if List.memq h t.conc then begin
+         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+         let dict2 = p_is dict oc h in
+         iprintf i oc "using %s by auto\n" (hname hyps c);
+         dict2
+       end else dict
+     in
+     let dict3 = List.fold_left p_hyp dict hs in
+     p_tree hyps i dict3 oc t
+  | Rextension ("zenon_tuple_eq_match", _, _, _) -> assert false
+  | Rextension ("zenon_tuple_eq_mismatch", [e], [c], []) ->
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "using %s by auto\n" (hname hyps e);
+  | Rextension ("zenon_tuple_eq_mismatch", _, _, _) -> assert false
+  | Rextension (("zenon_tuple_nth"|"zenon_len_tuple"),
+                [p; olde; newe], [c], [[h]]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let eqn = eapp ("=", [olde; newe]) in
+     iprintf i oc "have %s: \"%a\"" (hname hyps eqn) (p_expr dict) eqn;
+     let dict2 = p_is dict oc eqn in
+     iprintf i oc "by auto\n";
+     iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict2) h;
+     let dict3 = p_is dict2 oc h in
+     iprintf i oc "by (rule subst [where P=\"%a\", OF %s %s])\n"
+             (p_expr dict) p (hname hyps eqn) (hname hyps c);
+     p_tree hyps i dict3 oc t
+  | Rextension (("zenon_tuple_nth"|"zenon_len_tuple"), _, _, _) ->
+     assert false
+  | Rextension ("zenon_in_product", [e1], [c], [hs]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let dict1 = p_let dict i oc e1 in
+     let print_hyp dict1 h =
+       if List.memq h t.conc then begin
+         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict1) h;
+         let dict2 = p_is dict1 oc h in
+         iprintf i oc "by (rule inProductE [where P=\"%a\", OF %s], auto)\n"
+                 (p_expr dict2) h (hname hyps c);
+         dict2
+       end else dict1
+     in
+     let dict3 = List.fold_left print_hyp dict1 hs in
+     p_tree hyps i dict3 oc t
+  | Rextension ("zenon_in_product", _, _, _) -> assert false
+  | Rextension ("zenon_notin_product", [e1], [c], hs) ->
+     let dict1 = p_let dict i oc e1 in
+     let print_hyp dict1 nhl t =
+       let h, nh =
+         match nhl with
+         | [Enot (h, _) as nh] -> h, nh
+         | _ -> assert false
+       in
+       iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict1) h;
+       let dict2 = p_is dict1 oc h in
+       iprintf i oc "proof (rule zenon_nnpp)\n";
+       iprintf (i+1) oc "assume %s: \"%a\"" (hname hyps nh) (p_expr dict2) nh;
+       let dict3 = p_is dict2 oc nh in
+       p_tree hyps (i+1) dict3 oc t;
+       iprintf i oc "qed\n";
+       dict2
+     in
+     let _ = List.fold_left2 print_hyp dict1 hs proof.hyps in
+     iprintf i oc "show FALSE using %s " (hname hyps c);
+     let print_hyp_name oc nhl =
+       let h = match nhl with [Enot (h, _)] -> h | _ -> assert false in
+       fprintf oc "%s " (hname hyps h);
+     in
+     List.iter (print_hyp_name oc) hs;
+     fprintf oc "by auto\n";
+  | Rextension ("zenon_notin_product", _, _, _) -> assert false
+  | Rextension ("zenon_tuple_isaseq", [], [c], []) ->
+     iprintf i oc "show FALSE using %s by auto\n" (hname hyps c);
+  | Rextension ("zenon_tuple_isaseq", _, _, _) -> assert false
+
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
@@ -346,20 +447,21 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule %s [of %a, OF %a])\n" name
              (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
   | Rextension (name, args, con, [hs]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
      let p_hyp (dict, j) h =
-       iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
-       let dict2 = p_is dict oc h in
-       iprintf i oc "by (rule %s_%d [of %a, OF %a])\n" name j
-               (p_list dict2 "" p_arg " ") args (p_list dict2 "" p_con " ") con;
-       (dict2, j+1)
+       if List.memq h t.conc then begin
+         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+         let dict2 = p_is dict oc h in
+         iprintf i oc "by (rule %s_%d [of %a, OF %a])\n" name j
+                 (p_list dict2 "" p_arg " ") args (p_list dict2 "" p_con " ")
+                 con;
+         (dict2, j+1)
+       end else (dict, j+1)
      in
      let (dict3, _) = List.fold_left p_hyp (dict, 0) hs in
-     begin match proof.hyps with
-     | [t] -> p_tree hyps i dict3 oc t;
-     | _ -> assert false
-     end;
+     p_tree hyps i dict3 oc t
   | Rextension (name, args, con, hs) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
@@ -402,9 +504,12 @@ let rec p_tree hyps i dict oc proof =
      let pr dict oc v = fprintf oc "?%s=%s" v v in
      let pr_hyp dict oc h = fprintf oc "%s" (hname hyps h) in
      iprintf i oc "show FALSE\n";
-     iprintf i oc "by (rule %s [where %a, OF %a])\n" l
-             (p_list dict "" pr " and ") (filter_vars a)
-             (p_list dict "" pr_hyp " ") proof.conc;
+     iprintf i oc "by (rule %s [" l;
+     begin match filter_vars a with
+     | [] -> ()
+     | vs -> fprintf oc "where %a, " (p_list dict "" pr " and ") vs
+     end;
+     fprintf oc "OF %a])\n" (p_list dict "" pr_hyp " ") proof.conc;
   | Rcut (e1) ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "proof (rule zenon_em [of \"%a\"])\n" (p_expr dict) e1;
@@ -499,10 +604,12 @@ and p_alpha hyps i dict oc lem h0 hs sub =
   let t = match sub with [t] -> t | _ -> assert false in
   let n_h0 = hname hyps h0 in
   let pr_h (dict, j) h =
-    iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
-    let dict2 = p_is dict oc h in
-    iprintf i oc "by (rule zenon_%s_%d [OF %s])\n" lem j n_h0;
-    (dict2, j+1)
+    if List.memq h t.conc then begin
+      iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+      let dict2 = p_is dict oc h in
+      iprintf i oc "by (rule zenon_%s_%d [OF %s])\n" lem j n_h0;
+      (dict2, j+1)
+    end else (dict, j+1)
   in
   let (dict3, _) = List.fold_left pr_h (dict, 0) hs in
   p_tree hyps i dict3 oc t;

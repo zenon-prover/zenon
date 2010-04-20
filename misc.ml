@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.17 2010-01-29 14:50:49 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.18 2010-04-20 12:01:12 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -107,6 +107,12 @@ let rec list_fold_left3 f a l1 l2 l3 =
   | h1 :: t1, h2 :: t2, h3 :: t3 -> list_fold_left3 f (f a h1 h2 h3) t1 t2 t3
   | [], [], [] -> a
   | _ -> raise (Invalid_argument "list_fold_left3")
+;;
+
+let rec list_mapi f l i =
+  match l with
+  | [] -> []
+  | h :: t -> f h i :: list_mapi f t (i+1)
 ;;
 
 let rec list_map3 f l1 l2 l3 =
