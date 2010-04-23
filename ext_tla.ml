@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.47 2010-04-20 12:01:12 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.48 2010-04-23 11:32:45 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -35,8 +35,10 @@ let tla_set_constructors = [
   "arith.N";
   "arith.Z";
   "arith.R";
+  "arith.natrange";
   "arith.intrange";
   "TLA.Seq";
+  "TLA.recordset";
 ];;
 
 let tla_fcn_constructors = [
@@ -55,6 +57,7 @@ let tla_other_symbols = [
   "TLA.cond";
   "TLA.CASE";
   "TLA.tuple";
+  "TLA.record";
   "TLA.fapply";
   "TLA.box";
 ];;
@@ -472,7 +475,7 @@ let newnodes_prop e g =
   | Eapp ("=", [Eapp ("TLA.tuple", args1,_); Eapp ("TLA.tuple", args2,_)],_) ->
      mknode Prop "tuple_eq_mismatch" [e; e] [| |]
   | Eapp ("TLA.in", [e1; Eapp ("TLA.Product",
-                               [Eapp ("TLA.tuple", args, _)], _)], _) ->
+                               [Eapp ("TLA.tuple", args, _) as e2], _)], _) ->
      let mk_h arg i =
        eapp ("TLA.in", [eapp ("TLA.fapply", [e1; mk_nat i]); arg])
      in
@@ -480,15 +483,17 @@ let newnodes_prop e g =
      let n = mk_nat (List.length args) in
      let h0 = eapp ("TLA.isASeq", [e1]) in
      let h1 = eapp ("=", [eapp ("TLA.Len", [e1]); n]) in
-     mknode Prop "in_product" (e :: e1 :: h0 :: h1 :: hs) [| h0 :: h1 :: hs |]
+     mknode Prop "in_product" (e :: e1 :: e2 :: h0 :: h1 :: hs)
+            [| h0 :: h1 :: hs |]
   | Enot (Eapp ("TLA.in", [Eapp ("TLA.tuple", a1, _);
                            Eapp ("TLA.Product",
                                      [Eapp ("TLA.tuple", a2, _)], _)],_),_)
     when List.length a1 <> List.length a2
          || List.exists2 trivially_notin a1 a2 ->
      []
-  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.Product",
-                                     [Eapp ("TLA.tuple", args, _)], _)],_),_) ->
+  | Enot (Eapp ("TLA.in",
+                [e1; Eapp ("TLA.Product",
+                           [Eapp ("TLA.tuple", args, _) as e2], _)],_),_) ->
      let mk_h arg i =
        enot (eapp ("TLA.in", [eapp ("TLA.fapply", [e1; mk_nat i]); arg]))
      in
@@ -498,7 +503,7 @@ let newnodes_prop e g =
      let h1 = enot (eapp ("=", [eapp ("TLA.Len", [e1]); n])) in
      let hh = h0 :: h1 :: hs in
      let branches = List.map (fun x -> [x]) hh in
-     mknode Arity "notin_product" (e :: e1 :: hh) (Array.of_list branches)
+     mknode Arity "notin_product" (e :: e1 :: e2 :: hh) (Array.of_list branches)
   | Enot (Eapp ("TLA.isASeq", [Eapp ("TLA.tuple", _, _)], _), _) ->
      mknode Prop "tuple_isaseq" [e] [| |]
 
@@ -1160,10 +1165,10 @@ let to_llargs r =
   | Ext (_, "tuple_eq_match", c :: hs) ->
      ("zenon_tuple_eq_match", [], [c], [ hs ])
   | Ext (_, "tuple_eq_mismatch", _) -> close r
-  | Ext (_, "in_product", c :: e1 :: hs) ->
-     ("zenon_in_product", [e1], [c], [ hs ])
-  | Ext (_, "notin_product", c :: e1 :: hs) ->
-     ("zenon_notin_product", [e1], [c], List.map (fun x -> [x]) hs)
+  | Ext (_, "in_product", c :: e1 :: e2 :: hs) ->
+     ("zenon_in_product", [e1; e2], [c], [ hs ])
+  | Ext (_, "notin_product", c :: e1 :: e2 :: hs) ->
+     ("zenon_notin_product", [e1; e2], [c], List.map (fun x -> [x]) hs)
   | Ext (_, "tuple_isaseq", _) -> close r
   | Ext (_, "cup_subseteq", _) -> alpha r
   | Ext (_, "not_cup_subseteq", _) -> beta r

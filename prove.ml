@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.65 2010-04-20 12:09:03 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.66 2010-04-23 11:32:45 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -132,7 +132,7 @@ let make_inequals l1 l2 = Array.of_list (make_inequals_aux l1 l2);;
 
 let arity_warning s =
   match s with
-  | "TLA.set" | "TLA.tuple" -> ()
+  | "TLA.set" | "TLA.tuple" | "TLA.record" | "TLA.recordset" -> ()
   | "@" -> ()
   | _ ->
      Error.warn (sprintf "symbol %s is used with inconsistent arities" s);

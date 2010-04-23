@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.37 2010-04-20 12:01:12 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.38 2010-04-23 11:32:45 doligez Exp $";;
 
 open Printf;;
 
@@ -63,7 +63,7 @@ let tr_infix s =
   | "TLA.setminus" -> " \\\\ "
   | "TLA.in" -> " \\\\in "
   | "TLA.subseteq" -> " \\\\subseteq "
-  | "arith.intrange" -> ".."
+  | "arith.natrange" -> ".."  (* see also arith.intrange below *)
   | "arith.add" -> " + "
   | "arith.sub" -> " - "
   | "arith.mul" -> " * "
@@ -98,6 +98,7 @@ let tr_prefix s =
   | "arith.euclidiv" -> "isa'div"    (* FIXME will change *)
   | "arith.mod" -> "isa'pc"          (* FIXME will change *)
   | "arith.minus" -> " -."
+  | "arith.intrange" -> "isa'dotdot"  (* see arith.natrange above *)
   | "TLA.box" -> "isa'box"
   | _ when String.length s > 4 && String.sub s 0 4 = "TLA." ->
      String.sub s 4 (String.length s - 4)
@@ -263,6 +264,10 @@ let p_sequent hyps i dict oc hs =
   List.fold_left (fun dict h -> p_assume hyps i dict oc h) dict hs
 ;;
 
+let tla_succ n = eapp ("TLA.fapply", [evar "TLA.Succ"; n]);;
+let tla_zero = evar "0";;
+let tla_one = tla_succ tla_zero;;
+
 let rec p_tree hyps i dict oc proof =
   let alpha = p_alpha hyps i dict oc in
   let beta = p_beta hyps i dict oc in
@@ -395,22 +400,45 @@ let rec p_tree hyps i dict oc proof =
      p_tree hyps i dict3 oc t
   | Rextension (("zenon_tuple_nth"|"zenon_len_tuple"), _, _, _) ->
      assert false
-  | Rextension ("zenon_in_product", [e1], [c], [hs]) ->
+  | Rextension ("zenon_in_product", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let dict1 = p_let dict i oc e1 in
-     let print_hyp dict1 h =
-       if List.memq h t.conc then begin
-         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict1) h;
-         let dict2 = p_is dict1 oc h in
-         iprintf i oc "by (rule inProductE [where P=\"%a\", OF %s], auto)\n"
-                 (p_expr dict2) h (hname hyps c);
-         dict2
-       end else dict1
+     let dict2 = p_let dict1 i oc e2 in
+     let p_simple_hyp h =
+       if List.memq h t.conc then
+         iprintf i oc "have %s: \"%a\" using %s by auto\n"
+                 (hname hyps h) (p_expr dict2) h (hname hyps c)
      in
-     let dict3 = List.fold_left print_hyp dict1 hs in
-     p_tree hyps i dict3 oc t
+     p_simple_hyp h0;
+     p_simple_hyp h1;
+     let isseq = eapp ("TLA.isASeq", [e2]) in
+     iprintf i oc "have %s: \"%a\" by auto\n"
+             (hname hyps isseq) (p_expr dict2) isseq;
+     let print_hyp (dict2, n) h =
+       if List.memq h t.conc then begin
+         let inlen =
+           eapp ("TLA.in", [n; eapp ("arith.natrange",
+                                     [tla_one; eapp ("TLA.Len", [e2])])])
+         in
+         iprintf i oc "have %s: \"%a\" by auto\n"
+                 (hname hyps inlen) (p_expr dict2) inlen;
+         let hh = eapp ("TLA.in", [eapp ("TLA.fapply", [e1; n]);
+                                   eapp ("TLA.fapply", [e2; n])])
+         in
+         iprintf i oc "have %s: \"%a\"" (hname hyps hh) (p_expr dict2) hh;
+         let dict3 = p_is dict2 oc hh in
+         iprintf i oc "by (rule zenon_in_product_i [OF %s %s %s])\n"
+                 (hname hyps c) (hname hyps isseq) (hname hyps inlen);
+         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict3) h;
+         let dict4 = p_is dict3 oc h in
+         iprintf i oc "using %s by auto\n" (hname hyps hh);
+         (dict4, tla_succ n)
+       end else (dict2, tla_succ n)
+     in
+     let (dict4, _) = List.fold_left print_hyp (dict2, tla_one) hs in
+     p_tree hyps i dict4 oc t
   | Rextension ("zenon_in_product", _, _, _) -> assert false
-  | Rextension ("zenon_notin_product", [e1], [c], hs) ->
+  | Rextension ("zenon_notin_product", [e1; e2], [c], hs) ->
      let dict1 = p_let dict i oc e1 in
      let print_hyp dict1 nhl t =
        let h, nh =
