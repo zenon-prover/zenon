@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.38 2010-04-23 11:32:45 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.39 2010-04-23 22:14:47 doligez Exp $";;
 
 open Printf;;
 
@@ -124,6 +124,12 @@ let rec get_nat x =
   | _ -> assert false
 ;;
 
+let rec make_pairs l =
+  match l with
+  | a :: b :: t -> (a, b) :: make_pairs t
+  | _ -> []
+;;
+
 let rec p_expr env dict oc e =
   let poc fmt = fprintf oc fmt in
   match e with
@@ -140,6 +146,10 @@ let rec p_expr env dict oc e =
       poc "{%a}" (p_expr_list env dict) l;
   | Eapp ("TLA.tuple", l, _) ->
       poc "<<%a>>" (p_expr_list env dict) l;
+  | Eapp ("TLA.record", l, _) ->
+      poc "(%a)" (p_list dict "" (p_record_field env) " @@ ") (make_pairs l)
+  | Eapp ("TLA.recordset", l, _) ->
+      poc "[%a]" (p_list dict "" (p_recordset_field env) ", ") (make_pairs l)
   | Eapp ("TLA.CASE", l, _) ->
       poc "(CASE %a)" (p_case_arms env dict) l;
   | Eapp ("TLA.fapply", [Evar ("TLA.Succ", _); x], _) when is_nat x 14 ->
@@ -180,7 +190,6 @@ let rec p_expr env dict oc e =
   | Etau _ -> assert false
   | Emeta _ -> assert false
 
-
 and p_expr_list env dict oc l = p_list dict "" (p_expr env) ", " oc l;
 
 and p_case_arms env dict oc l =
@@ -192,6 +201,12 @@ and p_case_arms env dict oc l =
   | c :: e :: t ->
      fprintf oc "%a -> %a [] " (p_expr env dict) c (p_expr env dict) e;
      p_case_arms env dict oc t;
+
+and p_record_field env dict oc (l, e) =
+  fprintf oc "%a :> (%a)" (p_expr env dict) l (p_expr env dict) e
+
+and p_recordset_field env dict oc (l, e) =
+  fprintf oc "%a : (%a)" (p_expr env dict) l (p_expr env dict) e
 ;;
 
 let p_expr dict oc e = p_expr [] dict oc e;;
@@ -211,6 +226,13 @@ let mk_pat dict e =
   | _ ->
      let n = vname e in
      if dict_mem n dict then ("_", dict) else (n, dict_add n dict)
+;;
+
+let rec mk_pairs l =
+  match l with
+  | [] -> []
+  | a :: b :: t -> (a, b) :: (mk_pairs t)
+  | _ -> Error.warn "record or record set with odd number of fields"; []
 ;;
 
 let p_is dict oc h =
@@ -386,7 +408,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %s by auto\n" (hname hyps e);
   | Rextension ("zenon_tuple_eq_mismatch", _, _, _) -> assert false
-  | Rextension (("zenon_tuple_nth"|"zenon_len_tuple"),
+  | Rextension (("zenon_tuple_access"|"zenon_tuple_len"
+                 |"zenon_record_access"|"zenon_record_domain"),
                 [p; olde; newe], [c], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let eqn = eapp ("=", [olde; newe]) in
@@ -398,7 +421,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule subst [where P=\"%a\", OF %s %s])\n"
              (p_expr dict) p (hname hyps eqn) (hname hyps c);
      p_tree hyps i dict3 oc t
-  | Rextension (("zenon_tuple_nth"|"zenon_len_tuple"), _, _, _) ->
+  | Rextension (("zenon_tuple_access"|"zenon_tuple_len"
+                 |"zenon_record_access"|"zenon_record_domain"), _, _, _) ->
      assert false
   | Rextension ("zenon_in_product", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
@@ -406,7 +430,7 @@ let rec p_tree hyps i dict oc proof =
      let dict2 = p_let dict1 i oc e2 in
      let p_simple_hyp h =
        if List.memq h t.conc then
-         iprintf i oc "have %s: \"%a\" using %s by auto\n"
+         iprintf i oc "have %s: \"%a\" using %s by clarsimp\n"
                  (hname hyps h) (p_expr dict2) h (hname hyps c)
      in
      p_simple_hyp h0;
@@ -464,9 +488,97 @@ let rec p_tree hyps i dict oc proof =
      List.iter (print_hyp_name oc) hs;
      fprintf oc "by auto\n";
   | Rextension ("zenon_notin_product", _, _, _) -> assert false
-  | Rextension ("zenon_tuple_isaseq", [], [c], []) ->
+  | Rextension ("zenon_tuple_notisaseq", [], [c], []) ->
      iprintf i oc "show FALSE using %s by auto\n" (hname hyps c);
-  | Rextension ("zenon_tuple_isaseq", _, _, _) -> assert false
+  | Rextension ("zenon_tuple_notisaseq", _, _, _) -> assert false
+
+  | Rextension ("zenon_record_eq_match", [], [c], [hs]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let p_hyp dict h =
+       if List.memq h t.conc then begin
+         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+         let dict2 = p_is dict oc h in
+         iprintf i oc "using %s by auto\n" (hname hyps c);
+         dict2
+       end else dict
+     in
+     let dict3 = List.fold_left p_hyp dict hs in
+     p_tree hyps i dict3 oc t
+  | Rextension ("zenon_record_eq_match", _, _, _) -> assert false
+  | Rextension ("zenon_record_eq_mismatch", [e], [c], []) ->
+     iprintf i oc "show FALSE\n";
+     iprintf i oc "using %s by auto\n" (hname hyps e);
+  | Rextension ("zenon_record_eq_mismatch", _, _, _) -> assert false
+  | Rextension ("zenon_in_recordset", [e1; e2], [c], [h0 :: h1 :: hs]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let dict2 = p_let dict i oc e1 in
+     let p_simple_hyp h =
+       if List.memq h t.conc then
+         iprintf i oc "have %s: \"%a\" using %s by clarsimp\n"
+                 (hname hyps h) (p_expr dict2) h (hname hyps c)
+     in
+     p_simple_hyp h0;
+     p_simple_hyp h1;
+     let args =
+       match e2 with Eapp ("TLA.recordset", args, _) -> args | _ -> assert false
+     in
+     let l_args = mk_pairs args in
+     let doms = eapp ("TLA.tuple", List.map fst l_args) in
+     let rngs = eapp ("TLA.tuple", List.map snd l_args) in
+     let dict3 = p_let dict2 i oc doms in
+     let dict4 = p_let dict3 i oc rngs in
+     let print_hyp (dict4, n) h =
+       if List.memq h t.conc then begin
+         let indom = eapp ("TLA.in", [n; eapp ("TLA.DOMAIN", [doms])]) in
+         iprintf i oc "have %s: \"%a\" by auto\n"
+                 (hname hyps indom) (p_expr dict4) indom;
+         let hh =
+           eapp ("TLA.in",
+                 [eapp ("TLA.fapply", [e1; eapp ("TLA.fapply", [doms; n])]);
+                  eapp ("TLA.fapply", [rngs; n])])
+         in
+         iprintf i oc "have %s: \"%a\"" (hname hyps hh) (p_expr dict4) hh;
+         let dict5 = p_is dict4 oc hh in
+         iprintf i oc "by (rule zenon_in_recordset_field [OF %s %s])\n"
+                 (hname hyps c) (hname hyps indom);
+         iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict5) h;
+         let dict6 = p_is dict5 oc h in
+         iprintf i oc "using %s by auto\n" (hname hyps hh);
+         (dict6, tla_succ n)
+       end else (dict4, tla_succ n)
+     in
+     let (dict6, _) = List.fold_left print_hyp (dict4, tla_one) hs in
+     p_tree hyps i dict6 oc t
+  | Rextension ("zenon_in_recordset", _, _, _) -> assert false
+  | Rextension ("zenon_notin_recordset", [e1; e2], [c], hs) ->
+     let dict1 = p_let dict i oc e1 in
+     let print_hyp dict1 nhl t =
+       let h, nh =
+         match nhl with
+         | [Enot (h, _) as nh] -> h, nh
+         | _ -> assert false
+       in
+       iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict1) h;
+       let dict2 = p_is dict1 oc h in
+       iprintf i oc "proof (rule zenon_nnpp)\n";
+       iprintf (i+1) oc "assume %s: \"%a\"" (hname hyps nh) (p_expr dict2) nh;
+       let dict3 = p_is dict2 oc nh in
+       p_tree hyps (i+1) dict3 oc t;
+       iprintf i oc "qed\n";
+       dict2
+     in
+     let _ = List.fold_left2 print_hyp dict1 hs proof.hyps in
+     iprintf i oc "show FALSE using %s " (hname hyps c);
+     let print_hyp_name oc nhl =
+       let h = match nhl with [Enot (h, _)] -> h | _ -> assert false in
+       fprintf oc "%s " (hname hyps h);
+     in
+     List.iter (print_hyp_name oc) hs;
+     fprintf oc "by auto\n";
+  | Rextension ("zenon_notin_recordset", _, _, _) -> assert false
+  | Rextension ("zenon_record_notisafcn", [], [c], []) ->
+     iprintf i oc "show FALSE using %s by auto\n" (hname hyps c);
+  | Rextension ("zenon_record_notisafcn", _, _, _) -> assert false
 
   | Rextension (name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
@@ -799,7 +911,7 @@ let rec get_case_rules accu prf =
 let add_case_rules oc lemmas =
   let f lem = get_case_rules [] lem.proof in
   let rules = List.flatten (List.map f lemmas) in
-  let rules1 = Misc.list_uniq (List.sort Pervasives.compare rules) in
+  let rules1 = Misc.list_unique (List.sort Pervasives.compare rules) in
   List.iter (fun (n, oth) -> Isar_case.print_case "have" n oth oc) rules1;
 ;;
 

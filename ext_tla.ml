@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.48 2010-04-23 11:32:45 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.49 2010-04-23 22:14:47 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -125,6 +125,36 @@ let trivially_notin e1 e2 =
      let f x = is_string x && not (Expr.equal x e1) in
      List.for_all f elements
   | _ -> false
+;;
+
+let rec mk_pairs l =
+  match l with
+  | [] -> []
+  | a :: b :: t -> (a, b) :: (mk_pairs t)
+  | _ -> Error.warn "record or record set with odd number of fields"; []
+;;
+
+let rec check_record_labels l =
+  match l with
+  | (Eapp ("$string", [Evar (l1, _)], _), _)
+    :: (Eapp ("$string", [Evar (l2, _)], _), _) :: _
+    when l1 = l2 ->
+     Error.warn (sprintf "duplicate record field %s" l1);
+     raise (Invalid_argument "check_record_labels")
+  | (l1, _) :: (l2, _) :: t when Expr.equal l1 l2 ->
+     Error.warn "duplicate record field (non-string)";
+     raise (Invalid_argument "check_record_labels")
+  | _ :: t -> check_record_labels t
+  | [] -> ()
+;;
+
+let get_record_labels l =
+  list_uniq (List.sort Expr.compare (List.map fst (mk_pairs l)))
+;;
+
+let field_trivially_notin rtype (lbl, e) =
+  try trivially_notin e (List.assq lbl rtype)
+  with Not_found -> true
 ;;
 
 let newnodes_prop e g =
@@ -503,9 +533,61 @@ let newnodes_prop e g =
      let h1 = enot (eapp ("=", [eapp ("TLA.Len", [e1]); n])) in
      let hh = h0 :: h1 :: hs in
      let branches = List.map (fun x -> [x]) hh in
-     mknode Arity "notin_product" (e :: e1 :: e2 :: hh) (Array.of_list branches)
+     mknode Prop "notin_product" (e :: e1 :: e2 :: hh) (Array.of_list branches)
   | Enot (Eapp ("TLA.isASeq", [Eapp ("TLA.tuple", _, _)], _), _) ->
-     mknode Prop "tuple_isaseq" [e] [| |]
+     mknode Prop "tuple_notisaseq" [e] [| |]
+
+(* records *)
+
+  | Eapp ("=", [Eapp ("TLA.record", args1, _); Eapp ("TLA.record", args2, _)], _)
+  -> begin try
+       let cmp (a1, a2) (b1, b2) = Expr.compare a1 b1 in
+       let args1 = List.sort cmp (mk_pairs args1) in
+       let args2 = List.sort cmp (mk_pairs args2) in
+       check_record_labels args1;
+       check_record_labels args2;
+       let rec mk_hyps as1 as2 =
+         match as1, as2 with
+         | [], [] -> []
+         | (l1, a1) :: t1, (l2, a2) :: t2 when Expr.equal l1 l2 ->
+            eapp ("=", [a1; a2]) :: mk_hyps t1 t2
+         | _ -> raise Exit
+       in
+       let hs = mk_hyps args1 args2 in
+       mknode Prop "record_eq_match" (e :: hs) [| hs |]
+     with
+     | Invalid_argument "check_record_labels" -> []
+     | Exit -> mknode Prop "record_eq_mismatch" [e; e] [| |]
+     end
+  | Eapp ("TLA.in", [e1; (Eapp ("TLA.recordset", args, _) as e2)], _) ->
+     let l_args = mk_pairs args in
+     let mk_h (l, arg) = eapp ("TLA.in", [eapp ("TLA.fapply", [e1; l]); arg]) in
+     let hs = List.map mk_h l_args in
+     let lbls = eapp ("TLA.set", List.map fst l_args) in
+     let h0 = eapp ("TLA.isAFcn", [e1]) in
+     let h1 = eapp ("=", [eapp ("TLA.DOMAIN", [e1]); lbls]) in
+     mknode Prop "in_recordset" (e :: e1 :: e2 :: h0 :: h1 :: hs)
+            [| h0 :: h1 :: hs |]
+  | Enot (Eapp ("TLA.in", [Eapp ("TLA.record", a1, _);
+                           Eapp ("TLA.recordset", a2, _)], _), _)
+    when get_record_labels a1 <> get_record_labels a2
+         || List.exists (field_trivially_notin (mk_pairs a2)) (mk_pairs a1) ->
+     []
+  | Enot (Eapp ("TLA.in", [e1; Eapp ("TLA.recordset", args, _) as e2], _), _) ->
+     let l_args = mk_pairs args in
+     let mk_h (l, arg) =
+       enot (eapp ("TLA.in", [eapp ("TLA.fapply", [e1; l]); arg]))
+     in
+     let hs = List.map mk_h l_args in
+     let lbls = eapp ("TLA.set", List.map fst (mk_pairs args)) in
+     let h0 = enot (eapp ("TLA.isAFcn", [e1])) in
+     let h1 = enot (eapp ("=", [eapp ("TLA.DOMAIN", [e1]); lbls])) in
+     let hh = h0 :: h1 :: hs in
+     let branches = List.map (fun x -> [x]) hh in
+     mknode Prop "notin_recordset" (e :: e1 :: e2 :: hh)
+            (Array.of_list branches)
+  | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.record", _, _)], _), _) ->
+     mknode Prop "record_notisafcn" [e] [| |]
 
 (* shortcuts for subseteq *)
 
@@ -893,21 +975,33 @@ let rewrites in_expr x ctx e mknode =
     when is_in_1_to n (List.length args) ->
      let newe = List.nth args (get_nat_const n (-1)) in
      let h1 = appctx (newe) in
-     mknode "tuple_nth" [appctx e; h1; lamctx; e; newe] [] [| [h1] |]
+     mknode "tuple_access" [appctx e; h1; lamctx; e; newe] [] [| [h1] |]
+  | Eapp ("TLA.fapply", [Eapp ("TLA.record", args, _); l], _) ->
+     begin try
+       let l_args = mk_pairs args in
+       let newe = List.assq l l_args in
+       let h1 = appctx (newe) in
+       mknode "record_access" [appctx e; h1; lamctx; e; newe] [] [| [h1] |]
+     with Not_found -> []
+     end
   | Eapp ("TLA.fapply", [f; a], _) ->
      let x = newvar () in
      let c = elam (x, "", appctx (eapp ("TLA.fapply", [x; a]))) in
-     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.tuple"] f
+     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.tuple"; "TLA.record"] f
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
      let h1 = appctx (s) in
      mknode "domain_fcn" [appctx e; h1; lamctx; s; l] [] [| [h1] |]
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.except", [f; v; e1], _)], _) ->
      let h1 = appctx (eapp ("TLA.DOMAIN", [f])) in
      mknode "domain_except" [appctx e; h1; lamctx; f; v; e1] [] [| [h1] |]
+  | Eapp ("TLA.DOMAIN", [Eapp ("TLA.record", args, _)], _) ->
+     let lbls = eapp ("TLA.set", List.map fst (mk_pairs args)) in
+     let h1 = appctx lbls in
+     mknode "record_domain" [appctx e; h1; lamctx; e; lbls] [] [| [h1] |]
   | Eapp ("TLA.DOMAIN", [f], _) ->
      let x = newvar () in
      let c = elam (x, "", appctx (eapp ("TLA.DOMAIN", [x]))) in
-     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"] f
+     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.record"] f
   | Enot (e1, _) when in_expr -> mk_boolcase_1 "not" e1
   | Eand (e1, e2, _) when in_expr -> mk_boolcase_2 "and" e1 e2
   | Eor (e1, e2, _) when in_expr -> mk_boolcase_2 "or" e1 e2
@@ -942,7 +1036,7 @@ let rewrites in_expr x ctx e mknode =
   | Eapp ("TLA.Len", [Eapp ("TLA.tuple", args, _)], _) ->
      let r = mk_nat (List.length args) in
      let h1 = appctx r in
-     mknode "len_tuple" [appctx e; h1; lamctx; e; r] [] [| [h1] |]
+     mknode "tuple_len" [appctx e; h1; lamctx; e; r] [] [| [h1] |]
   | Eapp ("TLA.Len", [s], _) ->
      let x = newvar () in
      let c = elam (x, "", appctx (eapp ("TLA.Len", [x]))) in
@@ -967,7 +1061,8 @@ let rewrites in_expr x ctx e mknode =
   | Eapp ("TLA.isAFcn", [s], _) ->
      let x = newvar () in
      let c = elam (x, "", appctx (eapp ("TLA.isAFcn", [x]))) in
-     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.oneArg"; "TLA.extend"] s
+     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.oneArg"; "TLA.extend";
+                    "TLA.record"] s
 
   | _ -> []
 ;;
@@ -1162,6 +1257,12 @@ let to_llargs r =
      ("zenon_case", [p], [c], split_case_branches args)
   | Ext (_, ("p_eq_l" | "p_eq_r" | "np_eq_l" | "np_eq_r"), _) -> binbeta r
   | Ext (_, ("all_in" | "notex_in"), _) -> binsingle r
+
+  | Ext (_, "cup_subseteq", _) -> alpha r
+  | Ext (_, "not_cup_subseteq", _) -> beta r
+  | Ext (_, "subseteq_cap", _) -> alpha r
+  | Ext (_, "not_subseteq_cap", _) -> beta r
+
   | Ext (_, "tuple_eq_match", c :: hs) ->
      ("zenon_tuple_eq_match", [], [c], [ hs ])
   | Ext (_, "tuple_eq_mismatch", _) -> close r
@@ -1169,11 +1270,17 @@ let to_llargs r =
      ("zenon_in_product", [e1; e2], [c], [ hs ])
   | Ext (_, "notin_product", c :: e1 :: e2 :: hs) ->
      ("zenon_notin_product", [e1; e2], [c], List.map (fun x -> [x]) hs)
-  | Ext (_, "tuple_isaseq", _) -> close r
-  | Ext (_, "cup_subseteq", _) -> alpha r
-  | Ext (_, "not_cup_subseteq", _) -> beta r
-  | Ext (_, "subseteq_cap", _) -> alpha r
-  | Ext (_, "not_subseteq_cap", _) -> beta r
+  | Ext (_, "tuple_notisaseq", _) -> close r
+
+  | Ext (_, "record_eq_match", c :: hs) ->
+     ("zenon_record_eq_match", [], [c], [ hs ])
+  | Ext (_, "record_eq_mismatch", _) -> close r
+  | Ext (_, "in_recordset", c :: e1 :: e2 :: hs) ->
+     ("zenon_in_recordset", [e1; e2], [c], [ hs ])
+  | Ext (_, "notin_recordset", c :: e1 :: e2 :: hs) ->
+     ("zenon_notin_recordset", [e1; e2], [c], List.map (fun x -> [x]) hs)
+  | Ext (_, "record_notisafcn", _) -> close r
+
   | Ext (_, name, _) -> single r
   | _ -> assert false
 ;;
