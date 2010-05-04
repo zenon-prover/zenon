@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.49 2010-04-23 22:14:47 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.50 2010-05-04 14:18:45 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -383,9 +383,22 @@ let newnodes_prop e g =
      let h = eall (x, "", enot (eapp ("TLA.in", [x; e1]))) in
      mknode Arity "setemptyequal" [e; h; e1] [| [h] |]
 
-  | Enot (Eapp ("=", [e1; e2], _), _)
-     when is_set_expr e1 || is_set_expr e2
-          || Index.is_meta_set e1 || Index.is_meta_set e2 ->
+(* redundant ?
+  | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
+     let x = Expr.newvar () in
+     let h = eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
+                                  eapp ("TLA.in", [x; e2])))
+     in
+     mknode (Inst h) "setequal" [e; h; e1; e2] [| [h] |]
+*)
+
+  | Eapp ("=", [e1; e2], _) when is_set_expr e1 || is_set_expr e2 ->
+     let x = Expr.newvar () in
+     let h = eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
+                                  eapp ("TLA.in", [x; e2])))
+     in
+     mknode (Inst h) "setequal" [e; h; e1; e2] [| [h] |]
+  | Enot (Eapp ("=", [e1; e2], _), _) when is_set_expr e1 || is_set_expr e2 ->
      let x = Expr.newvar () in
      let h = enot (eall (x, "", eequiv (eapp ("TLA.in", [x; e1]),
                                         eapp ("TLA.in", [x; e2]))))
@@ -404,7 +417,6 @@ let newnodes_prop e g =
   | Enot (Eapp ("TLA.isAFcn", [Eapp ("TLA.extend", [f; g], _)], _), _) ->
      mknode Prop "notisafcn_extend" [e; f; g] [| |]
 
-(* redundant ?
   | Eapp ("=", [e1; e2], _)
     when (is_fcn_expr e1 || is_fcn_expr e2)
         (* && not (is_var e1) && not (is_var e2) *) ->
@@ -417,7 +429,6 @@ let newnodes_prop e g =
      in
      let h = eand (eand (h1, h2), h3) in
      mknode (Inst h3) "funequal" [e; h; e1; e2] [| [h] |]
-*)
   | Enot (Eapp ("=", [e1; e2], _), _) when is_fcn_expr e1 || is_fcn_expr e2 ->
      let x = Expr.newvar () in
      let h0 = eapp ("TLA.isAFcn", [e1]) in
@@ -984,10 +995,18 @@ let rewrites in_expr x ctx e mknode =
        mknode "record_access" [appctx e; h1; lamctx; e; newe] [] [| [h1] |]
      with Not_found -> []
      end
+(* ***
   | Eapp ("TLA.fapply", [f; a], _) ->
+eprintf "TLA.fapply: ";
+Print.expr_soft (Print.Chan stderr) f;
      let x = newvar () in
      let c = elam (x, "", appctx (eapp ("TLA.fapply", [x; a]))) in
-     mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.tuple"; "TLA.record"] f
+     let result =
+       mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.tuple"; "TLA.record"] f
+     in
+eprintf " [%d]\n" (List.length result);
+result
+*** *)
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
      let h1 = appctx (s) in
      mknode "domain_fcn" [appctx e; h1; lamctx; s; l] [] [| [h1] |]
