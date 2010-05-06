@@ -15,7 +15,7 @@
 #                                                                      #
 #**********************************************************************#
 
-# $Id: configure,v 1.71 2010-02-09 21:24:38 weis Exp $
+# $Id: configure,v 1.72 2010-05-06 14:21:01 weis Exp $
 
 ########################################################################
 #
@@ -1382,19 +1382,51 @@ build_config_var () {
 build_config_var_for_shell () {
 
   sed \
-     -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
-     -e "s,@VERSION_NUMBER_PATCH@,\"$VERSION_NUMBER_PATCH\"," \
-     -e "s,@VERSION_NUMBER_FULL@,\"$VERSION_NUMBER_FULL\"," \
-     -e "s,@PREFIX@,\"$PREFIX\"," \
-     -e "s,@BIN_DIR@,\"$BIN_DIR\"," \
-     -e "s,@LIB_DIR@,\"$LIB_DIR\"," \
-     -e "s,@DOC_DIR@,\"$DOC_DIR\"," \
-     -e "s,@MAN_DIR@,\"$MAN_DIR\"," \
-     -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
-     -e "s,@BIN_DEBUG_FLAGS@,\"$BIN_DEBUG_FLAGS\"," \
-     -e "s,@XMLRPC_FLAGS@,\"$XMLRPC_FLAGS\"," \
-     -e "s,@XMLRPC_LINK@,\"$XMLRPC_LINK\"," \
-     -e "s,@XMLRPC_MODULE@,\"$XMLRPC_MODULE\"," \
+      -e "s,@VERSION_NUMBER_PATCH@,$VERSION_NUMBER_PATCH," \
+      -e "s,@VERSION_NUMBER_FULL@,\"$VERSION_NUMBER_FULL\"," \
+  \
+      -e "s,@ABSOLUTE_ROOT_DIR@,\"$ABSOLUTE_ROOT_DIR\"," \
+      -e "s,@PREFIX@,\"$PREFIX\"," \
+      -e "s,@BIN_DIR@,\"$BIN_DIR\"," \
+      -e "s,@LIB_DIR@,\"$LIB_DIR\"," \
+      -e "s,@DOC_DIR@,\"$DOC_DIR\"," \
+      -e "s,@MAN_DIR@,\"$MAN_DIR\"," \
+  \
+      -e "s,@TOOLS_PREFIX@,\"$TOOLS_PREFIX\"," \
+      -e "s,@TOOLS_PROJECT_PREFIX@,\"$TOOLS_PROJECT_PREFIX\"," \
+      -e "s,@TOOLS_PROJECT_DIR@,\"$TOOLS_PROJECT_DIR\"," \
+      -e "s,@TOOLS_PROJECT_BIN_DIR@,\"$TOOLS_PROJECT_BIN_DIR\"," \
+      -e "s,@TOOLS_PROJECT_LIB_DIR@,\"$TOOLS_PROJECT_LIB_DIR\"," \
+      -e "s,@TOOLS_PROJECT_DOC_DIR@,\"$TOOLS_PROJECT_DOC_DIR\"," \
+      -e "s,@TOOLS_PROJECT_MAN_DIR@,\"$TOOLS_PROJECT_MAN_DIR\"," \
+  \
+      -e "s,@CAML_PREFIX@,\"$CAML_PREFIX\"," \
+      -e "s,@CAML_BIN_DIR@,\"$CAML_BIN_DIR\"," \
+      -e "s,@CAML_LIB_DIR@,\"$CAML_LIB_DIR\"," \
+      -e "s,@BYT_DEBUG_FLAGS@,\"$BYT_DEBUG_FLAGS\"," \
+      -e "s,@BIN_DEBUG_FLAGS@,\"$BIN_DEBUG_FLAGS\"," \
+  \
+      -e "s,@CAMLP5_LIB_DIR@,\"$CAMLP5_LIB_DIR\"," \
+  \
+      -e "s,@COQ_PREFIX@,\"$COQ_PREFIX\"," \
+      -e "s,@COQ_LIB_DIR@,\"$COQ_LIB_DIR\"," \
+      -e "s,@COQ_CAML_DIR@,\"$COQ_CAML_DIR\"," \
+  \
+      -e "s,@ZENON_PREFIX@,\"$ZENON_PREFIX\"," \
+      -e "s,@ZENON_LIB_DIR@,\"$ZENON_LIB_DIR\"," \
+  \
+      -e "s,@ZVTOV_PREFIX@,\"$ZVTOV_PREFIX\"," \
+      -e "s,@ZVTOV_LIB_DIR@,\"$ZVTOV_LIB_DIR\"," \
+  \
+      -e "s,@FOCALIZEC_PREFIX@,\"$FOCALIZEC_PREFIX\"," \
+      -e "s,@FOCALIZEC_LIB_DIR@,\"$FOCALIZEC_LIB_DIR\"," \
+  \
+      -e "s,@FOCALIZEDEP_PREFIX@,\"$FOCALIZEDEP_PREFIX\"," \
+      -e "s,@FOCALIZEDEP_LIB_DIR@,\"$FOCALIZEDEP_LIB_DIR\"," \
+  \
+      -e "s,@XMLRPC_FLAGS@,\"$XMLRPC_FLAGS\"," \
+      -e "s,@XMLRPC_LINK@,\"$XMLRPC_LINK\"," \
+      -e "s,@XMLRPC_MODULE@,\"$XMLRPC_MODULE\"," \
   <.config_var.in >.config_var_for_shell.in
 
   build_config_file .config_var_for_shell.in .config_var_for_shell
