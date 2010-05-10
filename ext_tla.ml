@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.50 2010-05-04 14:18:45 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.51 2010-05-10 14:37:18 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -997,15 +997,11 @@ let rewrites in_expr x ctx e mknode =
      end
 (* ***
   | Eapp ("TLA.fapply", [f; a], _) ->
-eprintf "TLA.fapply: ";
-Print.expr_soft (Print.Chan stderr) f;
      let x = newvar () in
      let c = elam (x, "", appctx (eapp ("TLA.fapply", [x; a]))) in
      let result =
        mk_eq_nodes c ["TLA.Fcn"; "TLA.except"; "TLA.tuple"; "TLA.record"] f
      in
-eprintf " [%d]\n" (List.length result);
-result
 *** *)
   | Eapp ("TLA.DOMAIN", [Eapp ("TLA.Fcn", [s; l], _)], _) ->
      let h1 = appctx (s) in

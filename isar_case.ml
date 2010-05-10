@@ -1,8 +1,9 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: isar_case.ml,v 1.4 2009-10-07 14:42:11 doligez Exp $";;
+Version.add "$Id: isar_case.ml,v 1.5 2010-05-10 14:37:18 doligez Exp $";;
 
 open Printf;;
 
+(* obsolete functions (?)
 let print_case_expr n other oc =
   assert (n > 0);
   fprintf oc "CASE c1x -> e1x";
@@ -12,9 +13,9 @@ let print_case_expr n other oc =
   if other then fprintf oc " [] OTHER -> oth";
 ;;
 
-let print_branch i oc = fprintf oc "c%dx ==> P (e%dx) ==> FALSE" i i;;
+let print_case_branch i oc = fprintf oc "c%dx ==> P (e%dx) ==> FALSE" i i;;
 
-let print_branch_other n other oc =
+let print_case_branch_other n other oc =
   for i = 1 to n do fprintf oc "~c%dx ==> " i; done;
   if other then fprintf oc "P (oth) ==> ";
   fprintf oc "FALSE";
@@ -27,8 +28,9 @@ let print_seq n sep letter oc =
     fprintf oc "%s%s%dx" sep letter i;
   done;
 ;;
+*)
 
-let template = "
+let tpl_case = "
   \"!! P @@@c1x e1x c2x e2x... .
     P (CASE @@@c1x -> e1x [] c2x -> e2x...) ==>
 @@@
@@ -121,7 +123,7 @@ proof -
 qed
 ";;
 
-let template_other = "
+let tpl_case_other = "
   \"!! P oth @@@c1x e1x c2x e2x... .
     P (CASE @@@c1x -> e1x [] c2x -> e2x... [] OTHER -> oth) ==>
 @@@
@@ -249,11 +251,112 @@ qed
 let print_case kind n other oc =
   assert (n > 0);
   fprintf oc "%s zenon_case%s%d :" kind (if other then "other" else "") n;
-  let tpl = if other then template_other else template in
+  let tpl = if other then tpl_case_other else tpl_case in
   output_string oc (Enum.expand_text n tpl);
 ;;
 
-let print_up_to n file =
+let tpl_record n = sprintf "
+  \"!! r @@@l1x s1x l2x s2x... .
+    isAFcn (r) ==>
+    DOMAIN r = {@@@l1x, l2x...} ==>
+@@@
+    r[l1x] \\\\in s1x ==>
+    r[l2x] \\\\in s2x ==>
+...
+    r \\\\in [@@@l1x : s1x, l2x : s2x...]\"
+proof -
+  fix r @@@l1x s1x l2x s2x...
+  assume hfcn: \"isAFcn (r)\"
+  assume hdom: \"DOMAIN r = {@@@l1x, l2x...}\"
+@@@
+  assume h1: \"r[l1x] \\\\in s1x\"
+  assume h2: \"r[l2x] \\\\in s2x\"
+...
+  let ?doms = \"<<@@@l1x, l2x...>>\"
+  let ?domset = \"{@@@l1x, l2x...}\"
+  let ?domsetrev = \"{...l2x, l1x@@@}\"
+  let ?rngs = \"<<@@@s1x, s2x...>>\"
+  let ?n0n = \"0\"
+@@@
+  let ?n1n = \"Succ[?n0n]\"
+  let ?n2n = \"Succ[?n1n]\"
+...
+  let ?indices = \"{...?n2n, ?n1n@@@}\"
+  have hdomx : \"?domsetrev = DOMAIN r\"
+  by (rule zenon_set_rev_1, (rule zenon_set_rev_2)+, rule zenon_set_rev_3,
+      rule hdom)
+  show \"r \\\\in EnumFuncSet (?doms, ?rngs)\"
+  proof (rule EnumFuncSetI [of r, OF hfcn])
+    have hx1: \"isASeq (?doms) & ?domsetrev = Range (?doms)\"
+    by ((rule zenon_range_2)+, rule zenon_range_1)
+    have hx2: \"?domsetrev = Range (?doms)\"
+    by (rule conjD2 [OF hx1])
+    show \"DOMAIN r = Range (?doms)\"
+    by (rule subst [where P = \"%%x. x = Range (?doms)\", OF hdomx hx2])
+  next
+    show \"DOMAIN ?rngs = DOMAIN ?doms\"
+    by (rule zenon_tuple_dom_3, (rule zenon_tuple_dom_2)+,
+        rule zenon_tuple_dom_1)
+  next
+    have hdomseq: \"isASeq (?doms)\" by auto
+    have hindx: \"isASeq (?doms) & ?n%dn = Len (?doms)
+                  & ?indices = DOMAIN ?doms\"
+    by (simp only: DomainSeqLen [OF hdomseq], (rule zenon_dom_app_2)+,
+        rule zenon_dom_app_1)
+    have hind: \"?indices = DOMAIN ?doms\" by (rule conjE [OF hindx], elim conjE)
+    show \"ALL i in DOMAIN ?doms : r[?doms[i]] \\\\in ?rngs[i]\"
+    proof (rule subst [OF hind], (rule zenon_all_rec_2)+, rule zenon_all_rec_1)
+@@@
+      have hn: \"l1x = ?doms[?n1n]\"
+      by (((rule zenon_tuple_acc_2, safe, simp only: zenon_ss_1 zenon_ss_2,
+            rule zenon_zero_lt,
+            simp only: zenon_ss_1 zenon_ss_2 zenon_sa_1 zenon_sa_2,
+            ((rule zenon_ss_le_sa_2)+)?, rule zenon_ss_le_sa_1
+           )+)?,
+          rule zenon_tuple_acc_1, auto)
+      have hs: \"s1x = ?rngs[?n1n]\"
+      by (((rule zenon_tuple_acc_2, safe, simp only: zenon_ss_1 zenon_ss_2,
+            rule zenon_zero_lt,
+            simp only: zenon_ss_1 zenon_ss_2 zenon_sa_1 zenon_sa_2,
+            ((rule zenon_ss_le_sa_2)+)?, rule zenon_ss_le_sa_1
+           )+)?,
+          rule zenon_tuple_acc_1, auto)
+      show \"r[?doms[?n1n]] \\\\in ?rngs[?n1n]\"
+      by (rule subst[OF hs], rule subst[OF hn], rule h1)
+    next
+      have hn: \"l2x = ?doms[?n2n]\"
+      by (((rule zenon_tuple_acc_2, safe, simp only: zenon_ss_1 zenon_ss_2,
+            rule zenon_zero_lt,
+            simp only: zenon_ss_1 zenon_ss_2 zenon_sa_1 zenon_sa_2,
+            ((rule zenon_ss_le_sa_2)+)?, rule zenon_ss_le_sa_1
+           )+)?,
+          rule zenon_tuple_acc_1, auto)
+      have hs: \"s2x = ?rngs[?n2n]\"
+      by (((rule zenon_tuple_acc_2, safe, simp only: zenon_ss_1 zenon_ss_2,
+            rule zenon_zero_lt,
+            simp only: zenon_ss_1 zenon_ss_2 zenon_sa_1 zenon_sa_2,
+            ((rule zenon_ss_le_sa_2)+)?, rule zenon_ss_le_sa_1
+           )+)?,
+          rule zenon_tuple_acc_1, auto)
+      show \"r[?doms[?n2n]] \\\\in ?rngs[?n2n]\"
+      by (rule subst[OF hs], rule subst[OF hn], rule h2)
+...
+    qed
+  qed
+qed
+" n
+;;
+
+let print_record kind n oc =
+  assert (n > 0);
+  fprintf oc "%s zenon_inrecordsetI%d :" kind n;
+  let tpl = tpl_record n in
+  output_string oc (Enum.expand_text n tpl);
+;;
+
+(* ===================== test functions ================== *)
+
+let print_case_up_to n file =
   let oc = open_out file in
   for i = 1 to n do
     print_case "lemma" i false oc;
@@ -275,6 +378,30 @@ let test_case n other =
   fprintf stderr "Now run:\n";
   fprintf stderr "time isabelle-process -r \
                        -e \"(use_thy \\\"/tmp/testcase\\\"; \
+                             OS.Process.exit OS.Process.success);\" TLA+\n";
+  flush stderr;
+;;
+
+let print_record_up_to n file =
+  let oc = open_out file in
+  for i = 1 to n do
+    print_record "lemma" i oc;
+    fprintf oc "\n";
+  done;
+  close_out oc;
+;;
+
+let test_record n =
+  let oc = open_out "/tmp/testrecord.thy" in
+  fprintf oc "theory testrecord\n";
+  fprintf oc "imports Zenon\n";
+  fprintf oc "begin\n\n";
+  print_record "lemma" n oc;
+  fprintf oc "end\n";
+  close_out oc;
+  fprintf stderr "Now run:\n";
+  fprintf stderr "time isabelle-process -r \
+                       -e \"(use_thy \\\"/tmp/testrecord\\\"; \
                              OS.Process.exit OS.Process.success);\" TLA+\n";
   flush stderr;
 ;;

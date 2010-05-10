@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.39 2010-04-23 22:14:47 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.40 2010-05-10 14:37:18 doligez Exp $";;
 
 open Printf;;
 
@@ -409,7 +409,7 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "using %s by auto\n" (hname hyps e);
   | Rextension ("zenon_tuple_eq_mismatch", _, _, _) -> assert false
   | Rextension (("zenon_tuple_access"|"zenon_tuple_len"
-                 |"zenon_record_access"|"zenon_record_domain"),
+                 |"zenon_record_domain"),
                 [p; olde; newe], [c], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let eqn = eapp ("=", [olde; newe]) in
@@ -422,7 +422,40 @@ let rec p_tree hyps i dict oc proof =
              (p_expr dict) p (hname hyps eqn) (hname hyps c);
      p_tree hyps i dict3 oc t
   | Rextension (("zenon_tuple_access"|"zenon_tuple_len"
-                 |"zenon_record_access"|"zenon_record_domain"), _, _, _) ->
+                 |"zenon_record_domain"), _, _, _) ->
+     assert false
+  | Rextension ("zenon_record_access", [p; olde; newe], [c], [[h]]) ->
+     let t = match proof.hyps with [t] -> t | _ -> assert false in
+     let (r, fld, idx, len) =
+       match olde with
+       | Eapp ("TLA.fapply", [Eapp ("TLA.record", l, _) as r; field], _) ->
+          r, field, (Misc.list_indexq field l) / 2 + 1, (List.length l) / 2
+       | _ -> assert false
+     in
+     let indom = eapp ("TLA.in", [fld; eapp ("TLA.DOMAIN", [r])]) in
+     let eqn = eapp ("=", [olde; newe]) in
+     let eqx = eand (indom, eqn) in
+     iprintf i oc "have %s: \"%a\"" (hname hyps eqx) (p_expr dict) eqx;
+     let dict = p_is dict oc eqx in
+     if idx = 1 then begin
+       iprintf i oc "by ((rule zenon_recfield_1)+, rule zenon_recfield_2b)\n"
+     end else begin
+       iprintf i oc "by (";
+       for j = len downto idx + 1 do
+         fprintf oc "rule zenon_recfield_1, ";
+       done;
+       fprintf oc "rule zenon_recfield_2, ((rule zenon_recfield_3)+)?, ";
+       fprintf oc "rule zenon_recfield_3b, auto)\n";
+     end;
+     iprintf i oc "have %s: \"%a\"" (hname hyps eqn) (p_expr dict) eqn;
+     let dict = p_is dict oc eqn in
+     iprintf i oc "by (rule conjD2 [OF %s])\n" (hname hyps eqx);
+     iprintf i oc "have %s: \"%a\"" (hname hyps h) (p_expr dict) h;
+     let dict = p_is dict oc h in
+     iprintf i oc "by (rule subst [where P=\"%a\", OF %s %s])\n"
+             (p_expr dict) p (hname hyps eqn) (hname hyps c);
+     p_tree hyps i dict oc t
+  | Rextension ("zenon_record_access", _, _, _) ->
      assert false
   | Rextension ("zenon_in_product", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
@@ -568,13 +601,15 @@ let rec p_tree hyps i dict oc proof =
        dict2
      in
      let _ = List.fold_left2 print_hyp dict1 hs proof.hyps in
-     iprintf i oc "show FALSE using %s " (hname hyps c);
+     iprintf i oc "show FALSE by (rule notE [OF %s],\n" (hname hyps c);
+     iprintf i oc "               rule zenon_inrecordsetI%d [OF "
+             (List.length hs - 2);
      let print_hyp_name oc nhl =
        let h = match nhl with [Enot (h, _)] -> h | _ -> assert false in
        fprintf oc "%s " (hname hyps h);
      in
      List.iter (print_hyp_name oc) hs;
-     fprintf oc "by auto\n";
+     fprintf oc "])\n";
   | Rextension ("zenon_notin_recordset", _, _, _) -> assert false
   | Rextension ("zenon_record_notisafcn", [], [c], []) ->
      iprintf i oc "show FALSE using %s by auto\n" (hname hyps c);
@@ -859,7 +894,7 @@ let p_lemma hyps i dict oc lem =
     fprintf oc "FALSE\")\n";
   end;
   iprintf i oc "proof -\n";
-  List.iter (iprintf (iinc i) oc "fix \"%s\"\n") params;
+  List.iter (fun p -> iprintf (iinc i) oc "fix \"%s\"\n" p) params;
   let p_asm dict x =
     iprintf (iinc i) oc "assume %s:\"%a\"" (hname hyps x) (p_expr dict) x;
     p_is dict oc x
@@ -888,7 +923,12 @@ let mk_hyp_dict phrases =
   List.fold_left f Hypdict.empty phrases
 ;;
 
-let rec get_case_rules accu prf =
+type nary_rule =
+  | Nary_case of int * bool
+  | Nary_record of int
+;;
+
+let rec get_nary_rules accu prf =
   let accu1 =
     match prf.rule with
     | Rextension ("zenon_case", _, _, hs) ->
@@ -902,17 +942,25 @@ let rec get_case_rules accu prf =
            | _ -> assert false
          in loop hs
        in
-       if arity > 5 then (arity, other) :: accu else accu
+       if arity > 5 then Nary_case (arity, other) :: accu else accu
+    | Rextension ("zenon_notin_recordset", _, _, hs) ->
+       let arity = List.length hs - 2 in
+       if arity > 7 then Nary_record (arity) :: accu else accu
     | _ -> accu
   in
-  List.fold_left get_case_rules accu1 prf.hyps
+  List.fold_left get_nary_rules accu1 prf.hyps
 ;;
 
-let add_case_rules oc lemmas =
-  let f lem = get_case_rules [] lem.proof in
+let add_nary_rules oc lemmas =
+  let f lem = get_nary_rules [] lem.proof in
   let rules = List.flatten (List.map f lemmas) in
   let rules1 = Misc.list_unique (List.sort Pervasives.compare rules) in
-  List.iter (fun (n, oth) -> Isar_case.print_case "have" n oth oc) rules1;
+  let f r =
+    match r with
+    | Nary_case (n, oth) -> Isar_case.print_case "have" n oth oc
+    | Nary_record (n) -> Isar_case.print_record "have" n oc
+  in
+  List.iter f rules1;
 ;;
 
 let p_theorem oc thm phrases lemmas =
@@ -925,7 +973,7 @@ let p_theorem oc thm phrases lemmas =
   let hyps = List.filter (fun x -> x <> ngoal) thm.proof.conc in
   let hypnames = mk_hyp_dict phrases in
   iprintf 0 oc "proof (rule zenon_nnpp)\n";
-  add_case_rules oc (thm :: lemmas);
+  add_nary_rules oc (thm :: lemmas);
   let i = iinc 0 in
   let p_asm dict x =
     if Hypdict.mem (Index.get_number x) hypnames then dict else begin
