@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.13 2010-02-16 17:22:45 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.14 2010-05-11 15:53:20 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -341,6 +341,16 @@ let newnodes_induction e g =
   | _ -> []
 ;;
 
+let rec make_lambdas args e =
+  match args with
+  | [] -> e
+  | h :: t -> elam (h, "", make_lambdas t e)
+;;
+
+let make_case_expr constr args e =
+  make_lambdas args (eapp ("$match-case", [evar (constr); e]))
+;;
+
 let newnodes_injective e g =
   match e with
   | Eapp ("=", [e1; e2], _)
@@ -364,9 +374,15 @@ let newnodes_injective e g =
      end
   | Eapp ("=", [e1; e2], _) when constr_head e1 && constr_head e2 ->
      assert (get_constr e1 <> get_constr e2);
+     let constr = get_constr e1 in
+     let args = List.map (fun _ -> evar "_") (get_args e1) in
+     let cas1 = make_case_expr constr args etrue in
+     let cas2 = make_case_expr "_" [] efalse in
+     let x = newvar () in
+     let caract = elam (x, "", eapp ("$match", [x; cas1; cas2])) in
       [ Node {
         nconc = [e];
-        nrule = Ext ("induct", "discriminate", [e]);
+        nrule = Ext ("induct", "discriminate", [e; caract]);
         nprio = Arity;
         ngoal = g;
         nbranches = [| |];
@@ -567,11 +583,12 @@ let to_llproof tr_expr mlp args =
      in
      (f args1 args2 0 subproof, add)
   | Ext ("induct", "injection", _) -> assert false
-  | Ext ("induct", "discriminate", [e]) ->
+  | Ext ("induct", "discriminate", [e; car]) ->
       assert (hyps = []);
       let node = {
         conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_induct_discriminate", [], [tr_expr e], []);
+        rule = Rextension ("zenon_induct_discriminate", [],
+                           [tr_expr e; tr_expr car], []);
         hyps = hyps;
       } in
       (node, add)

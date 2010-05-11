@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.58 2010-02-16 17:22:45 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.59 2010-05-11 15:53:20 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -317,18 +317,8 @@ let rec trtree env node =
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
   | Rextension ("zenon_induct_discriminate",
-                [], [Eapp ("=", [a; b], _) as e], []) ->
-      let (sym, unders) =
-        match a with
-        | Evar (s, _) -> (s, [])
-        | Eapp (s, args, _) -> (s, List.map (fun x -> "_") args)
-        | _ -> assert false
-      in
-      let x = newname () in
-      let cas1 = (sym, unders, Cvar "True") in
-      let cas2 = ("_", [], Cvar "False") in
-      let caract = Clam (x, Cwild, Cmatch (Cvar x, [cas1; cas2])) in
-      Capp (Cvar "eq_ind", [trexpr a; caract; Cvar "I"; trexpr b; getv e])
+                [], [Eapp ("=", [a; b], _) as e; car], []) ->
+      Capp (Cvar "eq_ind", [trexpr a; trexpr car; Cvar "I"; trexpr b; getv e])
   | Rextension ("zenon_induct_discriminate", _, _, _) -> assert false
   | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      let (args, cstrs, schema) = get_induct ty in
