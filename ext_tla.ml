@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.51 2010-05-10 14:37:18 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.52 2010-06-04 15:37:26 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -1260,6 +1260,7 @@ let to_llargs r =
   | Ext (_, "boolcase_or", _) -> beta2 r
   | Ext (_, "boolcase_imply", _) -> beta2 r
   | Ext (_, "boolcase_equiv", _) -> beta2 r
+  | Ext (_, "boolcase_equal", _) -> beta2 r
   | Ext (_, "boolcase_all", _) -> beta2 r
   | Ext (_, "boolcase_ex", _) -> beta2 r
   | Ext (_, "notisafcn_fcn", _) -> close r
