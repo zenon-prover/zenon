@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.41 2010-06-17 10:43:22 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.42 2010-07-01 16:17:29 doligez Exp $";;
 
 open Printf;;
 
@@ -344,8 +344,16 @@ let rec p_tree hyps i dict oc proof =
   | Rextension ("zenon_case", _, _, _) -> assert false
 
   | Rextension ("zenon_stringequal", [v1; v2], [con], []) ->
+     let v1nev2 = enot (con) in
+     iprintf i oc "have %s: \"%a\"\n" (hname hyps v1nev2) (p_expr dict) v1nev2;
+     iprintf i oc "by (simp only: zenon_sa_1 zenon_sa_2,\n";
+     iprintf i oc "    ((rule zenon_sa_diff_2)+)?,\n";
+     iprintf i oc "    (rule zenon_sa_diff_3, auto)?,\n";
+     iprintf i oc "    (rule zenon_sa_diff_1, auto)?,\n";
+     iprintf i oc "    (rule zenon_sa_diff_0a)?, (rule zenon_sa_diff_0b)?)\n";
      iprintf i oc "show FALSE\n";
-     iprintf i oc "using %s by auto\n" (hname hyps con);
+     iprintf i oc "by (rule notE [OF %s %s])\n" (hname hyps v1nev2)
+             (hname hyps con);
   | Rextension ("zenon_stringequal", _, _, _) -> assert false
   | Rextension ("zenon_stringdiffll", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in

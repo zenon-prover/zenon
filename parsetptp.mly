@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.7 2007-07-31 13:09:05 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.8 2010-07-01 16:17:29 doligez Exp $";;
 
 open Printf;;
 
@@ -34,7 +34,6 @@ let rec mk_quant q vs body =
 %token EQUAL
 %token OPEN
 %token CLOSE
-%token <string> STRING
 %token EOF
 %token INCLUDE
 %token DOT
@@ -80,7 +79,7 @@ file:
   | phrase file     { $1 :: $2 }
 ;
 phrase:
-  | INCLUDE OPEN STRING CLOSE DOT  { Phrase.Include $3 }
+  | INCLUDE OPEN LIDENT CLOSE DOT  { Phrase.Include $3 }
   | INPUT_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
                                    { Phrase.Formula (ns_hyp $3, $5, $7) }
   | ANNOT                          { Phrase.Annotation $1 }

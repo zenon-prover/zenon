@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.76 2010-03-30 16:41:30 doligez Exp $
+#  $Id: Makefile,v 1.77 2010-07-01 16:17:29 doligez Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -167,7 +167,7 @@ clean:
 	cd doc; make clean
 	cd test; make clean
 	rm -f .#*
-	rm -f *.cm* *.o *.vo *.annot *.output
+	rm -f *.cm* *.o *.vo *.annot *.output *.glob
 	rm -f parsezen.ml parsezen.mli lexzen.ml
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml

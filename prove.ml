@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.66 2010-04-23 11:32:45 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.67 2010-07-01 16:17:29 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1355,7 +1355,7 @@ and next_node stk st =
       if !Globals.debug_flag then Step.forms "NO PROOF" (Index.get_all ());
       Error.err "exhausted search space without finding a proof";
       flush stderr;
-      printf "(* Model:\n";
+      printf "(* Current branch:\n";
       List.iter f (Index.get_all ());
       printf "*)\n";
       raise NoProof

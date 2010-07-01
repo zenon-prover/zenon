@@ -1,6 +1,6 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lextptp.mll,v 1.5 2006-03-13 14:23:47 doligez Exp $";;
+Version.add "$Id: lextptp.mll,v 1.6 2010-07-01 16:17:29 doligez Exp $";;
 
 open Lexing;;
 open Parsetptp;;
@@ -10,7 +10,7 @@ open Printf;;
 
 let newline = ('\010' | '\013' | "\013\010")
 let space = [' ' '\009' '\012']
-let stringchar = [^ '\000'-'\031' '\"' '\127'-'\255']
+let stringchar = [^ '\000'-'\031' '\'' '\127'-'\255']
 let upperid = [ 'A' - 'Z' ]
 let lowerid = [ 'a' - 'z' '0'-'9']
 let idchar = [ 'A' - 'Z' 'a' - 'z' '0' - '9' '_' ]
@@ -59,7 +59,7 @@ rule token = parse
   | "$false"         { FALSE }
   | "\'" stringchar + "\'" {
       let s = Lexing.lexeme lexbuf in
-      STRING (String.sub s 1 (String.length s - 2))
+      LIDENT (String.sub s 1 (String.length s - 2))
     }
   | lowerid idchar *   { LIDENT (Lexing.lexeme lexbuf) }
   | upperid idchar *   { UIDENT (Lexing.lexeme lexbuf) }

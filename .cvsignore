@@ -3,6 +3,7 @@
 *.output
 *.annot
 *.vo
+*.glob
 lexzen.ml
 parsezen.ml
 parsezen.mli
