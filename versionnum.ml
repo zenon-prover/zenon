@@ -1,10 +1,10 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: versionnum.ml,v 1.83 2010-07-01 16:17:29 doligez Exp $";;
+Version.add "$Id: versionnum.ml,v 1.84 2011-09-27 14:29:17 doligez Exp $";;
 
 open Printf;;
 
-let number = 233;;      (* strictly increasing *)
-let date = "2010-07-01";;
+let number = 238;;      (* strictly increasing *)
+let date = "2011-04-26";;
 
 let major = 0;;
 let minor = 7;;

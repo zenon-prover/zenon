@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.52 2010-06-04 15:37:26 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.53 2011-09-27 14:29:17 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -370,7 +370,16 @@ let newnodes_prop e g =
        | Eapp (s, _, _) when List.mem s tla_fcn_constructors -> Arity
        | _ -> Inst h3
      in
-     mknode prio "notin_funcset" [e; h1; h2; h3; f; a; b]
+     let shortcut =
+       match f with
+       | Eapp ("TLA.except", [f1; v; e1], _) ->
+          let h1 = enot (eapp ("TLA.in", [f1; eapp ("TLA.FuncSet", [a; b])])) in
+          let h2 = enot (eapp ("TLA.in", [e1; b])) in
+          mknode Arity "except_notin_funcset" [e; h1; h2; f1; v; e1; a; b]
+                 [| [h1]; [h2] |]
+       | _ -> []
+     in
+     shortcut @ mknode prio "notin_funcset" [e; h1; h2; h3; f; a; b]
             [| [h1]; [h2]; [h3] |]
 
   | Eapp ("=", [e1; Evar ("TLA.emptyset", _)], _) ->
@@ -569,6 +578,28 @@ let newnodes_prop e g =
      with
      | Invalid_argument "check_record_labels" -> []
      | Exit -> mknode Prop "record_eq_mismatch" [e; e] [| |]
+     end
+  | Enot (Eapp ("=", [Eapp ("TLA.record", args1, _);
+                      Eapp ("TLA.record", args2, _)], _), _) ->
+     begin try
+       let cmp (a1, a2) (b1, b2) = Expr.compare a1 b1 in
+       let args1 = List.sort cmp (mk_pairs args1) in
+       let args2 = List.sort cmp (mk_pairs args2) in
+       check_record_labels args1;
+       check_record_labels args2;
+       let rec mk_hyps as1 as2 =
+         match as1, as2 with
+         | [], [] -> []
+         | (l1, a1) :: t1, (l2, a2) :: t2 when Expr.equal l1 l2 ->
+            enot (eapp ("=", [a1; a2])) :: mk_hyps t1 t2
+         | _ -> raise Exit
+       in
+       let hs = mk_hyps args1 args2 in
+       let branches = Array.of_list (List.map (fun x -> [x]) hs) in
+       mknode Prop "record_neq_match" (e :: hs) branches
+     with
+     | Invalid_argument "check_record_labels" -> []
+     | Exit -> []
      end
   | Eapp ("TLA.in", [e1; (Eapp ("TLA.recordset", args, _) as e2)], _) ->
      let l_args = mk_pairs args in
@@ -1246,6 +1277,8 @@ let to_llargs r =
   | Ext (_, "notin_subsetof", _) -> beta r
   | Ext (_, "in_funcset", [c; h1; h2; h3; f; a; b]) ->
      ("zenon_in_funcset", [f; a; b], [c], [ [h1; h2; h3] ])
+  | Ext (_, "except_notin_funcset", [c; h1; h2; f1; v; e1; a; b]) ->
+     ("zenon_except_notin_funcset", [f1; v; e1; a; b], [c], [ [h1]; [h2] ])
   | Ext (_, "notin_funcset", [c; h1; h2; h3; f; a; b]) ->
      ("zenon_notin_funcset", [f; a; b], [c], [ [h1]; [h2]; [h3] ])
   | Ext (_, "trueistrue", [c1; c2; h1; ctx; e1]) ->
@@ -1290,6 +1323,8 @@ let to_llargs r =
 
   | Ext (_, "record_eq_match", c :: hs) ->
      ("zenon_record_eq_match", [], [c], [ hs ])
+  | Ext (_, "record_neq_match", c :: hs) ->
+     ("zenon_record_neq_match", [], [c], List.map (fun x -> [x]) hs)
   | Ext (_, "record_eq_mismatch", _) -> close r
   | Ext (_, "in_recordset", c :: e1 :: e2 :: hs) ->
      ("zenon_in_recordset", [e1; e2], [c], [ hs ])

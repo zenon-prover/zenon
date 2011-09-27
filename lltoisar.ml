@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.42 2010-07-01 16:17:29 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.43 2011-09-27 14:29:17 doligez Exp $";;
 
 open Printf;;
 
@@ -551,6 +551,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %s by auto\n" (hname hyps e);
   | Rextension ("zenon_record_eq_mismatch", _, _, _) -> assert false
+  | Rextension ("zenon_record_neq_match", _, _, _) -> (*FIXME TODO*) assert false
+
   | Rextension ("zenon_in_recordset", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let dict2 = p_let dict i oc e1 in
@@ -980,17 +982,20 @@ let p_theorem oc thm phrases lemmas =
     | _ -> assert false
   in
   let hyps = List.filter (fun x -> x <> ngoal) thm.proof.conc in
-  let hypnames = mk_hyp_dict phrases in
+  let realhypnames = mk_hyp_dict phrases in
+  let hypnames = Hypdict.empty in
   iprintf 0 oc "proof (rule zenon_nnpp)\n";
   add_nary_rules oc (thm :: lemmas);
   let i = iinc 0 in
   let p_asm dict x =
-    if Hypdict.mem (Index.get_number x) hypnames then dict else begin
-      iprintf i oc "have %s:\"%a\"" (hname hypnames x) (p_expr dict) x;
-      let dict2 = p_is dict oc x in
+    iprintf i oc "have %s:\"%a\"" (hname hypnames x) (p_expr dict) x;
+    let dict2 = p_is dict oc x in
+    if Hypdict.mem (Index.get_number x) realhypnames then begin
+      iprintf i oc "using %s by blast\n" (hname realhypnames x);
+    end else begin
       iprintf i oc "by fact\n";
-      dict2
-    end
+    end;
+    dict2
   in
   let dict3 = List.fold_left p_asm dict_empty hyps in
   List.iter (p_lemma hypnames i dict3 oc) lemmas;
