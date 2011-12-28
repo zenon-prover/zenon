@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.67 2010-07-01 16:17:29 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.68 2011-12-28 16:43:33 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -113,6 +113,8 @@ let make_inst st m term g =
         ngoal = g;
         nbranches = [| [n] |];
       }, false
+  | Eapp (sym, _, _) ->
+     add_node_list st (Extension.make_inst sym m term g), false
   | _ -> assert false
 ;;
 

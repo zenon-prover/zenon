@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.59 2010-05-11 15:53:20 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.60 2011-12-28 16:43:33 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -316,11 +316,13 @@ let rec trtree env node =
   | Rdefinition (name, sym, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
-  | Rextension ("zenon_induct_discriminate",
+(* FIXME should drop the coqterm translation or add yet another field
+   to extensions *)
+  | Rextension (_, "zenon_induct_discriminate",
                 [], [Eapp ("=", [a; b], _) as e; car], []) ->
       Capp (Cvar "eq_ind", [trexpr a; trexpr car; Cvar "I"; trexpr b; getv e])
-  | Rextension ("zenon_induct_discriminate", _, _, _) -> assert false
-  | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
+  | Rextension (_, "zenon_induct_discriminate", _, _, _) -> assert false
+  | Rextension (_, "zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      let (args, cstrs, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
      let make_hyp h (c, cargs) =
@@ -349,8 +351,8 @@ let rec trtree env node =
      in
      let refl = Capp (Cvar "refl_equal", [tropt e1]) in
      Capp (Cvar schema, typargs @ pred :: recargs @ tropt e1 :: [refl])
-  | Rextension ("zenon_induct_cases", _, _, _) -> assert false
-  | Rextension ("zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs) ->
+  | Rextension (_, "zenon_induct_cases", _, _, _) -> assert false
+  | Rextension (_, "zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs) ->
      let (args, _, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
      let mksub h prf =
@@ -363,8 +365,8 @@ let rec trtree env node =
      let ap = Capp (Cvar schema, typargs @ tp :: hypargs) in
      let nap = getname c in
      Capp (Cvar nap, [ap])
-  | Rextension ("zenon_induct_induction_notall", _, _, _) -> assert false
-  | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
+  | Rextension (_, "zenon_induct_induction_notall", _, _, _) -> assert false
+  | Rextension (_, "zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
                 [c], [ [h] ]) ->
      let (args, cstrs, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
@@ -375,8 +377,8 @@ let rec trtree env node =
      let brs = List.map mkfixcase cstrs in
      let th = mklam h (tr_subtree_1 hyps) in
      Capp (Cvar schema, typargs @ trexpr p :: brs @ [trexpr a; th; getv c])
-  | Rextension ("zenon_induct_fix", _, _, _) -> assert false
-  | Rextension (name, args, c, hs) ->
+  | Rextension (_, "zenon_induct_fix", _, _, _) -> assert false
+  | Rextension (_, name, args, c, hs) ->
       let metargs = List.map trexpr args in
       let hypargs = List.map2 (mklams env) hs (List.map (trtree env) hyps) in
       let conargs = List.map getv c in

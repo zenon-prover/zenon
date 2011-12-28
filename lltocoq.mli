@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: lltocoq.mli,v 1.8 2008-11-24 15:28:27 doligez Exp $  *)
+(*  $Id: lltocoq.mli,v 1.9 2011-12-28 16:43:33 doligez Exp $  *)
 
 val output :
   out_channel ->
@@ -8,3 +8,5 @@ val output :
   Llproof.proof ->
     string list
 ;;
+
+val p_expr : out_channel -> Expr.expr -> unit;;

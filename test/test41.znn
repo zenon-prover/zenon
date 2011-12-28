@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test41.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test41.znn,v 1.6 2011-12-28 16:43:33 doligez Exp $
 
 ; file: species_general_set.foc
 ; species: lattice
@@ -26,17 +26,15 @@ $sig abst_T () "Type"
 $sig abst_equal ("abst_T" "abst_T") "bool"
 $sig abst_inf ("abst_T" "abst_T") "abst_T"
 
-$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
+$def "d" (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
-; abst_equal_transitive
-$hyp
+$hyp "abst_equal_transitive"
 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
   (=> (Is_true (abst_equal x y))
       (=> (Is_true (abst_equal y z))
           (Is_true (abst_equal x z))))))))))
 
-; abst_inf_congruence
-$hyp
+$hyp "abst_inf_congruence"
 (A. ((x "abst_T") (A. ((y "abst_T") (A. ((z "abst_T")
   (=> (Is_true (abst_equal x y))
       (/\ (Is_true (abst_equal (abst_inf x z) (abst_inf y z)))
@@ -46,12 +44,10 @@ $sig x () "abst_T"
 $sig y () "abst_T"
 $sig z () "abst_T"
 
-; H2_1_1
-$hyp
+$hyp "H2_1_1"
 (Is_true (abst_order_inf y z))
 
-; H1_1_1
-$hyp
+$hyp "H1_1_1"
 (Is_true (abst_order_inf x y))
 
 $goal

@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: ext_recfun.ml,v 1.2 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: ext_recfun.ml,v 1.3 2011-12-28 16:43:33 doligez Exp $";;
 
 (* Extension for recursive function definitions. *)
 
@@ -12,6 +12,8 @@ open Node;;
 open Phrase;;
 
 let newnodes e g = [];;
+
+let make_inst m term g = assert false;;
 
 let add_formula e = ();;
 let remove_formula e = ();;
@@ -39,7 +41,7 @@ let to_llproof tr_expr mlp args =
   let extras = Expr.diff ext mlp.mlconc in
   let nn = {
       Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
-      Llproof.rule = Llproof.Rextension (name, meta, con, hyp);
+      Llproof.rule = Llproof.Rextension ("", name, meta, con, hyp);
       Llproof.hyps = subs;
     }
   in (nn, extras)
@@ -47,11 +49,14 @@ let to_llproof tr_expr mlp args =
 
 let declare_context_coq oc = ();;
 
+let p_rule_coq oc r = assert false;;
+
 let predef () = [];;
 
 Extension.register {
   Extension.name = "recfun";
   Extension.newnodes = newnodes;
+  Extension.make_inst = make_inst;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
@@ -59,5 +64,6 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.p_rule_coq = p_rule_coq;
   Extension.predef = predef;
 };;

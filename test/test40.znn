@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test40.znn,v 1.6 2008-08-14 14:02:09 doligez Exp $
+;  $Id: test40.znn,v 1.7 2011-12-28 16:43:33 doligez Exp $
 
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
@@ -25,28 +25,24 @@
 
 $sig abst_equal ("zenon_U" "zenon_U") "bool"
 
-$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
+$def "d" (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
-; abst_equal_transitive
-$hyp
+$hyp "abst_equal_transitive"
 (A. ((x) (A. ((y) (A. ((z)
   (=> (Is_true (abst_equal x y))
       (=> (Is_true (abst_equal y z))
           (Is_true (abst_equal x z))))))))))
 
-; abst_inf_congruence
-$hyp
+$hyp "abst_inf_congruence"
 (A. ((x) (A. ((y) (A. ((z)
   (=> (Is_true (abst_equal x y))
       (/\ (Is_true (abst_equal (abst_inf x z) (abst_inf y z)))
           (Is_true (abst_equal (abst_inf z x) (abst_inf z y)))))))))))
 
-; abst_add_keeps_inf
-$hyp
+$hyp "abst_add_keeps_inf"
 (A. ((x) (A. ((y) (Is_true (abst_order_inf x (abst_plus x y)))))))
 
-; __lemma_1_1
-$hyp
+$hyp "__lemma_1_1"
 (Is_true (abst_equal (abst_plus abst_min x) x))
 
 $goal

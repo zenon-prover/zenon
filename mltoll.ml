@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.54 2009-11-24 15:08:01 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.55 2011-12-28 16:43:33 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -157,31 +157,31 @@ let tr_rule r =
   | Ext ("", "notallex", [Elam (v, t, p, _) as lam]) ->
      let c = enot (eall (v, t, p)) in
      let h = eex (v, t, enot p) in
-     LL.Rextension ("zenon_notallex", [lam], [c], [[h]])
+     LL.Rextension ("", "zenon_notallex", [lam], [c], [[h]])
   | Ext ("", "stringequal", [v1; v2]) ->
      let c = eapp ("=", [eapp ("$string", [v1]); eapp ("$string", [v2])]) in
-     LL.Rextension ("zenon_stringequal", [v1; v2], [c], [])
+     LL.Rextension ("", "zenon_stringequal", [v1; v2], [c], [])
 
   | Ext ("", "stringdiffll", [e1; v1; e2; v2]) ->
      let c1 = eapp ("=", [e1; v1]) in
      let c2 = eapp ("=", [e2; v2]) in
      let h = enot (eapp ("=", [e1; e2])) in
-     LL.Rextension ("zenon_stringdiffll", [e1; v1; e2; v2], [c1; c2], [[h]])
+     LL.Rextension ("", "zenon_stringdiffll", [e1; v1; e2; v2], [c1; c2], [[h]])
   | Ext ("", "stringdifflr", [e1; v1; e2; v2]) ->
      let c1 = eapp ("=", [e1; v1]) in
      let c2 = eapp ("=", [v2; e2]) in
      let h = enot (eapp ("=", [e1; e2])) in
-     LL.Rextension ("zenon_stringdifflr", [e1; v1; e2; v2], [c1; c2], [[h]])
+     LL.Rextension ("", "zenon_stringdifflr", [e1; v1; e2; v2], [c1; c2], [[h]])
   | Ext ("", "stringdiffrl", [e1; v1; e2; v2]) ->
      let c1 = eapp ("=", [v1; e1]) in
      let c2 = eapp ("=", [e2; v2]) in
      let h = enot (eapp ("=", [e1; e2])) in
-     LL.Rextension ("zenon_stringdiffrl", [e1; v1; e2; v2], [c1; c2], [[h]])
+     LL.Rextension ("", "zenon_stringdiffrl", [e1; v1; e2; v2], [c1; c2], [[h]])
   | Ext ("", "stringdiffrr", [e1; v1; e2; v2]) ->
      let c1 = eapp ("=", [v1; e1]) in
      let c2 = eapp ("=", [v2; e2]) in
      let h = enot (eapp ("=", [e1; e2])) in
-     LL.Rextension ("zenon_stringdiffrl", [e1; v1; e2; v2], [c1; c2], [[h]])
+     LL.Rextension ("", "zenon_stringdiffrl", [e1; v1; e2; v2], [c1; c2], [[h]])
 
   (* derived rules, handled by translate_derived: *)
   | ConjTree _

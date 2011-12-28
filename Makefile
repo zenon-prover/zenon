@@ -1,5 +1,5 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.77 2010-07-01 16:17:29 doligez Exp $
+#  $Id: Makefile,v 1.78 2011-12-28 16:43:33 doligez Exp $
 
 # Reading configuration settings.
 include .config_var
@@ -24,10 +24,11 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           print.ml step.ml node.ml extension.ml mltoll.ml \
           parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
           parsecoq.mly lexcoq.mll tptp.ml \
-          ext_focal.ml ext_tla.ml ext_recfun.ml \
-          ext_equiv.ml ext_induct.ml prove.ml coqterm.ml lltocoq.ml \
+          coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
-          checksum.dummy versionnum.ml main.ml
+          ext_focal.ml ext_tla.ml ext_recfun.ml \
+          ext_equiv.ml ext_induct.ml \
+          prove.ml checksum.dummy versionnum.ml main.ml
 
 COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
 

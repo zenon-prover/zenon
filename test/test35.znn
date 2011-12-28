@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test35.znn,v 1.5 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test35.znn,v 1.6 2011-12-28 16:43:33 doligez Exp $
 
 # file: species_general_set.foc
 # species: ordered_lattice
@@ -24,15 +24,13 @@ $sig abst_equal ("abst_T" "abst_T") "bool"
 $sig abst_leq ("abst_T" "abst_T") "bool"
 $sig abst_inf ("abst_T" "abst_T") "abst_T"
 
-$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
+$def "d" (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
-; abst_inf_idempotent
-$hyp (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp "abst_inf_idempotent" (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_equal x y))
          (Is_true (abst_equal x (abst_inf x y))))))))
 
-; abst_order_compatible_with_inf
-$hyp (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp "abst_order_compatible_with_inf" (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_order_inf x y))
          (Is_true (abst_leq x y)))))))
 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.16 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.17 2011-12-28 16:43:33 doligez Exp $";;
 
 open Expr;;
 
@@ -29,7 +29,7 @@ type rule =
   | RcongruenceLR of expr * expr * expr
   | RcongruenceRL of expr * expr * expr
   | Rdefinition of string * string * expr * expr
-  | Rextension of string * expr list * expr list * expr list list
+  | Rextension of string * string * expr list * expr list * expr list list
   | Rlemma of string * expr list
 ;;
 
@@ -110,7 +110,7 @@ let reduce conc rule hyps =
     | RcongruenceLR (p, a, b) -> [apply p a; eapp ("=", [a; b])]
     | RcongruenceRL (p, a, b) -> [apply p a; eapp ("=", [b; a])]
     | Rdefinition (name, sym, fld, unf) -> [fld]
-    | Rextension (name, args, cons, hyps) -> cons
+    | Rextension (ext, name, args, cons, hyps) -> cons
     | Rlemma (name, args) -> (get_lemma name).proof.conc
   in
   let useful = List.fold_left (fun accu h -> h.conc @@ accu) eliminated hyps in

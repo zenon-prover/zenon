@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.53 2011-09-27 14:29:17 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.54 2011-12-28 16:43:33 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -1206,6 +1206,8 @@ let newnodes e g =
   @ newnodes_inst_bounded e g
 ;;
 
+let make_inst m term g = assert false;;
+
 let rec split_case_branches l =
   match l with
   | [] -> []
@@ -1355,7 +1357,7 @@ let to_llproof tr_expr mlp args =
          let tconc = tre (eapp ("TLA.in", [x; s])) in
          let n0 = {
            Llproof.conc = trl myconc;
-           Llproof.rule = Llproof.Rextension ("zenon_in_emptyset",
+           Llproof.rule = Llproof.Rextension ("", "zenon_in_emptyset",
                                               [tre x], [tconc], []);
            Llproof.hyps = [];
          } in
@@ -1368,7 +1370,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff (Expr.union ext ext1) myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_in_addElt",
+            Llproof.rule = Llproof.Rextension ("", "zenon_in_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ [tre h1]; [tre h2] ]);
             Llproof.hyps = [sub; sub1];
@@ -1388,7 +1390,7 @@ let to_llproof tr_expr mlp args =
          let tconc = tre (eapp ("TLA.in", [x; s])) in
          let n0 = {
            Llproof.conc = trl myconc;
-           Llproof.rule = Llproof.Rextension ("zenon_in_emptyset",
+           Llproof.rule = Llproof.Rextension ("", "zenon_in_emptyset",
                                               [tre x], [tconc], []);
            Llproof.hyps = [];
          } in
@@ -1402,7 +1404,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff (Expr.union ext ext1) myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_in_addElt",
+            Llproof.rule = Llproof.Rextension ("", "zenon_in_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ [tre h1]; [tre h2] ]);
             Llproof.hyps = [sub; sub1];
@@ -1429,7 +1431,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff ext1 myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_notin_addElt",
+            Llproof.rule = Llproof.Rextension ("", "zenon_notin_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ trl [h1; h2] ]);
             Llproof.hyps = [sub1];
@@ -1457,7 +1459,7 @@ let to_llproof tr_expr mlp args =
           let extras = Expr.diff ext1 myconc in
           let n0 = {
             Llproof.conc = trl (extras @@ myconc);
-            Llproof.rule = Llproof.Rextension ("zenon_notin_addElt",
+            Llproof.rule = Llproof.Rextension ("", "zenon_notin_addElt",
                                                trl [x; y; s1], [tre concl],
                                                [ trl [h1; h2] ]);
             Llproof.hyps = [sub1];
@@ -1481,7 +1483,7 @@ let to_llproof tr_expr mlp args =
      let extras = Expr.diff ext mlp.mlconc in
      let nn = {
          Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
-         Llproof.rule = Llproof.Rextension (name, tmeta, tcon, thyps);
+         Llproof.rule = Llproof.Rextension ("", name, tmeta, tcon, thyps);
          Llproof.hyps = subs;
        }
      in (nn, extras)
@@ -1557,8 +1559,8 @@ let pp_rule r =
      LL.RcongruenceRL (pp_expr e1, pp_expr e2, pp_expr e3)
   | LL.Rdefinition (nm, id, e1, e2) ->
      LL.Rdefinition (nm, id, pp_expr e1, pp_expr e2)
-  | LL.Rextension (n, a, cs, hss) ->
-     LL.Rextension (n, List.map pp_expr a, List.map pp_expr cs,
+  | LL.Rextension (ext, n, a, cs, hss) ->
+     LL.Rextension (ext, n, List.map pp_expr a, List.map pp_expr cs,
                  List.map (List.map pp_expr) hss)
   | LL.Rlemma (n, args) -> LL.Rlemma (n, List.map pp_expr args)
 ;;
@@ -1579,11 +1581,16 @@ let postprocess p = List.map pp_lemma p;;
 
 let declare_context_coq oc = ();;
 
-let predef () = tla_set_constructors @ tla_fcn_constructors @ tla_other_symbols;;
+let p_rule_coq oc r = assert false;;
+
+let predef () =
+  tla_set_constructors @ tla_fcn_constructors @ tla_other_symbols
+;;
 
 Extension.register {
   Extension.name = "tla";
   Extension.newnodes = newnodes;
+  Extension.make_inst = make_inst;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
@@ -1591,5 +1598,6 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.p_rule_coq = p_rule_coq;
   Extension.predef = predef;
 };;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.33 2009-08-05 14:47:43 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.34 2011-12-28 16:43:33 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -528,8 +528,8 @@ let llproof_rule o r =
       pr ")";
   | Rdefinition (name, sym, folded, unfolded) ->
       pr "---definition \"%s\" (%s)" name sym;
-  | Rextension (name, args, c, hyps) ->
-      pr "---extension (%s" name;
+  | Rextension (ext, name, args, c, hyps) ->
+      pr "---extension (%s/%s" ext name;
       List.iter (fun x -> pr " "; llproof_expr o x) args;
       pr ")";
   | Rlemma (name, args) ->

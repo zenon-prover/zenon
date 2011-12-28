@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test36.znn,v 1.6 2008-08-14 14:02:09 doligez Exp $
+;  $Id: test36.znn,v 1.7 2011-12-28 16:43:33 doligez Exp $
 
 # pas utilise
 
@@ -18,7 +18,7 @@
 
 $sig abst_equal ("zenon_U" "zenon_U") "bool"
 
-$def (abst_order_inf x y) (abst_equal x (abst_inf x y))
+$def "d" (abst_order_inf x y) (abst_equal x (abst_inf x y))
 
 $hyp "abst_add_keeps_inf"
 (A. ((x) (A. ((y)

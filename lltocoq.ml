@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.53 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.54 2011-12-28 16:43:33 doligez Exp $";;
 
 open Printf;;
 
@@ -215,67 +215,14 @@ let p_rule oc r =
   | Rnotconnect (Equiv, e1, e2) ->
       apply_beta2 oc "notequiv" (enot (eequiv (e1, e2)))
                   (enot e1) e2 e1 (enot e2)
-  | Rextension ("zenon_induct_discriminate", [], [conc], []) ->
-      poc "discriminate %s.\n" (getname conc);
-  | Rextension ("zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
-     poc "case_eq (%a); [\n    " p_expr e1;
-     let rec get_params case =
-       match case with
-       | Eall (v, _, body, _) ->
-          let (vs, e, constr) = get_params body in
-          let vv = Expr.newvar () in
-          (vv :: vs, substitute [(v, vv)] e, constr)
-       | Enot (Eapp ("=", [_; Evar (v, _)], _), _) -> ([], case, v)
-       | Enot (Eapp ("=", [_; Eapp (v, _, _)], _), _) -> ([], case, v)
-       | Enot (body, _) -> get_params body
-       | _ -> assert false
-     in
-     let params = List.map get_params (List.flatten hs) in
-     let p_case oc (vs, eqn, constr) =
-       let shape = match vs with
-         | [] -> evar constr
-         | _ -> eapp (constr, vs)
-       in
-       let ahyp0 = enot (eapp ("=", [e1; shape])) in
-       let ahyp = enot (all_list vs ahyp0) in
-       fprintf oc "apply NNPP; zenon_intro %s\n" (getname ahyp);
-     in
-     fprintf oc "%a].\n" (p_list "" p_case "  | ") params;
-  | Rextension ("zenon_induct_cases", _, _, _) -> assert false
-  | Rextension ("zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs) ->
-     fprintf oc "apply %s.\n" (getname c);
-     fprintf oc "apply %s_ind; [" ty;
-     let p_case oc h =
-       match h with
-       | [h] -> fprintf oc "apply NNPP; zenon_intro %s" (getname h);
-       | _ -> assert false
-     in
-     p_list "" p_case " | " oc hs;
-     fprintf oc "].\n";
-  | Rextension ("zenon_induct_induction_notall", _, _, _) -> assert false
-  | Rextension ("zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
-                [c], [ [h] ]) ->
-     let (_, cstrs, schema) = Coqterm.get_induct ty in
-     poc "assert (%s : %a).\n" (getname h) p_expr h;
-     poc "case_eq (%a); [\n    " p_expr a;
-     let p_case oc (c, args) =
-       List.iter (fun _ -> fprintf oc "intro; ") args;
-       fprintf oc "intro zenon_tmp; rewrite zenon_tmp in *; auto\n";
-     in
-     begin match a with
-     | Eapp (s, _, _) | Evar (s, _) when List.mem_assoc s cstrs ->
-        p_list "" p_case "  | " oc (List.filter (fun (x, _) -> x = s) cstrs);
-     | _ ->
-        p_list "" p_case "  | " oc cstrs;
-     end;
-     poc "].\n";
-  | Rextension ("zenon_induct_fix", _, _, _) -> assert false
-  | Rextension (name, args, conc, hyps) ->
+  | Rextension ("", name, args, conc, hyps) ->
       poc "apply (%s_s%a%a)" name p_expr_list args p_name_list conc;
       begin match hyps with
       | [] -> poc ".\n";
       | _ -> poc "; [ %a ].\n" (p_list "" p_intros " | ") hyps;
       end;
+  | Rextension (ext, lemma, args, cons, hyps) ->
+     Extension.p_rule_coq ext oc r;
   | Rnotnot (p as e) ->
       poc "apply %s. zenon_intro %s.\n" (getname (enot (enot e))) (getname e);
   | Rex (Eex (vx, ty, e, _) as p, t) ->
@@ -321,7 +268,8 @@ let p_rule oc r =
      let f a1 a2 =
        let eq = eapp ("=", [a1; a2]) in
        let neq = enot eq in
-       poc "cut (%a); [idtac | apply NNPP; intro %s].\n" p_expr eq (getname neq);
+       poc "cut (%a); [idtac | apply NNPP; intro %s].\n"
+           p_expr eq (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);
      poc "congruence.\n";
@@ -336,7 +284,8 @@ let p_rule oc r =
      let f a1 a2 =
        let eq = eapp ("=", [a1; a2]) in
        let neq = enot eq in
-       poc "cut (%a); [idtac | apply NNPP; intro %s].\n" p_expr eq (getname neq);
+       poc "cut (%a); [idtac | apply NNPP; intro %s].\n"
+           p_expr eq (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);
      poc "congruence.\n";

@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test31.znn,v 1.6 2006-07-20 13:19:21 doligez Exp $
+;  $Id: test31.znn,v 1.7 2011-12-28 16:43:33 doligez Exp $
 
 # file: species_general_set.foc
 # species: ordered_set
@@ -34,19 +34,19 @@ $sig abst_T () "Type"
 $sig abst_equal ("abst_T" "abst_T") "bool"
 $sig abst_leq ("abst_T" "abst_T") "bool"
 
-$def (abst_different x y) (__g_not_b (abst_equal x y))
-$def (abst_lt x y) (__g_not_b (abst_leq y x))
+$def "d1" (abst_different x y) (coq_builtins.bi__not_b (abst_equal x y))
+$def "d2" (abst_lt x y) (coq_builtins.bi__not_b (abst_leq y x))
 
-$hyp (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp "h1" (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_equal x y)) (Is_true (abst_equal y x)))))))
 
-$hyp (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp "h2" (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_equal x y)) (Is_true (abst_leq x y)))))))
 
-$hyp (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp "h3" (A. ((x "abst_T") (A. ((y "abst_T")
      (\/ (Is_true (abst_leq x y)) (Is_true (abst_leq y x)))))))
 
-$hyp (A. ((x "abst_T") (A. ((y "abst_T")
+$hyp "h4" (A. ((x "abst_T") (A. ((y "abst_T")
      (=> (Is_true (abst_leq x y))
          (=> (Is_true (abst_leq y x))
              (Is_true (abst_equal x y))))))))

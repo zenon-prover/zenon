@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.20 2009-03-19 17:05:43 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.21 2011-12-28 16:43:33 doligez Exp $  *)
 
 type private_info;;
 
@@ -92,6 +92,7 @@ val apply : expr -> expr -> expr;;
 val add_argument : expr -> expr -> expr;;
 val remove_scope : expr -> expr;;
 
+(* gensym *)
 val newvar : unit -> expr;;
 val newname : unit -> string;;
 

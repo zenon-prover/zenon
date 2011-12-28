@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.29 2010-02-16 17:22:45 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.30 2011-12-28 16:43:33 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -418,6 +418,8 @@ let newnodes_ifthenelse e g =
 
 let newnodes e g = newnodes_istrue e g @ newnodes_ifthenelse e g;;
 
+let make_inst m term g = assert false;;
+
 let to_llargs tr_expr r =
   match r with
   | Ext (_, "and", [e1; e2]) ->
@@ -593,7 +595,7 @@ let to_llproof tr_expr mlp args =
   let extras = Expr.diff ext mlp.mlconc in
   let nn = {
       Llproof.conc = List.map tr_expr (extras @@ mlp.mlconc);
-      Llproof.rule = Llproof.Rextension (name, meta, con, hyp);
+      Llproof.rule = Llproof.Rextension ("", name, meta, con, hyp);
       Llproof.hyps = subs;
     }
   in (nn, extras)
@@ -737,8 +739,8 @@ let rec process_prooftree p =
         hyps = [step1];
       } in
       step2
-  | Rextension ("zenon_focal_merge", _, _, _)
-  | Rextension ("zenon_focal_split", _, _, _)
+  | Rextension (_, "zenon_focal_merge", _, _, _)
+  | Rextension (_, "zenon_focal_split", _, _, _)
     -> begin match phyps with
        | [ p ] -> p
        | _ -> assert false
@@ -769,8 +771,8 @@ and process_rule r =
      RcongruenceRL (process_expr e1, process_expr e2, process_expr e3)
   | Rdefinition (n, s, e1, e2) ->
       Rdefinition (n, s, process_expr e1, process_expr e2)
-  | Rextension (s, el1, el2, ell) ->
-      Rextension (s, List.map process_expr el1, List.map process_expr el2,
+  | Rextension (e, s, el1, el2, ell) ->
+      Rextension (e, s, List.map process_expr el1, List.map process_expr el2,
                   List.map (List.map process_expr) ell)
   | Rlemma (_, _) -> r
 ;;
@@ -786,6 +788,8 @@ let declare_context_coq oc =
   fprintf oc "Require Import basics.\n";
 ;;
 
+let p_rule_coq oc r = assert false;;
+
 let predef () =
   names_of_equality @
     ["bool"; "Is_true"; "coq_builtins.bi__not_b"; "coq_builtins.bi__and_b";
@@ -800,6 +804,7 @@ let predef () =
 Extension.register {
   Extension.name = "focal";
   Extension.newnodes = newnodes;
+  Extension.make_inst = make_inst;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
@@ -807,5 +812,6 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.p_rule_coq = p_rule_coq;
   Extension.predef = predef;
 };;

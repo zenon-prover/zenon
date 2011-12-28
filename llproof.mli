@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.16 2009-08-05 14:47:43 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.17 2011-12-28 16:43:33 doligez Exp $  *)
 
 open Expr;;
 
@@ -214,17 +214,22 @@ type rule =
 
      ********************)
 
-  | Rextension of string * expr list * expr list * expr list list
+  | Rextension of string * string * expr list * expr list * expr list list
     (*
        H11...H1n   ...   Hp1...Hpq
        --------------------------- Rx
                  C1...Cn
 
-       Rx = Rextension (name, args, [C1...Cn], [[H11...H1n] ... [Hp1...Hpq]])
+       Rx = Rextension (ext, name, args, [C1...Cn],
+                        [[H11...H1n] ... [Hp1...Hpq]])
 
        Ou name est le nom d'un lemme predefini tel que (name args) a le type:
        (H11 -> ... -> H1n -> False) -> ... -> (Hp1 -> ... -> Hpq -> False)
        -> (C1 -> ... -> Cn -> False)
+
+       ext est le nom de l'extension qui doit gerer la traduction vers Coq,
+       ou la chaine vide pour la traduction par defaut (application directe
+       du lemme).
 
      ********************)
 

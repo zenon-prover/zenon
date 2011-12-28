@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.14 2010-05-11 15:53:20 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.15 2011-12-28 16:43:33 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -478,6 +478,8 @@ let newnodes e g =
   @ (try newnodes_induction e g with Empty -> [])
 ;;
 
+let make_inst m term g = assert false;;
+
 let rec get_decreasing_arg e env =
   match e with
   | Elam (v, t, body, _) -> get_decreasing_arg body ((v, t) :: env)
@@ -532,7 +534,7 @@ let to_llproof tr_expr mlp args =
             let proj = elam (x, "", eapp ("$match", x :: cases)) in
             let node = {
               conc = union tc (diff accu.conc [hyp]);
-              rule = Rextension ("zenon_induct_f_equal",
+              rule = Rextension ("", "zenon_induct_f_equal",
                                  [tr_expr xx; tr_expr yy; tr_expr proj],
                                  [tr_expr con], [ [hyp] ]);
               hyps = [accu];
@@ -572,7 +574,7 @@ let to_llproof tr_expr mlp args =
             let proj = elam (x, "", eapp ("$match", x :: cases)) in
             let node = {
               conc = union tc (diff accu.conc [hyp]);
-              rule = Rextension ("zenon_induct_f_equal",
+              rule = Rextension ("", "zenon_induct_f_equal",
                                  [tr_expr xx; tr_expr yy; tr_expr proj],
                                  [tr_expr con], [ [hyp] ]);
               hyps = [accu];
@@ -587,7 +589,7 @@ let to_llproof tr_expr mlp args =
       assert (hyps = []);
       let node = {
         conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_induct_discriminate", [],
+        rule = Rextension ("induct", "zenon_induct_discriminate", [],
                            [tr_expr e; tr_expr car], []);
         hyps = hyps;
       } in
@@ -597,7 +599,7 @@ let to_llproof tr_expr mlp args =
      let th = tr_expr h in
      let node = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension ("zenon_induct_match_redex",
+       rule = Rextension ("", "zenon_induct_match_redex",
                           [tc], [tc], [ [th] ]);
        hyps = hyps;
      } in
@@ -614,7 +616,7 @@ let to_llproof tr_expr mlp args =
        let unfx = elam (nx, "", List.fold_left apply xbody (nx :: args)) in
        let node = {
          conc = List.map tr_expr mlp.mlconc;
-         rule = Rextension ("zenon_induct_fix",
+         rule = Rextension ("induct", "zenon_induct_fix",
                             List.map tr_expr [evar (tname); ctx; foldx; unfx; a],
                             [tr_expr folded],
                             [ [tr_expr unfolded] ]);
@@ -630,7 +632,7 @@ let to_llproof tr_expr mlp args =
       let listify x = [tr_expr x] in
       let node = {
         conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("zenon_induct_cases", [ty; tctx; tm], [tc],
+        rule = Rextension ("induct", "zenon_induct_cases", [ty; tctx; tm], [tc],
                            List.map listify branches);
         hyps = hyps;
       } in
@@ -641,7 +643,7 @@ let to_llproof tr_expr mlp args =
      let listify x = [tr_expr x] in
      let node = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension ("zenon_induct_induction_notall",
+       rule = Rextension ("induct", "zenon_induct_induction_notall",
                           [ty; tp], [tc], List.map listify branches);
        hyps = hyps;
      } in
@@ -658,13 +660,13 @@ let to_llproof tr_expr mlp args =
      let conc0 = c0 :: (Expr.diff mlp.mlconc [c]) in
      let n0 = {
        conc = List.map tr_expr conc0;
-       rule = Rextension ("zenon_induct_induction_notall",
+       rule = Rextension ("induct", "zenon_induct_induction_notall",
                           [ty; tp], [tr_expr c0], List.map listify branches);
        hyps = hyps;
      } in
      let n1 = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension ("zenon_induct_allexnot", [ty; tp], [tc], [[c0]]);
+       rule = Rextension ("", "zenon_induct_allexnot", [ty; tp], [tc], [[c0]]);
        hyps = [n0];
      } in
      (n1, add)
@@ -682,13 +684,13 @@ let to_llproof tr_expr mlp args =
      let conc0 = c0 :: (Expr.diff mlp.mlconc [c]) in
      let n0 = {
        conc = List.map tr_expr conc0;
-       rule = Rextension ("zenon_induct_induction_notall",
+       rule = Rextension ("induct", "zenon_induct_induction_notall",
                           [ty; tnp], [tr_expr c0], List.map listify branches);
        hyps = hyps;
      } in
      let n1 = {
        conc = List.map tr_expr mlp.mlconc;
-       rule = Rextension ("zenon_induct_allnotex", [ty; tp], [tc], [[c0]]);
+       rule = Rextension ("", "zenon_induct_allnotex", [ty; tp], [tc], [[c0]]);
        hyps = [n0];
      } in
      (n1, add)
@@ -741,11 +743,83 @@ let declare_context_coq oc =
   fprintf oc "Require Import zenon_induct.\n";
 ;;
 
+let getname = Coqterm.getname;;
+let p_expr = Lltocoq.p_expr;;
+
+let rec p_list init printer sep oc l =
+  match l with
+  | [] -> ()
+  | [x] -> fprintf oc "%s%a" init printer x;
+  | h::t ->
+      fprintf oc "%s%a%s" init printer h sep;
+      p_list init printer sep oc t;
+;;
+
+let p_rule_coq oc r =
+  let poc fmt = fprintf oc fmt in
+  match r with
+  | Rextension (_, "zenon_induct_discriminate", [], [conc], []) ->
+      poc "discriminate %s.\n" (getname conc);
+  | Rextension (_, "zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
+     poc "case_eq (%a); [\n    " p_expr e1;
+     let rec get_params case =
+       match case with
+       | Eall (v, _, body, _) ->
+          let (vs, e, constr) = get_params body in
+          let vv = Expr.newvar () in
+          (vv :: vs, substitute [(v, vv)] e, constr)
+       | Enot (Eapp ("=", [_; Evar (v, _)], _), _) -> ([], case, v)
+       | Enot (Eapp ("=", [_; Eapp (v, _, _)], _), _) -> ([], case, v)
+       | Enot (body, _) -> get_params body
+       | _ -> assert false
+     in
+     let params = List.map get_params (List.flatten hs) in
+     let p_case oc (vs, eqn, constr) =
+       let shape = match vs with
+         | [] -> evar constr
+         | _ -> eapp (constr, vs)
+       in
+       let ahyp0 = enot (eapp ("=", [e1; shape])) in
+       let ahyp = enot (all_list vs ahyp0) in
+       fprintf oc "apply NNPP; zenon_intro %s\n" (getname ahyp);
+     in
+     fprintf oc "%a].\n" (p_list "" p_case "  | ") params;
+  | Rextension (_, "zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs)
+    ->
+     fprintf oc "apply %s.\n" (getname c);
+     fprintf oc "apply %s_ind; [" ty;
+     let p_case oc h =
+       match h with
+       | [h] -> fprintf oc "apply NNPP; zenon_intro %s" (getname h);
+       | _ -> assert false
+     in
+     p_list "" p_case " | " oc hs;
+     fprintf oc "].\n";
+  | Rextension (_, "zenon_induct_fix", [Evar (ty, _); ctx; foldx; unfx; a],
+                [c], [ [h] ]) ->
+     let (_, cstrs, schema) = Coqterm.get_induct ty in
+     poc "assert (%s : %a).\n" (getname h) p_expr h;
+     poc "case_eq (%a); [\n    " p_expr a;
+     let p_case oc (c, args) =
+       List.iter (fun _ -> fprintf oc "intro; ") args;
+       fprintf oc "intro zenon_tmp; rewrite zenon_tmp in *; auto\n";
+     in
+     begin match a with
+     | Eapp (s, _, _) | Evar (s, _) when List.mem_assoc s cstrs ->
+        p_list "" p_case "  | " oc (List.filter (fun (x, _) -> x = s) cstrs);
+     | _ ->
+        p_list "" p_case "  | " oc cstrs;
+     end;
+     poc "].\n";
+  | _ -> assert false
+;;
+
 let predef () = [];;
 
 Extension.register {
   Extension.name = "induct";
   Extension.newnodes = newnodes;
+  Extension.make_inst = make_inst;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
   Extension.preprocess = preprocess;
@@ -753,5 +827,6 @@ Extension.register {
   Extension.postprocess = postprocess;
   Extension.to_llproof = to_llproof;
   Extension.declare_context_coq = declare_context_coq;
+  Extension.p_rule_coq = p_rule_coq;
   Extension.predef = predef;
 };;

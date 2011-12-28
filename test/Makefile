@@ -1,7 +1,7 @@
 #  Copyright 2004 INRIA
-#  $Id: Makefile,v 1.13 2008-12-23 12:44:33 doligez Exp $
+#  $Id: Makefile,v 1.14 2011-12-28 16:43:33 doligez Exp $
 
-ZOPT = -q -x coqbool -max-time 10m -max-size 500M -x induct
+ZOPT = -q -max-time 10m -max-size 500M -x induct -x focal
 
 BENCH = test13.znn test16.znn test38.znn test41.znn test48.znn
 
@@ -46,7 +46,7 @@ test:
 	echo
 
 .PHONY: coqscript coqterm coq
-coqscript:
+coqscript: basics.vo
 	: testing script output
 	@for n in ${COQTESTSCRIPT}; do \
 	  i=`echo test$$n.*`; \
@@ -65,7 +65,7 @@ coqscript:
 	echo
 	rm -f tmp_test.v tmp_test.vo
 
-coqterm:
+coqterm: basics.vo
 	: testing term output
 	@for n in ${COQTESTTERM}; do \
 	  i=`echo test$$n.*`; \
@@ -85,6 +85,13 @@ coqterm:
 	rm -f tmp_test.v tmp_test.vo
 
 coq: coqterm coqscript
+
+.SUFFIXES: .v .vo
+
+.v.vo:
+	coqc -I .. $<
+
+basics.vo: coq_builtins.vo
 
 clean:
 	rm -f tmp_test.v tmp_test.vo

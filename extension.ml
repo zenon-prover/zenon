@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.12 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.13 2011-12-28 16:43:33 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -12,6 +12,7 @@ type translator =
 type t = {
   name : string;
   newnodes : Expr.expr -> int -> Node.node_item list;
+  make_inst : Expr.expr -> Expr.expr -> Expr.goalness -> Node.node list;
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
   preprocess : Phrase.phrase list -> Phrase.phrase list;
@@ -19,6 +20,7 @@ type t = {
   postprocess : Llproof.proof -> Llproof.proof;
   to_llproof : translator;
   declare_context_coq : out_channel -> unit;
+  p_rule_coq : out_channel -> Llproof.rule -> unit;
   predef : unit -> string list;
 };;
 
@@ -47,8 +49,26 @@ let rec find_extension name l =
   | _::t -> find_extension name t
 ;;
 
+let get_prefix name =
+  let rec spin n =
+    if n >= String.length name then name
+    else
+      match name.[n] with
+      | 'a' .. 'z' | 'A' .. 'Z' -> spin (n+1)
+      | _ -> String.sub name 0 n
+  in
+  spin 0
+;;
+
 let newnodes e g =
   List.map (fun ext -> ext.newnodes e g) (List.rev !active)
+;;
+
+let make_inst sym m term g =
+  let ext = get_prefix sym in
+  if is_active ext
+  then (find_extension ext !active).make_inst m term g
+  else []
 ;;
 
 let add_formula e =
@@ -81,6 +101,10 @@ let to_llproof tr_expr node subs =
 
 let declare_context_coq oc =
   List.iter (fun ext -> ext.declare_context_coq oc) !active
+;;
+
+let p_rule_coq ext oc r =
+  (find_extension ext !active).p_rule_coq oc r
 ;;
 
 let predef () =

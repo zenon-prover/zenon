@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.8 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: ext_equiv.ml,v 1.9 2011-12-28 16:43:33 doligez Exp $";;
 
 (* Extension for trees of equivalences and negations. *)
 
@@ -62,6 +62,8 @@ let newnodes e g =
   | _ -> []
 ;;
 
+let make_inst m term g = assert false;;
+
 type node = {
   nconc : Expr.expr;
   nrule : string;
@@ -74,9 +76,9 @@ let chain_nodes tr_prop mlconc init l =
     let conc = Expr.diff [n1.nconc] mlconc in
     {
       Llproof.conc = List.map tr_prop (conc @@ mlconc);
-      Llproof.rule = Llproof.Rextension (n1.nrule, List.map tr_prop n1.nargs,
-                                         [tr_prop n1.nconc],
-                                         [ [tr_prop n1.nhyp] ]);
+      Llproof.rule =
+        Llproof.Rextension ("", n1.nrule, List.map tr_prop n1.nargs,
+                            [tr_prop n1.nconc], [ [tr_prop n1.nhyp] ]);
       Llproof.hyps = [n0];
     }
   in
@@ -237,11 +239,14 @@ let declare_context_coq oc =
   Printf.fprintf oc "Require Import zenon_equiv.\n";
 ;;
 
+let p_rule_coq oc r = assert false;;
+
 let predef () = [];;
 
 Extension.register {
   Extension.name = "equiv";
   Extension.newnodes = newnodes;
+  Extension.make_inst = make_inst;
   Extension.add_formula = (fun _ -> ());
   Extension.remove_formula = (fun _ -> ());
   Extension.preprocess = (fun x -> x);
@@ -249,5 +254,6 @@ Extension.register {
   Extension.postprocess = (fun x -> x);
   Extension.to_llproof = (fun tr_expr -> to_llproof tr_expr tr_expr);
   Extension.declare_context_coq = declare_context_coq;
+  Extension.p_rule_coq = p_rule_coq;
   Extension.predef = predef;
 };;

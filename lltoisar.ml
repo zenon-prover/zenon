@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.43 2011-09-27 14:29:17 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.44 2011-12-28 16:43:33 doligez Exp $";;
 
 open Printf;;
 
@@ -315,7 +315,7 @@ let rec p_tree hyps i dict oc proof =
   | Rnotconnect (Equiv, e1, e2) ->
      beta "notequiv" (enot (eequiv (e1, e2)))
           [[enot (e1); e2]; [e1; enot (e2)]] proof.hyps;
-  | Rextension ("zenon_case", [p], [con], hs) ->
+  | Rextension (_, "zenon_case", [p], [con], hs) ->
      let arity = List.length hs - 1 in
      let other =
        let rec loop l =
@@ -341,9 +341,9 @@ let rec p_tree hyps i dict oc proof =
        | _ -> assert false
      in
      p_sub dict hs proof.hyps;
-  | Rextension ("zenon_case", _, _, _) -> assert false
+  | Rextension (_, "zenon_case", _, _, _) -> assert false
 
-  | Rextension ("zenon_stringequal", [v1; v2], [con], []) ->
+  | Rextension (_, "zenon_stringequal", [v1; v2], [con], []) ->
      let v1nev2 = enot (con) in
      iprintf i oc "have %s: \"%a\"\n" (hname hyps v1nev2) (p_expr dict) v1nev2;
      iprintf i oc "by (simp only: zenon_sa_1 zenon_sa_2,\n";
@@ -354,8 +354,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule notE [OF %s %s])\n" (hname hyps v1nev2)
              (hname hyps con);
-  | Rextension ("zenon_stringequal", _, _, _) -> assert false
-  | Rextension ("zenon_stringdiffll", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+  | Rextension (_, "zenon_stringequal", _, _, _) -> assert false
+  | Rextension (_, "zenon_stringdiffll", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let s1nes2 = enot (eapp ("=", [s1; s2])) in
      iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
@@ -365,8 +365,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule zenon_stringdiffll [OF %s %s %s])\n"
              (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
      p_tree hyps (iinc i) dict1 oc t
-  | Rextension ("zenon_stringdiffll", _, _, _) -> assert false
-  | Rextension ("zenon_stringdifflr", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+  | Rextension (_, "zenon_stringdiffll", _, _, _) -> assert false
+  | Rextension (_, "zenon_stringdifflr", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let s1nes2 = enot (eapp ("=", [s1; s2])) in
      iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
@@ -376,8 +376,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule zenon_stringdifflr [OF %s %s %s])\n"
              (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
      p_tree hyps (iinc i) dict1 oc t
-  | Rextension ("zenon_stringdifflr", _, _, _) -> assert false
-  | Rextension ("zenon_stringdiffrl", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+  | Rextension (_, "zenon_stringdifflr", _, _, _) -> assert false
+  | Rextension (_, "zenon_stringdiffrl", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let s1nes2 = enot (eapp ("=", [s1; s2])) in
      iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
@@ -387,8 +387,8 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule zenon_stringdiffrl [OF %s %s %s])\n"
              (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
      p_tree hyps (iinc i) dict1 oc t
-  | Rextension ("zenon_stringdiffrl", _, _, _) -> assert false
-  | Rextension ("zenon_stringdiffrr", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
+  | Rextension (_, "zenon_stringdiffrl", _, _, _) -> assert false
+  | Rextension (_, "zenon_stringdiffrr", [e1; s1; e2; s2], [c1; c2], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let s1nes2 = enot (eapp ("=", [s1; s2])) in
      iprintf i oc "have %s: \"%a\"\n" (hname hyps s1nes2) (p_expr dict) s1nes2;
@@ -398,9 +398,9 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule zenon_stringdiffrr [OF %s %s %s])\n"
              (hname hyps s1nes2) (hname hyps c1) (hname hyps c2);
      p_tree hyps (iinc i) dict1 oc t
-  | Rextension ("zenon_stringdiffrr", _, _, _) -> assert false
+  | Rextension (_, "zenon_stringdiffrr", _, _, _) -> assert false
 
-  | Rextension ("zenon_tuple_eq_match", [], [c], [hs]) ->
+  | Rextension (_, "zenon_tuple_eq_match", [], [c], [hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let p_hyp dict h =
        if List.memq h t.conc then begin
@@ -412,13 +412,13 @@ let rec p_tree hyps i dict oc proof =
      in
      let dict3 = List.fold_left p_hyp dict hs in
      p_tree hyps i dict3 oc t
-  | Rextension ("zenon_tuple_eq_match", _, _, _) -> assert false
-  | Rextension ("zenon_tuple_eq_mismatch", [e], [c], []) ->
+  | Rextension (_, "zenon_tuple_eq_match", _, _, _) -> assert false
+  | Rextension (_, "zenon_tuple_eq_mismatch", [e], [c], []) ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %s by auto\n" (hname hyps e);
-  | Rextension ("zenon_tuple_eq_mismatch", _, _, _) -> assert false
-  | Rextension (("zenon_tuple_access"|"zenon_tuple_len"
-                 |"zenon_record_domain"),
+  | Rextension (_, "zenon_tuple_eq_mismatch", _, _, _) -> assert false
+  | Rextension (_, ("zenon_tuple_access"|"zenon_tuple_len"
+                    |"zenon_record_domain"),
                 [p; olde; newe], [c], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let eqn = eapp ("=", [olde; newe]) in
@@ -430,10 +430,10 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule subst [where P=\"%a\", OF %s %s])\n"
              (p_expr dict) p (hname hyps eqn) (hname hyps c);
      p_tree hyps i dict3 oc t
-  | Rextension (("zenon_tuple_access"|"zenon_tuple_len"
-                 |"zenon_record_domain"), _, _, _) ->
+  | Rextension (_, ("zenon_tuple_access"|"zenon_tuple_len"
+                    |"zenon_record_domain"), _, _, _) ->
      assert false
-  | Rextension ("zenon_record_access", [p; olde; newe], [c], [[h]]) ->
+  | Rextension (_, "zenon_record_access", [p; olde; newe], [c], [[h]]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let (r, fld, idx, len) =
        match olde with
@@ -464,9 +464,9 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule subst [where P=\"%a\", OF %s %s])\n"
              (p_expr dict) p (hname hyps eqn) (hname hyps c);
      p_tree hyps i dict oc t
-  | Rextension ("zenon_record_access", _, _, _) ->
+  | Rextension (_, "zenon_record_access", _, _, _) ->
      assert false
-  | Rextension ("zenon_in_product", [e1; e2], [c], [h0 :: h1 :: hs]) ->
+  | Rextension (_, "zenon_in_product", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let dict1 = p_let dict i oc e1 in
      let dict2 = p_let dict1 i oc e2 in
@@ -503,8 +503,8 @@ let rec p_tree hyps i dict oc proof =
      in
      let (dict4, _) = List.fold_left print_hyp (dict2, tla_one) hs in
      p_tree hyps i dict4 oc t
-  | Rextension ("zenon_in_product", _, _, _) -> assert false
-  | Rextension ("zenon_notin_product", [e1; e2], [c], hs) ->
+  | Rextension (_, "zenon_in_product", _, _, _) -> assert false
+  | Rextension (_, "zenon_notin_product", [e1; e2], [c], hs) ->
      let dict1 = p_let dict i oc e1 in
      let print_hyp dict1 nhl t =
        let h, nh =
@@ -529,12 +529,12 @@ let rec p_tree hyps i dict oc proof =
      in
      List.iter (print_hyp_name oc) hs;
      fprintf oc "by auto\n";
-  | Rextension ("zenon_notin_product", _, _, _) -> assert false
-  | Rextension ("zenon_tuple_notisaseq", [], [c], []) ->
+  | Rextension (_, "zenon_notin_product", _, _, _) -> assert false
+  | Rextension (_, "zenon_tuple_notisaseq", [], [c], []) ->
      iprintf i oc "show FALSE using %s by auto\n" (hname hyps c);
-  | Rextension ("zenon_tuple_notisaseq", _, _, _) -> assert false
+  | Rextension (_, "zenon_tuple_notisaseq", _, _, _) -> assert false
 
-  | Rextension ("zenon_record_eq_match", [], [c], [hs]) ->
+  | Rextension (_, "zenon_record_eq_match", [], [c], [hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let p_hyp dict h =
        if List.memq h t.conc then begin
@@ -546,14 +546,14 @@ let rec p_tree hyps i dict oc proof =
      in
      let dict3 = List.fold_left p_hyp dict hs in
      p_tree hyps i dict3 oc t
-  | Rextension ("zenon_record_eq_match", _, _, _) -> assert false
-  | Rextension ("zenon_record_eq_mismatch", [e], [c], []) ->
+  | Rextension (_, "zenon_record_eq_match", _, _, _) -> assert false
+  | Rextension (_, "zenon_record_eq_mismatch", [e], [c], []) ->
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %s by auto\n" (hname hyps e);
-  | Rextension ("zenon_record_eq_mismatch", _, _, _) -> assert false
-  | Rextension ("zenon_record_neq_match", _, _, _) -> (*FIXME TODO*) assert false
+  | Rextension (_, "zenon_record_eq_mismatch", _, _, _) -> assert false
+  | Rextension (_, "zenon_record_neq_match", _, _, _) -> (*FIXME TODO*) assert false
 
-  | Rextension ("zenon_in_recordset", [e1; e2], [c], [h0 :: h1 :: hs]) ->
+  | Rextension (_, "zenon_in_recordset", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let dict2 = p_let dict i oc e1 in
      let p_simple_hyp h =
@@ -593,8 +593,8 @@ let rec p_tree hyps i dict oc proof =
      in
      let (dict6, _) = List.fold_left print_hyp (dict4, tla_one) hs in
      p_tree hyps i dict6 oc t
-  | Rextension ("zenon_in_recordset", _, _, _) -> assert false
-  | Rextension ("zenon_notin_recordset", [e1; e2], [c], hs) ->
+  | Rextension (_, "zenon_in_recordset", _, _, _) -> assert false
+  | Rextension (_, "zenon_notin_recordset", [e1; e2], [c], hs) ->
      let dict1 = p_let dict i oc e1 in
      let print_hyp dict1 nhl t =
        let h, nh =
@@ -621,18 +621,18 @@ let rec p_tree hyps i dict oc proof =
      in
      List.iter (print_hyp_name oc) hs;
      fprintf oc "])\n";
-  | Rextension ("zenon_notin_recordset", _, _, _) -> assert false
-  | Rextension ("zenon_record_notisafcn", [], [c], []) ->
+  | Rextension (_, "zenon_notin_recordset", _, _, _) -> assert false
+  | Rextension (_, "zenon_record_notisafcn", [], [c], []) ->
      iprintf i oc "show FALSE using %s by auto\n" (hname hyps c);
-  | Rextension ("zenon_record_notisafcn", _, _, _) -> assert false
+  | Rextension (_, "zenon_record_notisafcn", _, _, _) -> assert false
 
-  | Rextension (name, args, con, []) ->
+  | Rextension (_, name, args, con, []) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule %s [of %a, OF %a])\n" name
              (p_list dict "" p_arg " ") args (p_list dict "" p_con " ") con;
-  | Rextension (name, args, con, [hs]) ->
+  | Rextension (_, name, args, con, [hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
@@ -648,7 +648,7 @@ let rec p_tree hyps i dict oc proof =
      in
      let (dict3, _) = List.fold_left p_hyp (dict, 0) hs in
      p_tree hyps i dict3 oc t
-  | Rextension (name, args, con, hs) ->
+  | Rextension (_, name, args, con, hs) ->
      let p_arg dict oc e = fprintf oc "\"%a\"" (p_expr dict) e in
      let p_con dict oc e = fprintf oc "%s" (hname hyps e) in
      iprintf i oc "show FALSE\n";
@@ -942,7 +942,7 @@ type nary_rule =
 let rec get_nary_rules accu prf =
   let accu1 =
     match prf.rule with
-    | Rextension ("zenon_case", _, _, hs) ->
+    | Rextension (_, "zenon_case", _, _, hs) ->
        let arity = List.length hs - 1 in
        let other =
          let rec loop l =
@@ -954,7 +954,7 @@ let rec get_nary_rules accu prf =
          in loop hs
        in
        if arity > 5 then Nary_case (arity, other) :: accu else accu
-    | Rextension ("zenon_notin_recordset", _, _, hs) ->
+    | Rextension (_, "zenon_notin_recordset", _, _, hs) ->
        let arity = List.length hs - 2 in
        if arity > 7 then Nary_record (arity) :: accu else accu
     | _ -> accu

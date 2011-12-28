@@ -1,5 +1,5 @@
 ;  Copyright 2006 INRIA
-;  $Id: test39.znn,v 1.6 2008-08-14 14:02:09 doligez Exp $
+;  $Id: test39.znn,v 1.7 2011-12-28 16:43:33 doligez Exp $
 
 ; file: species_general_additive_law.foc
 ; species: partially_ordered_additive_monoid
@@ -17,7 +17,7 @@
 
 $sig abst_equal ("zenon_U" "zenon_U") "bool"
 
-$def (abst_min) abst_zero
+$def "d" (abst_min) abst_zero
 
 $hyp "abst_zero_is_neutral"
 (A. ((x) (/\ (Is_true (abst_equal (abst_plus x abst_zero) x))
