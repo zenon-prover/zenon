@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.68 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: prove.ml,v 1.69 2012-02-24 14:31:28 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -1012,7 +1012,7 @@ let newnodes_useless st fm g =
 
 (* TODO permettre aux extensions de modifier l'etat ? *)
 
-let add_nodes st fm g =
+let add_nodes st fm g fms =
   let combine (state, stop) f =
     if stop then (state, true) else f state fm g
   in
@@ -1022,7 +1022,7 @@ let add_nodes st fm g =
       newnodes_closure;
     ]
   in
-  let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm g) in
+  let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm g fms) in
   let insert_node s n = {(*s with*) queue = insert s.queue n} in
   let st2 = List.fold_left insert_node st1 newnodes2 in
   let (st3, stop3) =
@@ -1330,7 +1330,7 @@ let rec refute_aux stk st forms =
   | (fm, g) :: fms ->
       Index.add fm g;
       Extension.add_formula fm;
-      refute_aux stk (add_nodes st fm g) fms
+      refute_aux stk (add_nodes st fm g fms) fms
 
 and refute stk st forms =
   Step.forms "refute" forms;

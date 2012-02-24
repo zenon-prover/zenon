@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.20 2010-05-10 14:37:18 doligez Exp $";;
+Version.add "$Id: misc.ml,v 1.21 2012-02-24 14:31:28 doligez Exp $";;
 
 
 (* functions missing from the standard library *)
@@ -185,5 +185,4 @@ let base_n s x =
   end
 ;;
 
-let base36 x = base_n "0123456789abcdefghijklmnopqrstuvwxyz" x;;
 let base26 x = base_n "abcdefghijklmnopqrstuvwxyz" x;;

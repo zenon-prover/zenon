@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.30 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.31 2012-02-24 14:31:28 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -416,7 +416,7 @@ let newnodes_ifthenelse e g =
   | _ -> []
 ;;
 
-let newnodes e g = newnodes_istrue e g @ newnodes_ifthenelse e g;;
+let newnodes e g _ = newnodes_istrue e g @ newnodes_ifthenelse e g;;
 
 let make_inst m term g = assert false;;
 

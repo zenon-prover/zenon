@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: misc.mli,v 1.20 2010-05-10 14:37:18 doligez Exp $  *)
+(*  $Id: misc.mli,v 1.21 2012-02-24 14:31:28 doligez Exp $  *)
 
 val index : int -> 'a -> 'a list -> int;;
 val ( @@ ) : 'a list -> 'a list -> 'a list;;
@@ -34,11 +34,12 @@ val list_indexq : 'a -> 'a list -> int;;
 val string_split : string -> string list;;
 val occurs : string -> string -> bool;;
 val is_prefix : string -> string -> bool;;
+(* [is_prefix pre str] is true if [pre] is a prefix of [str]. *)
+
 val replace_first : string -> string -> string -> string;;
 val isalnum : char -> bool;;
 val isdigit : char -> bool;;
 
 val debug : ('a, out_channel, unit) format -> 'a;;
 
-val base36 : int -> string;;
 val base26 : int -> string;;

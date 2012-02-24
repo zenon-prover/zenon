@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon.v,v 1.12 2009-08-05 14:47:43 doligez Exp $  *)
+(*  $Id: zenon.v,v 1.13 2012-02-24 14:31:28 doligez Exp $  *)
 
 Require Export Classical.
 
@@ -98,7 +98,7 @@ Lemma zenon_congruence_rl :
 Proof. intros T P a b h1 h2 heq. rewrite <- heq in h2; auto. Qed.
 
 Ltac zenon_intro id :=
-  intro id || let nid := fresh in (intro nid; clear nid)
+  intro id || let nid := fresh in (intro nid; try clear nid)
 .
 
 Definition zenon_and_s := fun P Q c h => zenon_and P Q h c.

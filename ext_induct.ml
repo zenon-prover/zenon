@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.15 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.16 2012-02-24 14:31:28 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -470,7 +470,7 @@ let newnodes_fix e g =
   | _ -> []
 ;;
 
-let newnodes e g =
+let newnodes e g _ =
     newnodes_fix e g
   @ (try newnodes_match_cases e g with Empty -> [])
   @ (try newnodes_match_cases_eq e g with Empty -> [])

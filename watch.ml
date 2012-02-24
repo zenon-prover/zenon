@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.13 2009-03-19 17:05:43 doligez Exp $";;
+Version.add "$Id: watch.ml,v 1.14 2012-02-24 14:31:28 doligez Exp $";;
 
 open Printf;;
 
@@ -77,7 +77,10 @@ let rec check_unused name e =
   | Eall (Evar (v, _), t, e1, _) | Eex (Evar (v, _), t, e1, _)
   | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
     ->
-       if t <> univ_name && v <> "_" && not (List.mem v (get_fv e1)) then begin
+       if not (is_prefix Namespace.prefix v)
+          && v <> "_"
+          && not (List.mem v (get_fv e1))
+       then begin
          Error.warn (sprintf "unused variable (%s : %s) in %s" v t name);
        end;
        check_unused name e1;

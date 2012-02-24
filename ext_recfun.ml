@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: ext_recfun.ml,v 1.3 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: ext_recfun.ml,v 1.4 2012-02-24 14:31:28 doligez Exp $";;
 
 (* Extension for recursive function definitions. *)
 
@@ -11,7 +11,7 @@ open Mlproof;;
 open Node;;
 open Phrase;;
 
-let newnodes e g = [];;
+let newnodes e g _ = [];;
 
 let make_inst m term g = assert false;;
 

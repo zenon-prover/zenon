@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.54 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.55 2012-02-24 14:31:28 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -1199,7 +1199,7 @@ let newnodes_rewrites e g =
   find_rewrites false x x e mknode
 ;;
 
-let newnodes e g =
+let newnodes e g _ =
   newnodes_prop e g @ newnodes_rewrites e g
 (*  @ newnodes_subst e g *)
   @ newnodes_prop_eq e g @ newnodes_eq_prop_l e g @ newnodes_eq_prop_r e g

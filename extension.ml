@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.13 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: extension.ml,v 1.14 2012-02-24 14:31:28 doligez Exp $";;
 
 open Mlproof;;
 open Printf;;
@@ -11,7 +11,8 @@ type translator =
 ;;
 type t = {
   name : string;
-  newnodes : Expr.expr -> int -> Node.node_item list;
+  newnodes :
+    Expr.expr -> int -> (Expr.expr * Expr.goalness) list -> Node.node_item list;
   make_inst : Expr.expr -> Expr.expr -> Expr.goalness -> Node.node list;
   add_formula : Expr.expr -> unit;
   remove_formula : Expr.expr -> unit;
@@ -60,8 +61,8 @@ let get_prefix name =
   spin 0
 ;;
 
-let newnodes e g =
-  List.map (fun ext -> ext.newnodes e g) (List.rev !active)
+let newnodes e g fms =
+  List.map (fun ext -> ext.newnodes e g fms) (List.rev !active)
 ;;
 
 let make_inst sym m term g =
