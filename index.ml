@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.16 2010-04-20 12:01:12 doligez Exp $";;
+Version.add "$Id: index.ml,v 1.17 2012-04-11 18:27:26 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -404,7 +404,7 @@ let defs = (Hashtbl.create tblsize : (string, definition) Hashtbl.t);;
 
 let add_def d =
   match d with
-  | DefReal (_, s, args, body) -> Hashtbl.add defs s d;
+  | DefReal (_, s, args, body, _) -> Hashtbl.add defs s d;
   | DefPseudo (h, s, args, body) -> Hashtbl.add defs s d;
   | DefRec (_, s, args, body) -> Hashtbl.add defs s d;
 ;;
@@ -412,7 +412,7 @@ let has_def s = Hashtbl.mem defs s;;
 let get_def s =
   let d = Hashtbl.find defs s in
   match d with
-  | DefReal (_, s, params, body) -> (d, params, body)
+  | DefReal (_, s, params, body, _) -> (d, params, body)
   | DefPseudo (hyp, s, params, body) -> (d, params, body)
   | DefRec (_, s, params, body) -> (d, params, body)
 ;;
@@ -443,12 +443,61 @@ let ext_set tbl i x =
   !tbl.(i) <- x;
 ;;
 
+let rec expr o ex =
+  let pr = eprintf in
+  let print_var b v =
+    match v with
+    | Evar (s, _) -> eprintf "%s" s
+    | _ -> assert false
+  in
+  match ex with
+  | Evar (v, _) -> pr "%s" v;
+
+  | Emeta (e, _) -> pr "%s#" Namespace.meta_prefix;
+  | Eapp (s, es, _) ->
+      pr "(%s" s; List.iter (fun x -> pr " "; expr o x) es; pr ")";
+  | Enot (e, _) -> pr "(-. "; expr o e; pr ")";
+  | Eand (e1, e2, _) ->
+      pr "(/\\ "; expr o e1; pr " "; expr o e2; pr ")";
+  | Eor (e1, e2, _) ->
+      pr "(\\/ "; expr o e1; pr " "; expr o e2; pr ")";
+  | Eimply (e1, e2, _) ->
+      pr "(=> "; expr o e1; pr " "; expr o e2; pr ")";
+  | Eequiv (e1, e2, _) ->
+      pr "(<=> "; expr o e1; pr " "; expr o e2; pr ")";
+  | Etrue -> pr "(True)";
+  | Efalse -> pr "(False)";
+  | Eall (v, t, e, _) when t === Namespace.univ_name ->
+      pr "(A. ((%a) " print_var v; expr o e; pr "))";
+  | Eall (v, t, e, _) ->
+      pr "(A. ((%a \"%s\") " print_var v t; expr o e; pr "))";
+  | Eex (v, t, e, _) when t === Namespace.univ_name ->
+      pr "(E. ((%a) " print_var v; expr o e; pr "))";
+  | Eex (v, t, e, _) ->
+      pr "(E. ((%a \"%s\") " print_var v t; expr o e; pr "))";
+  | Etau (v, t, e, _) when t === Namespace.univ_name ->
+      pr "(t. ((%a) " print_var v; expr o e; pr "))";
+  | Etau (v, t, e, _) ->
+      pr "(t. ((%a \"%s\") " print_var v t; expr o e; pr "))";
+  | Elam (v, t, e, _) when t === Namespace.univ_name ->
+      pr "((%a) " print_var v; expr o e; pr ")";
+  | Elam (v, t, e, _) ->
+      pr "((%a \"%s\") " print_var v t; expr o e; pr ")";
+;;
+
+let dprint_expr e = expr () e;;
+
 let get_number e =
   begin try HE.find numforms e
   with Not_found ->
     incr cur_num;
     HE.add numforms e !cur_num;
     ext_set formnums !cur_num e;
+    if !Globals.debug_flag then begin
+      Printf.eprintf "%x --> " !cur_num;
+      dprint_expr e;
+      Printf.eprintf "\n";
+    end;
     !cur_num
   end
 ;;

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.60 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: coqterm.ml,v 1.61 2012-04-11 18:27:26 doligez Exp $";;
 
 open Expr;;
 open Llproof;;
@@ -313,15 +313,26 @@ let rec trtree env node =
      let concl2 = getv (eapp ("=", [b; a])) in
      Capp (Cvar "zenon_congruence_rl",
            [Cwild; trexpr p; trexpr a; trexpr b; lam; concl1; concl2])
-  | Rdefinition (name, sym, folded, unfolded) ->
+  | Rdefinition (name, sym, args, body, None, folded, unfolded) ->
       let sub = tr_subtree_1 hyps in
       Clet (getname unfolded, getv folded, sub)
+  | Rdefinition (name, sym, args, body, Some v, folded, unfolded) ->
+      assert false (* TODO *)
+
 (* FIXME should drop the coqterm translation or add yet another field
    to extensions *)
   | Rextension (_, "zenon_induct_discriminate",
                 [], [Eapp ("=", [a; b], _) as e; car], []) ->
       Capp (Cvar "eq_ind", [trexpr a; trexpr car; Cvar "I"; trexpr b; getv e])
   | Rextension (_, "zenon_induct_discriminate", _, _, _) -> assert false
+  | Rextension (_, "zenon_induct_discriminate_diff",
+                [], [a; b; car], []) ->
+     let subp = tr_subtree_1 hyps in
+     let h = enot (eapp ("=", [a; b])) in
+     Clet (getname h, Capp (Cvar "eq_ind",
+                            [trexpr a; trexpr car; Cvar "I"; trexpr b]),
+           subp)
+  | Rextension (_, "zenon_induct_discriminate_diff", _, _, _) -> assert false
   | Rextension (_, "zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      let (args, cstrs, schema) = get_induct ty in
      let typargs = List.map (fun _ -> Cwild) args in
@@ -330,7 +341,8 @@ let rec trtree env node =
        let shape =
          let vvars = List.map evar vars in
          let params = List.map (fun _ -> evar "_") args in
-         let base = enot (eapp ("=", [e1; eapp ("@", evar c :: params @ vvars)]))
+         let base = enot (eapp ("=",
+                                [e1; eapp ("@", evar c :: params @ vvars)]))
          in
          enot (all_list vvars base)
        in
@@ -654,7 +666,7 @@ let use_hyp oc count p =
   match p with
   | Phrase.Hyp (name, _, _) when name = goal_name -> count
   | Phrase.Hyp (name, _, _)
-  | Phrase.Def (DefReal (name, _, _, _))
+  | Phrase.Def (DefReal (name, _, _, _, _))
   -> fprintf oc "assert (%s%d := %s).\n" dummy_prefix count name;
      count + 1
   | _ -> count
@@ -739,7 +751,7 @@ let get_signatures ps ext_decl =
     | Phrase.Hyp (name, e, _) ->
         get_sig Prop [] e;
         set_type name Hyp_name;
-    | Phrase.Def (DefReal (_, s, _, e)) ->
+    | Phrase.Def (DefReal (_, s, _, e, _)) ->
         defined := s :: !defined;
         get_sig (Indirect s) [] e;
     | Phrase.Def (DefRec (eqn, s, _, e)) ->
@@ -826,14 +838,20 @@ let declare_hyp oc h =
   | Phrase.Hyp (name, stmt, _) ->
       pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] stmt);
       fprintf oc ".\n";
-  | Phrase.Def (DefReal (name, sym, [], body)) ->
+  | Phrase.Def (DefReal (name, sym, [], body, None)) ->
       let prefix = sprintf "Definition %s := " sym in
       pr_oc oc prefix (trexpr [] body);
       fprintf oc ".\n";
-  | Phrase.Def (DefReal (name, sym, params, body)) ->
+  | Phrase.Def (DefReal (name, sym, params, body, None)) ->
       fprintf oc "Definition %s := fun" sym;
       List.iter (print_var oc) params;
       fprintf oc " =>\n";
+      pr_oc oc "" (trexpr [] body);
+      fprintf oc ".\n";
+  | Phrase.Def (DefReal (name, sym, params, body, Some v)) ->
+      fprintf oc "Fixpoint %s" sym;
+      List.iter (print_var oc) params;
+      fprintf oc " { struct %s } :=\n" v;
       pr_oc oc "" (trexpr [] body);
       fprintf oc ".\n";
   | Phrase.Def _ -> assert false

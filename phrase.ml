@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.19 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.20 2012-04-11 18:27:26 doligez Exp $";;
 
 open Expr;;
 
@@ -196,7 +196,7 @@ let separate predef l = xseparate predef [] [] [] [] l;;
 let change_to_def predef body =
   if is_def predef [] body then begin
     match make_def predef (body, 0) [] body with
-    | DefPseudo (_, s, args, def) -> DefReal ("", s, args, def)
+    | DefPseudo (_, s, args, def) -> DefReal ("", s, args, def, None)
     | _ -> assert false
   end else begin
     raise (Invalid_argument "change_to_def")

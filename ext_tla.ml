@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.55 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id: ext_tla.ml,v 1.56 2012-04-11 18:27:26 doligez Exp $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -1494,21 +1494,21 @@ let built_in_defs =
     Def (DefReal ("subset_def", "TLA.subseteq", [evar "A"; evar "B"],
        eapp ("TLA.bAll", [evar "A";
                    elam (evar "x", "",
-                         eapp ("TLA.in", [evar "x"; evar "B"]))])));
+                         eapp ("TLA.in", [evar "x"; evar "B"]))]), None));
     Def (DefReal ("bAll_def", "TLA.bAll", [evar "S"; evar "P"],
        eall (evar "x", "",
              eimply (eapp ("TLA.in", [evar "x"; evar "S"]),
-                     eapp ("P", [evar "x"])))));
+                     eapp ("P", [evar "x"]))), None));
     Def (DefReal ("bEx_def", "TLA.bEx", [evar "S"; evar "P"],
        eex (evar "x", "",
             eand (eapp ("TLA.in", [evar "x"; evar "S"]),
-                  eapp ("P", [evar "x"])))));
+                  eapp ("P", [evar "x"]))), None));
     Def (DefReal ("bChoose_def", "TLA.bChoice", [evar "S"; evar "P"],
        etau (evar "x", "",
             eand (eapp ("TLA.in", [evar "x"; evar "S"]),
-                  eapp ("P", [evar "x"])))));
+                  eapp ("P", [evar "x"]))), None));
     Def (DefReal ("prod_def", "TLA.prod", [evar "A"; evar "B"],
-       eapp ("TLA.Product", [eapp ("TLA.tuple", [evar "A"; evar "B"])])));
+       eapp ("TLA.Product", [eapp ("TLA.tuple", [evar "A"; evar "B"])]), None));
   ]
 ;;
 
@@ -1557,8 +1557,8 @@ let pp_rule r =
      LL.RcongruenceLR (pp_expr e1, pp_expr e2, pp_expr e3)
   | LL.RcongruenceRL (e1, e2, e3) ->
      LL.RcongruenceRL (pp_expr e1, pp_expr e2, pp_expr e3)
-  | LL.Rdefinition (nm, id, e1, e2) ->
-     LL.Rdefinition (nm, id, pp_expr e1, pp_expr e2)
+  | LL.Rdefinition (nm, id, args, body, recarg, e1, e2) ->
+     LL.Rdefinition (nm, id, args, body, recarg, pp_expr e1, pp_expr e2)
   | LL.Rextension (ext, n, a, cs, hss) ->
      LL.Rextension (ext, n, List.map pp_expr a, List.map pp_expr cs,
                  List.map (List.map pp_expr) hss)

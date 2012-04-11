@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.17 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: llproof.ml,v 1.18 2012-04-11 18:27:26 doligez Exp $";;
 
 open Expr;;
 
@@ -28,7 +28,8 @@ type rule =
   | Rnotequal of expr * expr
   | RcongruenceLR of expr * expr * expr
   | RcongruenceRL of expr * expr * expr
-  | Rdefinition of string * string * expr * expr
+  | Rdefinition of string * string * expr list * expr * string option
+                   * expr * expr
   | Rextension of string * string * expr list * expr list * expr list list
   | Rlemma of string * expr list
 ;;
@@ -109,7 +110,7 @@ let reduce conc rule hyps =
     | Rnotequal (a, b) -> [enot (eapp ("=", [a; b]))]
     | RcongruenceLR (p, a, b) -> [apply p a; eapp ("=", [a; b])]
     | RcongruenceRL (p, a, b) -> [apply p a; eapp ("=", [b; a])]
-    | Rdefinition (name, sym, fld, unf) -> [fld]
+    | Rdefinition (name, sym, args, body, recarg, fld, unf) -> [fld]
     | Rextension (ext, name, args, cons, hyps) -> cons
     | Rlemma (name, args) -> (get_lemma name).proof.conc
   in

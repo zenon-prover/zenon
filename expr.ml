@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: expr.ml,v 1.33 2009-04-24 15:45:17 doligez Exp $";;
+Version.add "$Id: expr.ml,v 1.34 2012-04-11 18:27:26 doligez Exp $";;
 
 open Misc;;
 open Namespace;;
@@ -35,7 +35,7 @@ and private_info = {
 };;
 
 type definition =
-  | DefReal of string * string * expr list * expr
+  | DefReal of string * string * expr list * expr * string option
   | DefPseudo of (expr * int) * string * expr list * expr
   | DefRec of expr * string * expr list * expr
 ;;

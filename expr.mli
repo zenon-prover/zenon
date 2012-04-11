@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.21 2011-12-28 16:43:33 doligez Exp $  *)
+(*  $Id: expr.mli,v 1.22 2012-04-11 18:27:26 doligez Exp $  *)
 
 type private_info;;
 
@@ -25,7 +25,8 @@ type expr = private
 ;;
 
 type definition =
-  | DefReal of string * string * expr list * expr
+  | DefReal of string * string * expr list * expr * string option
+     (* definition-name, defined-ident, params, body, decreasing-arg *)
   | DefPseudo of (expr * int) * string * expr list * expr
   | DefRec of expr * string * expr list * expr
 ;;

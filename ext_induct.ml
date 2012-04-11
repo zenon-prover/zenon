@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.16 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id: ext_induct.ml,v 1.17 2012-04-11 18:27:26 doligez Exp $";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching
@@ -186,6 +186,13 @@ let make_match_branches ctx e cases =
       let f (constr, vars, body) =
         let rvars = List.map (fun _ -> Expr.newvar ()) vars in
         let pattern = eapp ("@", evar constr :: (get_unders constr) @ rvars) in
+(*
+        let pattern =
+          match rvars with
+          | [] -> evar (constr)
+          | _ -> eapp (constr, rvars)
+        in
+*)
         let shape = enot (eapp ("=", [e; pattern])) in
         [enot (all_list rvars shape)]
       in
@@ -387,6 +394,45 @@ let newnodes_injective e g =
         ngoal = g;
         nbranches = [| |];
       }; Stop ]
+  | Enot (Eapp ("=", [e1; Eapp ("$any-induct", [Evar (ty, _); e2], _)], _), _)
+  | Enot (Eapp ("=", [Eapp ("$any-induct", [Evar (ty, _); e2], _); e1], _), _)
+    when constr_head e1 && get_constr e1 <> get_constr e2 ->
+     let constr = get_constr e2 in
+     let args = List.map (fun _ -> evar "_") (get_args e2) in
+     let cas1 = make_case_expr constr args etrue in
+     let cas2 = make_case_expr "_" [] efalse in
+     let x = newvar () in
+     let caract = elam (x, "", eapp ("$match", [x; cas1; cas2])) in
+     let h = enot (eapp ("=", [e2; e1])) in
+     [ Node {
+      nconc = [];
+       nrule = Ext ("induct", "discriminate_diff", [e2; e1; caract]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [h] |];
+     } ]
+  | Eapp ("=", [el; er], _) when constr_head el || constr_head er ->
+     let (e1, e2) = if constr_head el then (el, er) else (er, el) in
+     assert (not (constr_head e2));
+     let constr = get_constr e1 in
+     let desc = Hashtbl.find constructor_table constr in
+     let is_multiconstr =
+       try
+         let (_, constrs, _) = Hashtbl.find type_table desc.cd_type in
+         List.length constrs > 1
+       with Not_found -> assert false
+     in
+     if is_multiconstr then begin
+       let any = eapp ("$any-induct", [evar (desc.cd_type); e1]) in
+       let h = enot (eapp ("=", [e1; any])) in
+       [ Node {
+         nconc = [];
+         nrule = Ext ("induct", "discriminate_meta", []);
+         nprio = Arity;
+         ngoal = g;
+         nbranches = [| [h] |];
+       } ]
+     end else []
   | _ -> []
 ;;
 
@@ -586,14 +632,22 @@ let to_llproof tr_expr mlp args =
      (f args1 args2 0 subproof, add)
   | Ext ("induct", "injection", _) -> assert false
   | Ext ("induct", "discriminate", [e; car]) ->
-      assert (hyps = []);
-      let node = {
-        conc = List.map tr_expr mlp.mlconc;
-        rule = Rextension ("induct", "zenon_induct_discriminate", [],
-                           [tr_expr e; tr_expr car], []);
-        hyps = hyps;
-      } in
-      (node, add)
+     assert (hyps = []);
+     let node = {
+       conc = List.map tr_expr mlp.mlconc;
+       rule = Rextension ("induct", "zenon_induct_discriminate", [],
+                          [tr_expr e; tr_expr car], []);
+       hyps = hyps;
+     } in
+     (node, add)
+  | Ext ("induct", "discriminate_diff", [e1; e2; car]) ->
+     let node = {
+       conc = List.map tr_expr mlp.mlconc;
+       rule = Rextension ("induct", "zenon_induct_discriminate_diff", [],
+                          [tr_expr e1; tr_expr e2; tr_expr car], []);
+       hyps = hyps;
+     } in
+     (node, add)
   | Ext ("induct", "match_redex", [c; h]) ->
      let tc = tr_expr c in
      let th = tr_expr h in
@@ -758,29 +812,29 @@ let rec p_list init printer sep oc l =
 let p_rule_coq oc r =
   let poc fmt = fprintf oc fmt in
   match r with
-  | Rextension (_, "zenon_induct_discriminate", [], [conc], []) ->
+  | Rextension (_, "zenon_induct_discriminate", [], [conc; _], []) ->
       poc "discriminate %s.\n" (getname conc);
+  | Rextension (_, "zenon_induct_discriminate_diff", [], [e1; e2; _], []) ->
+      let h = enot (eapp ("=", [e1; e2])) in
+      poc "assert (%a) as %s. discriminate.\n" p_expr h (getname h);
   | Rextension (_, "zenon_induct_cases", [Evar (ty, _); ctx; e1], [c], hs) ->
      poc "case_eq (%a); [\n    " p_expr e1;
      let rec get_params case =
        match case with
        | Eall (v, _, body, _) ->
-          let (vs, e, constr) = get_params body in
+          let (vs, e) = get_params body in
           let vv = Expr.newvar () in
-          (vv :: vs, substitute [(v, vv)] e, constr)
-       | Enot (Eapp ("=", [_; Evar (v, _)], _), _) -> ([], case, v)
-       | Enot (Eapp ("=", [_; Eapp (v, _, _)], _), _) -> ([], case, v)
+          (vv :: vs, substitute [(v, vv)] e)
+       | Enot (Eapp ("=", [_; Evar (v, _)], _), _)
+       | Enot (Eapp ("=", [_; Eapp ("@", Evar (v, _) :: _, _)], _), _)
+       | Enot (Eapp ("=", [_; Eapp (v, _, _)], _), _)
+        -> ([], case)
        | Enot (body, _) -> get_params body
        | _ -> assert false
      in
      let params = List.map get_params (List.flatten hs) in
-     let p_case oc (vs, eqn, constr) =
-       let shape = match vs with
-         | [] -> evar constr
-         | _ -> eapp (constr, vs)
-       in
-       let ahyp0 = enot (eapp ("=", [e1; shape])) in
-       let ahyp = enot (all_list vs ahyp0) in
+     let p_case oc (vs, neqn) =
+       let ahyp = enot (all_list vs neqn) in
        fprintf oc "apply NNPP; zenon_intro %s\n" (getname ahyp);
      in
      fprintf oc "%a].\n" (p_list "" p_case "  | ") params;

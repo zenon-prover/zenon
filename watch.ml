@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.15 2012-02-24 15:24:54 pessaux Exp $";;
+Version.add "$Id: watch.ml,v 1.16 2012-04-11 18:27:27 doligez Exp $";;
 
 open Printf;;
 
@@ -17,7 +17,7 @@ let add n = if not (test n) then Hashtbl.add used n ();;
 
 let add_def p =
   match p.rule with
-  | Rdefinition (_, s, _, _) -> add s
+  | Rdefinition (_, s, _, _, _, _, _) -> add s
   | _ -> ()
 ;;
 
@@ -42,7 +42,7 @@ let dowarn kind name =
 let check (p, dep) =
   match p with
   | Phrase.Hyp (name, _, _) when not (test name) -> dowarn "hypothesis" name
-  | Phrase.Def (DefReal (_, s, _, _)) when not (test s) ->
+  | Phrase.Def (DefReal (_, s, _, _, _)) when not (test s) ->
      dowarn "definition" s
   | _ -> ()
 ;;
@@ -78,7 +78,7 @@ let rec check_unused name e =
   | Etau (Evar (v, _), t, e1, _) | Elam (Evar (v, _), t, e1, _)
     ->
        if not (Misc.is_prefix Namespace.prefix v)
-          && v <> "_"
+          && (String.length v < 1 || v.[0] <> '_')
           && not (List.mem v (get_fv e1))
        then begin
          Error.warn (sprintf "unused variable (%s : %s) in %s" v t name);
@@ -91,7 +91,7 @@ let warn_unused_var phr_dep =
   let f (p, _) =
     match p with
     | Phrase.Hyp (name, e, _) -> check_unused name e
-    | Phrase.Def (DefReal (_, name, _, body)) -> check_unused name body
+    | Phrase.Def (DefReal (_, name, _, body, _)) -> check_unused name body
     | Phrase.Def (DefRec (_, name, _, body)) -> check_unused name body
     | Phrase.Def (DefPseudo _) -> assert false
     | Phrase.Sig _ -> ()

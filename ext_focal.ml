@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.31 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id: ext_focal.ml,v 1.32 2012-04-11 18:27:26 doligez Exp $";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:
@@ -635,20 +635,22 @@ let built_in_defs =
   let case = eapp ("$match-case", [evar ("Datatypes.pair"); x]) in
   [
     Def (DefReal ("_amper__amper_", "basics._amper__amper_", [x; y],
-                  eapp ("coq_builtins.bi__and_b", [x; y])));
+                  eapp ("coq_builtins.bi__and_b", [x; y]), None));
     Def (DefReal ("_bar__bar_", "basics._bar__bar_", [x; y],
-                  eapp ("coq_builtins.bi__or_b", [x; y])));
+                  eapp ("coq_builtins.bi__or_b", [x; y]), None));
     Def (DefReal ("_tilda__tilda_", "basics._tilda__tilda_", [x],
-                  eapp ("coq_builtins.bi__not_b", [x])));
+                  eapp ("coq_builtins.bi__not_b", [x]), None));
     Def (DefReal ("_bar__lt__gt__bar_", "basics._bar__lt__gt__bar_", [x; y],
-                  eapp ("coq_builtins.bi__xor_b", [x; y])));
+                  eapp ("coq_builtins.bi__xor_b", [x; y]), None));
 
     Def (DefReal ("pair", "basics.pair", [tx; ty; x; y],
-                  eapp ("Datatypes.pair", [tx; ty; x; y])));
+                  eapp ("Datatypes.pair", [tx; ty; x; y]), None));
     Def (DefReal ("fst", "basics.fst", [tx; ty; xy],
-                  eapp ("$match", [xy; elam (x, "", elam (y, "", case))])));
+                  eapp ("$match", [xy; elam (x, "", elam (y, "", case))]),
+                  None));
     Def (DefReal ("snd", "basics.snd", [tx; ty; xy],
-                  eapp ("$match", [xy; elam (y, "", elam (x, "", case))])));
+                  eapp ("$match", [xy; elam (y, "", elam (x, "", case))]),
+                  None));
     Inductive ("basics.list__t", ["A"], [
                  ("List.nil", []);
                  ("List.cons", [Param "A"; Self]);
@@ -662,13 +664,13 @@ let built_in_defs =
 
     (* deprecated, kept for compatibility only *)
     Def (DefReal ("and_b", "basics.and_b", [x; y],
-                  eapp ("basics._amper__amper_", [x; y])));
+                  eapp ("basics._amper__amper_", [x; y]), None));
     Def (DefReal ("or_b", "basics.or_b", [x; y],
-                  eapp ("basics._bar__bar_", [x; y])));
+                  eapp ("basics._bar__bar_", [x; y]), None));
     Def (DefReal ("not_b", "basics.not_b", [x; y],
-                  eapp ("basics._tilda__tilda_", [x; y])));
+                  eapp ("basics._tilda__tilda_", [x; y]), None));
     Def (DefReal ("xor_b", "basics.xor_b", [x; y],
-                  eapp ("basics._bar__lt__gt__bar_", [x; y])));
+                  eapp ("basics._bar__lt__gt__bar_", [x; y]), None));
   ]
 ;;
 
@@ -676,8 +678,8 @@ let preprocess l =
   let f x =
     match x with
     | Hyp (name, e, goalness) -> Hyp (name, pp_expr e, goalness)
-    | Def (DefReal (name, sym, formals, body)) ->
-        Def (DefReal (name, sym, formals, pp_expr body))
+    | Def (DefReal (name, sym, formals, body, decarg)) ->
+        Def (DefReal (name, sym, formals, pp_expr body, decarg))
     | Def (DefRec (eqn, sym, formals, body)) ->
         Def (DefRec (eqn, sym, formals, pp_expr body))
     | Def (DefPseudo _) -> assert false
@@ -769,8 +771,8 @@ and process_rule r =
      RcongruenceLR (process_expr e1, process_expr e2, process_expr e3)
   | RcongruenceRL (e1, e2, e3) ->
      RcongruenceRL (process_expr e1, process_expr e2, process_expr e3)
-  | Rdefinition (n, s, e1, e2) ->
-      Rdefinition (n, s, process_expr e1, process_expr e2)
+  | Rdefinition (n, s, args, body, recarg, e1, e2) ->
+      Rdefinition (n, s, args, body, recarg, process_expr e1, process_expr e2)
   | Rextension (e, s, el1, el2, ell) ->
       Rextension (e, s, List.map process_expr el1, List.map process_expr el2,
                   List.map (List.map process_expr) ell)

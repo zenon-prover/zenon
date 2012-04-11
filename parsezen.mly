@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsezen.mly,v 1.15 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: parsezen.mly,v 1.16 2012-04-11 18:27:26 doligez Exp $";;
 
 open Printf;;
 
@@ -66,6 +66,7 @@ let mk_string s = evar ("\"" ^ s ^ "\"");;
 %token EX
 %token FALSE
 %token FIX
+%token FIXPOINT
 %token GOAL
 %token HYP
 %token IMPLY
@@ -95,7 +96,11 @@ file:
 
 phrase:
   | DEF hyp_name OPEN IDENT ident_list CLOSE expr
-      { let idl = List.map evar $5 in Zdef (DefReal ($2, $4, idl, $7)) }
+      { let idl = List.map evar $5 in Zdef (DefReal ($2, $4, idl, $7, None)) }
+  | FIXPOINT hyp_name IDENT OPEN IDENT ident_list CLOSE expr
+      { let idl = List.map evar $6 in
+        Zdef (DefReal ($2, $5, idl, $8, Some $3))
+      }
   | HYP int_opt hyp_name expr
       { Zhyp ($3, $4, $2) }
   | GOAL expr

@@ -1,11 +1,43 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: lltocoq.ml,v 1.54 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: lltocoq.ml,v 1.55 2012-04-11 18:27:26 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Llproof;;
 open Namespace;;
+
+exception Found of expr;;
+
+let get_diff e1 e2 =
+  let rec spin x y =
+    if Expr.equal x y then () else
+    match x, y with
+    | Eapp (s1, args1, _), Eapp (s2, args2, _)
+      when s1 = s2 && List.length args1 = List.length args2 ->
+       List.iter2 spin args1 args2
+    | Emeta (e1, _), Emeta (e2, _)
+    | Enot (e1, _), Enot (e2, _)
+      -> spin e1 e2
+    | Eand (e1a, e1b, _), Eand (e2a, e2b, _)
+    | Eor (e1a, e1b, _), Eor (e2a, e2b, _)
+    | Eimply (e1a, e1b, _), Eimply (e2a, e2b, _)
+    | Eequiv (e1a, e1b, _), Eequiv (e2a, e2b, _)
+      -> spin e1a e2a; spin e1b e2b
+
+    | Etrue, Etrue -> ()
+    | Efalse, Efalse -> ()
+    | Eall (v1, t1, e1, _), Eall (v2, t2, e2, _)
+    | Eex (v1, t1, e1, _), Eex (v2, t2, e2, _)
+    | Etau (v1, t1, e1, _), Etau (v2, t2, e2, _)
+    | Elam (v1, t1, e1, _), Elam (v2, t2, e2, _)
+      when Expr.equal v1 v2 && t1 = t2 ->
+      spin e1 e2
+
+    | _, _ -> raise (Found x)
+  in
+  try spin e1 e2; raise Not_found with Found e -> e
+;;
 
 let rec p_list init printer sep oc l =
   match l with
@@ -261,14 +293,28 @@ let p_rule oc r =
       let h0 = getname e in
       let h1 = getname (enot e) in
       poc "exact (%s %s).\n" h1 h0;
-  | Rdefinition (_, s, c, h) ->
+  | Rdefinition (_, s, a, b, None, c, h) ->
       poc "assert (%s : %a). exact %s.\n" (getname h) p_expr h (getname c);
+  | Rdefinition (_, s, a, b, Some v, c, h) ->
+      let args =
+        match get_diff c h with
+        | Eapp (ss, args, _) when ss = s -> args
+        | _ -> assert false
+      in
+      let vv = evar v in
+      let rec find_recarg l1 l2 =
+        match l1, l2 with
+        | h1::t1, h2::t2 -> if h1 = vv then h2 else find_recarg t1 t2
+        | _ -> assert false
+      in
+      poc "assert (%s: %a). destruct %a; simpl; auto.\n"
+          (getname h) p_expr h p_expr (find_recarg a args);
   | Rnotequal (Eapp (f, args1, _), Eapp (g, args2, _)) ->
      assert (f = g);
      let f a1 a2 =
        let eq = eapp ("=", [a1; a2]) in
        let neq = enot eq in
-       poc "cut (%a); [idtac | apply NNPP; intro %s].\n"
+       poc "cut (%a); [idtac | apply NNPP; zenon_intro %s].\n"
            p_expr eq (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);
@@ -284,7 +330,7 @@ let p_rule oc r =
      let f a1 a2 =
        let eq = eapp ("=", [a1; a2]) in
        let neq = enot eq in
-       poc "cut (%a); [idtac | apply NNPP; intro %s].\n"
+       poc "cut (%a); [idtac | apply NNPP; zenon_intro %s].\n"
            p_expr eq (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);

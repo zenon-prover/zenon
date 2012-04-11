@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.33 2010-02-16 17:22:45 doligez Exp $";;
+Version.add "$Id: parsecoq.mly,v 1.34 2012-04-11 18:27:26 doligez Exp $";;
 
 open Printf;;
 
@@ -168,6 +168,7 @@ let mk_pairs e l =
 %token EXISTS
 %token FALSE
 %token FIX
+%token FIXPOINT
 %token FORALL
 %token FUN
 %token FUNCTION
@@ -364,7 +365,7 @@ binding_list:
   | /* empty */
       { [] }
   | IDENT binding_list
-      { ($1, "?") :: $2 }
+      { ($1, "") :: $2 }
   | LPAREN_ simplebinding RPAREN_ binding_list
       { $2 @ $4 }
 ;
@@ -385,12 +386,19 @@ hyp_def:
       { Hyp ($2, $4, 1) }
   | DEFINITION id_or_expr COLON_EQ_ expr PERIOD_
       { let (params, expr) = get_params $4 in
-        Def (DefReal ($2, $2, params, expr)) }
+        Def (DefReal ($2, $2, params, expr, None)) }
   | DEFINITION IDENT compact_args COLON_ typ COLON_EQ_ expr PERIOD_
       {
        let compact_params = $3 in
        let (other_params, expr) = get_params $7 in
-       Def (DefReal ($2, $2, (compact_params @ other_params), expr))
+       Def (DefReal ($2, $2, (compact_params @ other_params), expr, None))
+      }
+  | FIXPOINT IDENT compact_args LBRACE_ STRUCT IDENT RBRACE_
+             COLON_ typ COLON_EQ_ expr PERIOD_
+      {
+       let compact_params = $3 in
+       let (other_params, expr) = get_params $11 in
+       Def (DefReal ($2, $2, (compact_params @ other_params), expr, Some $6))
       }
   | FUNCTION IDENT compact_args COLON_ typ LBRACE_ expr RBRACE_ COLON_EQ_
     expr PERIOD_

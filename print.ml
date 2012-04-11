@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: print.ml,v 1.34 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: print.ml,v 1.35 2012-04-11 18:27:26 doligez Exp $";;
 
 open Expr;;
 open Mlproof;;
@@ -152,8 +152,14 @@ let phrase o ph =
   let pro f = oprintf o f in
   begin match ph with
   | Phrase.Hyp (n, e, p) -> pro "# %s:\n$%d " n p; expr o e; pro "\n";
-  | Phrase.Def (DefReal (name, s, args, e)) ->
+  | Phrase.Def (DefReal (name, s, args, e, None)) ->
       pro "$def \"%s\" %s (" name s;
+      print_list (buf o) print_var " " args;
+      pro ") ";
+      expr o e;
+      pro "\n";
+  | Phrase.Def (DefReal (name, s, args, e, Some v)) ->
+      pro "$fixpoint \"%s\" %s %s (" name s v;
       print_list (buf o) print_var " " args;
       pro ") ";
       expr o e;
@@ -210,7 +216,7 @@ let get_rule_name = function
   | NotEquiv (e1, e2) -> "NotEquiv", [e1; e2]
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
   | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
-  | Definition (DefReal (_, s, _, _), e, _) -> "Definition("^s^")", [e]
+  | Definition (DefReal (_, s, _, _, _), e, _) -> "Definition("^s^")", [e]
   | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
   | Definition (DefRec (_, s, _, _), e, _) -> "Definition-Rec("^s^")", [e]
   | ConjTree e -> "ConjTree", [e]
@@ -302,7 +308,7 @@ let hlrule_name = function
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
   | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
   | NotEqual (e1, e2) -> "NotEqual", [enot (eapp ("=", [e1; e2]))]
-  | Definition (DefReal (_, s, _, _), e, _)
+  | Definition (DefReal (_, s, _, _, _), e, _)
   | Definition (DefPseudo (_, s, _, _), e, _)
   | Definition (DefRec (_, s, _, _), e, _)
   -> "Definition("^s^")", [e]
@@ -526,7 +532,7 @@ let llproof_rule o r =
       pr ", ";
       llproof_expr o b;
       pr ")";
-  | Rdefinition (name, sym, folded, unfolded) ->
+  | Rdefinition (name, sym, args, body, decarg, folded, unfolded) ->
       pr "---definition \"%s\" (%s)" name sym;
   | Rextension (ext, name, args, c, hyps) ->
       pr "---extension (%s/%s" ext name;

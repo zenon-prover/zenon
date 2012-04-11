@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.44 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: lltoisar.ml,v 1.45 2012-04-11 18:27:26 doligez Exp $";;
 
 open Printf;;
 
@@ -714,7 +714,7 @@ let rec p_tree hyps i dict oc proof =
      let n_ne1 = hname hyps (enot e1) in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule notE [OF %s %s])\n" n_ne1 n_e1;
-  | Rdefinition (name, s, conc, hyp) ->
+  | Rdefinition (name, s, args, body, None, conc, hyp) ->
      let n_conc = hname hyps conc in
      let n_hyp = hname hyps hyp in
      iprintf i oc "have %s_%s: \"%a == %a\"" n_hyp n_conc
@@ -728,6 +728,7 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (unfold %s_%s, fact %s)\n" n_hyp n_conc n_conc;
      let t = match proof.hyps with [t] -> t | _ -> assert false in
      p_tree hyps i dict3 oc t;
+  | Rdefinition _ -> assert false
   | Rnotequal (Eapp (f, args1, _) as e1, (Eapp (g, args2, _) as e2)) ->
      assert (f = g);
      let e = enot (eapp ("=", [e1; e2])) in
@@ -1021,7 +1022,7 @@ let output oc phrases ppphrases llp =
       | Phrase.Hyp (name, e, _) when name <> Namespace.goal_name ->
          fprintf oc "axioms %s: \"%a\"\n" name (p_expr dict_empty) e
       | Phrase.Hyp _ -> ()
-      | Phrase.Def (DefReal (name, sym, args, body)) ->
+      | Phrase.Def (DefReal (name, sym, args, body, None)) ->
          let isym = tr_prefix sym in
          fprintf oc "consts \"%s\" :: \"[%a] \\<Rightarrow> c\"\n" isym
                  (p_list dict_empty "c" (fun _ _ _ -> ()) ",") args;

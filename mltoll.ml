@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.55 2011-12-28 16:43:33 doligez Exp $";;
+Version.add "$Id: mltoll.ml,v 1.56 2012-04-11 18:27:26 doligez Exp $";;
 
 open Expr;;
 open Misc;;
@@ -147,8 +147,9 @@ let tr_rule r =
   | P_NotP (p, q) -> LL.Rpnotp (tr_expr p, tr_expr q)
   | NotEqual (e1, e2) -> LL.Rnotequal (tr_expr e1, tr_expr e2)
 
-  | Definition (DefReal (name, sym, args, body), folded, unfolded) ->
-      LL.Rdefinition (name, sym, tr_expr folded, tr_expr unfolded)
+  | Definition (DefReal (name, sym, args, body, decarg), folded, unfolded) ->
+      LL.Rdefinition (name, sym, args, body, decarg,
+                      tr_expr folded, tr_expr unfolded)
 
   | Cut (p) -> LL.Rcut (tr_expr p)
   | CongruenceLR (p, a, b) -> LL.RcongruenceLR (tr_expr p, tr_expr a, tr_expr b)

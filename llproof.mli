@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.17 2011-12-28 16:43:33 doligez Exp $  *)
+(*  $Id: llproof.mli,v 1.18 2012-04-11 18:27:26 doligez Exp $  *)
 
 open Expr;;
 
@@ -204,13 +204,17 @@ type rule =
          apply P a, b=a
     *)
 
-  | Rdefinition of string * string * expr * expr
+  | Rdefinition of string * string * expr list * expr * string option
+                   * expr * expr
     (*
         H
-       --- Rdefinition (name, sym, C, H)
+       --- Rdefinition (name, sym, args, body, recarg, C, H)
         C
 
        Si on peut passer de C a H en depliant la definition "name" de sym.
+       La definition est sym(args) = body.
+       recarg = None pour une definition non recursive.
+       recarg = Some v pour une definition recursive avec decroissante sur v.
 
      ********************)
 
