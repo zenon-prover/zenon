@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.54 2010-01-12 16:09:35 doligez Exp $";;
+Version.add "$Id: main.ml,v 1.55 2012-04-24 17:32:04 doligez Exp $";;
 
 open Printf;;
 
@@ -196,10 +196,12 @@ try Arg.parse argspec add_file umsg
 with Not_found -> exit 2
 ;;
 
+let do_exit code = exit (code + if !Error.got_warning then 100 else 0);;
+
 let report_error lexbuf msg =
   let p = Lexing.lexeme_start_p lexbuf in
   Error.errpos p msg;
-  exit 2;
+  do_exit 3;
 ;;
 
 let make_lexbuf stdin_opt f =
@@ -238,7 +240,7 @@ let rec expand_includes incpath zphrases =
            match l with
            | [] ->
               eprintf "include file not found: %s\n" f;
-              exit 12;
+              do_exit 15;
            | h::t ->
               let pf = try Some (zparse_file (Filename.concat h f))
                        with _ -> None
@@ -287,7 +289,7 @@ let parse_file f =
     with
     | Parsing.Parse_error -> report_error lexbuf "syntax error."
     | Error.Lex_error msg -> report_error lexbuf msg
-  with Sys_error (msg) -> Error.err msg; exit 2
+  with Sys_error (msg) -> Error.err msg; do_exit 4;
 ;;
 
 Gc.set {(Gc.get ()) with
@@ -383,12 +385,12 @@ let main () =
     eprintf "\n";
     (*Gc.print_stat stderr;*)
   end;
-  exit !retcode;
+  do_exit !retcode
 ;;
 
 try main ()
 with
-| Error.Abort -> exit 11;
+| Error.Abort -> do_exit 11;
 | e -> eprintf "Zenon error: uncaught exception %s\n" (Printexc.to_string e);
-       exit 12;
+       do_exit 14;
 ;;

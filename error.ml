@@ -1,9 +1,10 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: error.ml,v 1.6 2008-11-24 15:28:26 doligez Exp $";;
+Version.add "$Id: error.ml,v 1.7 2012-04-24 17:32:04 doligez Exp $";;
 
 open Printf;;
 
 let warnings_flag = ref true;;
+let got_warning = ref false;;
 let err_file = ref "";;
 
 let print_header = ref false;;
@@ -27,7 +28,12 @@ let print kind msg =
   flush !err_oc;
 ;;
 
-let warn msg = if !warnings_flag then print "Zenon warning: " msg;;
+let warn msg =
+  if !warnings_flag then begin
+    print "Zenon warning: " msg;
+    got_warning := true;
+  end;
+;;
 
 let err msg = print "Zenon error: " msg;;
 

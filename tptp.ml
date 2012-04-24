@@ -1,11 +1,16 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.18 2009-07-16 12:06:34 doligez Exp $";;
+Version.add "$Id: tptp.ml,v 1.19 2012-04-24 17:32:04 doligez Exp $";;
 
 open Printf;;
 
 open Expr;;
 open Phrase;;
 open Namespace;;
+
+let report_error lexbuf msg =
+  Error.errpos (Lexing.lexeme_start_p lexbuf) msg;
+  exit 2;
+;;
 
 (* Mapping from TPTP identifiers to coq expressions. *)
 let trans_table = Hashtbl.create 35;;
@@ -98,51 +103,68 @@ let process_annotations forms =
       | Inductive _
         -> assert false
   in
-  List.map process_one (List.filter keep forms)
+  List.rev (List.rev_map process_one (List.filter keep forms))
 ;;
 
-let rec xtranslate dirs ps =
-  match ps with
-  | [] -> []
-  | Include f :: t -> (try_incl dirs f) @ (xtranslate dirs t)
-  | Annotation s :: t -> add_annotation s; xtranslate dirs t
-  | Formula (name, "axiom", body) :: t ->
-      Hyp (name, body, 2) :: (xtranslate dirs t)
-  | Formula (name, "hypothesis", body) :: t ->
-      Hyp (name, body, 1) :: (xtranslate dirs t)
-  | Formula (name, "conjecture", body) :: t ->
+let rec translate_one dirs accu p =
+  match p with
+  | Include (f, None) -> try_incl dirs f accu
+  | Include (f, Some _) ->
+      (* FIXME change try_incl and incl to implement selective include *)
+      (* for the moment, we just ignore the include *)
+      accu
+  | Annotation s -> add_annotation s; accu
+  | Formula (name, ("axiom" | "definition"), body) ->
+      Hyp (name, body, 2) :: accu
+  | Formula (name, "hypothesis", body) ->
+      Hyp (name, body, 1) :: accu
+  | Formula (name, ("lemma"|"theorem"), body) ->
+      Hyp (name, body, 1) :: accu
+  | Formula (name, "conjecture", body) ->
       tptp_thm_name := name;
-      Hyp (goal_name, enot (body), 0) :: (xtranslate dirs t)
-  | Formula (name, "negated_conjecture", body) :: t ->
-      tptp_thm_name := name;
-      Hyp (goal_name, body, 0) :: (xtranslate dirs t)
-  | Formula (name, k, body) :: t ->
+      Hyp (goal_name, enot (body), 0) :: accu
+  | Formula (name, "negated_conjecture", body) ->
+      Hyp (name, body, 0) :: accu
+  | Formula (name, k, body) ->
       Error.warn ("unknown formula kind: " ^ k);
-      Hyp (name, body, 1) :: (xtranslate dirs t)
+      Hyp (name, body, 1) :: accu
 
-and try_incl dirs f =
+and xtranslate dirs ps accu =
+  List.fold_left (translate_one dirs) accu ps
+
+and try_incl dirs f accu =
   let rec loop = function
     | [] ->
         let msg = sprintf "file %s not found in include path" f in
         Error.err msg;
         raise Error.Abort;
     | h::t -> begin
-        try incl dirs (Filename.concat h f)
+        try incl dirs (Filename.concat h f) accu
         with Sys_error _ -> loop t
       end
   in
   loop dirs
 
-and incl dir name =
+and incl dir name accu =
   let chan = open_in name in
   let lexbuf = Lexing.from_channel chan in
-  let tpphrases = Parsetptp.file Lextptp.token lexbuf in
-  close_in chan;
-  xtranslate dir tpphrases
+  lexbuf.Lexing.lex_curr_p <- {
+    Lexing.pos_fname = name;
+    Lexing.pos_lnum = 1;
+    Lexing.pos_bol = 0;
+    Lexing.pos_cnum = 0;
+  };
+  try
+    let tpphrases = Parsetptp.file Lextptp.token lexbuf in
+    close_in chan;
+    xtranslate dir tpphrases accu;
+  with
+  | Parsing.Parse_error -> report_error lexbuf "syntax error."
+  | Error.Lex_error msg -> report_error lexbuf msg
 ;;
 
 let translate dirs ps =
-  let raw = xtranslate dirs ps in
+  let raw = List.rev (xtranslate dirs ps []) in
   let cooked = process_annotations raw in
   let name = if !annot_thm_name <> "" then !annot_thm_name
              else if !tptp_thm_name <> "" then !tptp_thm_name

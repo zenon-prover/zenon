@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: phrase.mli,v 1.13 2010-01-12 16:09:35 doligez Exp $  *)
+(*  $Id: phrase.mli,v 1.14 2012-04-24 17:32:04 doligez Exp $  *)
 
 open Expr;;
 
@@ -30,7 +30,7 @@ val separate :
 ;;
 
 type tpphrase =
-  | Include of string
+  | Include of string * string list option
   | Formula of string * string * expr
   | Annotation of string
 ;;

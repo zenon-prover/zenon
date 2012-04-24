@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: phrase.ml,v 1.20 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id: phrase.ml,v 1.21 2012-04-24 17:32:04 doligez Exp $";;
 
 open Expr;;
 
@@ -204,7 +204,7 @@ let change_to_def predef body =
 ;;
 
 type tpphrase =
-  | Include of string
+  | Include of string * string list option
   | Formula of string * string * expr
   | Annotation of string
 ;;

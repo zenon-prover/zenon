@@ -1,7 +1,7 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.8 2010-07-01 16:17:29 doligez Exp $";;
+Version.add "$Id: parsetptp.mly,v 1.9 2012-04-24 17:32:04 doligez Exp $";;
 
 open Printf;;
 
@@ -19,6 +19,17 @@ let rec mk_quant q vs body =
   | h::t -> q (h, Namespace.univ_name, mk_quant q t body)
 ;;
 
+let cnf_to_formula l =
+  let l1 = List.flatten (List.map Expr.get_fv l) in
+  let vs = Misc.list_unique (List.sort String.compare l1) in
+  let body =
+    match l with
+    | [] -> assert false
+    | a::l2 -> List.fold_left (fun x y -> eor (x,y)) a l2
+  in
+  mk_quant eall (List.map evar vs) body
+;;
+
 %}
 
 %token EQUIV
@@ -31,7 +42,6 @@ let rec mk_quant q vs body =
 %token FALSE
 %token ALL
 %token EX
-%token EQUAL
 %token OPEN
 %token CLOSE
 %token EOF
@@ -39,14 +49,11 @@ let rec mk_quant q vs body =
 %token DOT
 %token INPUT_CLAUSE
 %token INPUT_FORMULA
-%token FOF
-%token AXIOM
-%token HYPOTHESIS
-%token CONJECTURE
 %token LBRACKET
 %token RBRACKET
 %token <string> LIDENT
 %token <string> UIDENT
+%token <string> STRING
 %token POSITIVE
 %token NEGATIVE
 %token COMMA
@@ -72,22 +79,26 @@ let rec mk_quant q vs body =
 
 %%
 
-/* TPTP (v3.x) syntax */
+/* TPTP (v5.3.0) syntax */
 
 file:
   | EOF             { [] }
   | phrase file     { $1 :: $2 }
 ;
 phrase:
-  | INCLUDE OPEN LIDENT CLOSE DOT  { Phrase.Include $3 }
+  | INCLUDE OPEN LIDENT CLOSE DOT  { Phrase.Include ($3, None) }
+  | INCLUDE OPEN LIDENT COMMA LBRACKET name_list RBRACKET CLOSE DOT
+                                   { Phrase.Include ($3, Some ($6)) }
   | INPUT_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
                                    { Phrase.Formula (ns_hyp $3, $5, $7) }
+  | INPUT_CLAUSE OPEN LIDENT COMMA LIDENT COMMA cnf_formula CLOSE DOT
+     { Phrase.Formula (ns_hyp $3, $5, cnf_to_formula $7) }
   | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:
   | UIDENT                             { evar (ns_var $1) }
   | LIDENT arguments                   { eapp (ns_fun $1, $2) }
-  | EQUAL OPEN expr COMMA expr CLOSE   { eapp ("=", [$3; $5]) }
+  | STRING                             { eapp ("$string", [evar $1]) }
   | expr EQSYM expr                    { eapp ("=", [$1; $3]) }
   | expr NEQSYM expr                   { enot (eapp ("=", [$1; $3])) }
 ;
@@ -124,6 +135,20 @@ atom:
 var_list:
   | UIDENT COMMA var_list          { evar (ns_var $1) :: $3 }
   | UIDENT                         { [evar (ns_var $1)] }
+;
+name_list:
+  | LIDENT COMMA name_list         { $1 :: $3 }
+  | LIDENT                         { [$1] }
+;
+
+cnf_formula:
+  | OPEN disjunction CLOSE         { $2 }
+  | disjunction                    { $1 }
+;
+
+disjunction:
+  | atom                           { [$1] }
+  | disjunction OR atom            { $3 :: $1 }
 ;
 
 %%

@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: misc.mli,v 1.21 2012-02-24 14:31:28 doligez Exp $  *)
+(*  $Id: misc.mli,v 1.22 2012-04-24 17:32:04 doligez Exp $  *)
 
 val index : int -> 'a -> 'a list -> int;;
 val ( @@ ) : 'a list -> 'a list -> 'a list;;
@@ -24,10 +24,10 @@ val list_map4 :
 val list_nth_tail : 'a list -> int -> 'a list;;
 
 val list_unique : 'a list -> 'a list;;
-(* Uses structural equality *)
+(** Assumes that the list is sorted. Uses structural equality. *)
 
 val list_uniq : 'a list -> 'a list;;
-(* Uses pointer equality *)
+(** Assumes that the list is sorted. Uses pointer equality. *)
 
 val list_indexq : 'a -> 'a list -> int;;
 
