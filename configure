@@ -21,6 +21,8 @@ BOLDTAG="\033[1m"
 UNDERLINETAG="\033[4m"
 NORMALTAG="\033[0m"
 
+touch .depend
+
 # First recover the configuration file providing the name of ocaml and coq commands.
 if [ -f "../.config_var" ] ;
     then
