@@ -134,6 +134,29 @@ then
 fi
 # Else, explicit install prefix given while parsing options, keep it blindly.
 
+# Check if installation directories are writable, if so do not use sudo
+# otherwise, use it.
+SUDO=
+touch $INSTALL_BIN_DIR/writable_p
+if [ "$?" = 0 ] ;
+then
+    rm -f $INSTALL_BIN_DIR/writable_p
+else
+    SUDO=sudo
+fi
+
+if [ "$SUDO" = "" ] ;
+then
+    touch $INSTALL_LIB_DIR/writable_p
+    if [ "$?" = 0 ]
+    then
+        rm -f $INSTALL_LIB_DIR/writable_p
+    else
+        SUDO=sudo
+    fi
+fi
+
+
 # #############################################################################
 # Generate the installation and configuration file containing tools vars.
 CONFIGURATION_VARS_FILE=.config_var
@@ -142,6 +165,7 @@ rm -f $CONFIGURATION_VARS_FILE
 echo "INSTALL_BIN_DIR=$INSTALL_BIN_DIR" >> $CONFIGURATION_VARS_FILE
 echo "INSTALL_LIB_DIR=$INSTALL_LIB_DIR" >> $CONFIGURATION_VARS_FILE
 echo "SUM=$SUM_COMMAND" >> $CONFIGURATION_VARS_FILE
+echo "SUDO=$SUDO" >> $CONFIGURATION_VARS_FILE
 chmod a-w $CONFIGURATION_VARS_FILE
 
 # #############################################################################
@@ -150,4 +174,5 @@ echo "Configuration summary for Zenon:"
 echo "  binaries -> $INSTALL_BIN_DIR"
 echo "  libraries -> $INSTALL_LIB_DIR"
 echo "  checksum command: $SUM_COMMAND"
+echo "  Use sudo to install -> $SUDO"
 echo "Done."

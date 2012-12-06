@@ -82,14 +82,15 @@ zenon: zenon.byt
 	  cp zenon.byt zenon; \
 	fi
 
+
 .PHONY: install
 install:
-	mkdir -p $(INSTALL_BIN_DIR)
-	cp zenon $(INSTALL_BIN_DIR)/
-	mkdir -p $(INSTALL_LIB_DIR)
-	cp $(COQSRC) $(INSTALL_LIB_DIR)/
+	$(SUDO) mkdir -p $(INSTALL_BIN_DIR)
+	$(SUDO) cp zenon $(INSTALL_BIN_DIR)/
+	$(SUDO) mkdir -p $(INSTALL_LIB_DIR)
+	$(SUDO) cp $(COQSRC) $(INSTALL_LIB_DIR)/
 	for i in $(COQOBJ); \
-	  do [ ! -f $$i ] || cp $$i $(INSTALL_LIB_DIR)/; \
+	  do [ ! -f $$i ] || $(SUDO) cp $$i $(INSTALL_LIB_DIR)/; \
 	done
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
