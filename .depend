@@ -1,178 +1,178 @@
-version.cmo: version.cmi
-version.cmx: version.cmi
-config.cmo: config.cmi
-config.cmx: config.cmi
-misc.cmo: version.cmi misc.cmi
-misc.cmx: version.cmx misc.cmi
-heap.cmo: version.cmi heap.cmi
-heap.cmx: version.cmx heap.cmi
-globals.cmo: version.cmi config.cmi globals.cmi
-globals.cmx: version.cmx config.cmx globals.cmi
-error.cmo: version.cmi error.cmi
-error.cmx: version.cmx error.cmi
-progress.cmo: version.cmi globals.cmi progress.cmi
-progress.cmx: version.cmx globals.cmx progress.cmi
-namespace.cmo: version.cmi namespace.cmi
-namespace.cmx: version.cmx namespace.cmi
-expr.cmo: version.cmi namespace.cmi misc.cmi globals.cmi expr.cmi
-expr.cmx: version.cmx namespace.cmx misc.cmx globals.cmx expr.cmi
-phrase.cmo: version.cmi expr.cmi phrase.cmi
-phrase.cmx: version.cmx expr.cmx phrase.cmi
-llproof.cmo: version.cmi expr.cmi llproof.cmi
-llproof.cmx: version.cmx expr.cmx llproof.cmi
-mlproof.cmo: version.cmi expr.cmi mlproof.cmi
-mlproof.cmx: version.cmx expr.cmx mlproof.cmi
-watch.cmo: version.cmi phrase.cmi namespace.cmi misc.cmi llproof.cmi expr.cmi \
-    error.cmi watch.cmi
-watch.cmx: version.cmx phrase.cmx namespace.cmx misc.cmx llproof.cmx expr.cmx \
-    error.cmx watch.cmi
-eqrel.cmo: version.cmi mlproof.cmi expr.cmi eqrel.cmi
-eqrel.cmx: version.cmx mlproof.cmx expr.cmx eqrel.cmi
-index.cmo: version.cmi namespace.cmi mlproof.cmi misc.cmi globals.cmi \
+version.cmo : version.cmi
+version.cmx : version.cmi
+config.cmo : config.cmi
+config.cmx : config.cmi
+misc.cmo : version.cmi misc.cmi
+misc.cmx : version.cmx misc.cmi
+heap.cmo : version.cmi heap.cmi
+heap.cmx : version.cmx heap.cmi
+globals.cmo : version.cmi config.cmi globals.cmi
+globals.cmx : version.cmx config.cmx globals.cmi
+error.cmo : version.cmi error.cmi
+error.cmx : version.cmx error.cmi
+progress.cmo : version.cmi globals.cmi progress.cmi
+progress.cmx : version.cmx globals.cmx progress.cmi
+namespace.cmo : version.cmi namespace.cmi
+namespace.cmx : version.cmx namespace.cmi
+expr.cmo : version.cmi namespace.cmi misc.cmi globals.cmi expr.cmi
+expr.cmx : version.cmx namespace.cmx misc.cmx globals.cmx expr.cmi
+phrase.cmo : version.cmi expr.cmi phrase.cmi
+phrase.cmx : version.cmx expr.cmx phrase.cmi
+llproof.cmo : version.cmi expr.cmi llproof.cmi
+llproof.cmx : version.cmx expr.cmx llproof.cmi
+mlproof.cmo : version.cmi expr.cmi mlproof.cmi
+mlproof.cmx : version.cmx expr.cmx mlproof.cmi
+watch.cmo : version.cmi phrase.cmi namespace.cmi misc.cmi llproof.cmi \
+    expr.cmi error.cmi watch.cmi
+watch.cmx : version.cmx phrase.cmx namespace.cmx misc.cmx llproof.cmx \
+    expr.cmx error.cmx watch.cmi
+eqrel.cmo : version.cmi mlproof.cmi expr.cmi eqrel.cmi
+eqrel.cmx : version.cmx mlproof.cmx expr.cmx eqrel.cmi
+index.cmo : version.cmi namespace.cmi mlproof.cmi misc.cmi globals.cmi \
     expr.cmi index.cmi
-index.cmx: version.cmx namespace.cmx mlproof.cmx misc.cmx globals.cmx \
+index.cmx : version.cmx namespace.cmx mlproof.cmx misc.cmx globals.cmx \
     expr.cmx index.cmi
-print.cmo: version.cmi phrase.cmi namespace.cmi mlproof.cmi llproof.cmi \
+print.cmo : version.cmi phrase.cmi namespace.cmi mlproof.cmi llproof.cmi \
     index.cmi expr.cmi print.cmi
-print.cmx: version.cmx phrase.cmx namespace.cmx mlproof.cmx llproof.cmx \
+print.cmx : version.cmx phrase.cmx namespace.cmx mlproof.cmx llproof.cmx \
     index.cmx expr.cmx print.cmi
-step.cmo: version.cmi print.cmi misc.cmi index.cmi globals.cmi step.cmi
-step.cmx: version.cmx print.cmx misc.cmx index.cmx globals.cmx step.cmi
-node.cmo: version.cmi mlproof.cmi heap.cmi expr.cmi node.cmi
-node.cmx: version.cmx mlproof.cmx heap.cmx expr.cmx node.cmi
-extension.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi llproof.cmi \
+step.cmo : version.cmi print.cmi misc.cmi index.cmi globals.cmi step.cmi
+step.cmx : version.cmx print.cmx misc.cmx index.cmx globals.cmx step.cmi
+node.cmo : version.cmi mlproof.cmi heap.cmi expr.cmi node.cmi
+node.cmx : version.cmx mlproof.cmx heap.cmx expr.cmx node.cmi
+extension.cmo : version.cmi phrase.cmi node.cmi mlproof.cmi llproof.cmi \
     expr.cmi error.cmi extension.cmi
-extension.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx llproof.cmx \
+extension.cmx : version.cmx phrase.cmx node.cmx mlproof.cmx llproof.cmx \
     expr.cmx error.cmx extension.cmi
-mltoll.cmo: version.cmi phrase.cmi namespace.cmi mlproof.cmi misc.cmi \
+mltoll.cmo : version.cmi phrase.cmi namespace.cmi mlproof.cmi misc.cmi \
     llproof.cmi index.cmi extension.cmi expr.cmi eqrel.cmi mltoll.cmi
-mltoll.cmx: version.cmx phrase.cmx namespace.cmx mlproof.cmx misc.cmx \
+mltoll.cmx : version.cmx phrase.cmx namespace.cmx mlproof.cmx misc.cmx \
     llproof.cmx index.cmx extension.cmx expr.cmx eqrel.cmx mltoll.cmi
-parsezen.cmo: version.cmi phrase.cmi namespace.cmi expr.cmi parsezen.cmi
-parsezen.cmx: version.cmx phrase.cmx namespace.cmx expr.cmx parsezen.cmi
-lexzen.cmo: version.cmi parsezen.cmi error.cmi lexzen.cmi
-lexzen.cmx: version.cmx parsezen.cmx error.cmx lexzen.cmi
-parsetptp.cmo: version.cmi phrase.cmi namespace.cmi misc.cmi globals.cmi \
+parsezen.cmo : version.cmi phrase.cmi namespace.cmi expr.cmi parsezen.cmi
+parsezen.cmx : version.cmx phrase.cmx namespace.cmx expr.cmx parsezen.cmi
+lexzen.cmo : version.cmi parsezen.cmi error.cmi lexzen.cmi
+lexzen.cmx : version.cmx parsezen.cmx error.cmx lexzen.cmi
+parsetptp.cmo : version.cmi phrase.cmi namespace.cmi misc.cmi globals.cmi \
     expr.cmi parsetptp.cmi
-parsetptp.cmx: version.cmx phrase.cmx namespace.cmx misc.cmx globals.cmx \
+parsetptp.cmx : version.cmx phrase.cmx namespace.cmx misc.cmx globals.cmx \
     expr.cmx parsetptp.cmi
-lextptp.cmo: version.cmi parsetptp.cmi error.cmi lextptp.cmi
-lextptp.cmx: version.cmx parsetptp.cmx error.cmx lextptp.cmi
-parsecoq.cmo: version.cmi phrase.cmi namespace.cmi expr.cmi parsecoq.cmi
-parsecoq.cmx: version.cmx phrase.cmx namespace.cmx expr.cmx parsecoq.cmi
-lexcoq.cmo: version.cmi parsecoq.cmi error.cmi lexcoq.cmi
-lexcoq.cmx: version.cmx parsecoq.cmx error.cmx lexcoq.cmi
-tptp.cmo: version.cmi phrase.cmi parsetptp.cmi namespace.cmi lextptp.cmi \
+lextptp.cmo : version.cmi parsetptp.cmi error.cmi lextptp.cmi
+lextptp.cmx : version.cmx parsetptp.cmx error.cmx lextptp.cmi
+parsecoq.cmo : version.cmi phrase.cmi namespace.cmi expr.cmi parsecoq.cmi
+parsecoq.cmx : version.cmx phrase.cmx namespace.cmx expr.cmx parsecoq.cmi
+lexcoq.cmo : version.cmi parsecoq.cmi error.cmi lexcoq.cmi
+lexcoq.cmx : version.cmx parsecoq.cmx error.cmx lexcoq.cmi
+tptp.cmo : version.cmi phrase.cmi parsetptp.cmi namespace.cmi lextptp.cmi \
     extension.cmi expr.cmi error.cmi tptp.cmi
-tptp.cmx: version.cmx phrase.cmx parsetptp.cmx namespace.cmx lextptp.cmx \
+tptp.cmx : version.cmx phrase.cmx parsetptp.cmx namespace.cmx lextptp.cmx \
     extension.cmx expr.cmx error.cmx tptp.cmi
-coqterm.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
+coqterm.cmo : version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
     llproof.cmi index.cmi globals.cmi extension.cmi expr.cmi error.cmi \
     coqterm.cmi
-coqterm.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
+coqterm.cmx : version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
     llproof.cmx index.cmx globals.cmx extension.cmx expr.cmx error.cmx \
     coqterm.cmi
-lltocoq.cmo: version.cmi namespace.cmi mltoll.cmi llproof.cmi index.cmi \
+lltocoq.cmo : version.cmi namespace.cmi mltoll.cmi llproof.cmi index.cmi \
     globals.cmi extension.cmi expr.cmi error.cmi coqterm.cmi lltocoq.cmi
-lltocoq.cmx: version.cmx namespace.cmx mltoll.cmx llproof.cmx index.cmx \
+lltocoq.cmx : version.cmx namespace.cmx mltoll.cmx llproof.cmx index.cmx \
     globals.cmx extension.cmx expr.cmx error.cmx coqterm.cmx lltocoq.cmi
-enum.cmo: version.cmi enum.cmi
-enum.cmx: version.cmx enum.cmi
-isar_case.cmo: version.cmi enum.cmi isar_case.cmi
-isar_case.cmx: version.cmx enum.cmx isar_case.cmi
-lltoisar.cmo: version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
+enum.cmo : version.cmi enum.cmi
+enum.cmx : version.cmx enum.cmi
+isar_case.cmo : version.cmi enum.cmi isar_case.cmi
+isar_case.cmx : version.cmx enum.cmx isar_case.cmi
+lltoisar.cmo : version.cmi phrase.cmi namespace.cmi mltoll.cmi misc.cmi \
     llproof.cmi isar_case.cmi index.cmi globals.cmi expr.cmi error.cmi \
     coqterm.cmi lltoisar.cmi
-lltoisar.cmx: version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
+lltoisar.cmx : version.cmx phrase.cmx namespace.cmx mltoll.cmx misc.cmx \
     llproof.cmx isar_case.cmx index.cmx globals.cmx expr.cmx error.cmx \
     coqterm.cmx lltoisar.cmi
-ext_focal.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+ext_focal.cmo : version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
     llproof.cmi index.cmi extension.cmi expr.cmi error.cmi eqrel.cmi \
     ext_focal.cmi
-ext_focal.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+ext_focal.cmx : version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
     llproof.cmx index.cmx extension.cmx expr.cmx error.cmx eqrel.cmx \
     ext_focal.cmi
-ext_tla.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
-    index.cmi extension.cmi expr.cmi error.cmi ext_tla.cmi
-ext_tla.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
-    index.cmx extension.cmx expr.cmx error.cmx ext_tla.cmi
-ext_recfun.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+ext_tla.cmo : version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+    llproof.cmi index.cmi extension.cmi expr.cmi error.cmi ext_tla.cmi
+ext_tla.cmx : version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+    llproof.cmx index.cmx extension.cmx expr.cmx error.cmx ext_tla.cmi
+ext_recfun.cmo : version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
     llproof.cmi extension.cmi expr.cmi ext_recfun.cmi
-ext_recfun.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+ext_recfun.cmx : version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
     llproof.cmx extension.cmx expr.cmx ext_recfun.cmi
-ext_equiv.cmo: version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
+ext_equiv.cmo : version.cmi node.cmi mlproof.cmi misc.cmi llproof.cmi \
     extension.cmi expr.cmi ext_equiv.cmi
-ext_equiv.cmx: version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
+ext_equiv.cmx : version.cmx node.cmx mlproof.cmx misc.cmx llproof.cmx \
     extension.cmx expr.cmx ext_equiv.cmi
-ext_induct.cmo: version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
+ext_induct.cmo : version.cmi phrase.cmi node.cmi mlproof.cmi misc.cmi \
     lltocoq.cmi llproof.cmi index.cmi extension.cmi expr.cmi error.cmi \
     eqrel.cmi coqterm.cmi ext_induct.cmi
-ext_induct.cmx: version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
+ext_induct.cmx : version.cmx phrase.cmx node.cmx mlproof.cmx misc.cmx \
     lltocoq.cmx llproof.cmx index.cmx extension.cmx expr.cmx error.cmx \
     eqrel.cmx coqterm.cmx ext_induct.cmi
-prove.cmo: version.cmi step.cmi progress.cmi print.cmi node.cmi mlproof.cmi \
+prove.cmo : version.cmi step.cmi progress.cmi print.cmi node.cmi mlproof.cmi \
     misc.cmi index.cmi globals.cmi extension.cmi ext_induct.cmi expr.cmi \
     error.cmi eqrel.cmi prove.cmi
-prove.cmx: version.cmx step.cmx progress.cmx print.cmx node.cmx mlproof.cmx \
+prove.cmx : version.cmx step.cmx progress.cmx print.cmx node.cmx mlproof.cmx \
     misc.cmx index.cmx globals.cmx extension.cmx ext_induct.cmx expr.cmx \
     error.cmx eqrel.cmx prove.cmi
-checksum.cmo: checksum.cmi
-checksum.cmx: checksum.cmi
-versionnum.cmo: version.cmi versionnum.cmi
-versionnum.cmx: version.cmx versionnum.cmi
-main.cmo: watch.cmi versionnum.cmi version.cmi tptp.cmi prove.cmi \
+checksum.cmo : checksum.cmi
+checksum.cmx : checksum.cmi
+versionnum.cmo : version.cmi versionnum.cmi
+versionnum.cmx : version.cmx versionnum.cmi
+main.cmo : watch.cmi versionnum.cmi version.cmi tptp.cmi prove.cmi \
     progress.cmi print.cmi phrase.cmi parsezen.cmi parsetptp.cmi parsecoq.cmi \
     namespace.cmi mltoll.cmi lltoisar.cmi lltocoq.cmi llproof.cmi lexzen.cmi \
     lextptp.cmi lexcoq.cmi globals.cmi extension.cmi error.cmi eqrel.cmi \
     coqterm.cmi config.cmi checksum.cmi main.cmi
-main.cmx: watch.cmx versionnum.cmx version.cmx tptp.cmx prove.cmx \
+main.cmx : watch.cmx versionnum.cmx version.cmx tptp.cmx prove.cmx \
     progress.cmx print.cmx phrase.cmx parsezen.cmx parsetptp.cmx parsecoq.cmx \
     namespace.cmx mltoll.cmx lltoisar.cmx lltocoq.cmx llproof.cmx lexzen.cmx \
     lextptp.cmx lexcoq.cmx globals.cmx extension.cmx error.cmx eqrel.cmx \
     coqterm.cmx config.cmx checksum.cmx main.cmi
-version.cmi:
-config.cmi:
-misc.cmi:
-heap.cmi:
-globals.cmi:
-error.cmi:
-progress.cmi:
-namespace.cmi:
-expr.cmi:
-phrase.cmi: expr.cmi
-llproof.cmi: expr.cmi
-mlproof.cmi: expr.cmi
-watch.cmi: phrase.cmi llproof.cmi
-eqrel.cmi: mlproof.cmi expr.cmi
-index.cmi: mlproof.cmi expr.cmi
-print.cmi: phrase.cmi mlproof.cmi llproof.cmi expr.cmi
-step.cmi: mlproof.cmi expr.cmi
-node.cmi: mlproof.cmi expr.cmi
-extension.cmi: phrase.cmi node.cmi mlproof.cmi llproof.cmi expr.cmi
-mltoll.cmi: phrase.cmi mlproof.cmi llproof.cmi
-parsezen.cmi: phrase.cmi
-lexzen.cmi: parsezen.cmi
-parsetptp.cmi: phrase.cmi
-lextptp.cmi: parsetptp.cmi
-parsecoq.cmi: phrase.cmi
-lexcoq.cmi: parsecoq.cmi
-tptp.cmi: phrase.cmi
-coqterm.cmi: phrase.cmi llproof.cmi expr.cmi
-lltocoq.cmi: phrase.cmi llproof.cmi expr.cmi
-enum.cmi:
-isar_case.cmi:
-lltoisar.cmi: phrase.cmi llproof.cmi
-ext_focal.cmi:
-ext_tla.cmi:
-ext_recfun.cmi:
-ext_equiv.cmi:
-ext_induct.cmi:
-prove.cmi: mlproof.cmi expr.cmi
-checksum.cmi:
-versionnum.cmi:
-main.cmi:
-zenon.vo: zenon.v
-zenon_coqbool.vo: zenon_coqbool.v
-zenon_equiv.vo: zenon_equiv.v zenon.vo
-zenon_induct.vo: zenon_induct.v
-zenon_focal.vo: zenon_focal.v
+version.cmi :
+config.cmi :
+misc.cmi :
+heap.cmi :
+globals.cmi :
+error.cmi :
+progress.cmi :
+namespace.cmi :
+expr.cmi :
+phrase.cmi : expr.cmi
+llproof.cmi : expr.cmi
+mlproof.cmi : expr.cmi
+watch.cmi : phrase.cmi llproof.cmi
+eqrel.cmi : mlproof.cmi expr.cmi
+index.cmi : mlproof.cmi expr.cmi
+print.cmi : phrase.cmi mlproof.cmi llproof.cmi expr.cmi
+step.cmi : mlproof.cmi expr.cmi
+node.cmi : mlproof.cmi expr.cmi
+extension.cmi : phrase.cmi node.cmi mlproof.cmi llproof.cmi expr.cmi
+mltoll.cmi : phrase.cmi mlproof.cmi llproof.cmi
+parsezen.cmi : phrase.cmi
+lexzen.cmi : parsezen.cmi
+parsetptp.cmi : phrase.cmi
+lextptp.cmi : parsetptp.cmi
+parsecoq.cmi : phrase.cmi
+lexcoq.cmi : parsecoq.cmi
+tptp.cmi : phrase.cmi
+coqterm.cmi : phrase.cmi llproof.cmi expr.cmi
+lltocoq.cmi : phrase.cmi llproof.cmi expr.cmi
+enum.cmi :
+isar_case.cmi :
+lltoisar.cmi : phrase.cmi llproof.cmi
+ext_focal.cmi :
+ext_tla.cmi :
+ext_recfun.cmi :
+ext_equiv.cmi :
+ext_induct.cmi :
+prove.cmi : mlproof.cmi expr.cmi
+checksum.cmi :
+versionnum.cmi :
+main.cmi :
+zenon.vo zenon.glob zenon.v.beautified: zenon.v
+zenon_coqbool.vo zenon_coqbool.glob zenon_coqbool.v.beautified: zenon_coqbool.v
+zenon_equiv.vo zenon_equiv.glob zenon_equiv.v.beautified: zenon_equiv.v
+zenon_induct.vo zenon_induct.glob zenon_induct.v.beautified: zenon_induct.v
+zenon_focal.vo zenon_focal.glob zenon_focal.v.beautified: zenon_focal.v
