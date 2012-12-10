@@ -155,7 +155,7 @@ doc odoc docdir:
 .PHONY: clean
 clean:
 	cd doc; make clean
-	cd test; make clean
+	if test -d test; then (cd test; make clean); fi
 	rm -f .#*
 	rm -f *.cm* *.o *.vo *.annot *.output *.glob
 	rm -f parsezen.ml parsezen.mli lexzen.ml
