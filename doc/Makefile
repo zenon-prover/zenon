@@ -11,7 +11,9 @@ include ../.config_var
 
 DOCDIR_DIR=$(DOC_DIR)/$(PROJECT_NAME)
 
+# Only try to build doc if source files are present.
 all doc: $(OBJS)
+	@if test -f reference.tex; then make $(OBJS); fi
 
 reference.pdf: ${REFFILES}
 	pdflatex reference.tex
@@ -36,5 +38,5 @@ docdir: $(OBJS)
 
 clean:
 	rm -f *.aux *.dvi *.log *.toc
-	rm -f $(OBJS)
+		@if test -f reference.tex; then rm -f $(OBJS); fi
 	rm -f zenon-logo.png zenon-logo-small.png
