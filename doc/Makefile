@@ -12,7 +12,7 @@ include ../.config_var
 DOCDIR_DIR=$(DOC_DIR)/$(PROJECT_NAME)
 
 # Only try to build doc if source files are present.
-all doc: $(OBJS)
+all doc:
 	@if test -f reference.tex; then make $(OBJS); fi
 
 reference.pdf: ${REFFILES}
