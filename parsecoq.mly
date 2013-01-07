@@ -103,6 +103,7 @@ let mk_pairs e l =
   List.fold_left f e l
 ;;
 
+let mk_string s = evar ("\"" ^ s ^ "\"") ;;
 %}
 
 %token <string> IDENT
@@ -303,10 +304,12 @@ expr1:
       { evar ($1) }
   | NUM
       { eapp ($1, []) }
-
+  /* Added F. Pessaux, Makes Zenon parsing strings and considering them like
+     simple atoms. */
+  | STRING
+      { eapp ("$string", [mk_string $1]) }
   | LPAREN_ expr comma_expr_list RPAREN_
       { mk_pairs $2 $3 }
-
   | LPAREN_ expr STAR_ expr RPAREN_
       { eapp ("*", [$2; $4]) }
   | LPAREN_ expr PERCENT_ IDENT RPAREN_
