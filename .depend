@@ -171,8 +171,8 @@ prove.cmi : mlproof.cmi expr.cmi
 checksum.cmi :
 versionnum.cmi :
 main.cmi :
-zenon.vo zenon.glob zenon.v.beautified: zenon.v
-zenon_coqbool.vo zenon_coqbool.glob zenon_coqbool.v.beautified: zenon_coqbool.v
-zenon_equiv.vo zenon_equiv.glob zenon_equiv.v.beautified: zenon_equiv.v
-zenon_induct.vo zenon_induct.glob zenon_induct.v.beautified: zenon_induct.v
-zenon_focal.vo zenon_focal.glob zenon_focal.v.beautified: zenon_focal.v
+zenon.vo zenon.glob: zenon.v
+zenon_coqbool.vo zenon_coqbool.glob: zenon_coqbool.v
+zenon_equiv.vo zenon_equiv.glob: zenon_equiv.v
+zenon_induct.vo zenon_induct.glob: zenon_induct.v
+zenon_focal.vo zenon_focal.glob: zenon_focal.v

@@ -129,6 +129,7 @@ let rec trexpr env e =
       Capp (Cfix (f, ty, trexpr env e1), List.map (trexpr env) args)
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       Cifthenelse (trexpr env e1, trexpr env e2, trexpr env e3)
+  | Eapp ("$string", [Evar (v, _)], _) -> Cvar v
   | Eapp (f, args, _) -> Capp (Cvar f, List.map (trexpr env) args)
   | Enot (e1, _) -> Cnot (trexpr env e1)
   | Eand (e1, e2, _) -> Cand (trexpr env e1, trexpr env e2)
@@ -606,6 +607,8 @@ let pr_oc oc prefix t =
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
     | Capp (Cvar "=", [e1; e2]) ->
        bprintf b "(%a = %a)" pr e1 pr e2;  (* NOTE: spaces are needed *)
+    | Capp (Cvar "%", [e1; e2]) ->
+       bprintf b "(%a)%%%a" pr e1 pr e2
     | Capp (Cvar "=", args) -> bprintf b "(@eq _%a)" (pr_list pr) args;
     | Capp (t1, []) -> pr b t1;
     | Capp (Capp (t1, args1), args2) -> pr b (Capp (t1, args1 @ args2));

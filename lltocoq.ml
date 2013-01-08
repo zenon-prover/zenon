@@ -89,6 +89,10 @@ let rec p_expr oc e =
           p_expr expr (p_list " " p_expr "") l
   | Eapp ("FOCAL.ifthenelse", [e1; e2; e3], _) ->
       poc "(if %a then %a else %a)" p_expr e1 p_expr e2 p_expr e3;
+  | Eapp ("$string", [Evar (v, _)], _) ->
+      poc "%s" v;
+  | Eapp ("%", [e1; e2], _) ->
+      poc "%a%%%a" p_expr e1 p_expr e2;
   | Eapp (f, l, _) ->
       poc "(%s%a)" f p_expr_list l;
   | Enot (e, _) ->
