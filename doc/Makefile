@@ -1,19 +1,13 @@
 #  Copyright 2006 INRIA
-#  $Id: Makefile,v 1.3 2010-02-09 21:08:36 weis Exp $
 
 REFFILES = reference.tex macros.tex \
 	   install.tex options.tex input-zen.tex input-tptp.tex \
 	   input-coq.tex messages.tex
 
-OBJS=reference.pdf
-
 include ../.config_var
 
-DOCDIR_DIR=$(DOC_DIR)/$(PROJECT_NAME)
-
 # Only try to build doc if source files are present.
-all doc:
-	@if test -f reference.tex; then make $(OBJS); fi
+doc: reference.pdf
 
 reference.pdf: ${REFFILES}
 	pdflatex reference.tex
@@ -30,13 +24,6 @@ zenon-logo.png: zenon-logo.ps
 zenon-logo-small.png: zenon-logo.png
 	${CONVERT} zenon-logo.png -resize 10% zenon-logo-small.png
 
-docdir: $(OBJS)
-	mkdir -p $(DOCDIR_DIR) && \
-	if ! test -z $(OBJS); then \
-	  cp -p $(OBJS) $(DOCDIR_DIR)/; \
-	fi
-
 clean:
 	rm -f *.aux *.dvi *.log *.toc
-		@if test -f reference.tex; then rm -f $(OBJS); fi
-	rm -f zenon-logo.png zenon-logo-small.png
+	rm -f $(OBJS) zenon-logo.png zenon-logo-small.png

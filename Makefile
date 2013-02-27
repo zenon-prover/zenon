@@ -1,17 +1,16 @@
 #  Copyright 1997 INRIA
-#  $Id: Makefile,v 1.79 2012-10-15 14:36:07 pessaux Exp $
 
 # Reading configuration settings.
-include ../.config_var
 include .config_var
+# Variables CAMLBYT, CAMLBIN, CAMLLEX, CAMLYACC CAMLDEP, COQC, etc. are
+# defined at configuration time, and their value is recorded in .config_var
 
-CAMLFLAGS = -warn-error $(WARN_ERROR)
+# Staging directory for package managers
+DESTDIR =
 
-# Variables CAMLBYT, CAMLBIN, CAMLLEX, CAMLYACC CAMLDEP CAMLDOC are
-# defined at configuration time, and their value is recorded in ../.config_var
-# and .config_var.
+CAMLFLAGS = -warn-error "$(WARN_ERROR)"
+
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
-
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 
 # SOURCES specifies both the list of source files and the set of
@@ -85,13 +84,18 @@ zenon: zenon.byt
 
 .PHONY: install
 install:
-	$(SUDO) mkdir -p $(INSTALL_BIN_DIR)
-	$(SUDO) cp zenon $(INSTALL_BIN_DIR)/
-	$(SUDO) mkdir -p $(INSTALL_LIB_DIR)
-	$(SUDO) cp $(COQSRC) $(INSTALL_LIB_DIR)/
+	mkdir -p "$(DESTDIR)$(INSTALL_BIN_DIR)"
+	cp zenon "$(DESTDIR)$(INSTALL_BIN_DIR)/"
+	mkdir -p "$(DESTDIR)$(INSTALL_LIB_DIR)"
+	cp $(COQSRC) "$(DESTDIR)$(INSTALL_LIB_DIR)/"
 	for i in $(COQOBJ); \
-	  do [ ! -f $$i ] || $(SUDO) cp $$i $(INSTALL_LIB_DIR)/; \
+	  do [ ! -f $$i ] || cp $$i "$(DESTDIR)$(INSTALL_LIB_DIR)/"; \
 	done
+
+.PHONY: uninstall
+uninstall:
+	rm -f "$(DESTDIR)$(BIN_DIR)/zenon$(EXE)"
+	rm -rf "$(DESTDIR)$(LIB_DIR)/zenon"
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
@@ -149,13 +153,13 @@ dist: $(ALLSRC)
 	cd dist && tar cf - zenon | gzip >../zenon.tar.gz
 
 .PHONY: doc odoc docdir
-doc odoc docdir:
+doc docdir:
 	(cd doc && $(MAKE) $@)
 
 .PHONY: clean
 clean:
 	cd doc; make clean
-	if test -d test; then (cd test; make clean); fi
+	[ ! -d test ] || (cd test; make clean)
 	rm -f .#*
 	rm -f *.cm* *.o *.vo *.annot *.output *.glob
 	rm -f parsezen.ml parsezen.mli lexzen.ml
@@ -168,6 +172,6 @@ clean:
 .PHONY: depend
 depend: $(IMPL) $(INTF) $(COQSRC)
 	$(CAMLDEP) $(IMPL) $(INTF) >.depend
-	$(COQDEP) $(COQSRC) >>.depend
+	$(COQDEP) -I . $(COQSRC) >>.depend
 
 include .depend

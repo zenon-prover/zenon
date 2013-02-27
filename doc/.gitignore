@@ -1,2 +1,4 @@
-.svn
+*.aux
+*.log
+*.toc
 reference.pdf
