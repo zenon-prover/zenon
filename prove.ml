@@ -252,7 +252,7 @@ and decomp_disj neg accu f =
   | _ -> f :: accu
 ;;
 
-let newnodes_absurd st fm g =
+let newnodes_absurd st fm g _ =
   match fm with
   | Enot (p, _) when Index.member p -> add_node st {
       nconc = [fm; p];
@@ -271,7 +271,7 @@ let newnodes_absurd st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_closure st fm g =
+let newnodes_closure st fm g _ =
   match fm with
   | Efalse -> add_node st {
       nconc = [fm];
@@ -325,7 +325,7 @@ let newnodes_closure st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_eq_str st fm g =
+let newnodes_eq_str st fm g _ =
   let mk_node (st, b) rule e1 s1 e2 s2 eq =
     if Expr.equal s1 s2 then (st, b) else
     add_node st {
@@ -368,7 +368,7 @@ let newnodes_eq_str st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_jtree st fm g =
+let newnodes_jtree st fm g _ =
   match fm with
   | Eand _ | Enot (Eor _, _) | Enot (Eimply _, _)
     when is_conj fm 3 == 0 ->
@@ -393,7 +393,7 @@ let newnodes_jtree st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_alpha st fm g =
+let newnodes_alpha st fm g _ =
   match fm with
   | Enot (Enot (a, _), _) ->
       add_node st {
@@ -430,7 +430,7 @@ let newnodes_alpha st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_beta st fm g =
+let newnodes_beta st fm g _ =
   match fm with
   | Eor (a, b, _) ->
       add_node st {
@@ -506,7 +506,7 @@ let interferes env vs =
 
 let has_free_var v e = List.mem v (get_fv e);;
 
-let newnodes_delta st fm g =
+let newnodes_delta st fm g _ =
   match fm with
   | Eex (v, t, p, _) ->
      let h = substitute [(v, etau (v, t, p))] p in
@@ -530,7 +530,7 @@ let newnodes_delta st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_gamma st fm g =
+let newnodes_gamma st fm g _ =
   match fm with
   | Eall (v, t, p, _) ->
       let w = emeta (fm) in
@@ -555,7 +555,7 @@ let newnodes_gamma st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_unfold st fm g =
+let newnodes_unfold st fm g _ =
   let mk_unfold ctx p args =
     try
       let (d, params, body) = Index.get_def p in
@@ -652,7 +652,7 @@ let orient_meta m1 m2 =
   else List.length l1 > List.length l2
 ;;
 
-let newnodes_refl st fm g =
+let newnodes_refl st fm g _ =
   match fm with
   | Enot (Eapp (s, [e1; e2], _), _) when s <> "=" && Eqrel.refl s ->
       add_node st {
@@ -672,7 +672,7 @@ let newnodes_refl st fm g =
   | _ -> st, false
 ;;
 
-let newnodes_match_congruence st fm g =
+let newnodes_match_congruence st fm g _ =
   match fm with
   | Enot (Eapp ("=", [Eapp ("$string", [s1], _);
                       Eapp ("$string", [s2], _)], _), _)
@@ -772,7 +772,7 @@ let preunif_g e1 (e2, g2) =
   List.map (fun (m, e) -> (m, e, g2)) (preunify e1 e2)
 ;;
 
-let newnodes_match_trans st fm g =
+let newnodes_match_trans st fm g _ =
   try
     let fmg = (fm, g) in
     match fm with
@@ -849,7 +849,7 @@ let newnodes_match_trans st fm g =
   with Index.No_head -> st, false
 ;;
 
-let newnodes_match_sym st fm g =
+let newnodes_match_sym st fm g _ =
   let fmg = (fm, g) in
   match fm with
   | Enot (Eapp (s, [a1; a2], _), _) when s <> "=" && Eqrel.sym s ->
@@ -861,7 +861,7 @@ let newnodes_match_sym st fm g =
   | _ -> (st, false)
 ;;
 
-let newnodes_match st fm g =
+let newnodes_match st fm g _ =
   let fmg = (fm, g) in
   match fm with
   | Enot (Eapp (s, _, _), _) when s <> "=" ->
@@ -971,7 +971,7 @@ let newnodes_goodmatch st fm g =
 
 end goodmatch stuff *)
 
-let newnodes_preunif st fm g =
+let newnodes_preunif st fm g _ =
   match fm with
   | Enot (Eapp (s, _, _), _) ->
       let do_match st (p, g2) =
@@ -988,7 +988,7 @@ let newnodes_preunif st fm g =
   | _ -> (st, false)
 ;;
 
-let newnodes_useless st fm g =
+let newnodes_useless st fm g _ =
   match fm with
   | Evar _ | Enot (Evar _, _)
   | Etau _ | Enot (Etau _, _)
@@ -1010,40 +1010,41 @@ let newnodes_useless st fm g =
   | _ -> (st, false)
 ;;
 
+let newnodes_extensions state fm g fms =
+  let (newnodes, stop) = Node.relevant (Extension.newnodes fm g fms) in
+  let insert_node s n = {(*s with*) queue = insert s.queue n} in
+  let state2 = List.fold_left insert_node state newnodes in
+  (state2, stop)
+;;
+
+let prove_rules = [
+  newnodes_absurd;
+  newnodes_closure;
+  newnodes_extensions;
+  newnodes_jtree;
+  newnodes_alpha;
+  newnodes_beta;
+  newnodes_eq_str;
+  newnodes_delta;
+  newnodes_gamma;
+  newnodes_unfold;
+  newnodes_refl;
+  newnodes_preunif;
+  newnodes_match_congruence;
+  newnodes_match_trans;
+  newnodes_match_sym;
+  newnodes_match;
+  newnodes_useless;
+];;
+
 (* TODO permettre aux extensions de modifier l'etat ? *)
 
-let add_nodes st fm g fms =
+let add_nodes rules st fm g fms =
   let combine (state, stop) f =
-    if stop then (state, true) else f state fm g
+    if stop then (state, true) else f state fm g fms
   in
-  let (st1, stop1) =
-    List.fold_left combine (st, false) [
-      newnodes_absurd;
-      newnodes_closure;
-    ]
-  in
-  let (newnodes2, stop2) = Node.relevant (Extension.newnodes fm g fms) in
-  let insert_node s n = {(*s with*) queue = insert s.queue n} in
-  let st2 = List.fold_left insert_node st1 newnodes2 in
-  let (st3, stop3) =
-    List.fold_left combine (st2, stop2) [
-      newnodes_jtree;
-      newnodes_alpha;
-      newnodes_beta;
-      newnodes_eq_str;
-      newnodes_delta;
-      newnodes_gamma;
-      newnodes_unfold;
-      newnodes_refl;
-      newnodes_preunif;
-      newnodes_match_congruence;
-      newnodes_match_trans;
-      newnodes_match_sym;
-      newnodes_match;
-      newnodes_useless;
-    ]
-  in
-  st3
+  let (st1, _) = List.fold_left combine (st, false) rules in
+  st1
 ;;
 
 let rec reduce_list accu l =
@@ -1311,56 +1312,68 @@ let progress () =
   if !progress_counter < 0 then periodic '*';
 ;;
 
-let rec refute_aux stk st forms =
-  progress ();
+let prove_fail () =
+  let is_logic e =
+    match e with
+    | Eand _ | Eor _ | Eimply _ | Eequiv _ | Efalse | Etrue
+    | Eall _ | Eex _ | Etau _ | Elam _ | Enot (Enot _, _)
+    -> true
+    | _ -> false
+  in
+  let f (e, _) =
+    match e with
+    | _ when is_logic e -> ()
+    | Enot (e1, _) when is_logic e1 -> ()
+    | _ -> Print.expr_soft (Print.Chan stdout) e; printf "\n";
+  in
+  if !Globals.debug_flag then Step.forms "NO PROOF" (Index.get_all ());
+  Error.err "exhausted search space without finding a proof";
+  flush stderr;
+  printf "(* Current branch:\n";
+  List.iter f (Index.get_all ());
+  printf "*)\n";
+  raise NoProof
+;;
+
+type rule =
+  state -> expr -> int -> (expr * int) list -> state * bool
+and params = {
+  rules : rule list;
+  fail : unit -> branch_state;
+  progress : unit -> unit;
+  end_progress : string -> unit;
+};;
+
+let rec refute_aux prm stk st forms =
+  prm.progress ();
   match forms with
   | [] ->
       if good_head st.queue then begin
         match Index.search_proof () with
-        | Some p -> p.mlrefc <- p.mlrefc + 1; unwind stk (Closed p)
-        | None -> next_node stk st
+        | Some p -> p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p)
+        | None -> next_node prm stk st
       end else begin
-        next_node stk st
+        next_node prm stk st
       end
   | (Etrue, _) :: fms
   | (Enot (Efalse, _), _) :: fms
-    -> refute_aux stk st fms
+    -> refute_aux prm stk st fms
   | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
-      refute_aux stk st fms
+      refute_aux prm stk st fms
   | (fm, g) :: fms ->
       Index.add fm g;
       Extension.add_formula fm;
-      refute_aux stk (add_nodes st fm g fms) fms
+      refute_aux prm stk (add_nodes prm.rules st fm g fms) fms
 
-and refute stk st forms =
+and refute prm stk st forms =
   Step.forms "refute" forms;
-  refute_aux stk st forms
+  refute_aux prm stk st forms
 
-and next_node stk st =
-  progress ();
+and next_node prm stk st =
+  prm.progress ();
   incr Globals.inferences;
   match remove st.queue with
-  | None ->
-      let is_logic e =
-        match e with
-        | Eand _ | Eor _ | Eimply _ | Eequiv _ | Efalse | Etrue
-        | Eall _ | Eex _ | Etau _ | Elam _ | Enot (Enot _, _)
-        -> true
-        | _ -> false
-      in
-      let f (e, _) =
-        match e with
-        | _ when is_logic e -> ()
-        | Enot (e1, _) when is_logic e1 -> ()
-        | _ -> Print.expr_soft (Print.Chan stdout) e; printf "\n";
-      in
-      if !Globals.debug_flag then Step.forms "NO PROOF" (Index.get_all ());
-      Error.err "exhausted search space without finding a proof";
-      flush stderr;
-      printf "(* Current branch:\n";
-      List.iter f (Index.get_all ());
-      printf "*)\n";
-      raise NoProof
+  | None -> prm.fail ()
   | Some (n, q1) ->
       let st1 = {(*st with*) queue = q1} in
       match reduce_branches n with
@@ -1370,10 +1383,10 @@ and next_node stk st =
           next_branch stk n2 st1 brstate
 *)
          let brstate = Array.make (Array.length n.nbranches) Open in
-         next_branch stk n1 st1 brstate
-      | None -> next_node stk st1
+         next_branch prm stk n1 st1 brstate
+      | None -> next_node prm stk st1
 
-and next_branch stk n st brstate =
+and next_branch prm stk n st brstate =
   Step.rule "next_branch" n.nrule;
   match find_open_branch n brstate with
   | Some i ->
@@ -1381,9 +1394,10 @@ and next_branch stk n st brstate =
       incr cur_depth;
       if !cur_depth > !top_depth then top_depth := !cur_depth;
       if !cur_depth > !max_depth then begin
-        unwind stk Backtrack
+        unwind prm stk Backtrack
       end else begin
-        refute (fr :: stk) st (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
+        refute prm (fr :: stk) st
+               (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
       end
   | None ->
 (*
@@ -1391,10 +1405,10 @@ and next_branch stk n st brstate =
       let result = make_result n1 brstate1 in
 *)
       let result = make_result n brstate in
-      unwind stk result
+      unwind prm stk result
 
-and unwind stk res =
-  progress ();
+and unwind prm stk res =
+  prm.progress ();
   decr cur_depth;
   match stk with
   | [] -> res
@@ -1409,11 +1423,11 @@ and unwind stk res =
       List.iter f (List.rev fr.node.nbranches.(fr.curbr));
       begin match res with
       | Closed p when disjoint fr.node.nbranches.(fr.curbr) p.mlconc ->
-          unwind stk1 res
-      | Backtrack -> unwind stk1 res
+          unwind prm stk1 res
+      | Backtrack -> unwind prm stk1 res
       | Closed _ ->
           fr.brst.(fr.curbr) <- res;
-          next_branch stk1 fr.node fr.state fr.brst
+          next_branch prm stk1 fr.node fr.state fr.brst
       | Open -> assert false
       end;
 ;;
@@ -1440,18 +1454,18 @@ let ticker finished () =
   if not finished then periodic '#';
 ;;
 
-let rec iter_refute rl =
-  match refute [] {queue = empty} rl with
+let rec iter_refute prm rl =
+  match refute prm [] {queue = empty} rl with
   | Backtrack ->
       max_depth := 2 * !max_depth;
       Progress.do_progress begin fun () ->
         eprintf "increase max_depth to %d\n" !max_depth;
       end '*';
-      iter_refute rl;
+      iter_refute prm rl;
   | x -> x
 ;;
 
-let prove defs l =
+let prove prm defs l =
   if !Globals.random_flag then begin
     rndstate := Random.State.make [| !Globals.random_seed |];
     max_depth := 100;
@@ -1464,14 +1478,21 @@ let prove defs l =
   cur_depth := 0;
   top_depth := 0;
   try
-    match iter_refute rl with
+    match iter_refute prm rl with
     | Closed p ->
         Gc.delete_alarm al;
         ticker true ();
-        Progress.end_progress "";
+        prm.end_progress "";
         p
     | Open | Backtrack -> assert false
   with e ->
-    Progress.end_progress " no proof";
+    prm.end_progress " no proof";
     raise e
 ;;
+
+let default_params = {
+  rules = prove_rules;
+  fail = prove_fail;
+  progress = progress;
+  end_progress = Progress.end_progress;
+};;

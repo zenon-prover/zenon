@@ -342,7 +342,7 @@ let main () =
       flush stderr;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
-    let proof = Prove.prove defs hyps in
+    let proof = Prove.prove Prove.default_params defs hyps in
     if not !quiet_flag then begin
       printf "(* PROOF-FOUND *)\n";
       flush stdout;

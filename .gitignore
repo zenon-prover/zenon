@@ -1,5 +1,6 @@
 *.cm[iox]
 *.o
+*.annot
 *.vo
 *.glob
 .config_var
