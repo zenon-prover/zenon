@@ -3,8 +3,8 @@ Version.add "$Id: versionnum.ml,v 1.90 2012-05-09 13:55:39 doligez Exp $";;
 
 open Printf;;
 
-let number = 252;;      (* strictly increasing *)
-let date = "2012-05-09";;
+let number = 253;;      (* strictly increasing *)
+let date = "2013-03-04";;
 
 let major = 0;;
 let minor = 7;;

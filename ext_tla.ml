@@ -601,6 +601,30 @@ let newnodes_prop e g =
      | Invalid_argument "check_record_labels" -> []
      | Exit -> []
      end
+  | Enot (Eapp ("=", [e1; Eapp ("TLA.record", args, _) as e2], _), _) ->
+     let l_args = mk_pairs args in
+     let mk_h (l, arg) =
+       enot (eapp ("=", [eapp ("TLA.fapply", [e1; l]); arg]))
+     in
+     let hs = List.map mk_h l_args in
+     let lbls = eapp ("TLA.set", List.map fst l_args) in
+     let h0 = enot (eapp ("TLA.isAFcn", [e1])) in
+     let h1 = enot (eapp ("=", [eapp ("TLA.DOMAIN", [e1]); lbls])) in
+     let hh = h0 :: h1 :: hs in
+     let branches = Array.of_list (List.map (fun x -> [x]) hh) in
+     mknode Prop "neq_record" (e :: e1 :: e2 :: hh) branches
+  | Enot (Eapp ("=", [Eapp ("TLA.record", args, _) as e2; e1], _), _) ->
+     let l_args = mk_pairs args in
+     let mk_h (l, arg) =
+       enot (eapp ("=", [eapp ("TLA.fapply", [e1; l]); arg]))
+     in
+     let hs = List.map mk_h l_args in
+     let lbls = eapp ("TLA.set", List.map fst l_args) in
+     let h0 = enot (eapp ("TLA.isAFcn", [e1])) in
+     let h1 = enot (eapp ("=", [eapp ("TLA.DOMAIN", [e1]); lbls])) in
+     let hh = h0 :: h1 :: hs in
+     let branches = Array.of_list (List.map (fun x -> [x]) hh) in
+     mknode Prop "record_neq" (e :: e1 :: e2 :: hh) branches
   | Eapp ("TLA.in", [e1; (Eapp ("TLA.recordset", args, _) as e2)], _) ->
      let l_args = mk_pairs args in
      let mk_h (l, arg) = eapp ("TLA.in", [eapp ("TLA.fapply", [e1; l]); arg]) in
@@ -1328,6 +1352,10 @@ let to_llargs r =
   | Ext (_, "record_neq_match", c :: hs) ->
      ("zenon_record_neq_match", [], [c], List.map (fun x -> [x]) hs)
   | Ext (_, "record_eq_mismatch", _) -> close r
+  | Ext (_, "neq_record", c :: e1 :: e2 :: hs) ->
+     ("zenon_neq_record", [e1; e2], [c], List.map (fun x -> [x]) hs)
+  | Ext (_, "record_neq", c :: e1 :: e2 :: hs) ->
+     ("zenon_record_neq", [e1; e2], [c], List.map (fun x -> [x]) hs)
   | Ext (_, "in_recordset", c :: e1 :: e2 :: hs) ->
      ("zenon_in_recordset", [e1; e2], [c], [ hs ])
   | Ext (_, "notin_recordset", c :: e1 :: e2 :: hs) ->

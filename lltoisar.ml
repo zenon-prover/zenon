@@ -551,7 +551,14 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "show FALSE\n";
      iprintf i oc "using %s by auto\n" (hname hyps e);
   | Rextension (_, "zenon_record_eq_mismatch", _, _, _) -> assert false
-  | Rextension (_, "zenon_record_neq_match", _, _, _) -> (*FIXME TODO*) assert false
+  | Rextension (_, "zenon_record_neq_match", _, _, _) ->
+     iprintf i oc "sorry\n" (* FIXME TODO *)
+  | Rextension (_, "zenon_neq_record", [e1; e2], [c], h0 :: h1 :: hs) ->
+     iprintf i oc "sorry\n" (* FIXME TODO *)
+  | Rextension (_, "zenon_neq_record", _, _, _) -> assert false
+  | Rextension (_, "zenon_record_neq", [e1; e2], [c], h0 :: h1 :: hs) ->
+     iprintf i oc "sorry\n" (* FIXME TODO *)
+  | Rextension (_, "zenon_record_neq", _, _, _) -> assert false
 
   | Rextension (_, "zenon_in_recordset", [e1; e2], [c], [h0 :: h1 :: hs]) ->
      let t = match proof.hyps with [t] -> t | _ -> assert false in
