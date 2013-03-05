@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: main.ml,v 1.55 2012-04-24 17:32:04 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 
@@ -79,7 +79,7 @@ let cvs_version () =
 ;;
 
 let files = ref [];;
-let add_file s = files := s :: !files;;
+let input_file s = files := s :: !files;;
 
 let set_random seed =
   random_flag := true;
@@ -88,10 +88,10 @@ let set_random seed =
 
 let print_libdir () = Printf.printf "%s\n%!" Config.libdir; exit 0
 
-let umsg = "Usage: zenon [options] <file>";;
+let usage_msg = "Usage: zenon [options] <file>";;
 
-let rec argspec = [
-  "-", Arg.Unit (fun () -> add_file "-"),
+let argspec = [
+  "-", Arg.Unit (fun () -> input_file "-"),
     "                  read input from stdin";
   "-context", Arg.Set ctx_flag,
            "           provide context for checking the proof independently";
@@ -100,10 +100,6 @@ let rec argspec = [
      "                 debug mode";
   "-errmsg", Arg.String Error.set_header,
           "<message>   prefix warnings and errors with <message>";
-  "-help", Arg.Unit print_usage,
-        "              print this option list and exit";
-  "--help", Arg.Unit print_usage,
-         "             print this option list and exit";
   "-I", Arg.String (fun x -> include_path := x :: !include_path),
      " <dir>           add <dir> to the include path";
   "-I-", Arg.Unit (fun () -> include_path := []),
@@ -123,14 +119,14 @@ let rec argspec = [
        "<s>[kMGT]/<i>[kMGT]/<t>[smhd] set size, step, and time limits"
        ^ " (see below)";
   "-max-size", Arg.String (int_arg size_limit),
-            "<s>[kMGT] limit heap size to <s> kilo/mega/giga/tera word"
-            ^ " (default 100M)";
+            "<s>[kMGT] limit heap size to <s> kilo/mega/giga/tera byte"
+            ^ " (1G)";
   "-max-step", Arg.String (int_arg step_limit),
             "<i>[kMGT] limit number of steps to <i> kilo/mega/giga/tera"
-            ^ " (default 10k)";
+            ^ " (10k)";
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
-            ^ " (default 5m)";
+            ^ " (5m)";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "              print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
@@ -181,19 +177,13 @@ let rec argspec = [
         "<file>        output errors and warnings to <file> instead of stderr";
   "-x", Arg.String Extension.activate,
      "<ext>            activate extension <ext>"
-]
+];;
 
-and print_usage () =
-  Arg.usage argspec umsg;
+let print_usage () =
+  Arg.usage argspec usage_msg;
   eprintf "The default include path is the following:\n";
   List.iter (fun x -> eprintf "  %s\n" x) !include_path;
   exit 0;
-;;
-
-Extension.activate "recfun";;
-
-try Arg.parse argspec add_file umsg
-with Not_found -> exit 2
 ;;
 
 let do_exit code = exit (code + if !Error.got_warning then 100 else 0);;
@@ -292,12 +282,6 @@ let parse_file f =
   with Sys_error (msg) -> Error.err msg; do_exit 4;
 ;;
 
-Gc.set {(Gc.get ()) with
-        Gc.minor_heap_size = 1_000_000;
-        Gc.major_heap_increment = 1_000_000;
-       }
-;;
-
 let rec extract_strong accu phr_dep =
   match phr_dep with
   | [] -> accu
@@ -313,9 +297,13 @@ let optim p =
 ;;
 
 let main () =
+  Gc.set {(Gc.get ()) with
+          Gc.minor_heap_size = 1_000_000;
+          Gc.major_heap_increment = 1_000_000;
+         };
   let file = match !files with
              | [f] -> f
-             | _ -> Arg.usage argspec umsg; exit 2
+             | _ -> Arg.usage argspec usage_msg; exit 2
   in
   let (th_name, phrases_dep) = parse_file file in
   begin match !proof_level with
@@ -388,9 +376,15 @@ let main () =
   do_exit !retcode
 ;;
 
-try main ()
-with
-| Error.Abort -> do_exit 11;
-| e -> eprintf "Zenon error: uncaught exception %s\n" (Printexc.to_string e);
-       do_exit 14;
+let parse_command_line argspec =
+  try Arg.parse argspec input_file usage_msg
+  with Not_found -> exit 2
+;;
+
+let do_main () =
+  try main ()
+  with
+  | Error.Abort -> do_exit 11;
+  | e -> eprintf "Zenon error: uncaught exception %s\n" (Printexc.to_string e);
+         do_exit 14;
 ;;

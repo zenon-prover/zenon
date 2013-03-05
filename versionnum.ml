@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: versionnum.ml,v 1.90 2012-05-09 13:55:39 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 

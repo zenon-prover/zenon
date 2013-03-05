@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: lltoisar.ml,v 1.45 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 

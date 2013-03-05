@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_tla.ml,v 1.56 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 (* Extension for TLA+ : set theory. *)
 

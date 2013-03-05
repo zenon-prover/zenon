@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: prove.ml,v 1.69 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Misc;;
@@ -1293,7 +1293,8 @@ let periodic c =
     flush stderr;
     raise LimitsExceeded;
   end;
-  if float heap_size > !Globals.size_limit then begin
+  if float heap_size *. float Sys.word_size /. 8. > !Globals.size_limit
+  then begin
     Progress.end_progress "";
     Error.err "could not find a proof within the memory size limit";
     flush stderr;
