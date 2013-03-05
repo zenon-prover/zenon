@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: coqterm.ml,v 1.61 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Llproof;;

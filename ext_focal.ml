@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: ext_focal.ml,v 1.32 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 (* Extension for Coq's "bool" type, as used in focal. *)
 (* Symbols:

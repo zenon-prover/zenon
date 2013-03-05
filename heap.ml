@@ -1,5 +1,5 @@
 (*  Copyright 2001 INRIA  *)
-Version.add "$Id: heap.ml,v 1.5 2005-11-15 15:02:26 doligez Exp $";;
+Version.add "$Id$";;
 
 type 'a tree =
   | Node of 'a * 'a tree * 'a tree

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: llproof.ml,v 1.18 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 

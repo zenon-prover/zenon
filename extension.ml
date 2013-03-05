@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: extension.ml,v 1.14 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id$";;
 
 open Mlproof;;
 open Printf;;

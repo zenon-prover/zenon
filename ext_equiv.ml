@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: ext_equiv.ml,v 1.10 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id$";;
 
 (* Extension for trees of equivalences and negations. *)
 

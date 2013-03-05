@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: step.ml,v 1.6 2005-11-13 22:49:11 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 

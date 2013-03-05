@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: eqrel.ml,v 1.11 2007-07-31 13:09:05 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Mlproof;;

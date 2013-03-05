@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: watch.ml,v 1.16 2012-04-11 18:27:27 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 

@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: ext_induct.ml,v 1.17 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching

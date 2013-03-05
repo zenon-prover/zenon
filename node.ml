@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: node.ml,v 1.17 2009-08-20 12:08:03 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Printf;;

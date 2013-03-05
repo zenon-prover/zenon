@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: namespace.ml,v 1.4 2008-10-09 13:21:30 doligez Exp $";;
+Version.add "$Id$";;
 
 let prefix = "zenon_";;
 

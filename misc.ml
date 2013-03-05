@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id: misc.ml,v 1.21 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id$";;
 
 
 (* functions missing from the standard library *)

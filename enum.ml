@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: enum.ml,v 1.2 2009-10-07 12:20:59 doligez Exp $";;
+Version.add "$Id$";;
 
 type lexeme =
   | String of string

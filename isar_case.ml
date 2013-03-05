@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: isar_case.ml,v 1.5 2010-05-10 14:37:18 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 

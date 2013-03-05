@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mlproof.ml,v 1.13 2009-08-20 18:38:14 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Printf;;

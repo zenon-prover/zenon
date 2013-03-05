@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-let myvers = "$Id: version.ml,v 1.66 2008-10-22 11:51:04 doligez Exp $";;
+let myvers = "$Id$";;
 
 open Printf;;
 

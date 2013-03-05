@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: index.ml,v 1.17 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Misc;;

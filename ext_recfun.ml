@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: ext_recfun.ml,v 1.4 2012-02-24 14:31:28 doligez Exp $";;
+Version.add "$Id$";;
 
 (* Extension for recursive function definitions. *)
 

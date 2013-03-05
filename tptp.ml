@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: tptp.ml,v 1.19 2012-04-24 17:32:04 doligez Exp $";;
+Version.add "$Id$";;
 
 open Printf;;
 

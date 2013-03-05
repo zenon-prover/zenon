@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: mltoll.ml,v 1.56 2012-04-11 18:27:26 doligez Exp $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Misc;;
