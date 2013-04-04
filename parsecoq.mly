@@ -212,6 +212,8 @@ let mk_string s = evar ("\"" ^ s ^ "\"") ;;
 file:
   | hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ EOF
       { ($3, (Hyp (goal_name, enot $5, 0), false) :: $1) }
+  | proof_head hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ ENDPROOF EOF
+      { ($4, (Hyp (goal_name, enot $6, 0), false) :: $2) }
   | expr hyp_def_list EOF
       { (* Error.warn "deprecated input format"; *)
         (thm_default_name, (Hyp (goal_name, enot $1, 0), false) :: $2) }
