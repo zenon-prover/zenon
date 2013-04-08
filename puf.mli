@@ -56,16 +56,6 @@ module type ID = sig
   val get_id : t -> int
 end
 
-(** {2 Curryfied terms} *)
-
-module CurryfiedTerm : sig
-  type t
-    (** A curryfied term *)
-
-  val mk_const : int -> t
-  val mk_app : t -> t -> t
-end
-
 (** {2 Persistent Union-Find} *)
 
 module type S = sig
