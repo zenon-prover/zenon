@@ -142,11 +142,21 @@ module type S = sig
         union-find structure [uf]. By default, [find uf a = a]. *)
 
   val union : t -> elt -> elt -> t
-    (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
+    (** [union uf a b] returns an update of [uf] where [find a = find b].
+        May raise Inconsistent. *)
+
+  val distinct : t -> elt -> elt -> t
+    (** Ensure that the two elements are distinct. May raise Inconsistent *)
+
+  val must_be_distinct : t -> elt -> elt -> bool
+    (** Should the two elements be distinct? *)
 
   val iter_equiv_class : t -> elt -> (elt -> unit) -> unit
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
         is congruent to [a], including [a] itself. *)
+
+  val inconsistent : t -> (elt * elt) option
+    (** Check whether the UF is inconsistent *)
 end
 
 module Make(X : ID) : S with type elt = X.t = struct
@@ -155,14 +165,18 @@ module Make(X : ID) : S with type elt = X.t = struct
   type t = {
     mutable parent : int PArray.t;      (* idx of the parent, with path compression *)
     mutable elt : elt option PArray.t;  (* ID -> element *)
+    distinct : int list PArray.t;       (* repr -> list of inconsistent IDs *)
     next : int PArray.t;                (* linked list of representative class *)
+    inconsistent : (elt * elt) option;  (* is the UF inconsistent? *)
   } (** An instance of the union-find, ie a set of equivalence classes *)
 
   (** Create a union-find of the given size. *)
   let create size =
     { parent = PArray.init size (fun i -> i);
       elt = PArray.make size None;
+      distinct = PArray.make size [];
       next = PArray.init size (fun i -> i);
+      inconsistent = None;
     }
 
   (* ensure the arrays are big enough for [id], and set [elt.(id) <- elt] *)
@@ -172,6 +186,7 @@ module Make(X : ID) : S with type elt = X.t = struct
       let len = id + (id / 2) in
       PArray.extend_init uf.parent len (fun i -> i);
       PArray.extend uf.elt len None;
+      PArray.extend uf.distinct len [];
       PArray.extend_init uf.next len (fun i -> i);
     end;
     match PArray.get uf.elt id with
@@ -203,6 +218,8 @@ module Make(X : ID) : S with type elt = X.t = struct
 
   (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
   let union uf a b =
+    (if uf.inconsistent <> None
+      then raise (Invalid_argument "inconsistent uf"));
     let ia = X.get_id a in
     let ib = X.get_id b in
     ensure uf ia a;
@@ -220,7 +237,50 @@ module Make(X : ID) : S with type elt = X.t = struct
         let next_b = PArray.get uf.next ib' in
         let next = PArray.set uf.next ia' next_b in
         let next = PArray.set next ib' next_a in
-        { uf with parent; next; }
+        (* inconsistency check *)
+        let inconsistent =
+          (* list of equivalence classes <> a *)
+          let distinct_a = PArray.get uf.distinct ia' in
+          if List.exists (fun id -> find_root uf id = ib') distinct_a
+            then Some (a, b)
+            else None
+        in
+        (* merge 'distinct' lists: distinct(b) <- distinct(b)+distinct(a) *)
+        let l = List.rev_append (PArray.get uf.distinct ia') (PArray.get uf.distinct ib') in
+        let distinct = PArray.set uf.distinct ib' l in
+        { uf with parent; next; distinct; inconsistent; }
+
+  (** Ensure that the two elements are distinct. May raise Inconsistent *)
+  let distinct uf a b =
+    (if uf.inconsistent <> None
+      then raise (Invalid_argument "inconsistent uf"));
+    let ia = X.get_id a in
+    let ib = X.get_id b in
+    ensure uf ia a;
+    ensure uf ib b;
+    (* representatives of a and b *)
+    let ia' = find_root uf ia in
+    let ib' = find_root uf ib in
+    (* check inconsistency *)
+    let inconsistent = if ia' = ib' then Some (a, b) else None in
+    (* update 'distinct' lists *)
+    let distincta = ib' :: PArray.get uf.distinct ia' in
+    let distinctb = ia' :: PArray.get uf.distinct ib' in
+    let distinct = PArray.set uf.distinct ia' distincta in
+    let distinct = PArray.set distinct ib' distinctb in
+    { uf with inconsistent; distinct; }
+
+  let must_be_distinct uf a b =
+    let ia = X.get_id a in
+    let ib = X.get_id b in
+    ensure uf ia a;
+    ensure uf ib b;
+    (* representatives *)
+    let ia' = find_root uf ia in
+    let ib' = find_root uf ib in
+    (* list of equiv classes that must be != a *)
+    let distinct_a = PArray.get uf.distinct ia' in
+    List.exists (fun id -> find_root uf id = ib') distinct_a
 
   (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
       is congruent to [a], including [a] itself. *)
@@ -238,4 +298,6 @@ module Make(X : ID) : S with type elt = X.t = struct
           else traverse id'
     in
     traverse ia
+
+  let inconsistent uf = uf.inconsistent
 end
