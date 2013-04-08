@@ -27,21 +27,32 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (** {2 Curryfied terms} *)
 
-module CurryfiedTerm : sig
-  type t
-    (** A curryfied term *)
+module type CurryfiedTerm = sig
+  type symbol
+  type t = private {
+    shape : shape;      (** Which kind of term is it? *)
+    tag : int;          (** Unique ID *)
+  } (** A curryfied term *)
+  and shape = private
+    | Const of symbol   (** Constant *)
+    | Apply of t * t    (** Curryfied application *)
 
-  val mk_const : int -> t
+  val mk_const : symbol -> t
   val mk_app : t -> t -> t
+  val get_id : t -> int
 end
+
+module Curryfy(X : Hashtbl.HashedType) : CurryfiedTerm with type symbol = X.t
 
 (** {2 Congruence Closure} *)
 
-module CC : sig
+module type S = sig
+  module CT : CurryfiedTerm
+
   type t
     (** Congruence Closure instance *)
 
-  exception Inconsistent of CurryfiedTerm.t * CurryfiedTerm.t
+  exception Inconsistent of CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
         inconsistent. The two given terms should be different
         but are equal. *)
@@ -49,31 +60,33 @@ module CC : sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
-  val add : t -> CurryfiedTerm.t -> t
+  val add : t -> CT.t -> t
     (** Add the given term to the CC *)
 
-  val assert_eq : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> t
+  val assert_eq : t -> CT.t -> CT.t -> t
     (** Assert that the two terms are equal (may raise Inconsistent) *)
 
-  val assert_diff : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> t
+  val assert_diff : t -> CT.t -> CT.t -> t
     (** Assert that the two given terms are distinct (may raise Inconsistent) *)
 
   type action =
-    | AssertEq of CurryfiedTerm.t * CurryfiedTerm.t
-    | AssertDiff of CurryfiedTerm.t * CurryfiedTerm.t
+    | AssertEq of CT.t * CT.t
+    | AssertDiff of CT.t * CT.t
     (** Action that can be performed on the CC *)
 
   val assert_action : t -> action -> t
 
-  val eq : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> bool
+  val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
 
-  val can_eq : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> bool
+  val can_eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms can be equal *)
 
-  val iter_equiv_class : t -> CurryfiedTerm.t -> (CurryfiedTerm.t -> unit) -> unit
+  val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
     (** Iterate on terms that are congruent to the given term *)
 
-  val explain : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> action list
+  val explain : t -> CT.t -> CT.t -> action list
     (** Explain why those two terms are equal (they must be) *)
 end
+
+module Make(T : CurryfiedTerm) : S with module CT = T

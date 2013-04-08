@@ -28,13 +28,29 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (** {2 Curryfied terms} *)
 
-module CurryfiedTerm = struct
+module type CurryfiedTerm = sig
+  type symbol
+  type t = private {
+    shape : shape;      (** Which kind of term is it? *)
+    tag : int;          (** Unique ID *)
+  } (** A curryfied term *)
+  and shape = private
+    | Const of symbol   (** Constant *)
+    | Apply of t * t    (** Curryfied application *)
+
+  val mk_const : symbol -> t
+  val mk_app : t -> t -> t
+  val get_id : t -> int
+end
+
+module Curryfy(X : Hashtbl.HashedType) = struct
+  type symbol = X.t
   type t = {
     shape : shape;      (** Which kind of term is it? *)
-    mutable tag : int;  (** Unique ID *)
+    tag : int;          (** Unique ID *)
   }
   and shape =
-    | Const of int      (** Constant *)
+    | Const of symbol   (** Constant *)
     | Apply of t * t    (** Curryfied application *)
 
   type term = t
@@ -42,11 +58,11 @@ module CurryfiedTerm = struct
   module WE = Weak.Make(struct
     type t = term
     let equal a b = match a.shape, b.shape with
-      | Const ia, Const ib -> ia = ib
+      | Const ia, Const ib -> X.equal ia ib
       | Apply (a1,a2), Apply (b1,b2) -> a1 == a2 && b1 == b2
       | _ -> false
     let hash a = match a.shape with
-      | Const i -> i
+      | Const i -> X.hash i
       | Apply (a, b) -> a.tag * 65539 + b.tag
   end)
 
@@ -71,11 +87,13 @@ end
 
 (** {2 Congruence Closure} *)
 
-module CC : sig
+module type S = sig
+  module CT : CurryfiedTerm
+
   type t
     (** Congruence Closure instance *)
 
-  exception Inconsistent of CurryfiedTerm.t * CurryfiedTerm.t
+  exception Inconsistent of CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
         inconsistent. The two given terms should be different
         but are equal. *)
@@ -83,31 +101,97 @@ module CC : sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
-  val add : t -> CurryfiedTerm.t -> t
+  val add : t -> CT.t -> t
     (** Add the given term to the CC *)
 
-  val assert_eq : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> t
+  val assert_eq : t -> CT.t -> CT.t -> t
     (** Assert that the two terms are equal (may raise Inconsistent) *)
 
-  val assert_diff : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> t
+  val assert_diff : t -> CT.t -> CT.t -> t
     (** Assert that the two given terms are distinct (may raise Inconsistent) *)
 
   type action =
-    | AssertEq of CurryfiedTerm.t * CurryfiedTerm.t
-    | AssertDiff of CurryfiedTerm.t * CurryfiedTerm.t
+    | AssertEq of CT.t * CT.t
+    | AssertDiff of CT.t * CT.t
     (** Action that can be performed on the CC *)
 
   val assert_action : t -> action -> t
 
-  val eq : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> bool
+  val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
 
-  val can_eq : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> bool
+  val can_eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms can be equal *)
 
-  val iter_equiv_class : t -> CurryfiedTerm.t -> (CurryfiedTerm.t -> unit) -> unit
+  val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
     (** Iterate on terms that are congruent to the given term *)
 
-  val explain : t -> CurryfiedTerm.t -> CurryfiedTerm.t -> action list
+  val explain : t -> CT.t -> CT.t -> action list
     (** Explain why those two terms are equal (they must be) *)
+end
+
+module Make(T : CurryfiedTerm) = struct
+  module CT = T
+  module Puf = Puf.Make(CT)
+
+  (* Persistent Hashtable on curryfied terms *)
+  module THashtbl = PersistentHashtbl.Make(struct
+    type t = CT.t
+    let equal t1 t2 = t1.CT.tag = t2.CT.tag
+    let hash t = t.CT.tag
+  end)
+
+  (* Persistent Hashtable on pairs of curryfied terms *)
+  module T2Hashtbl = PersistentHashtbl.Make(struct
+    type t = CT.t * CT.t
+    let equal (t1,t1') (t2,t2') = t1.CT.tag = t2.CT.tag && t1'.CT.tag = t2'.CT.tag
+    let hash (t,t') = t.CT.tag * 65539 + t'.CT.tag
+  end)
+
+  type t = {
+    uf : Puf.t;
+    use : CT.t list THashtbl.t;   (* for all repr a, a -> all f(a,b) and f(c,a) *)
+    lookup : eqn T2Hashtbl.t;     (* for all reprs a,b, some f(a,b)=c (if any) *)
+  } (** Congruence Closure data structure *)
+  and eqn = CT.t * CT.t
+    (** Equation between two terms *)
+
+  exception Inconsistent of CT.t * CT.t
+    (** Exception raised when equality and inequality constraints are
+        inconsistent. The two given terms should be different
+        but are equal. *)
+
+  (*
+  val create : int -> t
+    (** Create an empty CC of given size *)
+
+  val add : t -> CT.t -> t
+    (** Add the given term to the CC *)
+
+  val assert_eq : t -> CT.t -> CT.t -> t
+    (** Assert that the two terms are equal (may raise Inconsistent) *)
+
+  val assert_diff : t -> CT.t -> CT.t -> t
+    (** Assert that the two given terms are distinct (may raise Inconsistent) *)
+
+  type action =
+    | AssertEq of CT.t * CT.t
+    | AssertDiff of CT.t * CT.t
+    (** Action that can be performed on the CC *)
+
+  val assert_action : t -> action -> t
+
+  val eq : t -> CT.t -> CT.t -> bool
+    (** Check whether the two terms are equal *)
+
+  val can_eq : t -> CT.t -> CT.t -> bool
+    (** Check whether the two terms can be equal *)
+
+  val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
+    (** Iterate on terms that are congruent to the given term *)
+
+  val explain : t -> CT.t -> CT.t -> action list
+    (** Explain why those two terms are equal (they must be) *)
+
+    *)
 end
