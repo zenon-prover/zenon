@@ -21,3 +21,5 @@ lexzen.ml
 checksum.ml
 config.ml
 .svn
+.*.swp
+TAGS
