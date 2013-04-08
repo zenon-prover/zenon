@@ -164,33 +164,39 @@ module Make(X : ID) : S with type elt = X.t = struct
 
   type t = {
     mutable parent : int PArray.t;      (* idx of the parent, with path compression *)
-    mutable elt : elt option PArray.t;  (* ID -> element *)
-    distinct : int list PArray.t;       (* repr -> list of inconsistent IDs *)
-    next : int PArray.t;                (* linked list of representative class *)
+    mutable data : elt_data option PArray.t;   (* ID -> data for an element *)
     inconsistent : (elt * elt) option;  (* is the UF inconsistent? *)
   } (** An instance of the union-find, ie a set of equivalence classes *)
+  and elt_data = {
+    elt : elt;
+    next : int;                         (* next element in equiv class *)
+    distinct : int list;                (* classes distinct from this one *)
+  }
+
+  let get_data uf id =
+    match PArray.get uf.data id with
+    | Some data -> data
+    | None -> assert false
 
   (** Create a union-find of the given size. *)
   let create size =
     { parent = PArray.init size (fun i -> i);
-      elt = PArray.make size None;
-      distinct = PArray.make size [];
-      next = PArray.init size (fun i -> i);
+      data = PArray.make size None;
       inconsistent = None;
     }
 
   (* ensure the arrays are big enough for [id], and set [elt.(id) <- elt] *)
   let ensure uf id elt =
-    if id >= PArray.length uf.elt then begin
+    if id >= PArray.length uf.data then begin
       (* resize *)
       let len = id + (id / 2) in
       PArray.extend_init uf.parent len (fun i -> i);
-      PArray.extend uf.elt len None;
-      PArray.extend uf.distinct len [];
-      PArray.extend_init uf.next len (fun i -> i);
+      PArray.extend uf.data len None;
     end;
-    match PArray.get uf.elt id with
-    | None -> uf.elt <- PArray.set uf.elt id (Some elt)
+    match PArray.get uf.data id with
+    | None ->
+      let data = { elt; next=id; distinct=[]; } in
+      uf.data <- PArray.set uf.data id (Some data)
     | Some _ -> ()
 
   (* Find the ID of the root of the given ID *)
@@ -212,8 +218,8 @@ module Make(X : ID) : S with type elt = X.t = struct
     (* get sure we can access arrays at index [id] *)
     ensure uf id elt;
     let id' = find_root uf id in
-    match PArray.get uf.elt id' with
-    | Some elt' -> elt'
+    match PArray.get uf.data id' with
+    | Some data -> data.elt
     | None -> assert false
 
   (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
@@ -232,23 +238,24 @@ module Make(X : ID) : S with type elt = X.t = struct
       else
         (* merge roots (a -> b, arbitrarily) *)
         let parent = PArray.set uf.parent ia' ib' in
-        (* concatenation of circular linked lists (equivalence classes) *)
-        let next_a = PArray.get uf.next ia' in
-        let next_b = PArray.get uf.next ib' in
-        let next = PArray.set uf.next ia' next_b in
-        let next = PArray.set next ib' next_a in
+        (* data associated to both representatives *)
+        let data_a = get_data uf ia' in
+        let data_b = get_data uf ib' in
+        (* merge 'distinct' lists: distinct(b) <- distinct(b)+distinct(a) *)
+        let distinct' = List.rev_append data_a.distinct data_b.distinct in
+        (* concatenation of circular linked lists (equivalence classes),
+           concatenation of distinct lists *)
+        let data_a' = {data_a with next=data_b.next; } in
+        let data_b' = {data_b with next=data_a.next; distinct=distinct'; } in
+        let data = PArray.set uf.data ia' (Some data_a') in
+        let data = PArray.set data ib' (Some data_b') in
         (* inconsistency check *)
         let inconsistent =
-          (* list of equivalence classes <> a *)
-          let distinct_a = PArray.get uf.distinct ia' in
-          if List.exists (fun id -> find_root uf id = ib') distinct_a
+          if List.exists (fun id -> find_root uf id = ib') data_a.distinct
             then Some (a, b)
             else None
         in
-        (* merge 'distinct' lists: distinct(b) <- distinct(b)+distinct(a) *)
-        let l = List.rev_append (PArray.get uf.distinct ia') (PArray.get uf.distinct ib') in
-        let distinct = PArray.set uf.distinct ib' l in
-        { uf with parent; next; distinct; inconsistent; }
+        { parent; data; inconsistent; }
 
   (** Ensure that the two elements are distinct. May raise Inconsistent *)
   let distinct uf a b =
@@ -264,11 +271,13 @@ module Make(X : ID) : S with type elt = X.t = struct
     (* check inconsistency *)
     let inconsistent = if ia' = ib' then Some (a, b) else None in
     (* update 'distinct' lists *)
-    let distincta = ib' :: PArray.get uf.distinct ia' in
-    let distinctb = ia' :: PArray.get uf.distinct ib' in
-    let distinct = PArray.set uf.distinct ia' distincta in
-    let distinct = PArray.set distinct ib' distinctb in
-    { uf with inconsistent; distinct; }
+    let data_a = get_data uf ia' in
+    let data_a' = {data_a with distinct= ib' :: data_a.distinct; } in
+    let data_b = get_data uf ib' in
+    let data_b' = {data_b with distinct= ib' :: data_b.distinct; } in
+    let data = PArray.set uf.data ia' (Some data_a) in
+    let data = PArray.set data ib' (Some data_b) in
+    { uf with inconsistent; data; }
 
   let must_be_distinct uf a b =
     let ia = X.get_id a in
@@ -279,7 +288,7 @@ module Make(X : ID) : S with type elt = X.t = struct
     let ia' = find_root uf ia in
     let ib' = find_root uf ib in
     (* list of equiv classes that must be != a *)
-    let distinct_a = PArray.get uf.distinct ia' in
+    let distinct_a = (get_data uf ia').distinct in
     List.exists (fun id -> find_root uf id = ib') distinct_a
 
   (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
@@ -288,11 +297,11 @@ module Make(X : ID) : S with type elt = X.t = struct
     let ia = X.get_id a in
     ensure uf ia a;
     let rec traverse id =
-      match PArray.get uf.elt id with
+      match PArray.get uf.data id with
       | None -> assert false
-      | Some elt ->
-        f elt;  (* yield element *)
-        let id' = PArray.get uf.next id in
+      | Some data ->
+        f data.elt;  (* yield element *)
+        let id' = data.next in
         if id' = ia
           then ()  (* traversed the whole list *)
           else traverse id'
