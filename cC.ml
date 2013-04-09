@@ -107,6 +107,9 @@ module type S = sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
+  val mem : t -> CT.t -> bool
+    (** Is the term part of the CC? *)
+
   val add : t -> CT.t -> t
     (** Add the given term to the CC *)
 
@@ -178,6 +181,9 @@ module Make(T : CurryfiedTerm) = struct
       use = THashtbl.create size;
       lookup = T2Hashtbl.create size;
     }
+
+  let mem cc t =
+    Puf.mem cc.uf t
 
   (** Merge equations in the congruence closure structure. [q] is a list
       of [eqn], processed in FIFO order. May raise Inconsistent. *)
@@ -276,9 +282,11 @@ module Make(T : CurryfiedTerm) = struct
 
   (** Add the given term to the CC *)
   let rec add cc t =
+    ignore (Puf.find cc.uf t);  (* make it occur in the Union-find *)
     match t.CT.shape with
     | CT.Const _ -> cc
     | CT.Apply (t1, t2) ->
+      (* recursive add *)
       let cc = add cc t1 in
       let cc = add cc t2 in
       let cc = merge cc (EqnApply (t1, t2, t)) in
@@ -318,3 +326,43 @@ module Make(T : CurryfiedTerm) = struct
   (** Explain why those two terms are equal (they must be) *)
   let explain cc t1 t2 = []  (* TODO *)
 end
+
+module StrTerm = Curryfy(struct
+  type t = string
+  let equal s1 s2 = s1 = s2
+  let hash s = Hashtbl.hash s
+end)
+
+module StrCC = Make(StrTerm)
+
+let lex str =
+  let lexer = Genlex.make_lexer ["("; ")"] in
+  lexer (Stream.of_string str)
+
+let parse str =
+  let stream = lex str in
+  let rec parse_term () =
+    match Stream.peek stream with
+    | Some (Genlex.Kwd "(") ->
+      Stream.junk stream;
+      let t1 = parse_term () in
+      let t2 = parse_term () in
+      begin match Stream.peek stream with
+      | Some (Genlex.Kwd ")") ->
+        Stream.junk stream;
+        StrTerm.mk_app t1 t2  (* end apply *)
+      | _ -> raise (Stream.Error "expected )")
+      end
+    | Some (Genlex.Ident s) ->
+      Stream.junk stream;
+      StrTerm.mk_const s
+    | _ -> raise (Stream.Error "expected term")
+  in
+  parse_term ()
+
+let rec pp fmt t =
+  match t.StrTerm.shape with
+  | StrTerm.Const s -> Format.pp_print_string fmt s
+  | StrTerm.Apply (t1, t2) ->
+    Format.fprintf fmt "(%a %a)" pp t1 pp t2
+

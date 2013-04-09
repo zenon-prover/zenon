@@ -61,6 +61,9 @@ module type S = sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
+  val mem : t -> CT.t -> bool
+    (** Is the term part of the CC? *)
+
   val add : t -> CT.t -> t
     (** Add the given term to the CC *)
 
@@ -91,3 +94,10 @@ module type S = sig
 end
 
 module Make(T : CurryfiedTerm) : S with module CT = T
+
+module StrTerm : CurryfiedTerm with type symbol = string
+
+module StrCC : S with module CT = StrTerm
+
+val parse : string -> StrTerm.t
+val pp : Format.formatter -> StrTerm.t -> unit

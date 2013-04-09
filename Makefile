@@ -172,7 +172,8 @@ clean:
 
 # unit tests, with ocamlbuild
 .PHONY: unit
-unit: clean
+unit:
+	make clean --quiet
 	ocamlbuild -use-ocamlfind -I . -pkg oUnit unittests/run_tests.native
 
 .PHONY: depend
