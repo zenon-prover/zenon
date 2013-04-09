@@ -40,6 +40,7 @@ module type CurryfiedTerm = sig
   val mk_const : symbol -> t
   val mk_app : t -> t -> t
   val get_id : t -> int
+  val eq : t -> t -> bool
 end
 
 module Curryfy(X : Hashtbl.HashedType) : CurryfiedTerm with type symbol = X.t
@@ -52,10 +53,10 @@ module type S = sig
   type t
     (** Congruence Closure instance *)
 
-  exception Inconsistent of CT.t * CT.t
+  exception Inconsistent of t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
         inconsistent. The two given terms should be different
-        but are equal. *)
+        but are equal in the given CC instance. *)
 
   val create : int -> t
     (** Create an empty CC of given size *)

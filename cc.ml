@@ -25,6 +25,9 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (** {1 Functional Congruence Closure} *)
 
+(** This implementation follows more or less the paper
+    "fast congruence closure and extensions" by Nieuwenhuis & Oliveras.
+    It uses semi-persistent data structures but still thrives for efficiency. *)
 
 (** {2 Curryfied terms} *)
 
@@ -41,6 +44,7 @@ module type CurryfiedTerm = sig
   val mk_const : symbol -> t
   val mk_app : t -> t -> t
   val get_id : t -> int
+  val eq : t -> t -> bool
 end
 
 module Curryfy(X : Hashtbl.HashedType) = struct
@@ -83,6 +87,8 @@ module Curryfy(X : Hashtbl.HashedType) = struct
     hashcons t
 
   let get_id t = t.tag
+
+  let eq t1 t2 = t1.tag = t2.tag
 end
 
 (** {2 Congruence Closure} *)
@@ -93,10 +99,10 @@ module type S = sig
   type t
     (** Congruence Closure instance *)
 
-  exception Inconsistent of CT.t * CT.t
+  exception Inconsistent of t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
         inconsistent. The two given terms should be different
-        but are equal. *)
+        but are equal in the given CC instance. *)
 
   val create : int -> t
     (** Create an empty CC of given size *)
@@ -145,53 +151,170 @@ module Make(T : CurryfiedTerm) = struct
   module T2Hashtbl = PersistentHashtbl.Make(struct
     type t = CT.t * CT.t
     let equal (t1,t1') (t2,t2') = t1.CT.tag = t2.CT.tag && t1'.CT.tag = t2'.CT.tag
-    let hash (t,t') = t.CT.tag * 65539 + t'.CT.tag
+    let hash (t,t') = t.CT.tag * 65599 + t'.CT.tag
   end)
 
   type t = {
-    uf : Puf.t;
-    use : CT.t list THashtbl.t;   (* for all repr a, a -> all f(a,b) and f(c,a) *)
-    lookup : eqn T2Hashtbl.t;     (* for all reprs a,b, some f(a,b)=c (if any) *)
+    uf : Puf.t;                   (* representatives for terms *)
+    use : eqn list THashtbl.t;    (* for all repr a, a -> all a@b=c and b@a=c *)
+    lookup : eqn T2Hashtbl.t;     (* for all reprs a,b, some a@b=c (if any) *)
   } (** Congruence Closure data structure *)
-  and eqn = CT.t * CT.t
+  and eqn =
+    | EqnSimple of CT.t * CT.t          (* t1 = t2 *)
+    | EqnApply of CT.t * CT.t * CT.t    (* (t1 @ t2) = t3 *)
     (** Equation between two terms *)
+  and pending_eqn =
+    | PendingSimple of eqn
+    | PendingDouble of eqn * eqn
 
-  exception Inconsistent of CT.t * CT.t
+  exception Inconsistent of t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
         inconsistent. The two given terms should be different
-        but are equal. *)
+        but are equal in the given CC instance. *)
 
-  (*
-  val create : int -> t
-    (** Create an empty CC of given size *)
+  (** Create an empty CC of given size *)
+  let create size =
+    { uf = Puf.create size;
+      use = THashtbl.create size;
+      lookup = T2Hashtbl.create size;
+    }
 
-  val add : t -> CT.t -> t
-    (** Add the given term to the CC *)
+  (** Merge equations in the congruence closure structure. [q] is a list
+      of [eqn], processed in FIFO order. May raise Inconsistent. *)
+  let rec merge cc eqn = match eqn with
+    | EqnSimple (a, b) ->
+      (* a=b, just propagate *)
+      propagate cc [PendingSimple eqn]
+    | EqnApply (a1, a2, a) ->
+      (* (a1 @ a2) = a *)
+      let a1' = Puf.find cc.uf a1 in
+      let a2' = Puf.find cc.uf a2 in
+      begin try
+        (* eqn' is (b1 @ b2) = b for some b1=a1', b2=a2' *)
+        let eqn' = T2Hashtbl.find cc.lookup (a1', a2') in
+        (* merge a and b because of eqn and eqn' *)
+        propagate cc [PendingDouble (eqn, eqn')]
+      with Not_found ->
+        (* remember that a1' @ a2' = a *)
+        let lookup = T2Hashtbl.replace cc.lookup (a1', a2') eqn in
+        let use_a1' = try THashtbl.find cc.use a1' with Not_found -> [] in
+        let use_a2' = try THashtbl.find cc.use a2' with Not_found -> [] in
+        let use = THashtbl.replace cc.use a1' (eqn::use_a1') in
+        let use = THashtbl.replace use a2' (eqn::use_a2') in
+        { cc with use; lookup; }
+      end
+  (* propagate: merge pending equations *)
+  and propagate cc eqns =
+    let pending = ref eqns in
+    let uf = ref cc.uf in
+    let use = ref cc.use in
+    let lookup = ref cc.lookup in
+    (* process each pending equation *)
+    while !pending <> [] do
+      let eqn = List.hd !pending in
+      pending := List.tl !pending;
+      (* extract the two merged terms *)
+      let a, b = match eqn with
+        | PendingSimple (EqnSimple (a, b)) -> a, b
+        | PendingDouble (EqnApply (a1,a2,a), EqnApply (b1,b2,b)) -> a, b
+        | _ -> assert false
+      in
+      let a' = Puf.find !uf a in
+      let b' = Puf.find !uf b in
+      if not (CT.eq a' b') then begin
+        let use_a' = THashtbl.find !use a' in
+        let use_b' = ref (THashtbl.find !use b') in
+        (* consider all c1@c2=c in use(a') *)
+        List.iter
+          (fun eqn -> match eqn with
+          | EqnSimple _ -> ()
+          | EqnApply (c1, c2, c) ->
+            let c1' = Puf.find !uf c1 in
+            let c2' = Puf.find !uf c2 in
+            begin try
+              let eqn' = T2Hashtbl.find !lookup (c1', c2') in
+              (* merge eqn with eqn', by congruence *)
+              pending := (PendingDouble (eqn,eqn')) :: !pending
+            with Not_found ->
+              lookup := T2Hashtbl.replace !lookup (c1', c2') eqn;
+              use_b' := eqn :: !use_b';
+            end)
+          use_a';
+        (* update use list of b' *)
+        use := THashtbl.replace !use b' !use_b';
+        (* merge a and b's equivalence classes *)
+        uf := Puf.union !uf a b;
+        (* check for inconsistencies *)
+        match Puf.inconsistent cc.uf with
+        | None -> ()  (* consistent *)
+        | Some (t1, t2) ->
+          (* inconsistent *)
+          let cc = { use= !use; lookup= !lookup; uf= !uf; } in
+          raise (Inconsistent (cc, t1, t2))
+    end
+  done;
+  let cc = { use= !use; lookup= !lookup; uf= !uf; } in
+  cc
 
-  val assert_eq : t -> CT.t -> CT.t -> t
-    (** Assert that the two terms are equal (may raise Inconsistent) *)
+  let is_const t = match t.CT.shape with
+    | CT.Const _ -> true
+    | CT.Apply _ -> false
 
-  val assert_diff : t -> CT.t -> CT.t -> t
-    (** Assert that the two given terms are distinct (may raise Inconsistent) *)
+  (** Normal form of a term w.r.t the congruence closure *)
+  let rec normalize cc t = match t.CT.shape with
+    | CT.Const _ -> Puf.find cc.uf t
+    | CT.Apply (t1, t2) ->
+      let t1' = normalize cc t1 in
+      let t2' = normalize cc t2 in
+      if is_const t1' && is_const t2' && T2Hashtbl.mem cc.lookup (t1',t2')
+        then
+          match T2Hashtbl.find cc.lookup (t1',t2') with
+          | EqnSimple _ -> assert false
+          | EqnApply (_, _, a) -> Puf.find cc.uf a  (* t1' @ t2' = a *)
+        else
+          CT.mk_app t1' t2'
+
+  (** Add the given term to the CC *)
+  let rec add cc t =
+    match t.CT.shape with
+    | CT.Const _ -> cc
+    | CT.Apply (t1, t2) ->
+      let cc = add cc t1 in
+      let cc = add cc t2 in
+      let cc = merge cc (EqnApply (t1, t2, t)) in
+      cc
+
+  (** Assert that the two terms are equal (may raise Inconsistent) *)
+  let assert_eq cc t1 t2 =
+    assert (Puf.mem cc.uf t1);
+    assert (Puf.mem cc.uf t2);
+    merge cc (EqnSimple (t1, t2))
+
+  (** Assert that the two given terms are distinct (may raise Inconsistent) *)
+  let assert_diff cc t1 t2 =
+    cc (* TODO *)
 
   type action =
     | AssertEq of CT.t * CT.t
     | AssertDiff of CT.t * CT.t
     (** Action that can be performed on the CC *)
 
-  val assert_action : t -> action -> t
+  let assert_action cc action = match action with
+    | AssertEq (t1, t2) -> assert_eq cc t1 t2
+    | AssertDiff (t1, t2) -> assert_diff cc t1 t2
 
-  val eq : t -> CT.t -> CT.t -> bool
-    (** Check whether the two terms are equal *)
+  (** Check whether the two terms are equal *)
+  let eq cc t1 t2 =
+    let t1' = normalize cc t1 in
+    let t2' = normalize cc t2 in
+    CT.eq t1' t2'
 
-  val can_eq : t -> CT.t -> CT.t -> bool
-    (** Check whether the two terms can be equal *)
+  (** Check whether the two terms can be equal *)
+  let can_eq cc t1 t2 = false  (* TODO *)
 
-  val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
-    (** Iterate on terms that are congruent to the given term *)
+  (** Iterate on terms that are congruent to the given term *)
+  let iter_equiv_class cc t f = () (* TODO *)
 
-  val explain : t -> CT.t -> CT.t -> action list
-    (** Explain why those two terms are equal (they must be) *)
-
-    *)
+  (** Explain why those two terms are equal (they must be) *)
+  let explain cc t1 t2 = []  (* TODO *)
 end
