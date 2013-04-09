@@ -68,6 +68,9 @@ module type S = sig
   val create : int -> t
     (** Create a union-find of the given size. *)
 
+  val mem : t -> elt -> bool
+    (** Is the element member of the UF structure? *)
+
   val find : t -> elt -> elt
     (** [find uf a] returns the current representative of [a] in the given
         union-find structure [uf]. By default, [find uf a = a]. *)
