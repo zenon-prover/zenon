@@ -73,14 +73,17 @@ module type S = sig
         union-find structure [uf]. By default, [find uf a = a]. *)
 
   val union : t -> elt -> elt -> t
-    (** [union uf a b] returns an update of [uf] where [find a = find b].
-        May raise Inconsistent. *)
+    (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
 
   val distinct : t -> elt -> elt -> t
-    (** Ensure that the two elements are distinct. May raise Inconsistent *)
+    (** Ensure that the two elements are distinct. *)
 
   val must_be_distinct : t -> elt -> elt -> bool
     (** Should the two elements be distinct? *)
+
+  val fold_equiv_class : t -> elt -> ('a -> elt -> 'a) -> 'a -> 'a
+    (** [fold_equiv_class uf a f acc] folds on [acc] and every element
+        that is congruent to [a] with [f]. *)
 
   val iter_equiv_class : t -> elt -> (elt -> unit) -> unit
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that

@@ -142,14 +142,17 @@ module type S = sig
         union-find structure [uf]. By default, [find uf a = a]. *)
 
   val union : t -> elt -> elt -> t
-    (** [union uf a b] returns an update of [uf] where [find a = find b].
-        May raise Inconsistent. *)
+    (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
 
   val distinct : t -> elt -> elt -> t
-    (** Ensure that the two elements are distinct. May raise Inconsistent *)
+    (** Ensure that the two elements are distinct. *)
 
   val must_be_distinct : t -> elt -> elt -> bool
     (** Should the two elements be distinct? *)
+
+  val fold_equiv_class : t -> elt -> ('a -> elt -> 'a) -> 'a -> 'a
+    (** [fold_equiv_class uf a f acc] folds on [acc] and every element
+        that is congruent to [a] with [f]. *)
 
   val iter_equiv_class : t -> elt -> (elt -> unit) -> unit
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
@@ -275,8 +278,8 @@ module Make(X : ID) : S with type elt = X.t = struct
     let data_a' = {data_a with distinct= ib' :: data_a.distinct; } in
     let data_b = get_data uf ib' in
     let data_b' = {data_b with distinct= ib' :: data_b.distinct; } in
-    let data = PArray.set uf.data ia' (Some data_a) in
-    let data = PArray.set data ib' (Some data_b) in
+    let data = PArray.set uf.data ia' (Some data_a') in
+    let data = PArray.set data ib' (Some data_b') in
     { uf with inconsistent; data; }
 
   let must_be_distinct uf a b =
@@ -290,6 +293,23 @@ module Make(X : ID) : S with type elt = X.t = struct
     (* list of equiv classes that must be != a *)
     let distinct_a = (get_data uf ia').distinct in
     List.exists (fun id -> find_root uf id = ib') distinct_a
+
+  (** [fold_equiv_class uf a f acc] folds on [acc] and every element
+      that is congruent to [a] with [f]. *)
+  let fold_equiv_class uf a f acc =
+    let ia = X.get_id a in
+    ensure uf ia a;
+    let rec traverse acc id =
+      match PArray.get uf.data id with
+      | None -> assert false
+      | Some data ->
+        let acc' = f acc data.elt in
+        let id' = data.next in
+        if id' = ia
+          then acc'  (* traversed the whole list *)
+          else traverse acc' id'
+    in
+    traverse acc ia
 
   (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
       is congruent to [a], including [a] itself. *)
