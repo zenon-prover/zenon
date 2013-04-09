@@ -170,6 +170,11 @@ clean:
 	rm -f zenon *.bin *.byt
 	rm -rf dist zenon.tar.gz
 
+# unit tests, with ocamlbuild
+.PHONY: unit
+unit: clean
+	ocamlbuild -use-ocamlfind -I . -pkg oUnit unittests/run_tests.native
+
 .PHONY: depend
 depend: $(IMPL) $(INTF) $(COQSRC)
 	$(CAMLDEP) $(IMPL) $(INTF) >.depend

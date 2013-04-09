@@ -1,2 +1,6 @@
 S .
 B .
+S unittests
+B _build
+B _build/unittests/
+PKG oUnit

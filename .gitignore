@@ -24,3 +24,5 @@ config.ml
 .*.swp
 .*.swo
 TAGS
+*.native
+_build/
