@@ -26,10 +26,29 @@ let test_iter () =
   let uf = P.create 5 in
   let uf = merge_list uf [1;2;3] in
   let uf = merge_list uf [5;6] in
-  () (* TODO *)
+  let uf = merge_list uf [10;11;12;13;2] in
+  (* equiv classes *)
+  let l1 = ref [] in
+  P.iter_equiv_class uf 1 (fun x -> l1 := x:: !l1);
+  let l2 = ref [] in
+  P.iter_equiv_class uf 5 (fun x -> l2 := x:: !l2);
+  OUnit.assert_equal [1;2;3;10;11;12;13] (List.sort compare !l1);
+  OUnit.assert_equal [5;6] (List.sort compare !l2);
+  ()
 
 let test_distinct () =
-  () (* TODO *)
+  let uf = P.create 5 in
+  let uf = merge_list uf [1;2;3] in
+  let uf = merge_list uf [5;6] in
+  let uf = P.distinct uf 1 5 in
+  OUnit.assert_equal None (P.inconsistent uf);
+  let uf' = P.union uf 2 6 in
+  OUnit.assert_bool "inconsistent"
+    (match P.inconsistent uf' with | None -> false | Some _ -> true);
+  OUnit.assert_equal None (P.inconsistent uf);
+  let uf = P.union uf 1 10 in
+  OUnit.assert_equal None (P.inconsistent uf);
+  ()
 
 let suite =
   "test_puf" >:::
