@@ -26,7 +26,7 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           enum.ml isar_case.ml lltoisar.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
           ext_equiv.ml ext_induct.ml \
-	  persistentHashtbl.ml puf.ml cc.ml \
+	  persistentHashtbl.ml puf.ml cC.ml \
           prove.ml checksum.dummy versionnum.ml main.ml zenon.ml
 
 COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
@@ -174,7 +174,9 @@ clean:
 .PHONY: unit
 unit:
 	make clean --quiet
-	ocamlbuild -use-ocamlfind -tag debug -I . -pkg oUnit unittests/run_tests.native
+	ocamlbuild -use-ocamlfind -tag debug -I . unittests/run_tests.native \
+		-pkg oUnit
+		# -pkg oUnit -pkg bench -pkg unix
 
 .PHONY: depend
 depend: $(IMPL) $(INTF) $(COQSRC)

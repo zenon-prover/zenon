@@ -50,9 +50,39 @@ let test_distinct () =
   OUnit.assert_equal None (P.inconsistent uf);
   ()
 
+let test_big () =
+  let uf = P.create 5 in
+  let uf = ref uf in
+  for i = 0 to 100_000 do
+    uf := P.union !uf 1 i;
+  done;
+  let uf = !uf in
+  let n = P.fold_equiv_class uf 1 (fun acc _ -> acc+1) 0 in
+  OUnit.assert_equal ~printer:string_of_int 100_001 n;
+  ()
+
+(*
+let bench () =
+  let run n =
+    let uf = P.create 5 in
+    let uf = ref uf in
+    for i = 0 to n do
+      uf := P.union !uf 1 i;
+    done
+  in
+  let res = Bench.bench_args run
+    [ "100", 100;
+      "10_000", 10_000;
+    ]
+  in Bench.summarize 1. res;
+  ()
+*)
+
 let suite =
   "test_puf" >:::
     [ "test_union" >:: test_union;
       "test_iter" >:: test_iter;
       "test_distinct" >:: test_distinct;
+      "test_big" >:: test_big;
+      (* "bench" >:: bench; *)
     ]
