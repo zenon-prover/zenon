@@ -169,56 +169,68 @@ module type ID = sig
   val get_id : t -> int
 end
 
-(** {2 Persistent Union-Find} *)
+(** {2 Persistent Union-Find with explanations} *)
 
 module type S = sig
   type elt
     (** Elements of the Union-find *)
 
-  type t
-    (** An instance of the union-find, ie a set of equivalence classes *)
+  type 'e t
+    (** An instance of the union-find, ie a set of equivalence classes; It
+        is parametrized by the type of explanations. *)
 
-  val create : int -> t
+  val create : int -> 'e t
     (** Create a union-find of the given size. *)
 
-  val find : t -> elt -> elt
+  val find : 'e t -> elt -> elt
     (** [find uf a] returns the current representative of [a] in the given
         union-find structure [uf]. By default, [find uf a = a]. *)
 
-  val union : t -> elt -> elt -> t
-    (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
+  val union : 'e t -> elt -> elt -> 'e -> 'e t
+    (** [union uf a b why] returns an update of [uf] where [find a = find b],
+        the merge being justified by [why]. *)
 
-  val distinct : t -> elt -> elt -> t
+  val distinct : 'e t -> elt -> elt -> 'e t
     (** Ensure that the two elements are distinct. *)
 
-  val must_be_distinct : t -> elt -> elt -> bool
+  val must_be_distinct : _ t -> elt -> elt -> bool
     (** Should the two elements be distinct? *)
 
-  val fold_equiv_class : t -> elt -> ('a -> elt -> 'a) -> 'a -> 'a
+  val fold_equiv_class : _ t -> elt -> ('a -> elt -> 'a) -> 'a -> 'a
     (** [fold_equiv_class uf a f acc] folds on [acc] and every element
         that is congruent to [a] with [f]. *)
 
-  val iter_equiv_class : t -> elt -> (elt -> unit) -> unit
+  val iter_equiv_class : _ t -> elt -> (elt -> unit) -> unit
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
         is congruent to [a], including [a] itself. *)
 
-  val inconsistent : t -> (elt * elt) option
+  val inconsistent : _ t -> (elt * elt) option
     (** Check whether the UF is inconsistent *)
+
+  val explain : 'e t -> elt -> elt -> 'e list
+    (** [explain uf a b] returns a list of labels that justify why
+        [find uf a = find uf b]. Such labels were provided by [union]. *)
 end
+
+module IH = Hashtbl.Make(struct type t = int let equal i j = i = j let hash i = i end)
 
 module Make(X : ID) : S with type elt = X.t = struct
   type elt = X.t
 
-  type t = {
+  type 'e t = {
     mutable parent : int PArray.t;      (* idx of the parent, with path compression *)
     mutable data : elt_data option PArray.t;   (* ID -> data for an element *)
     inconsistent : (elt * elt) option;  (* is the UF inconsistent? *)
+    forest : 'e edge PArray.t;          (* explanation forest *)
   } (** An instance of the union-find, ie a set of equivalence classes *)
   and elt_data = {
     elt : elt;
     next : int;                         (* next element in equiv class *)
     distinct : int list;                (* classes distinct from this one *)
   }
+  and 'e edge =
+    | EdgeNone
+    | EdgeTo of int * 'e
 
   let get_data uf id =
     match PArray.get uf.data id with
@@ -230,6 +242,7 @@ module Make(X : ID) : S with type elt = X.t = struct
     { parent = PArray.init size (fun i -> i);
       data = PArray.make size None;
       inconsistent = None;
+      forest = PArray.make size EdgeNone;
     }
 
   (* ensure the arrays are big enough for [id], and set [elt.(id) <- elt] *)
@@ -239,6 +252,7 @@ module Make(X : ID) : S with type elt = X.t = struct
       let len = id + (id / 2) in
       PArray.extend_init uf.parent len (fun i -> i);
       PArray.extend uf.data len None;
+      PArray.extend uf.forest len EdgeNone;
     end;
     match PArray.get uf.data id with
     | None ->
@@ -270,8 +284,14 @@ module Make(X : ID) : S with type elt = X.t = struct
         | Some data -> data.elt
         | None -> assert (id = id'); elt  (* not present *)
 
-  (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
-  let union uf a b =
+  (* merge i and j in the forest, with explanation why *)
+  let rec merge_forest forest i j why =
+    assert (i <> j);
+    forest  (* TODO *)
+
+  (** [union uf a b why] returns an update of [uf] where [find a = find b],
+      the merge being justified by [why]. *)
+  let union uf a b why =
     (if uf.inconsistent <> None
       then raise (Invalid_argument "inconsistent uf"));
     let ia = X.get_id a in
@@ -304,7 +324,9 @@ module Make(X : ID) : S with type elt = X.t = struct
             then Some (a, b)
             else None
         in
-        { parent; data; inconsistent; }
+        (* update forest *)
+        let forest = merge_forest uf.forest ia ib why in
+        { parent; data; inconsistent; forest; }
 
   (** Ensure that the two elements are distinct. May raise Inconsistent *)
   let distinct uf a b =
@@ -383,4 +405,43 @@ module Make(X : ID) : S with type elt = X.t = struct
         traverse ia
 
   let inconsistent uf = uf.inconsistent
+
+  (** [explain uf a b] returns a list of labels that justify why
+      [find uf a = find uf b]. Such labels were provided by [union]. *)
+  let explain uf a b =
+    (if find_root uf (X.get_id a) <> find_root uf (X.get_id b)
+      then failwith "Puf.explain: can only explain equal terms");
+    let forest = uf.forest in
+    let explored = IH.create 5 in
+    (* find path from i, j to their common ancestor *)
+    let rec path_to_root i j =
+      match PArray.get forest i, PArray.get forest j with
+      | _ when i = j -> join_paths i  (* i=j=common ancestor *)
+      | EdgeNone, EdgeNone -> assert false  (* i should = j = root *)
+      | EdgeTo (i', _), _ when IH.mem explored i' ->
+        join_paths i'  (* reached common part *)
+      | _, EdgeTo (j', _) when IH.mem explored j' ->
+        join_paths j'  (* reached common part *)
+      | EdgeTo (i', e), EdgeNone ->
+        IH.add explored i' (e :: IH.find explored i);
+        path_to_root i' j
+      | EdgeNone, EdgeTo (j', e) ->
+        IH.add explored j' (e :: IH.find explored j);
+        path_to_root i j'
+      | EdgeTo (i', ei), EdgeTo (j', ej) ->
+        IH.add explored i' (ei :: IH.find explored i);
+        IH.add explored j' (ej :: IH.find explored j);
+        path_to_root i' j'
+    (* explored[i] should return at most two paths to [a] and [b] resp.;
+       merge those paths *)
+    and join_paths i =
+      match IH.find_all explored i with
+      | [] -> []
+      | [path] -> path
+      | [p1; p2] -> List.rev_append p1 p2
+      | _ -> assert false
+    in
+    let ia = X.get_id a in
+    let ib = X.get_id b in
+    path_to_root ia ib
 end

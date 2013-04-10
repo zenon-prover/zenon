@@ -7,7 +7,7 @@ module P = Puf.Make(struct type t = int let get_id i = i end)
 let rec merge_list uf l = match l with
   | [] | [_] -> uf
   | x::((y::_) as l') ->
-    merge_list (P.union uf x y) l'
+    merge_list (P.union uf x y (x,y)) l'
 
 let test_union () =
   let uf = P.create 5 in
@@ -18,7 +18,7 @@ let test_union () =
   OUnit.assert_equal (P.find uf 5) (P.find uf 6);
   OUnit.assert_bool "noteq" ((P.find uf 1) <> (P.find uf 5));
   OUnit.assert_equal 10 (P.find uf 10);
-  let uf = P.union uf 1 5 in
+  let uf = P.union uf 1 5 (1,5) in
   OUnit.assert_equal (P.find uf 2) (P.find uf 6);
   ()
 
@@ -42,11 +42,11 @@ let test_distinct () =
   let uf = merge_list uf [5;6] in
   let uf = P.distinct uf 1 5 in
   OUnit.assert_equal None (P.inconsistent uf);
-  let uf' = P.union uf 2 6 in
+  let uf' = P.union uf 2 6 (2,6) in
   OUnit.assert_bool "inconsistent"
     (match P.inconsistent uf' with | None -> false | Some _ -> true);
   OUnit.assert_equal None (P.inconsistent uf);
-  let uf = P.union uf 1 10 in
+  let uf = P.union uf 1 10 (1,10) in
   OUnit.assert_equal None (P.inconsistent uf);
   ()
 
@@ -54,7 +54,7 @@ let test_big () =
   let uf = P.create 5 in
   let uf = ref uf in
   for i = 0 to 100_000 do
-    uf := P.union !uf 1 i;
+    uf := P.union !uf 1 i (1,i);
   done;
   let uf = !uf in
   let n = P.fold_equiv_class uf 1 (fun acc _ -> acc+1) 0 in

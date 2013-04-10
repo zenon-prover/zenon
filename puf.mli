@@ -78,41 +78,47 @@ module type ID = sig
     (** Unique integer ID for the element. Must be >= 0. *)
 end
 
-(** {2 Persistent Union-Find} *)
+(** {2 Persistent Union-Find with explanations} *)
 
 module type S = sig
   type elt
     (** Elements of the Union-find *)
 
-  type t
-    (** An instance of the union-find, ie a set of equivalence classes *)
+  type 'e t
+    (** An instance of the union-find, ie a set of equivalence classes; It
+        is parametrized by the type of explanations. *)
 
-  val create : int -> t
+  val create : int -> 'e t
     (** Create a union-find of the given size. *)
 
-  val find : t -> elt -> elt
+  val find : 'e t -> elt -> elt
     (** [find uf a] returns the current representative of [a] in the given
         union-find structure [uf]. By default, [find uf a = a]. *)
 
-  val union : t -> elt -> elt -> t
-    (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
+  val union : 'e t -> elt -> elt -> 'e -> 'e t
+    (** [union uf a b why] returns an update of [uf] where [find a = find b],
+        the merge being justified by [why]. *)
 
-  val distinct : t -> elt -> elt -> t
+  val distinct : 'e t -> elt -> elt -> 'e t
     (** Ensure that the two elements are distinct. *)
 
-  val must_be_distinct : t -> elt -> elt -> bool
+  val must_be_distinct : _ t -> elt -> elt -> bool
     (** Should the two elements be distinct? *)
 
-  val fold_equiv_class : t -> elt -> ('a -> elt -> 'a) -> 'a -> 'a
+  val fold_equiv_class : _ t -> elt -> ('a -> elt -> 'a) -> 'a -> 'a
     (** [fold_equiv_class uf a f acc] folds on [acc] and every element
         that is congruent to [a] with [f]. *)
 
-  val iter_equiv_class : t -> elt -> (elt -> unit) -> unit
+  val iter_equiv_class : _ t -> elt -> (elt -> unit) -> unit
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
         is congruent to [a], including [a] itself. *)
 
-  val inconsistent : t -> (elt * elt) option
+  val inconsistent : _ t -> (elt * elt) option
     (** Check whether the UF is inconsistent *)
+
+  val explain : 'e t -> elt -> elt -> 'e list
+    (** [explain uf a b] returns a list of labels that justify why
+        [find uf a = find uf b]. Such labels were provided by [union]. *)
 end
 
 module Make(X : ID) : S with type elt = X.t

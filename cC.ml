@@ -184,7 +184,7 @@ module Make(T : CurryfiedTerm) = struct
   end)
 
   type t = {
-    uf : Puf.t;                   (* representatives for terms *)
+    uf : pending_eqn Puf.t;       (* representatives for terms *)
     defined : BV.t;               (* is the term defined? *)
     use : eqn list THashtbl.t;    (* for all repr a, a -> all a@b=c and b@a=c *)
     lookup : eqn T2Hashtbl.t;     (* for all reprs a,b, some a@b=c (if any) *)
@@ -263,7 +263,7 @@ module Make(T : CurryfiedTerm) = struct
         let use_a' = try THashtbl.find !use a' with Not_found -> [] in
         let use_b' = ref (try THashtbl.find !use b' with Not_found -> []) in
         (* merge a and b's equivalence classes *)
-        uf := Puf.union !uf a b;
+        uf := Puf.union !uf a b eqn;
         (* consider all c1@c2=c in use(a') *)
         List.iter
           (fun eqn -> match eqn with
