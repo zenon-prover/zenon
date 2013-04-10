@@ -91,6 +91,31 @@ module Curryfy(X : Hashtbl.HashedType) = struct
   let eq t1 t2 = t1 == t2
 end
 
+(** {2 Sparse union-find on integers} *)
+
+module SparseUF = struct
+  module IH = Hashtbl.Make(struct type t = int let equal i j = i = j let hash i = i end)
+  type t = int IH.t
+
+  let create size = IH.create size
+
+  let rec find uf i =
+    let i' = try IH.find uf i with Not_found -> i in
+    if i = i'
+      then i  (* fixpoint *)
+      else begin
+        let root = find uf i' in
+        (* path compression *)
+        (if i' <> root then IH.replace uf i root);
+        root
+      end
+
+  let union uf i j =
+    let i' = find uf i in
+    let j' = find uf j in
+    IH.replace uf i' j'
+end
+
 (** {2 Congruence Closure} *)
 
 module type S = sig
