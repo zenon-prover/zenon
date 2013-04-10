@@ -107,30 +107,25 @@ module type S = sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
-  val mem : t -> CT.t -> bool
-    (** Is the term part of the CC? *)
-
-  val add : t -> CT.t -> t
-    (** Add the given term to the CC *)
-
-  val assert_eq : t -> CT.t -> CT.t -> t
-    (** Assert that the two terms are equal (may raise Inconsistent) *)
-
-  val assert_diff : t -> CT.t -> CT.t -> t
-    (** Assert that the two given terms are distinct (may raise Inconsistent) *)
-
-  type action =
-    | AssertEq of CT.t * CT.t
-    | AssertDiff of CT.t * CT.t
-    (** Action that can be performed on the CC *)
-
-  val assert_action : t -> action -> t
-
   val normalize : t -> CT.t -> CT.t
     (** Normal form of the term w.r.t. the congruence *)
 
   val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
+
+  val merge : t -> CT.t -> CT.t -> t
+    (** Assert that the two terms are equal (may raise Inconsistent) *)
+
+  val distinct : t -> CT.t -> CT.t -> t
+    (** Assert that the two given terms are distinct (may raise Inconsistent) *)
+
+  type action =
+    | Merge of CT.t * CT.t
+    | Distinct of CT.t * CT.t
+    (** Action that can be performed on the CC *)
+
+  val do_action : t -> action -> t
+    (** Perform the given action (may raise Inconsistent) *)
 
   val can_eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms can be equal *)
@@ -138,12 +133,15 @@ module type S = sig
   val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
     (** Iterate on terms that are congruent to the given term *)
 
-  val explain : t -> CT.t -> CT.t -> action list
-    (** Explain why those two terms are equal (they must be) *)
+  val explain : t -> CT.t -> CT.t -> (CT.t * CT.t) list
+    (** Explain why those two terms are equal (assuming they are,
+        otherwise raises Invalid_argument) by returning a list
+        of merges. *)
 end
 
 module Make(T : CurryfiedTerm) = struct
   module CT = T
+  module BV = Puf.PBitVector
   module Puf = Puf.Make(CT)
 
   (* Persistent Hashtable on curryfied terms *)
@@ -162,6 +160,7 @@ module Make(T : CurryfiedTerm) = struct
 
   type t = {
     uf : Puf.t;                   (* representatives for terms *)
+    defined : BV.t;               (* is the term defined? *)
     use : eqn list THashtbl.t;    (* for all repr a, a -> all a@b=c and b@a=c *)
     lookup : eqn T2Hashtbl.t;     (* for all reprs a,b, some a@b=c (if any) *)
   } (** Congruence Closure data structure *)
@@ -176,17 +175,22 @@ module Make(T : CurryfiedTerm) = struct
   exception Inconsistent of t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
         inconsistent. The two given terms should be different
-        but are equal in the given CC instance. *)
+       but are equal in the given CC instance. *)
 
   (** Create an empty CC of given size *)
   let create size =
     { uf = Puf.create size;
+      defined = BV.make 3;
       use = THashtbl.create size;
       lookup = T2Hashtbl.create size;
     }
 
   let mem cc t =
-    Puf.mem cc.uf t
+    BV.get cc.defined t.CT.tag
+
+  let is_const t = match t.CT.shape with
+    | CT.Const _ -> true
+    | CT.Apply _ -> false
 
   (** Merge equations in the congruence closure structure. [q] is a list
       of [eqn], processed in FIFO order. May raise Inconsistent. *)
@@ -258,16 +262,30 @@ module Make(T : CurryfiedTerm) = struct
         | None -> ()  (* consistent *)
         | Some (t1, t2) ->
           (* inconsistent *)
-          let cc = { use= !use; lookup= !lookup; uf= !uf; } in
+          let cc = { cc with use= !use; lookup= !lookup; uf= !uf; } in
           raise (Inconsistent (cc, t1, t2))
     end
   done;
-  let cc = { use= !use; lookup= !lookup; uf= !uf; } in
+  let cc = { cc with use= !use; lookup= !lookup; uf= !uf; } in
   cc
 
-  let is_const t = match t.CT.shape with
-    | CT.Const _ -> true
-    | CT.Apply _ -> false
+  (** Add the given term to the CC *)
+  let rec add cc t =
+    match t.CT.shape with
+    | CT.Const _ -> cc   (* always trivially defined *)
+    | CT.Apply (t1, t2) ->
+      if BV.get cc.defined t.CT.tag
+      then cc  (* already defined *)
+      else begin
+        (* note that [t] is defined *)
+        let defined = BV.set_true cc.defined t.CT.tag in
+        let cc = {cc with defined; } in
+        (* recursive add *)
+        let cc = add cc t1 in
+        let cc = add cc t2 in
+        let cc = merge cc (EqnApply (t1, t2, t)) in
+        cc
+      end
 
   (** Normal form of a term w.r.t the congruence closure *)
   let rec normalize cc t = match t.CT.shape with
@@ -283,51 +301,49 @@ module Make(T : CurryfiedTerm) = struct
         else
           CT.mk_app t1' t2'
 
-  (** Add the given term to the CC *)
-  let rec add cc t =
-    ignore (Puf.find cc.uf t);  (* make it occur in the Union-find *)
-    match t.CT.shape with
-    | CT.Const _ -> cc
-    | CT.Apply (t1, t2) ->
-      (* recursive add *)
-      let cc = add cc t1 in
-      let cc = add cc t2 in
-      let cc = merge cc (EqnApply (t1, t2, t)) in
-      cc
-
-  (** Assert that the two terms are equal (may raise Inconsistent) *)
-  let assert_eq cc t1 t2 =
-    assert (Puf.mem cc.uf t1);
-    assert (Puf.mem cc.uf t2);
-    merge cc (EqnSimple (t1, t2))
-
-  (** Assert that the two given terms are distinct (may raise Inconsistent) *)
-  let assert_diff cc t1 t2 =
-    cc (* TODO *)
-
-  type action =
-    | AssertEq of CT.t * CT.t
-    | AssertDiff of CT.t * CT.t
-    (** Action that can be performed on the CC *)
-
-  let assert_action cc action = match action with
-    | AssertEq (t1, t2) -> assert_eq cc t1 t2
-    | AssertDiff (t1, t2) -> assert_diff cc t1 t2
-
   (** Check whether the two terms are equal *)
   let eq cc t1 t2 =
     let t1' = normalize cc t1 in
     let t2' = normalize cc t2 in
     CT.eq t1' t2'
 
+  (** Assert that the two terms are equal (may raise Inconsistent) *)
+  let merge cc t1 t2 =
+    let cc = add (add cc t1) t2 in
+    merge cc (EqnSimple (t1, t2))
+
+  (** Assert that the two given terms are distinct (may raise Inconsistent) *)
+  let distinct cc t1 t2 =
+    let cc = add (add cc t1) t2 in
+    let t1' = normalize cc t1 in
+    let t2' = normalize cc t2 in
+    if CT.eq t1' t2'
+      then raise (Inconsistent (cc, t1, t2))   (* they are equal, fail *)
+      else
+        (* remember that they should not become equal *)
+        let uf = Puf.distinct cc.uf t1 t2 in
+        { cc with uf; }
+
+  type action =
+    | Merge of CT.t * CT.t
+    | Distinct of CT.t * CT.t
+    (** Action that can be performed on the CC *)
+
+  let do_action cc action = match action with
+    | Merge (t1, t2) -> merge cc t1 t2
+    | Distinct (t1, t2) -> distinct cc t1 t2
+
   (** Check whether the two terms can be equal *)
-  let can_eq cc t1 t2 = false  (* TODO *)
+  let can_eq cc t1 t2 =
+    not (Puf.must_be_distinct cc.uf t1 t2)
 
   (** Iterate on terms that are congruent to the given term *)
-  let iter_equiv_class cc t f = () (* TODO *)
+  let iter_equiv_class cc t f =
+    Puf.iter_equiv_class cc.uf t f
 
   (** Explain why those two terms are equal (they must be) *)
-  let explain cc t1 t2 = []  (* TODO *)
+  let explain cc t1 t2 =
+    []  (* TODO *)
 end
 
 module StrTerm = Curryfy(struct

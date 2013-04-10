@@ -61,30 +61,25 @@ module type S = sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
-  val mem : t -> CT.t -> bool
-    (** Is the term part of the CC? *)
-
-  val add : t -> CT.t -> t
-    (** Add the given term to the CC *)
-
-  val assert_eq : t -> CT.t -> CT.t -> t
-    (** Assert that the two terms are equal (may raise Inconsistent) *)
-
-  val assert_diff : t -> CT.t -> CT.t -> t
-    (** Assert that the two given terms are distinct (may raise Inconsistent) *)
-
-  type action =
-    | AssertEq of CT.t * CT.t
-    | AssertDiff of CT.t * CT.t
-    (** Action that can be performed on the CC *)
-
-  val assert_action : t -> action -> t
-
   val normalize : t -> CT.t -> CT.t
     (** Normal form of the term w.r.t. the congruence *)
 
   val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
+
+  val merge : t -> CT.t -> CT.t -> t
+    (** Assert that the two terms are equal (may raise Inconsistent) *)
+
+  val distinct : t -> CT.t -> CT.t -> t
+    (** Assert that the two given terms are distinct (may raise Inconsistent) *)
+
+  type action =
+    | Merge of CT.t * CT.t
+    | Distinct of CT.t * CT.t
+    (** Action that can be performed on the CC *)
+
+  val do_action : t -> action -> t
+    (** Perform the given action (may raise Inconsistent) *)
 
   val can_eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms can be equal *)
@@ -92,8 +87,10 @@ module type S = sig
   val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
     (** Iterate on terms that are congruent to the given term *)
 
-  val explain : t -> CT.t -> CT.t -> action list
-    (** Explain why those two terms are equal (they must be) *)
+  val explain : t -> CT.t -> CT.t -> (CT.t * CT.t) list
+    (** Explain why those two terms are equal (assuming they are,
+        otherwise raises Invalid_argument) by returning a list
+        of merges. *)
 end
 
 module Make(T : CurryfiedTerm) : S with module CT = T
