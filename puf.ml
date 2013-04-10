@@ -246,12 +246,6 @@ module Make(X : ID) : S with type elt = X.t = struct
       uf.data <- PArray.set uf.data id (Some data)
     | Some _ -> ()
 
-  (** Is the element member of the UF structure? *)
-  let mem uf elt =
-    let id = X.get_id elt in
-    id < PArray.length uf.data &&
-    (match PArray.get uf.data id with None -> false | Some _ -> true)
-
   (* Find the ID of the root of the given ID *)
   let rec find_root uf id =
     let parent_id = PArray.get uf.parent id in
@@ -260,7 +254,7 @@ module Make(X : ID) : S with type elt = X.t = struct
       else begin (* recurse *)
         let root = find_root uf parent_id in
         (* path compression *)
-        uf.parent <- PArray.set uf.parent id root;
+        (if root <> parent_id then uf.parent <- PArray.set uf.parent id root);
         root
       end
 
