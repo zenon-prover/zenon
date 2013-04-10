@@ -174,7 +174,7 @@ clean:
 .PHONY: unit
 unit:
 	make clean --quiet
-	ocamlbuild -use-ocamlfind -I . -pkg oUnit unittests/run_tests.native
+	ocamlbuild -use-ocamlfind -tag debug -I . -pkg oUnit unittests/run_tests.native
 
 .PHONY: depend
 depend: $(IMPL) $(INTF) $(COQSRC)
