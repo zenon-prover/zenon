@@ -296,6 +296,7 @@ module Make(X : ID) : S with type elt = X.t = struct
         PArray.set forest' i' (EdgeTo (i, e))
     in
     let forest = invert_path forest i in
+    (* root of [j] is the new root of [i] and [j] *)
     let forest = PArray.set forest i (EdgeTo (j, why)) in
     forest
 
@@ -423,24 +424,27 @@ module Make(X : ID) : S with type elt = X.t = struct
       then failwith "Puf.explain: can only explain equal terms");
     let forest = uf.forest in
     let explored = IH.create 5 in
+    let get_path i = try IH.find explored i with Not_found -> [] in
     (* find path from i, j to their common ancestor *)
     let rec path_to_root i j =
       match PArray.get forest i, PArray.get forest j with
       | _ when i = j -> join_paths i  (* i=j=common ancestor *)
       | EdgeNone, EdgeNone -> assert false  (* i should = j = root *)
-      | EdgeTo (i', _), _ when IH.mem explored i' ->
+      | EdgeTo (i', e), _ when IH.mem explored i' ->
+        IH.add explored i' (e :: get_path i);
         join_paths i'  (* reached common part *)
-      | _, EdgeTo (j', _) when IH.mem explored j' ->
+      | _, EdgeTo (j', e) when IH.mem explored j' ->
+        IH.add explored j' (e :: get_path j);
         join_paths j'  (* reached common part *)
       | EdgeTo (i', e), EdgeNone ->
-        IH.add explored i' (e :: IH.find explored i);
+        IH.add explored i' (e :: get_path i);
         path_to_root i' j
       | EdgeNone, EdgeTo (j', e) ->
-        IH.add explored j' (e :: IH.find explored j);
+        IH.add explored j' (e :: get_path j);
         path_to_root i j'
       | EdgeTo (i', ei), EdgeTo (j', ej) ->
-        IH.add explored i' (ei :: IH.find explored i);
-        IH.add explored j' (ej :: IH.find explored j);
+        IH.add explored i' (ei :: get_path i);
+        IH.add explored j' (ej :: get_path j);
         path_to_root i' j'
     (* explored[i] should return at most two paths to [a] and [b] resp.;
        merge those paths *)
