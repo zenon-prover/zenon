@@ -118,6 +118,50 @@ module PArray = struct
     Array.fold_left f acc a
 end
 
+(** {2 Persistent Bitvector} *)
+
+module PBitVector = struct
+  type t = int PArray.t
+
+  let width = Sys.word_size - 1   (* number of usable bits in an integer *)
+
+  let make size = PArray.make size 0
+
+  let ensure bv offset =
+    if offset >= PArray.length bv
+      then
+        let len = offset + offset/2 + 1 in
+        PArray.extend bv len 0
+      else ()
+
+  (** [get bv i] gets the value of the [i]-th element of [bv] *)
+  let get bv i =
+    let offset = i / width in
+    let bit = i mod width in
+    ensure bv offset;
+    let bits = PArray.get bv offset in
+    (bits land (1 lsl bit)) <> 0
+
+  (** [set bv i v] sets the value of the [i]-th element of [bv] to [v] *)
+  let set bv i v =
+    let offset = i / width in
+    let bit = i mod width in
+    ensure bv offset;
+    let bits = PArray.get bv offset in
+    let bits' =
+      if v
+        then bits lor (1 lsl bit)
+        else bits land (lnot (1 lsl bit))
+    in
+    PArray.set bv offset bits'
+
+  (** Bitvector with all bits set to 0 *)
+  let clear bv = make 5
+  
+  let set_true bv i = set bv i true
+  let set_false bv i = set bv i false
+end
+
 (** {2 Type with unique identifier} *)
 
 module type ID = sig
@@ -136,9 +180,6 @@ module type S = sig
 
   val create : int -> t
     (** Create a union-find of the given size. *)
-
-  val mem : t -> elt -> bool
-    (** Is the element member of the UF structure? *)
 
   val find : t -> elt -> elt
     (** [find uf a] returns the current representative of [a] in the given

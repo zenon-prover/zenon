@@ -49,11 +49,33 @@ module PArray : sig
     (** Extend [t] to the given [size], initializing elements with [f] *)
 end
 
+(** {2 Persistent Bitvector} *)
+
+module PBitVector : sig
+  type t
+
+  val make : int -> t
+    (** Create a new bitvector of the given initial size (in words) *)
+
+  val get : t -> int -> bool
+    (** [get bv i] gets the value of the [i]-th element of [bv] *)
+
+  val set : t -> int -> bool -> t
+    (** [set bv i v] sets the value of the [i]-th element of [bv] to [v] *)
+
+  val clear : t -> t
+    (** Bitvector with all bits set to 0 *)
+
+  val set_true : t -> int -> t
+  val set_false : t -> int -> t
+end
+
 (** {2 Type with unique identifier} *)
 
 module type ID = sig
   type t
   val get_id : t -> int
+    (** Unique integer ID for the element. Must be >= 0. *)
 end
 
 (** {2 Persistent Union-Find} *)
@@ -67,9 +89,6 @@ module type S = sig
 
   val create : int -> t
     (** Create a union-find of the given size. *)
-
-  val mem : t -> elt -> bool
-    (** Is the element member of the UF structure? *)
 
   val find : t -> elt -> elt
     (** [find uf a] returns the current representative of [a] in the given
