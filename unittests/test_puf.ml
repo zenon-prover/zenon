@@ -61,6 +61,19 @@ let test_big () =
   OUnit.assert_equal ~printer:string_of_int 100_001 n;
   ()
 
+let test_explain () =
+  let uf = P.create 5 in
+  let uf = P.union uf 1 2 (1,2) in
+  let uf = P.union uf 1 3 (1,3) in
+  let uf = P.union uf 5 6 (5,6) in
+  let uf = P.union uf 4 5 (4,5) in
+  let uf = P.union uf 5 3 (5,3) in
+  OUnit.assert_bool "eq" (P.find uf 1 = P.find uf 5);
+  let l = P.explain uf 1 6 in
+  OUnit.assert_bool "not empty explanation" (l <> []);
+  (* List.iter (fun (a,b) -> Format.printf "%d, %d@." a b) l; *)
+  ()
+
 (*
 let bench () =
   let run n =
@@ -84,5 +97,6 @@ let suite =
       "test_iter" >:: test_iter;
       "test_distinct" >:: test_distinct;
       "test_big" >:: test_big;
+      "test_explain" >:: test_explain;
       (* "bench" >:: bench; *)
     ]
