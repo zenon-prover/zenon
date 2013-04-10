@@ -63,11 +63,11 @@ module Curryfy(X : Hashtbl.HashedType) = struct
     type t = term
     let equal a b = match a.shape, b.shape with
       | Const ia, Const ib -> X.equal ia ib
-      | Apply (a1,a2), Apply (b1,b2) -> a1 == a2 && b1 == b2
+      | Apply (a1,a2), Apply (b1,b2) -> a1 == b1 && a2 == b2
       | _ -> false
     let hash a = match a.shape with
       | Const i -> X.hash i
-      | Apply (a, b) -> a.tag * 65539 + b.tag
+      | Apply (a, b) -> a.tag * 65599 + b.tag
   end)
 
   let __table = WE.create 10001
@@ -88,7 +88,7 @@ module Curryfy(X : Hashtbl.HashedType) = struct
 
   let get_id t = t.tag
 
-  let eq t1 t2 = t1.tag = t2.tag
+  let eq t1 t2 = t1 == t2
 end
 
 (** {2 Congruence Closure} *)
@@ -125,6 +125,9 @@ module type S = sig
     (** Action that can be performed on the CC *)
 
   val assert_action : t -> action -> t
+
+  val normalize : t -> CT.t -> CT.t
+    (** Normal form of the term w.r.t. the congruence *)
 
   val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
@@ -228,8 +231,10 @@ module Make(T : CurryfiedTerm) = struct
       let a' = Puf.find !uf a in
       let b' = Puf.find !uf b in
       if not (CT.eq a' b') then begin
-        let use_a' = THashtbl.find !use a' in
-        let use_b' = ref (THashtbl.find !use b') in
+        let use_a' = try THashtbl.find !use a' with Not_found -> [] in
+        let use_b' = ref (try THashtbl.find !use b' with Not_found -> []) in
+        (* merge a and b's equivalence classes *)
+        uf := Puf.union !uf a b;
         (* consider all c1@c2=c in use(a') *)
         List.iter
           (fun eqn -> match eqn with
@@ -248,8 +253,6 @@ module Make(T : CurryfiedTerm) = struct
           use_a';
         (* update use list of b' *)
         use := THashtbl.replace !use b' !use_b';
-        (* merge a and b's equivalence classes *)
-        uf := Puf.union !uf a b;
         (* check for inconsistencies *)
         match Puf.inconsistent cc.uf with
         | None -> ()  (* consistent *)
@@ -362,7 +365,8 @@ let parse str =
 
 let rec pp fmt t =
   match t.StrTerm.shape with
-  | StrTerm.Const s -> Format.pp_print_string fmt s
+  | StrTerm.Const s ->
+    Format.fprintf fmt "%s:%d" s t.StrTerm.tag
   | StrTerm.Apply (t1, t2) ->
-    Format.fprintf fmt "(%a %a)" pp t1 pp t2
+    Format.fprintf fmt "(%a %a):%d" pp t1 pp t2 t.StrTerm.tag
 

@@ -80,6 +80,9 @@ module type S = sig
 
   val assert_action : t -> action -> t
 
+  val normalize : t -> CT.t -> CT.t
+    (** Normal form of the term w.r.t. the congruence *)
+
   val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
 
