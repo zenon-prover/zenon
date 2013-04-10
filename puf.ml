@@ -287,7 +287,17 @@ module Make(X : ID) : S with type elt = X.t = struct
   (* merge i and j in the forest, with explanation why *)
   let rec merge_forest forest i j why =
     assert (i <> j);
-    forest  (* TODO *)
+    (* invert path from i to roo, reverting all edges *)
+    let rec invert_path forest i =
+      match PArray.get forest i with
+      | EdgeNone -> forest  (* reached root *)
+      | EdgeTo (i', e) ->
+        let forest' = invert_path forest i' in
+        PArray.set forest' i' (EdgeTo (i, e))
+    in
+    let forest = invert_path forest i in
+    let forest = PArray.set forest i (EdgeTo (j, why)) in
+    forest
 
   (** [union uf a b why] returns an update of [uf] where [find a = find b],
       the merge being justified by [why]. *)
