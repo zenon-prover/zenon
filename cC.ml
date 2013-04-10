@@ -280,7 +280,8 @@ module Make(T : CurryfiedTerm) = struct
         (* note that [t] is defined *)
         let defined = BV.set_true cc.defined t.CT.tag in
         let cc = {cc with defined; } in
-        (* recursive add *)
+        (* recursive add. invariant: if a term is added, then its subterms
+           also are (hence the base case of constants or already added terms). *)
         let cc = add cc t1 in
         let cc = add cc t2 in
         let cc = merge cc (EqnApply (t1, t2, t)) in
@@ -293,11 +294,15 @@ module Make(T : CurryfiedTerm) = struct
     | CT.Apply (t1, t2) ->
       let t1' = normalize cc t1 in
       let t2' = normalize cc t2 in
-      if is_const t1' && is_const t2' && T2Hashtbl.mem cc.lookup (t1',t2')
+      if is_const t1' && is_const t2'
         then
-          match T2Hashtbl.find cc.lookup (t1',t2') with
-          | EqnSimple _ -> assert false
-          | EqnApply (_, _, a) -> Puf.find cc.uf a  (* t1' @ t2' = a *)
+          try  (* is there a constant [a] s.t. [t1'@t2' = a]? *) 
+            match T2Hashtbl.find cc.lookup (t1',t2') with
+            | EqnSimple _ -> assert false
+            | EqnApply (_, _, a) ->
+              Puf.find cc.uf a (* t1' @ t2' = a *)
+          with Not_found ->
+            CT.mk_app t1' t2'  (* nope, just t1' @ t2' then *)
         else
           CT.mk_app t1' t2'
 
