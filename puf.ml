@@ -268,12 +268,13 @@ module Make(X : ID) : S with type elt = X.t = struct
       union-find structure [uf]. By default, [find uf a = a]. *)
   let find uf elt =
     let id = X.get_id elt in
-    (* get sure we can access arrays at index [id] *)
-    ensure uf id elt;
-    let id' = find_root uf id in
-    match PArray.get uf.data id' with
-    | Some data -> data.elt
-    | None -> assert false
+    if id >= PArray.length uf.parent
+      then elt  (* not present *)
+      else
+        let id' = find_root uf id in
+        match PArray.get uf.data id' with
+        | Some data -> data.elt
+        | None -> assert (id = id'); elt  (* not present *)
 
   (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
   let union uf a b =
@@ -281,6 +282,7 @@ module Make(X : ID) : S with type elt = X.t = struct
       then raise (Invalid_argument "inconsistent uf"));
     let ia = X.get_id a in
     let ib = X.get_id b in
+    (* get sure we can access [ia] and [ib] in [uf] *)
     ensure uf ia a;
     ensure uf ib b;
     (* indexes of roots of [a] and [b] *)
@@ -335,48 +337,56 @@ module Make(X : ID) : S with type elt = X.t = struct
   let must_be_distinct uf a b =
     let ia = X.get_id a in
     let ib = X.get_id b in
-    ensure uf ia a;
-    ensure uf ib b;
-    (* representatives *)
-    let ia' = find_root uf ia in
-    let ib' = find_root uf ib in
-    (* list of equiv classes that must be != a *)
-    let distinct_a = (get_data uf ia').distinct in
-    List.exists (fun id -> find_root uf id = ib') distinct_a
+    let len = PArray.length uf.parent in
+    if ia >= len || ib >= len
+      then false  (* no chance *)
+      else
+        (* representatives *)
+        let ia' = find_root uf ia in
+        let ib' = find_root uf ib in
+        (* list of equiv classes that must be != a *)
+        match PArray.get uf.data ia' with
+        | None -> false  (* ia' not present *)
+        | Some data_a ->
+          List.exists (fun id -> find_root uf id = ib') data_a.distinct
 
   (** [fold_equiv_class uf a f acc] folds on [acc] and every element
       that is congruent to [a] with [f]. *)
   let fold_equiv_class uf a f acc =
     let ia = X.get_id a in
-    ensure uf ia a;
-    let rec traverse acc id =
-      match PArray.get uf.data id with
-      | None -> assert false
-      | Some data ->
-        let acc' = f acc data.elt in
-        let id' = data.next in
-        if id' = ia
-          then acc'  (* traversed the whole list *)
-          else traverse acc' id'
-    in
-    traverse acc ia
+    if ia >= PArray.length uf.parent
+      then f acc a  (* alone. *)
+      else
+        let rec traverse acc id =
+          match PArray.get uf.data id with
+          | None -> f acc a  (* alone. *)
+          | Some data ->
+            let acc' = f acc data.elt in
+            let id' = data.next in
+            if id' = ia
+              then acc'  (* traversed the whole list *)
+              else traverse acc' id'
+        in
+        traverse acc ia
 
   (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
       is congruent to [a], including [a] itself. *)
   let iter_equiv_class uf a f =
     let ia = X.get_id a in
-    ensure uf ia a;
-    let rec traverse id =
-      match PArray.get uf.data id with
-      | None -> assert false
-      | Some data ->
-        f data.elt;  (* yield element *)
-        let id' = data.next in
-        if id' = ia
-          then ()  (* traversed the whole list *)
-          else traverse id'
-    in
-    traverse ia
+    if ia >= PArray.length uf.parent
+      then f a  (* alone. *)
+      else
+        let rec traverse id =
+          match PArray.get uf.data id with
+          | None -> f a  (* alone. *)
+          | Some data ->
+            f data.elt;  (* yield element *)
+            let id' = data.next in
+            if id' = ia
+              then ()  (* traversed the whole list *)
+              else traverse id'
+        in
+        traverse ia
 
   let inconsistent uf = uf.inconsistent
 end
