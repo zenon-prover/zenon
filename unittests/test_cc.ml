@@ -43,9 +43,20 @@ let test_merge2 () =
      with CC.Inconsistent _ -> true);
   ()
 
+let test_merge3 () =
+  let cc = CC.create 5 in
+  (* f^3(a) = a *)
+  let cc = CC.merge cc (parse "a") (parse "(f (f (f a)))") in
+  (* f^4(a) = a *)
+  let cc = CC.merge cc (parse "f (f (f (f (f a))))") (parse "a") in
+  (* hence, f^5(a) = f^2(f^3(a)) = f^2(a), and f^3(a) = f(f^2(a)) = f(a) = a *)
+  OUnit.assert_bool "eq" (CC.eq cc (parse "a") (parse "f a"));
+  ()
+
 let suite =
   "test_cc" >:::
     [ "test_add" >:: test_add;
       "test_merge" >:: test_merge;
       "test_merge2" >:: test_merge2;
+      "test_merge3" >:: test_merge3;
     ]
