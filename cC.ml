@@ -258,7 +258,7 @@ module Make(T : CurryfiedTerm) = struct
         (* update use list of b' *)
         use := THashtbl.replace !use b' !use_b';
         (* check for inconsistencies *)
-        match Puf.inconsistent cc.uf with
+        match Puf.inconsistent !uf with
         | None -> ()  (* consistent *)
         | Some (t1, t2) ->
           (* inconsistent *)
