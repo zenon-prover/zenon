@@ -233,12 +233,15 @@ module Make(X : ID) : S with type elt = X.t = struct
   } (** An instance of the union-find, ie a set of equivalence classes *)
   and elt_data = {
     elt : elt;
+    size : int;                         (* number of elements in the class *)
     next : int;                         (* next element in equiv class *)
     distinct : int list;                (* classes distinct from this one *)
-  }
+  } (** Data associated to the element. Most of it is only meaningful for
+        a representative (ie when elt = parent(elt)). *)
   and 'e edge =
     | EdgeNone
     | EdgeTo of int * 'e
+    (** Edge of the proof forest, annotated with 'e *)
 
   let get_data uf id =
     match PArray.get uf.data id with
@@ -264,7 +267,7 @@ module Make(X : ID) : S with type elt = X.t = struct
     end;
     match PArray.get uf.data id with
     | None ->
-      let data = { elt; next=id; distinct=[]; } in
+      let data = { elt; size = 1; next=id; distinct=[]; } in
       uf.data <- PArray.set uf.data id (Some data)
     | Some _ -> ()
 
@@ -308,6 +311,33 @@ module Make(X : ID) : S with type elt = X.t = struct
     let forest = PArray.set forest i (EdgeTo (j, why)) in
     forest
 
+  (** Merge the class of [a] (whose representative is [ia'] into the class
+      of [b], whose representative is [ib'] *)
+  let merge_into uf a ia' b ib' why =
+    let data_a = get_data uf ia' in
+    let data_b = get_data uf ib' in
+    (* merge roots (a -> b, arbitrarily) *)
+    let parent = PArray.set uf.parent ia' ib' in
+    (* merge 'distinct' lists: distinct(b) <- distinct(b)+distinct(a) *)
+    let distinct' = List.rev_append data_a.distinct data_b.distinct in
+    (* size of the new equivalence class *)
+    let size' = data_a.size + data_b.size in
+    (* concatenation of circular linked lists (equivalence classes),
+       concatenation of distinct lists *)
+    let data_a' = {data_a with next=data_b.next; } in
+    let data_b' = {data_b with next=data_a.next; distinct=distinct'; size=size'; } in
+    let data = PArray.set uf.data ia' (Some data_a') in
+    let data = PArray.set data ib' (Some data_b') in
+    (* inconsistency check *)
+    let inconsistent =
+      if List.exists (fun id -> find_root uf id = ib') data_a.distinct
+        then Some (a, b)
+        else None
+    in
+    (* update forest *)
+    let forest = merge_forest uf.forest (X.get_id a) (X.get_id b) why in
+    { parent; data; inconsistent; forest; }
+
   (** [union uf a b why] returns an update of [uf] where [find a = find b],
       the merge being justified by [why]. *)
   let union uf a b why =
@@ -323,29 +353,14 @@ module Make(X : ID) : S with type elt = X.t = struct
     and ib' = find_root uf ib in
     if ia' = ib'
       then uf  (* no change *)
-      else
-        (* merge roots (a -> b, arbitrarily) *)
-        let parent = PArray.set uf.parent ia' ib' in
+      else 
         (* data associated to both representatives *)
         let data_a = get_data uf ia' in
         let data_b = get_data uf ib' in
-        (* merge 'distinct' lists: distinct(b) <- distinct(b)+distinct(a) *)
-        let distinct' = List.rev_append data_a.distinct data_b.distinct in
-        (* concatenation of circular linked lists (equivalence classes),
-           concatenation of distinct lists *)
-        let data_a' = {data_a with next=data_b.next; } in
-        let data_b' = {data_b with next=data_a.next; distinct=distinct'; } in
-        let data = PArray.set uf.data ia' (Some data_a') in
-        let data = PArray.set data ib' (Some data_b') in
-        (* inconsistency check *)
-        let inconsistent =
-          if List.exists (fun id -> find_root uf id = ib') data_a.distinct
-            then Some (a, b)
-            else None
-        in
-        (* update forest *)
-        let forest = merge_forest uf.forest ia ib why in
-        { parent; data; inconsistent; forest; }
+        (* merge the smaller class into the bigger class *)
+        if data_a.size > data_b.size
+          then merge_into uf b ib' a ia' why
+          else merge_into uf a ia' b ib' why
 
   (** Ensure that the two elements are distinct. May raise Inconsistent *)
   let distinct uf a b =
@@ -364,7 +379,7 @@ module Make(X : ID) : S with type elt = X.t = struct
     let data_a = get_data uf ia' in
     let data_a' = {data_a with distinct= ib' :: data_a.distinct; } in
     let data_b = get_data uf ib' in
-    let data_b' = {data_b with distinct= ib' :: data_b.distinct; } in
+    let data_b' = {data_b with distinct= ia' :: data_b.distinct; } in
     let data = PArray.set uf.data ia' (Some data_a') in
     let data = PArray.set data ib' (Some data_b') in
     { uf with inconsistent; data; }
