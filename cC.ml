@@ -91,31 +91,6 @@ module Curryfy(X : Hashtbl.HashedType) = struct
   let eq t1 t2 = t1 == t2
 end
 
-(** {2 Sparse union-find on integers} *)
-
-module SparseUF = struct
-  module IH = Hashtbl.Make(struct type t = int let equal i j = i = j let hash i = i end)
-  type t = int IH.t
-
-  let create size = IH.create size
-
-  let rec find uf i =
-    let i' = try IH.find uf i with Not_found -> i in
-    if i = i'
-      then i  (* fixpoint *)
-      else begin
-        let root = find uf i' in
-        (* path compression *)
-        (if i' <> root then IH.replace uf i root);
-        root
-      end
-
-  let union uf i j =
-    let i' = find uf i in
-    let j' = find uf j in
-    IH.replace uf i' j'
-end
-
 (** {2 Congruence Closure} *)
 
 module type S = sig
@@ -169,12 +144,14 @@ module Make(T : CurryfiedTerm) = struct
   module BV = Puf.PBitVector
   module Puf = Puf.Make(CT)
 
-  (* Persistent Hashtable on curryfied terms *)
-  module THashtbl = PersistentHashtbl.Make(struct
+  module HashedCT = struct
     type t = CT.t
     let equal t1 t2 = t1.CT.tag = t2.CT.tag
     let hash t = t.CT.tag
-  end)
+  end
+
+  (* Persistent Hashtable on curryfied terms *)
+  module THashtbl = PersistentHashtbl.Make(HashedCT)
 
   (* Persistent Hashtable on pairs of curryfied terms *)
   module T2Hashtbl = PersistentHashtbl.Make(struct
@@ -371,9 +348,100 @@ module Make(T : CurryfiedTerm) = struct
   let iter_equiv_class cc t f =
     Puf.iter_equiv_class cc.uf t f
 
+  (** {3 Auxilliary Union-find for explanations} *)
+
+  module SparseUF = struct
+    module H = Hashtbl.Make(HashedCT)
+
+    type t = uf_ref H.t
+    and uf_ref = {
+      term : CT.t;
+      mutable parent : CT.t;
+      mutable highest_node : CT.t;
+    }  (** Union-find reference *)
+
+    let create size = H.create size
+
+    let get_ref uf t =
+      try H.find uf t
+      with Not_found ->
+        let r_t = { term=t; parent=t; highest_node=t; } in
+        H.add uf t r_t;
+        r_t
+
+    let rec find_ref uf r_t =
+      if CT.eq r_t.parent r_t.term
+        then r_t  (* fixpoint *)
+        else
+          let r_t' = get_ref uf r_t.parent in
+          find_ref uf r_t'  (* recurse (no path compression) *)
+
+    let find uf t =
+      try
+        let r_t = H.find uf t in
+        (find_ref uf r_t).term
+      with Not_found ->
+        t
+
+    let eq uf t1 t2 =
+      CT.eq (find uf t1) (find uf t2)
+
+    let highest_node uf t =
+      try
+        let r_t = H.find uf t in
+        (find_ref uf r_t).highest_node
+      with Not_found ->
+        t
+
+    (* oriented union (t1 -> t2), assuming t2 is "higher" than t1 *)
+    let union uf t1 t2 =
+      let r_t1' = find_ref uf (get_ref uf t1) in
+      let r_t2' = find_ref uf (get_ref uf t2) in
+      r_t1'.parent <- r_t2'.term
+  end
+
+  (** {3 Producing explanations} *)
+
   (** Explain why those two terms are equal (they must be) *)
   let explain cc t1 t2 =
-    []  (* TODO *)
+    (* keeps track of which equalities are already explained *)
+    let explained = SparseUF.create 5 in
+    let explanations = ref [] in
+    (* equations waiting to be explained *)
+    let pending = Queue.create () in
+    Queue.push (t1,t2) pending;
+    (* explain why a=c, where c is the root of the proof forest a belongs to *)
+    let rec explain_along a c =
+      let a' = SparseUF.highest_node explained a in
+      match Puf.explain_step cc.uf a' with
+      | None -> assert (CT.eq a' c)
+      | Some (b, e) ->
+        (* a->b on the path from a to c *)
+        begin match e with
+        | PendingSimple (EqnSimple (a',b')) ->
+          explanations := (a', b') :: !explanations
+        | PendingDouble (EqnApply (a1, a2, _), EqnApply (b1, b2, _)) ->
+          Queue.push (a1, b1) pending;
+          Queue.push (a2, b2) pending;
+        | _ -> assert false
+        end;
+        SparseUF.union explained a b;
+        (* recurse *)
+        let new_a = SparseUF.highest_node explained b in
+        explain_along new_a c
+    in
+    (* process pending equations *)
+    while not (Queue.is_empty pending) do
+      let a, b = Queue.pop pending in
+      if SparseUF.eq explained a b
+        then ()
+        else begin
+          let c = Puf.common_ancestor cc.uf a b in
+          explain_along a c;
+          explain_along b c;
+        end
+    done;
+    !explanations
 end
 
 module StrTerm = Curryfy(struct
