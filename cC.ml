@@ -324,6 +324,7 @@ module Make(T : CurryfiedTerm) = struct
 
   (** Check whether the two terms can be equal *)
   let can_eq cc t1 t2 =
+    let cc = add (add cc t1) t2 in
     not (Puf.must_be_distinct cc.uf t1 t2)
 
   (** Iterate on terms that are congruent to the given term *)
