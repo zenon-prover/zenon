@@ -107,9 +107,6 @@ module type S = sig
   val create : int -> t
     (** Create an empty CC of given size *)
 
-  val normalize : t -> CT.t -> CT.t
-    (** Normal form of the term w.r.t. the congruence *)
-
   val eq : t -> CT.t -> CT.t -> bool
     (** Check whether the two terms are equal *)
 
@@ -240,6 +237,7 @@ module Make(T : CurryfiedTerm) = struct
         let use_a' = try THashtbl.find !use a' with Not_found -> [] in
         let use_b' = ref (try THashtbl.find !use b' with Not_found -> []) in
         (* merge a and b's equivalence classes *)
+        (* Format.printf "merge %d %d@." a.CT.tag b.CT.tag; *)
         uf := Puf.union !uf a b eqn;
         (* consider all c1@c2=c in use(a') *)
         List.iter
@@ -274,12 +272,13 @@ module Make(T : CurryfiedTerm) = struct
   (** Add the given term to the CC *)
   let rec add cc t =
     match t.CT.shape with
-    | CT.Const _ -> cc   (* always trivially defined *)
+    | CT.Const _ ->
+      cc   (* always trivially defined *)
     | CT.Apply (t1, t2) ->
       if BV.get cc.defined t.CT.tag
       then cc  (* already defined *)
       else begin
-        (* note that [t] is defined *)
+        (* note that [t] is defined, add it to the UF to avoid GC *)
         let defined = BV.set_true cc.defined t.CT.tag in
         let cc = {cc with defined; } in
         (* recursive add. invariant: if a term is added, then its subterms
@@ -290,28 +289,11 @@ module Make(T : CurryfiedTerm) = struct
         cc
       end
 
-  (** Normal form of a term w.r.t the congruence closure *)
-  let rec normalize cc t = match t.CT.shape with
-    | CT.Const _ -> Puf.find cc.uf t
-    | CT.Apply (t1, t2) ->
-      let t1' = normalize cc t1 in
-      let t2' = normalize cc t2 in
-      if is_const t1' && is_const t2'
-        then
-          try  (* is there a constant [a] s.t. [t1'@t2' = a]? *) 
-            match T2Hashtbl.find cc.lookup (t1',t2') with
-            | EqnSimple _ -> assert false
-            | EqnApply (_, _, a) ->
-              Puf.find cc.uf a (* t1' @ t2' = a *)
-          with Not_found ->
-            CT.mk_app t1' t2'  (* nope, just t1' @ t2' then *)
-        else
-          CT.mk_app t1' t2'
-
   (** Check whether the two terms are equal *)
   let eq cc t1 t2 =
-    let t1' = normalize cc t1 in
-    let t2' = normalize cc t2 in
+    let cc = add (add cc t1) t2 in
+    let t1' = Puf.find cc.uf t1 in
+    let t2' = Puf.find cc.uf t2 in
     CT.eq t1' t2'
 
   (** Assert that the two terms are equal (may raise Inconsistent) *)
@@ -322,8 +304,8 @@ module Make(T : CurryfiedTerm) = struct
   (** Assert that the two given terms are distinct (may raise Inconsistent) *)
   let distinct cc t1 t2 =
     let cc = add (add cc t1) t2 in
-    let t1' = normalize cc t1 in
-    let t2' = normalize cc t2 in
+    let t1' = Puf.find cc.uf t1 in
+    let t2' = Puf.find cc.uf t2 in
     if CT.eq t1' t2'
       then raise (Inconsistent (cc, t1, t2))   (* they are equal, fail *)
       else
@@ -404,6 +386,7 @@ module Make(T : CurryfiedTerm) = struct
 
   (** Explain why those two terms are equal (they must be) *)
   let explain cc t1 t2 =
+    assert (eq cc t1 t2);
     (* keeps track of which equalities are already explained *)
     let explained = SparseUF.create 5 in
     let explanations = ref [] in
@@ -413,7 +396,8 @@ module Make(T : CurryfiedTerm) = struct
     (* explain why a=c, where c is the root of the proof forest a belongs to *)
     let rec explain_along a c =
       let a' = SparseUF.highest_node explained a in
-      match Puf.explain_step cc.uf a' with
+      if CT.eq a' c then ()
+      else match Puf.explain_step cc.uf a' with
       | None -> assert (CT.eq a' c)
       | Some (b, e) ->
         (* a->b on the path from a to c *)
@@ -425,7 +409,8 @@ module Make(T : CurryfiedTerm) = struct
           Queue.push (a2, b2) pending;
         | _ -> assert false
         end;
-        SparseUF.union explained a b;
+        (* now a' = b is justified *)
+        SparseUF.union explained a' b;
         (* recurse *)
         let new_a = SparseUF.highest_node explained b in
         explain_along new_a c

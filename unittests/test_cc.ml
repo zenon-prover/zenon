@@ -47,10 +47,25 @@ let test_merge3 () =
   let cc = CC.create 5 in
   (* f^3(a) = a *)
   let cc = CC.merge cc (parse "a") (parse "(f (f (f a)))") in
+  OUnit.assert_equal ~cmp:CT.eq (parse "(f (f a))") (parse "(f (f a))");
   (* f^4(a) = a *)
-  let cc = CC.merge cc (parse "f (f (f (f (f a))))") (parse "a") in
+  let cc = CC.merge cc (parse "(f (f (f (f (f a)))))") (parse "a") in
+  (* CC.iter_equiv_class cc (parse "a") (fun t -> Format.printf "a = %a@." pp t); *)
   (* hence, f^5(a) = f^2(f^3(a)) = f^2(a), and f^3(a) = f(f^2(a)) = f(a) = a *)
-  OUnit.assert_bool "eq" (CC.eq cc (parse "a") (parse "f a"));
+  OUnit.assert_bool "eq" (CC.eq cc (parse "a") (parse "(f a)"));
+  ()
+
+let test_explain () =
+  let cc = CC.create 5 in
+  (* f^3(a) = a *)
+  let cc = CC.merge cc (parse "a") (parse "(f (f (f a)))") in
+  (* f^4(a) = a *)
+  let cc = CC.merge cc (parse "(f (f (f (f (f a)))))") (parse "a") in
+  (* Format.printf "t: %a@." pp (parse "(f (f (f (f (f a)))))"); *)
+  (* hence, f^5(a) = f^2(f^3(a)) = f^2(a), and f^3(a) = f(f^2(a)) = f(a) = a *)
+  let l = CC.explain cc (parse "a") (parse "(f (f a))") in
+  (* List.iter (fun (a,b) -> Format.printf "%a=%a@." pp a pp b) l; *)
+  OUnit.assert_equal 2 (List.length l);
   ()
 
 let suite =
@@ -59,4 +74,5 @@ let suite =
       "test_merge" >:: test_merge;
       "test_merge2" >:: test_merge2;
       "test_merge3" >:: test_merge3;
+      "test_explain" >:: test_explain;
     ]
