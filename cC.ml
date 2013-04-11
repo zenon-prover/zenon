@@ -130,7 +130,11 @@ module type S = sig
   val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
     (** Iterate on terms that are congruent to the given term *)
 
-  val explain : t -> CT.t -> CT.t -> (CT.t * CT.t) list
+  type explanation =
+    | ByCongruence of CT.t * CT.t  (* direct congruence of terms *)
+    | ByMerge of CT.t * CT.t       (* user merge of terms *)
+
+  val explain : t -> CT.t -> CT.t -> explanation list
     (** Explain why those two terms are equal (assuming they are,
         otherwise raises Invalid_argument) by returning a list
         of merges. *)
@@ -385,6 +389,10 @@ module Make(T : CurryfiedTerm) = struct
 
   (** {3 Producing explanations} *)
 
+  type explanation =
+    | ByCongruence of CT.t * CT.t  (* direct congruence of terms *)
+    | ByMerge of CT.t * CT.t       (* user merge of terms *)
+
   (** Explain why those two terms are equal (they must be) *)
   let explain cc t1 t2 =
     assert (eq cc t1 t2);
@@ -404,8 +412,9 @@ module Make(T : CurryfiedTerm) = struct
         (* a->b on the path from a to c *)
         begin match e with
         | PendingSimple (EqnSimple (a',b')) ->
-          explanations := (a', b') :: !explanations
-        | PendingDouble (EqnApply (a1, a2, _), EqnApply (b1, b2, _)) ->
+          explanations := ByMerge (a', b') :: !explanations
+        | PendingDouble (EqnApply (a1, a2, a'), EqnApply (b1, b2, b')) ->
+          explanations := ByCongruence (a', b') :: !explanations;
           Queue.push (a1, b1) pending;
           Queue.push (a2, b2) pending;
         | _ -> assert false

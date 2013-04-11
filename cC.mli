@@ -84,7 +84,11 @@ module type S = sig
   val iter_equiv_class : t -> CT.t -> (CT.t -> unit) -> unit
     (** Iterate on terms that are congruent to the given term *)
 
-  val explain : t -> CT.t -> CT.t -> (CT.t * CT.t) list
+  type explanation =
+    | ByCongruence of CT.t * CT.t  (* direct congruence of terms *)
+    | ByMerge of CT.t * CT.t       (* user merge of terms *)
+
+  val explain : t -> CT.t -> CT.t -> explanation list
     (** Explain why those two terms are equal (assuming they are,
         otherwise raises Invalid_argument) by returning a list
         of merges. *)

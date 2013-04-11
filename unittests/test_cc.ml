@@ -64,8 +64,14 @@ let test_explain () =
   (* Format.printf "t: %a@." pp (parse "(f (f (f (f (f a)))))"); *)
   (* hence, f^5(a) = f^2(f^3(a)) = f^2(a), and f^3(a) = f(f^2(a)) = f(a) = a *)
   let l = CC.explain cc (parse "a") (parse "(f (f a))") in
-  (* List.iter (fun (a,b) -> Format.printf "%a=%a@." pp a pp b) l; *)
-  OUnit.assert_equal 2 (List.length l);
+  (*
+  List.iter
+    (function
+    | CC.ByMerge (a,b) -> Format.printf "merge %a %a@." pp a pp b
+    | CC.ByCongruence (a,b) -> Format.printf "congruence %a %a@." pp a pp b)
+    l;
+    *)
+  OUnit.assert_equal 4 (List.length l);
   ()
 
 let suite =
