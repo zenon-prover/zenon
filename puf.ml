@@ -207,6 +207,14 @@ module type S = sig
   val inconsistent : _ t -> (elt * elt) option
     (** Check whether the UF is inconsistent *)
 
+  val common_ancestor : 'e t -> elt -> elt -> elt
+    (** Closest common ancestor of the two elements in the proof forest *)
+
+  val explain_step : 'e t -> elt -> (elt * 'e) option
+    (** Edge from the element to its parent in the proof forest; Returns
+        None if the element is a root of the forest. *)
+
+
   val explain : 'e t -> elt -> elt -> 'e list
     (** [explain uf a b] returns a list of labels that justify why
         [find uf a = find uf b]. Such labels were provided by [union]. *)
@@ -417,45 +425,58 @@ module Make(X : ID) : S with type elt = X.t = struct
 
   let inconsistent uf = uf.inconsistent
 
+  (** Closest common ancestor of the two elements in the proof forest *)
+  let common_ancestor uf a b =
+    let forest = uf.forest in
+    let explored = IH.create 3 in
+    let rec recurse i j =
+      if i = j
+        then return i  (* found *)
+      else if IH.mem explored i
+        then return i
+      else if IH.mem explored j
+        then return j
+      else
+        let i' = match PArray.get forest i with
+          | EdgeNone -> i
+          | EdgeTo (i', e) ->
+            IH.add explored i ();
+            i'
+        and j' = match PArray.get forest j with
+          | EdgeNone -> j
+          | EdgeTo (j', e) ->
+            IH.add explored j ();
+            j'
+        in
+        recurse i' j'
+    and return i =
+      (get_data uf i).elt  (* return the element *)
+    in
+    recurse (X.get_id a) (X.get_id b)
+
+  (** Edge from the element to its parent in the proof forest; Returns
+      None if the element is a root of the forest. *)
+  let explain_step uf a =
+    match PArray.get uf.forest (X.get_id a) with
+    | EdgeNone -> None
+    | EdgeTo (i, e) ->
+      let b = (get_data uf i).elt in
+      Some (b, e)
+
   (** [explain uf a b] returns a list of labels that justify why
       [find uf a = find uf b]. Such labels were provided by [union]. *)
   let explain uf a b =
     (if find_root uf (X.get_id a) <> find_root uf (X.get_id b)
       then failwith "Puf.explain: can only explain equal terms");
-    let forest = uf.forest in
-    let explored = IH.create 5 in
-    let get_path i = try IH.find explored i with Not_found -> [] in
-    (* find path from i, j to their common ancestor *)
-    let rec path_to_root i j =
-      match PArray.get forest i, PArray.get forest j with
-      | _ when i = j -> join_paths i  (* i=j=common ancestor *)
-      | EdgeNone, EdgeNone -> assert false  (* i should = j = root *)
-      | EdgeTo (i', e), _ when IH.mem explored i' ->
-        IH.add explored i' (e :: get_path i);
-        join_paths i'  (* reached common part *)
-      | _, EdgeTo (j', e) when IH.mem explored j' ->
-        IH.add explored j' (e :: get_path j);
-        join_paths j'  (* reached common part *)
-      | EdgeTo (i', e), EdgeNone ->
-        IH.add explored i' (e :: get_path i);
-        path_to_root i' j
-      | EdgeNone, EdgeTo (j', e) ->
-        IH.add explored j' (e :: get_path j);
-        path_to_root i j'
-      | EdgeTo (i', ei), EdgeTo (j', ej) ->
-        IH.add explored i' (ei :: get_path i);
-        IH.add explored j' (ej :: get_path j);
-        path_to_root i' j'
-    (* explored[i] should return at most two paths to [a] and [b] resp.;
-       merge those paths *)
-    and join_paths i =
-      match IH.find_all explored i with
-      | [] -> []
-      | [path] -> path
-      | [p1; p2] -> List.rev_append p1 p2
-      | _ -> assert false
+    let c = common_ancestor uf a b in
+    (* path from [x] to [c] *)
+    let rec build_path path x =
+      if (X.get_id x) = (X.get_id c)
+        then path
+        else match explain_step uf x with
+          | None -> assert false
+          | Some (x', e) ->
+            build_path (e::path) x'
     in
-    let ia = X.get_id a in
-    let ib = X.get_id b in
-    path_to_root ia ib
+    build_path (build_path [] a) b
 end

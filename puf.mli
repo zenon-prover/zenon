@@ -116,6 +116,13 @@ module type S = sig
   val inconsistent : _ t -> (elt * elt) option
     (** Check whether the UF is inconsistent *)
 
+  val common_ancestor : 'e t -> elt -> elt -> elt
+    (** Closest common ancestor of the two elements in the proof forest *)
+
+  val explain_step : 'e t -> elt -> (elt * 'e) option
+    (** Edge from the element to its parent in the proof forest; Returns
+        None if the element is a root of the forest. *)
+
   val explain : 'e t -> elt -> elt -> 'e list
     (** [explain uf a b] returns a list of labels that justify why
         [find uf a = find uf b]. Such labels were provided by [union]. *)
