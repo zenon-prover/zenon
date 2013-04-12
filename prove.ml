@@ -34,18 +34,20 @@ type frame = {
 
 let cur_depth = ref 0;;
 let top_depth = ref 0;;
-let max_depth = ref 1_000_000_000;;
+let max_depth = ref 1_000_000_000;;  (* oh yeah. *)
 
 let steps = ref 0.;;
 
 (****************)
 
+(* complement of the formula, and the atomic non-negated formula *)
 let complement fm =
   match fm with
   | Enot (p, _) -> (p, p)
   | p -> (enot (p), p)
 ;;
 
+(* replaces meta-variable [m] by [va] in [e] *)
 let rec replace_meta m va e =
   match e with
   | Evar _ -> e
@@ -69,6 +71,8 @@ let is_meta = function
   | _ -> false
 ;;
 
+(* checks whether [l] is a list of meta-variables, or Eapp(_,l') where [l']
+   satisfies pure_meta (?) *)
 let rec pure_meta l =
   let rec all_different l =
     match l with
@@ -84,6 +88,7 @@ let rec pure_meta l =
 
 (****************)
 
+(* insert the node [n] in [st]'s queue of nodes to explorea (st:state) *)
 let add_node st n =
   { (*st with*) queue = insert st.queue n }
 ;;
@@ -92,6 +97,8 @@ let add_node_list st ns =
   List.fold_left add_node st ns
 ;;
 
+(** in state [st], instantiate meta-variable [m] with the given [term].
+    [g] is the 'goalness', an undecipherable oracl-ish magic constant. ;) *)
 let make_inst st m term g =
   match m with
   | Eall (v, t, p, _) ->
@@ -144,6 +151,8 @@ let higher_order_warning s =
   Error.warn (sprintf "symbol %s is used in higher-order substitution" s);
 ;;
 
+(** Pre-match of expressions [e1] and [e2], checking recursively they
+    have a similar structure, but stopping at subterms *)
 let rec good_match_e e1 e2 =
   match e1, e2 with
   | Evar (v1, _), Evar (v2, _) -> v1 =%= v2
@@ -163,12 +172,16 @@ let rec good_match_e e1 e2 =
   | _ -> false
 ;;
 
+(** Given two lists of same length, check that they satisfy pairwise
+    good_match_e-ness *)
 let good_match l1 l2 =
   match l1, l2 with
   | [], [] -> true
   | _ -> List.for_all2 good_match_e l1 l2
 ;;
 
+(** Some subterms of e1 and e2, at the same position, have distinct head
+    constructors (e.g.  f(t1, ..., tn) and g(t1, ..., tn) where f != g) *)
 let rec constructor_mismatch e1 e2 =
   let isc = Ext_induct.is_constr in
   match e1, e2 with
@@ -181,6 +194,8 @@ let rec constructor_mismatch e1 e2 =
   | _, _ -> false
 ;;
 
+(** ?  Make a symmetry rule betweeb [p] and [np] (which must have
+    same head symbol)? *)
 let make_notequiv st sym (p, g) (np, ng) =
   match p, np with
   | Eapp ("TLA.in", [e1; Evar _ as s1], _),
@@ -236,6 +251,7 @@ and is_disj f m =
   | _ -> m-1
 ;;
 
+(** decompose a conjunction of formulae into a list of formulae *)
 let rec decomp_conj neg accu f =
   match f with
   | Eand (a, b, _) -> decomp_conj neg (decomp_conj neg accu b) a
@@ -243,6 +259,7 @@ let rec decomp_conj neg accu f =
   | _ when neg -> enot (f) :: accu
   | _ -> f :: accu
 
+(** decompose a disjunction of formulae into a list of formulae *)
 and decomp_disj neg accu f =
   match f with
   | Eor (a, b, _) -> decomp_disj neg (decomp_disj neg accu b) a
@@ -252,6 +269,8 @@ and decomp_disj neg accu f =
   | _ -> f :: accu
 ;;
 
+(** Close [st] with the formula [fm], that contradicts some formula of
+    the current branch. *)
 let newnodes_absurd st fm g _ =
   match fm with
   | Enot (p, _) when Index.member p -> add_node st {
@@ -271,6 +290,9 @@ let newnodes_absurd st fm g _ =
   | _ -> st, false
 ;;
 
+(** Given a formula, adds operations on this formula in the state's queue
+    (for instance, if s!=s is added, a closure of the branch is
+    enqueued) *)
 let newnodes_closure st fm g _ =
   match fm with
   | Efalse -> add_node st {
@@ -325,6 +347,7 @@ let newnodes_closure st fm g _ =
   | _ -> st, false
 ;;
 
+(** Equality-related rules? *)
 let newnodes_eq_str st fm g _ =
   let mk_node (st, b) rule e1 s1 e2 s2 eq =
     if Expr.equal s1 s2 then (st, b) else
@@ -368,6 +391,8 @@ let newnodes_eq_str st fm g _ =
   | _ -> st, false
 ;;
 
+(** Break some formulas into conjunctions or disjunctions (0-ary or/ands,
+    also not.imply, etc.) *)
 let newnodes_jtree st fm g _ =
   match fm with
   | Eand _ | Enot (Eor _, _) | Enot (Eimply _, _)
@@ -393,6 +418,7 @@ let newnodes_jtree st fm g _ =
   | _ -> st, false
 ;;
 
+(** Alpha rules *)
 let newnodes_alpha st fm g _ =
   match fm with
   | Enot (Enot (a, _), _) ->
@@ -430,6 +456,7 @@ let newnodes_alpha st fm g _ =
   | _ -> st, false
 ;;
 
+(** Beta rules *)
 let newnodes_beta st fm g _ =
   match fm with
   | Eor (a, b, _) ->
@@ -475,6 +502,7 @@ let newnodes_beta st fm g _ =
   | _ -> st, false
 ;;
 
+(** Extract the name off an Evar *)
 let get_var_name e =
   match e with
   | Evar (name, _) -> name
@@ -496,6 +524,7 @@ let andalso f1 x1 f2 x2 =
      | Some r2 -> Some (Expr.union r1 r2)
 ;;
 
+(** Is there some free variable of [vs] that appears in [env]? *)
 let interferes env vs =
   let p ee =
     let fv = get_fv ee in
@@ -504,8 +533,10 @@ let interferes env vs =
   List.exists p vs
 ;;
 
+(** Is [v] a free variable in [e]? *)
 let has_free_var v e = List.mem v (get_fv e);;
 
+(** Delta rules (with tau) *)
 let newnodes_delta st fm g _ =
   match fm with
   | Eex (v, t, p, _) ->
@@ -530,6 +561,7 @@ let newnodes_delta st fm g _ =
   | _ -> st, false
 ;;
 
+(** Gamma rules *)
 let newnodes_gamma st fm g _ =
   match fm with
   | Eall (v, t, p, _) ->
@@ -555,6 +587,7 @@ let newnodes_gamma st fm g _ =
   | _ -> st, false
 ;;
 
+(** Unfold (expand) definitions *)
 let newnodes_unfold st fm g _ =
   let mk_unfold ctx p args =
     try
@@ -630,6 +663,7 @@ let newnodes_unfold st fm g _ =
   | _ -> st, false
 ;;
 
+(* ? *)
 let orient_meta m1 m2 =
   let rec get_metas e =
     match e with
@@ -652,6 +686,7 @@ let orient_meta m1 m2 =
   else List.length l1 > List.length l2
 ;;
 
+(** Reflexivity rules *)
 let newnodes_refl st fm g _ =
   match fm with
   | Enot (Eapp (s, [e1; e2], _), _) when s <> "=" && Eqrel.refl s ->
@@ -672,6 +707,8 @@ let newnodes_refl st fm g _ =
   | _ -> st, false
 ;;
 
+(** Congruence rules: p(a1,...,an) and not p(b1,...,bn) ->
+    a1 != b1 | a2 != b2 | ... | an != bn *)
 let newnodes_match_congruence st fm g _ =
   match fm with
   | Enot (Eapp ("=", [Eapp ("$string", [s1], _);
@@ -701,6 +738,7 @@ let newnodes_match_congruence st fm g _ =
   | _ -> st, false
 ;;
 
+(** Transitivity rules *)
 let mknode_trans sym (e1, g1) (e2, g2) =
   let (r, a, b, c, d) =
     match e1, e2 with
@@ -768,10 +806,12 @@ let get_lhs (e, g) =
   | _ -> assert false
 ;;
 
+(** Pre-unification with goalness *)
 let preunif_g e1 (e2, g2) =
   List.map (fun (m, e) -> (m, e, g2)) (preunify e1 e2)
 ;;
 
+(** Transitivity rules? *)
 let newnodes_match_trans st fm g _ =
   try
     let fmg = (fm, g) in
@@ -1010,6 +1050,7 @@ let newnodes_useless st fm g _ =
   | _ -> (st, false)
 ;;
 
+(** Extensions of Zenon can provide rules too *)
 let newnodes_extensions state fm g fms =
   let (newnodes, stop) = Node.relevant (Extension.newnodes fm g fms) in
   let insert_node s n = {(*s with*) queue = insert s.queue n} in
@@ -1017,6 +1058,7 @@ let newnodes_extensions state fm g fms =
   (state2, stop)
 ;;
 
+(** List of rules to use for proofs *)
 let prove_rules = [
   newnodes_absurd;
   newnodes_closure;
@@ -1047,6 +1089,7 @@ let add_nodes rules st fm g fms =
   st1
 ;;
 
+(** Remove tautological terms from the list, and append them to [accu] *)
 let rec reduce_list accu l =
   match l with
   | Enot (Efalse, _) :: t
@@ -1074,6 +1117,8 @@ let rec reduce_list accu l =
   | [] -> accu
 ;;
 
+(** Reduce each sub-branch of [n], then return [n] with the new sub-branches,
+    unless one of them has become empty (return None then) *)
 let reduce_branches n =
   let reduced = Array.map (reduce_list []) n.nbranches in
   let rec array_exists f a i =
@@ -1097,6 +1142,7 @@ let sort_uniq l =
   uniq l1 []
 ;;
 
+(** Are there no equality between meta-variables in [e]? *)
 let rec not_meta_eq e =
   match e with
   | Eapp ("=", ([Emeta _; _] | [_; Emeta _]), _) -> false
@@ -1110,6 +1156,8 @@ let rec not_meta_eq e =
 
 let get_meta_weight e = if get_metas e =%= [] then 1 else 0;;
 
+(** Count the number of distinct meta-variables occurring in [l] (but not
+    in equalities between meta-variables) *)
 let count_meta_list l =
   let l = List.filter not_meta_eq l in
   let l = sort_uniq (List.flatten (List.map get_metas l)) in
@@ -1127,8 +1175,11 @@ let rec not_trivial e =
 
 let count_nontrivial l = List.length (List.filter not_trivial l);;
 
+(** Random state *)
 let rndstate = ref (Random.State.make [| 0 |]);;
 
+(** Choose an open branch among [brstate], heuristically. Returns None
+    if all branches are closed *)
 let find_open_branch node brstate =
   let last = Array.length brstate - 1 in
   if brstate =%= [| |] then None
@@ -1195,6 +1246,8 @@ let is_equiv r =
   | _ -> false
 ;;
 
+(** Node [n] with an additional branch that contains all formulas of branches
+    of [n] that contain a meta-variable. *)
 let add_virtual_branch n =
   let len = Array.length n.nbranches in
   if len < 2 then begin
@@ -1206,7 +1259,7 @@ let add_virtual_branch n =
       branches.(i) <- n.nbranches.(i);
       let has_metas fm = Expr.count_metas fm > 0 in
       let with_metas = List.filter has_metas n.nbranches.(i) in
-      branches.(len) <- with_metas @@ branches.(len);
+      branches.(len) <- with_metas @@ branches.(len); 
     done;
 
     if List.length (List.filter not_trivial branches.(len)) < 2
@@ -1313,6 +1366,7 @@ let progress () =
   if !progress_counter < 0 then periodic '*';
 ;;
 
+(** What to do when the attempt to find a proof failed *)
 let prove_fail () =
   let is_logic e =
     match e with
@@ -1339,10 +1393,10 @@ let prove_fail () =
 type rule =
   state -> expr -> int -> (expr * int) list -> state * bool
 and params = {
-  rules : rule list;
-  fail : unit -> branch_state;
-  progress : unit -> unit;
-  end_progress : string -> unit;
+  rules : rule list;              (* rules of the calculus *)
+  fail : unit -> branch_state;    (* called for backtracking? *)
+  progress : unit -> unit;        (* how to print progress *)
+  end_progress : string -> unit;  (* terminate progress printer *)
 };;
 
 let rec refute_aux prm stk st forms =
@@ -1466,6 +1520,7 @@ let rec iter_refute prm rl =
   | x -> x
 ;;
 
+(** Prove the list [l] using the given parameters and definitions. *)
 let prove prm defs l =
   if !Globals.random_flag then begin
     rndstate := Random.State.make [| !Globals.random_seed |];
