@@ -570,6 +570,7 @@ let rec print oc e =
   match e with
   | Evar (v, _) -> output_string oc v;
   | Emeta (e', _) -> Printf.fprintf oc "tau(%a)" print e'
+  | Eapp (s, [], _) -> output_string oc s
   | Eapp (s, es, _) ->
     Printf.fprintf oc "%s(" s;
     List.iteri (fun i x ->
@@ -612,6 +613,7 @@ let print_short oc e =
     match e with
     | Evar (v, _) -> output_string oc v;
     | Emeta (e', _) -> Printf.fprintf oc "tau(%a)" print e'
+    | Eapp (s, [], _) -> output_string oc s
     | Eapp (s, es, _) ->
       Printf.fprintf oc "%s(" s;
       List.iteri (fun i x ->
