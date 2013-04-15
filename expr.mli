@@ -97,6 +97,24 @@ val remove_scope : expr -> expr;;
 val newvar : unit -> expr;;
 val newname : unit -> string;;
 
+(* curryfication *)
+
+type curry_expr =
+  | CQuote of expr      (* quote a subexpression *)
+  | CSymbol of string   (* function/predicate symbol *)
+  | CVar of string      (* variable *)
+  | CConn of string     (* logic connective *)
+  | CTrue
+  | CFalse
+  ;;
+
+module Curry : CC.CurryfiedTerm with type symbol = curry_expr ;;
+
+val curry : expr -> Curry.t ;;
+val uncurry : Curry.t -> expr ;;
+
+(* utils *)
+
 val size : expr -> int;;
 val get_taus : expr -> int;;   (* tau nesting level *)
 val has_metas : expr -> bool;;
@@ -107,3 +125,5 @@ val get_fv : expr -> string list;;
 type goalness = int;;
 
 val print_stats : out_channel -> unit;;
+val print : out_channel -> expr -> unit   (* debug printing *)
+val print_short : out_channel -> expr -> unit  (* printing, cutting taus *)

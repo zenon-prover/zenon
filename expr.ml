@@ -564,3 +564,171 @@ let rec remove_scope e =
 ;;
 
 type goalness = int;;
+
+let rec print oc e =
+  let univ_name = "U" in  (* hack *)
+  match e with
+  | Evar (v, _) -> output_string oc v;
+  | Emeta (e', _) -> Printf.fprintf oc "tau(%a)" print e'
+  | Eapp (s, es, _) ->
+    Printf.fprintf oc "%s(" s;
+    List.iteri (fun i x ->
+      (if i > 0 then output_string oc ", ");
+      print oc x) es;
+    output_string oc ")";
+  | Enot (e, _) -> Printf.fprintf oc "(-. %a)" print e
+  | Eand (e1, e2, _) ->
+    Printf.fprintf oc "%a /\\ %a" print e1 print e2
+  | Eor (e1, e2, _) ->
+    Printf.fprintf oc "%a \\/ %a" print e1 print e2
+  | Eimply (e1, e2, _) ->
+    Printf.fprintf oc "%a => %a" print e1 print e2
+  | Eequiv (e1, e2, _) ->
+    Printf.fprintf oc "%a <=> %a" print e1 print e2
+  | Etrue -> output_string oc "True";
+  | Efalse -> output_string oc "False";
+  | Eall (v, t, e, _) when t =%= univ_name ->
+    Printf.fprintf oc "(A. (%a) %a)" print v print e
+  | Eall (v, t, e, _) ->
+    Printf.fprintf oc "(A. (%a:%s) %a)" print v t print e
+  | Eex (v, t, e, _) when t =%= univ_name ->
+    Printf.fprintf oc "(E. (%a) %a)" print v print e
+  | Eex (v, t, e, _) ->
+    Printf.fprintf oc "(E. (%a:%s) %a)" print v t print e
+  | Etau (v, t, e, _) when t =%= univ_name ->
+    Printf.fprintf oc "(t. (%a) %a)" print v print e
+  | Etau (v, t, e, _) ->
+    Printf.fprintf oc "(t. (%a:%s) %a)" print v t print e
+  | Elam (v, t, e, _) when t =%= univ_name ->
+    Printf.fprintf oc "(\\. (%a) %a)" print v print e
+  | Elam (v, t, e, _) ->
+    Printf.fprintf oc "(\\. (%a:%s) %a)" print v t print e
+;;
+
+let print_short oc e =
+  let univ_name = "U" in  (* hack *)
+  let rename = ref [] in  (* renaming of tau *)
+  let rec print oc e =
+    match e with
+    | Evar (v, _) -> output_string oc v;
+    | Emeta (e', _) -> Printf.fprintf oc "tau(%a)" print e'
+    | Eapp (s, es, _) ->
+      Printf.fprintf oc "%s(" s;
+      List.iteri (fun i x ->
+        (if i > 0 then output_string oc ", ");
+        print oc x) es;
+      output_string oc ")";
+    | Enot (e, _) -> Printf.fprintf oc "(-. %a)" print e
+    | Eand (e1, e2, _) ->
+      Printf.fprintf oc "%a /\\ %a" print e1 print e2
+    | Eor (e1, e2, _) ->
+      Printf.fprintf oc "%a \\/ %a" print e1 print e2
+    | Eimply (e1, e2, _) ->
+      Printf.fprintf oc "%a => %a" print e1 print e2
+    | Eequiv (e1, e2, _) ->
+      Printf.fprintf oc "%a <=> %a" print e1 print e2
+    | Etrue -> output_string oc "True";
+    | Efalse -> output_string oc "False";
+    | Eall (v, t, e, _) when t =%= univ_name ->
+      Printf.fprintf oc "(A. (%a) %a)" print v print e
+    | Eall (v, t, e, _) ->
+      Printf.fprintf oc "(A. (%a:%s) %a)" print v t print e
+    | Eex (v, t, e, _) when t =%= univ_name ->
+      Printf.fprintf oc "(E. (%a) %a)" print v print e
+    | Eex (v, t, e, _) ->
+      Printf.fprintf oc "(E. (%a:%s) %a)" print v t print e
+    | Etau _ ->
+      let n = try List.assq e !rename
+        with Not_found ->
+          let n = List.length !rename in
+          rename := (e,n) :: !rename;
+          n
+      in
+      Printf.fprintf oc "tau(%d)" n
+    | Elam (v, t, e, _) when t =%= univ_name ->
+      Printf.fprintf oc "(\\. (%a) %a)" print v print e
+    | Elam (v, t, e, _) ->
+      Printf.fprintf oc "(\\. (%a:%s) %a)" print v t print e
+  in print oc e
+;;
+
+(* curryfication *)
+
+type curry_expr =
+  | CQuote of expr      (* quote a subexpression *)
+  | CSymbol of string   (* function/predicate symbol *)
+  | CVar of string      (* variable *)
+  | CConn of string     (* logic connective *)
+  | CTrue
+  | CFalse
+  ;;
+
+module Curry = CC.Curryfy(struct
+  type t = curry_expr
+  let equal a b = match a, b with
+    | CQuote e1, CQuote e2 -> equal e1 e2
+    | CSymbol s1, CSymbol s2 
+    | CVar s1, CVar s2
+    | CConn s1, CConn s2 -> s1 =%= s2
+    | CTrue, CTrue | CFalse, CFalse -> true
+    | _ -> false
+  let hash t = match t with
+    | CQuote e -> hash e
+    | CSymbol s 
+    | CVar s
+    | CConn s -> Hashtbl.hash s
+    | CTrue -> 13
+    | CFalse -> 17
+end);;
+
+(* connectives *)
+let cnot = Curry.mk_const (CConn "not") ;;
+let cand = Curry.mk_const (CConn "and") ;;
+let cor = Curry.mk_const (CConn "or") ;;
+let cimply = Curry.mk_const (CConn "imply") ;;
+let cequiv = Curry.mk_const (CConn "equiv") ;;
+let ctrue = Curry.mk_const (CTrue) ;;
+let cfalse = Curry.mk_const (CFalse) ;;
+
+let rec curry e = match e with
+  | Evar (s, _) -> Curry.mk_const (CVar s)
+  | Emeta (_, _) -> Curry.mk_const (CQuote e)
+  | Eapp (s, l, _) ->
+    (* curryfy subterms, then apply with left associativity *)
+    let head = Curry.mk_const (CSymbol s) in
+    let l' = List.map curry l in
+    List.fold_left Curry.mk_app head l'
+  | Enot (e, _) -> Curry.mk_app cnot (curry e)
+  | Eand (e1, e2, _) -> Curry.mk_app (Curry.mk_app cand (curry e1)) (curry e2)
+  | Eor (e1, e2, _) -> Curry.mk_app (Curry.mk_app cor (curry e1)) (curry e2)
+  | Eimply (e1, e2, _) -> Curry.mk_app (Curry.mk_app cor (curry e1)) (curry e2)
+  | Eequiv (e1, e2, _) -> Curry.mk_app (Curry.mk_app cor (curry e1)) (curry e2)
+  | Etrue -> ctrue
+  | Efalse -> cfalse
+  | Eall _
+  | Eex _
+  | Etau _
+  | Elam _ -> Curry.mk_const (CQuote e)  (* just quote, do not enter the term *)
+;;
+
+let uncurry e =
+  let open Curry in
+  (* uncurry [e] and apply it to [args] *)
+  let rec uncurry e args = match e.shape, args with
+    | Const (CQuote e), [] -> e
+    | Const (CSymbol s), _ -> eapp (s, args)
+    | Const (CConn "not"), [x] -> enot x
+    | Const (CConn "and"), [x;y] -> eand (x,y)
+    | Const (CConn "or"), [x;y] -> eor (x,y)
+    | Const (CConn "imply"), [x;y] -> eimply (x,y)
+    | Const (CConn "equiv"), [x;y] -> eequiv (x,y)
+    | Const CTrue, [] -> etrue
+    | Const CFalse, [] -> efalse
+    | Const (CVar v), [] -> evar v
+    | Apply (e1, e2), _ ->
+      let e2' = uncurry e2 [] in
+      uncurry e1 (e2' :: args)
+    | _ -> assert false
+  in
+  uncurry e []
+;;
