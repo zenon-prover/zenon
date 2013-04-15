@@ -283,7 +283,85 @@ let remove_meta_set e =
 
 let is_meta_set e = HE.mem meta_set e;;
 
-(* ==== *)
+(* ==== simon: congruence closure ==== *)
+
+module CCExpr = CC.Make(Expr.Curry) ;;
+
+let cc = ref (CCExpr.create 10001)  (* congruence closure *)
+let old_cc = Stack.create () ;;     (* stack of previous congruence closures *)
+
+(* add true != false to [cc] *)
+let _ =
+  cc := CCExpr.distinct !cc (Expr.curry etrue) (Expr.curry efalse) ;;
+
+let cur_cc () = !cc ;;
+
+let cc_inconsistency = ref None ;;  (* cause of closure of the branch *)
+
+let cc_inconsistent () = !cc_inconsistency ;;
+
+let add_cc e =
+  Printf.printf "add_cc %a\n" Expr.print_short e;
+  assert ((!cc_inconsistency) === None);
+  try
+    (* save current CC *)
+    let cc' = !cc in
+    (* see if we merge two equivalence classes *)
+    begin match e with
+    | Eapp ("=", [a; b], _) -> (* term equality *)
+      let ca = curry a in
+      let cb = curry b in
+      Printf.printf "merge %a %a\n" Expr.print_short a Expr.print_short b;
+      cc := CCExpr.merge !cc ca cb;
+      Stack.push (e,cc') old_cc;
+    | Enot (Eapp ("=", [a; b], _), _) ->  (* term inequality *)
+      let ca = curry a in
+      let cb = curry b in
+      Printf.printf "distinct %a %a\n" Expr.print_short a Expr.print_short b;
+      cc := CCExpr.distinct !cc ca cb;
+      Stack.push (e,cc') old_cc;
+    | Eapp (p, l, _) ->  (* predicate *)
+      let ce = curry e in
+      Printf.printf "merge %a true\n" Expr.print_short e;
+      cc := CCExpr.merge !cc ce (Expr.curry etrue);
+      Stack.push (e,cc') old_cc;
+    | Enot ((Eapp (p, l, _) as e'), _) ->  (* not predicate *)
+      let ce = curry e' in
+      Printf.printf "merge %a false\n" Expr.print_short e';
+      cc := CCExpr.merge !cc ce (Expr.curry efalse);
+      Stack.push (e,cc') old_cc;
+    | _ -> ()
+    end;
+  with CCExpr.Inconsistent (cc', ca', cb') ->
+    (* ca'=cb' is inconsistent *)
+    Printf.printf "inconsistent CC with %a %a\n"
+      Expr.print_short (uncurry ca') 
+      Expr.print_short (uncurry cb');
+    cc_inconsistency := Some (cc', ca', cb')
+;;
+(* TODO also add equivalence/xor *)
+
+let remove_cc e =
+  match e with
+  | _ when Stack.is_empty old_cc -> ()
+  | Eapp ("=", [_; _], _)
+  | Enot (Eapp ("=", [_; _], _), _)
+  | Eapp (_, _, _)
+  | Enot (Eapp (_, _, _), _) ->
+    begin match Stack.top old_cc with
+      | (e', cc') when Expr.equal e e' ->
+        (* put back old CC *)
+        ignore (Stack.pop old_cc);
+        Printf.printf "pop %a from CC\n" Expr.print_short e;
+        (* inconsistency is removed *)
+        cc_inconsistency := None;
+        cc := cc'
+      | _ -> ()
+    end
+  | _ -> ()
+;;
+
+(* ===== *)
 
 let eq_str = ref [];;
 let str_eq = ref [];;
@@ -315,6 +393,7 @@ let add e g =
   HE.add allforms e g;
   add_eq e;
   add_str e;
+  add_cc e;
   incr cur_num_forms;
   if !cur_num_forms > !Globals.top_num_forms
   then Globals.top_num_forms := !cur_num_forms;
@@ -328,6 +407,7 @@ let remove e =
   remove_trans e;
   remove_negtrans e;
   negpos remove_element e;
+  remove_cc e;
   remove_str e;
   remove_eq e;
   HE.remove allforms e;

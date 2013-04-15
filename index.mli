@@ -27,6 +27,16 @@ val find_str_eq : unit -> (expr * string) list;;
 
 val is_meta_set : expr -> bool;;
 
+(* ==== congruence closure ====== *)
+
+module CCExpr : CC.S with module CT = Expr.Curry ;;
+
+val cur_cc : unit -> CCExpr.t ;;
+  (** Current congruence closure *)
+
+val cc_inconsistent : unit -> (CCExpr.t * Expr.Curry.t * Expr.Curry.t) option;;
+  (** Check whether an inconsistency has been detected *)
+
 (* ==== transitive relations ==== *)
 
 type direction = Left | Right | Both;;
