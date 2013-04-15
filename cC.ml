@@ -45,6 +45,7 @@ module type CurryfiedTerm = sig
   val mk_app : t -> t -> t
   val get_id : t -> int
   val eq : t -> t -> bool
+  val pp_skel : out_channel -> t -> unit  (* print tags recursively *)
 end
 
 module Curryfy(X : Hashtbl.HashedType) = struct
@@ -89,6 +90,11 @@ module Curryfy(X : Hashtbl.HashedType) = struct
   let get_id t = t.tag
 
   let eq t1 t2 = t1 == t2
+
+  let rec pp_skel oc t = match t.shape with
+    | Const _ -> Printf.fprintf oc "%d" t.tag
+    | Apply (t1, t2) ->
+      Printf.fprintf oc "(%a %a):%d" pp_skel t1 pp_skel t2 t.tag
 end
 
 (** {2 Congruence Closure} *)
@@ -166,6 +172,7 @@ module Make(T : CurryfiedTerm) = struct
     defined : BV.t;               (* is the term defined? *)
     use : eqn list THashtbl.t;    (* for all repr a, a -> all a@b=c and b@a=c *)
     lookup : eqn T2Hashtbl.t;     (* for all reprs a,b, some a@b=c (if any) *)
+    inconsistent : (CT.t * CT.t) option;
   } (** Congruence Closure data structure *)
   and eqn =
     | EqnSimple of CT.t * CT.t          (* t1 = t2 *)
@@ -186,6 +193,7 @@ module Make(T : CurryfiedTerm) = struct
       defined = BV.make 3;
       use = THashtbl.create size;
       lookup = T2Hashtbl.create size;
+      inconsistent = None;
     }
 
   let mem cc t =
@@ -239,10 +247,15 @@ module Make(T : CurryfiedTerm) = struct
       let b' = Puf.find !uf b in
       if not (CT.eq a' b') then begin
         let use_a' = try THashtbl.find !use a' with Not_found -> [] in
-        let use_b' = ref (try THashtbl.find !use b' with Not_found -> []) in
+        let use_b' = try THashtbl.find !use b' with Not_found -> [] in
         (* merge a and b's equivalence classes *)
         (* Format.printf "merge %d %d@." a.CT.tag b.CT.tag; *)
         uf := Puf.union !uf a b eqn;
+        (* check which of [a'] and [b'] is the new representative. [repr] is
+            the new representative, and [other] is the former representative *)
+        let repr = Puf.find !uf a' in
+        let use_repr = ref (if CT.eq repr a' then use_a' else use_b') in
+        let use_other  = if CT.eq repr a' then use_b' else use_a' in
         (* consider all c1@c2=c in use(a') *)
         List.iter
           (fun eqn -> match eqn with
@@ -256,11 +269,11 @@ module Make(T : CurryfiedTerm) = struct
               pending := (PendingDouble (eqn,eqn')) :: !pending
             with Not_found ->
               lookup := T2Hashtbl.replace !lookup (c1', c2') eqn;
-              use_b' := eqn :: !use_b';
+              use_repr := eqn :: !use_repr;
             end)
-          use_a';
-        (* update use list of b' *)
-        use := THashtbl.replace !use b' !use_b';
+          use_other;
+        (* update use list of [repr] *)
+        use := THashtbl.replace !use repr !use_repr;
         (* check for inconsistencies *)
         match Puf.inconsistent !uf with
         | None -> ()  (* consistent *)

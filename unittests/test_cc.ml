@@ -55,6 +55,14 @@ let test_merge3 () =
   OUnit.assert_bool "eq" (CC.eq cc (parse "a") (parse "(f a)"));
   ()
 
+let test_merge4 () =
+  let cc = CC.create 5 in
+  let cc = CC.merge cc (parse "true") (parse "(p (f (f (f (f (f (f a)))))))") in
+  let cc = CC.merge cc (parse "a") (parse "(f b)") in
+  let cc = CC.merge cc (parse "(f a)") (parse "b") in
+  OUnit.assert_bool "eq" (CC.eq cc (parse "a") (parse "(f (f (f (f (f (f a))))))"));
+  ()
+
 let test_explain () =
   let cc = CC.create 5 in
   (* f^3(a) = a *)
@@ -80,5 +88,6 @@ let suite =
       "test_merge" >:: test_merge;
       "test_merge2" >:: test_merge2;
       "test_merge3" >:: test_merge3;
+      "test_merge4" >:: test_merge4;
       "test_explain" >:: test_explain;
     ]

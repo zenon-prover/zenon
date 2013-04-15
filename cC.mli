@@ -41,6 +41,7 @@ module type CurryfiedTerm = sig
   val mk_app : t -> t -> t
   val get_id : t -> int
   val eq : t -> t -> bool
+  val pp_skel : out_channel -> t -> unit  (* print tags recursively *)
 end
 
 module Curryfy(X : Hashtbl.HashedType) : CurryfiedTerm with type symbol = X.t
