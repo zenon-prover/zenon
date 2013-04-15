@@ -342,6 +342,9 @@ let add_cc e =
 (* TODO also add equivalence/xor *)
 
 let remove_cc e =
+  Printf.printf "remove_cc %a\n" Expr.print_short e;
+  (* inconsistency is removed *)
+  cc_inconsistency := None;
   match e with
   | _ when Stack.is_empty old_cc -> ()
   | Eapp ("=", [_; _], _)
@@ -353,8 +356,6 @@ let remove_cc e =
         (* put back old CC *)
         ignore (Stack.pop old_cc);
         Printf.printf "pop %a from CC\n" Expr.print_short e;
-        (* inconsistency is removed *)
-        cc_inconsistency := None;
         cc := cc'
       | _ -> ()
     end

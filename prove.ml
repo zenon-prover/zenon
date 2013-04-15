@@ -347,6 +347,18 @@ let newnodes_closure st fm g _ =
   | _ -> st, false
 ;;
 
+let newnodes_congruence_closure st fm g _ =
+  match Index.cc_inconsistent () with
+  | None -> st, false
+  | Some (cc, a, b) ->  (* inconsistency in CC *)
+    add_node st {
+      nconc = [fm];
+      nrule = Close_sym ("=", uncurry a, uncurry b);  (* TODO: list of premises *)
+      nprio = Prop;
+      ngoal = g;
+      nbranches = [||];
+    }, true
+
 (** Equality-related rules? *)
 let newnodes_eq_str st fm g _ =
   let mk_node (st, b) rule e1 s1 e2 s2 eq =
@@ -1062,6 +1074,7 @@ let newnodes_extensions state fm g fms =
 let prove_rules = [
   newnodes_absurd;
   newnodes_closure;
+  newnodes_congruence_closure;
   newnodes_extensions;
   newnodes_jtree;
   newnodes_alpha;

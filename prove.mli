@@ -25,6 +25,7 @@ val default_params : params;;
 
 val newnodes_absurd : rule;;
 val newnodes_closure : rule;;
+val newnodes_congruence_closure : rule;;
 val newnodes_eq_str : rule;;
 val newnodes_jtree : rule;;
 val newnodes_alpha : rule;;
