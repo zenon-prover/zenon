@@ -308,13 +308,15 @@ let add_cc e =
     let cc' = !cc in
     (* see if we merge two equivalence classes *)
     begin match e with
+    | Eequiv (a, b, _)
     | Eapp ("=", [a; b], _) -> (* term equality *)
       let ca = curry a in
       let cb = curry b in
       Printf.printf "merge %a %a\n" Expr.print_short a Expr.print_short b;
       cc := CCExpr.merge !cc ca cb;
       Stack.push (e,cc') old_cc;
-    | Enot (Eapp ("=", [a; b], _), _) ->  (* term inequality *)
+    | Enot (Eequiv (a, b, _), _)
+    | Enot (Eapp ("=", [a; b], _), _) -> (* term inequality *)
       let ca = curry a in
       let cb = curry b in
       Printf.printf "distinct %a %a\n" Expr.print_short a Expr.print_short b;
@@ -350,6 +352,8 @@ let remove_cc e =
   | Eapp ("=", [_; _], _)
   | Enot (Eapp ("=", [_; _], _), _)
   | Eapp (_, _, _)
+  | Eequiv _
+  | Enot (Eequiv _, _)
   | Enot (Eapp (_, _, _), _) ->
     begin match Stack.top old_cc with
       | (e', cc') when Expr.equal e e' ->
