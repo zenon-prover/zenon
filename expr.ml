@@ -569,8 +569,10 @@ let rec print oc e =
   let univ_name = "U" in  (* hack *)
   match e with
   | Evar (v, _) -> output_string oc v;
-  | Emeta (e', _) -> Printf.fprintf oc "tau(%a)" print e'
+  | Emeta (e', _) -> Printf.fprintf oc "meta(%a)" print e'
   | Eapp (s, [], _) -> output_string oc s
+  | Enot (Eapp ("=", [a;b], _), _) -> Printf.fprintf oc "%a != %a" print a print b
+  | Eapp ("=", [a;b], _) -> Printf.fprintf oc "%a = %a" print a print b
   | Eapp (s, es, _) ->
     Printf.fprintf oc "%s(" s;
     List.iteri (fun i x ->
@@ -612,8 +614,16 @@ let print_short oc e =
   let rec print oc e =
     match e with
     | Evar (v, _) -> output_string oc v;
-    | Emeta (e', _) -> Printf.fprintf oc "tau(%a)" print e'
+    | Emeta (e', _) -> 
+      let n = try List.assq e !rename
+        with Not_found ->
+          let n = List.length !rename in
+          rename := (e,n) :: !rename;
+          n
+      in Printf.fprintf oc "X%d" n
     | Eapp (s, [], _) -> output_string oc s
+    | Enot (Eapp ("=", [a;b], _), _) -> Printf.fprintf oc "%a != %a" print a print b
+    | Eapp ("=", [a;b], _) -> Printf.fprintf oc "%a = %a" print a print b
     | Eapp (s, es, _) ->
       Printf.fprintf oc "%s(" s;
       List.iteri (fun i x ->
@@ -646,7 +656,7 @@ let print_short oc e =
           rename := (e,n) :: !rename;
           n
       in
-      Printf.fprintf oc "tau(%d)" n
+      Printf.fprintf oc "tau_%d" n
     | Elam (v, t, e, _) when t =%= univ_name ->
       Printf.fprintf oc "(\\. (%a) %a)" print v print e
     | Elam (v, t, e, _) ->

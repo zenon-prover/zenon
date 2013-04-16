@@ -349,21 +349,30 @@ let newnodes_closure st fm g _ =
 
 (** Find when the congruence closure is able to close a branch *)
 let newnodes_congruence_closure st fm g _ =
-  (* proof reconstruction: gives a mlproof for [a=b] in [cc] *)
-  (*
-  let rec explain cc a b : Mlproof.proof =
-    let open Expr.Curry in
-    match a, b with  (* TODO use CC.explain, etc. ... *)
-    | ByMerge a', ByMerge
-
+  (* gather all assertions that lead to a contradiction in CC *)
+  let gather cc a b a' b' =
+    let explanations = Index.CCExpr.explain cc a b
+      @ Index.CCExpr.explain cc a a'
+      @ Index.CCExpr.explain cc b b' in
+    let explanations = List.map
+      (function
+        | Index.CCExpr.ByMerge (a, b) -> [eapp ("=", [uncurry a; uncurry b])]
+        | Index.CCExpr.ByCongruence (a, b) -> [])
+      explanations in
+    let explanations = List.flatten explanations in
+    let neg = enot (eapp ("=", [uncurry a'; uncurry b'])) in
+    neg :: explanations
   in
-  *)
   match Index.cc_inconsistent () with
   | None -> st, false
   | Some (cc, a, b, a', b') ->  (* inconsistency in CC *)
+    let explanations = gather cc a b a' b' in
+    Printf.printf "explanation: ";
+    List.iteri (fun i e -> (if i > 0 then print_string ", "); print_short stdout e) explanations;
+    Printf.printf "\n";
     add_node st {
       nconc = [fm];
-      nrule = Close_sym ("=", uncurry a, uncurry b);  (* TODO: list of premises *)
+      nrule = Ext ("", "congruence", explanations);
       nprio = Prop;
       ngoal = g;
       nbranches = [||];
