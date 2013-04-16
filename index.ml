@@ -302,7 +302,7 @@ let cc_backtrack = Stack.create () ;;  (* backtracking actions *)
 let cc_inconsistent () = !cc_inconsistency ;;
 
 let add_cc e =
-  Printf.printf "add_cc %a\n" Expr.print_short e;
+  (if !Globals.debug_flag then Printf.printf "add_cc %a\n" Expr.print_short e);
   if !cc_inconsistency === None then try
     (* save current CC *)
     let cc' = !cc in
@@ -312,24 +312,28 @@ let add_cc e =
     | Eapp ("=", [a; b], _) -> (* term equality *)
       let ca = curry a in
       let cb = curry b in
-      Printf.printf "merge %a %a\n" Expr.print_short a Expr.print_short b;
+      (if !Globals.debug_flag
+        then Printf.printf "merge %a %a\n" Expr.print_short a Expr.print_short b);
       cc := CCExpr.merge !cc ca cb;
       Stack.push (fun () -> cc := cc') cc_backtrack;
     | Enot (Eequiv (a, b, _), _)
     | Enot (Eapp ("=", [a; b], _), _) -> (* term inequality *)
       let ca = curry a in
       let cb = curry b in
-      Printf.printf "distinct %a %a\n" Expr.print_short a Expr.print_short b;
+      (if !Globals.debug_flag
+        then Printf.printf "distinct %a %a\n" Expr.print_short a Expr.print_short b);
       cc := CCExpr.distinct !cc ca cb;
       Stack.push (fun () -> cc := cc') cc_backtrack;
     | Eapp (p, l, _) ->  (* predicate *)
       let ce = curry e in
-      Printf.printf "merge %a true\n" Expr.print_short e;
+      (if !Globals.debug_flag
+        then Printf.printf "merge %a true\n" Expr.print_short e);
       cc := CCExpr.merge !cc ce (Expr.curry etrue);
       Stack.push (fun () -> cc := cc') cc_backtrack;
     | Enot ((Eapp (p, l, _) as e'), _) ->  (* not predicate *)
       let ce = curry e' in
-      Printf.printf "merge %a false\n" Expr.print_short e';
+      (if !Globals.debug_flag
+        then Printf.printf "merge %a false\n" Expr.print_short e');
       cc := CCExpr.merge !cc ce (Expr.curry efalse);
       Stack.push (fun () -> cc := cc') cc_backtrack;
     | _ ->
@@ -337,11 +341,12 @@ let add_cc e =
     end;
   with CCExpr.Inconsistent (cc', ca', cb', ca'', cb'') -> begin
     (* ca'=cb' is inconsistent *)
-    Printf.printf "inconsistent CC with %a = %a != %a = %a\n"
-      Expr.print_short (uncurry ca'') 
-      Expr.print_short (uncurry ca') 
-      Expr.print_short (uncurry cb')
-      Expr.print_short (uncurry cb'');
+    (if !Globals.debug_flag
+      then  Printf.printf "inconsistent CC with %a = %a != %a = %a\n"
+        Expr.print_short (uncurry ca'') 
+        Expr.print_short (uncurry ca') 
+        Expr.print_short (uncurry cb')
+        Expr.print_short (uncurry cb''));
     cc_inconsistency := Some (cc', ca', cb', ca'', cb'');
     Stack.push (fun () -> cc_inconsistency := None) cc_backtrack;
   end
@@ -349,7 +354,7 @@ let add_cc e =
 ;;
 
 let remove_cc e =
-  Printf.printf "remove_cc %a\n" Expr.print_short e;
+  (if !Globals.debug_flag then Printf.printf "remove_cc %a\n" Expr.print_short e);
   let action = Stack.pop cc_backtrack in
   action ()
 ;;

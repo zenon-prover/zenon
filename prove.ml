@@ -367,9 +367,11 @@ let newnodes_congruence_closure st fm g _ =
   | None -> st, false
   | Some (cc, a, b, a', b') ->  (* inconsistency in CC *)
     let explanations = gather cc a b a' b' in
-    Printf.printf "explanation: ";
-    List.iteri (fun i e -> (if i > 0 then print_string ", "); print_short stdout e) explanations;
-    Printf.printf "\n";
+    (if !Globals.debug_flag then begin
+      Printf.printf "explanation: ";
+      List.iteri (fun i e -> (if i > 0 then print_string ", "); print_short stdout e) explanations;
+      Printf.printf "\n"
+      end);
     add_node st {
       nconc = [fm];
       nrule = Ext ("", "congruence", explanations);
