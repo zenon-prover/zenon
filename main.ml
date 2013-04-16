@@ -93,6 +93,7 @@ let usage_msg = "Usage: zenon [options] <file>";;
 let argspec = [
   "-", Arg.Unit (fun () -> input_file "-"),
     "                  read input from stdin";
+  "-aggressive", Arg.Set Globals.aggressive, "aggressive instantiation";
   "-context", Arg.Set ctx_flag,
            "           provide context for checking the proof independently";
   "-d", Arg.Unit (fun () -> Globals.debug_flag := true;

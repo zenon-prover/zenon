@@ -1,6 +1,7 @@
 (*  Copyright 1997 INRIA  *)
 Version.add "$Id$";;
 
+let aggressive = ref false;;
 let debug_flag = ref false;;
 
 let stats_flag = ref false;;

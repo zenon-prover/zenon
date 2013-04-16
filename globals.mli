@@ -1,6 +1,7 @@
 (*  Copyright 1997 INRIA  *)
 (*  $Id: globals.mli,v 1.15 2008-10-09 13:21:30 doligez Exp $  *)
 
+val aggressive : bool ref;;
 val debug_flag : bool ref;;
 
 val stats_flag : bool ref;;
