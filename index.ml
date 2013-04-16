@@ -287,25 +287,23 @@ let is_meta_set e = HE.mem meta_set e;;
 
 module CCExpr = CC.Make(Expr.Curry) ;;
 
-let cc = ref (CCExpr.create 10001)  (* congruence closure *)
-let old_cc = Stack.create () ;;     (* stack of previous congruence closures *)
-
-(* add true != false to [cc] *)
-let _ =
-  cc := CCExpr.distinct !cc (Expr.curry etrue) (Expr.curry efalse) ;;
+(* current congruence closure, initially containing true != false *)
+let cc =
+  let cc = CCExpr.create 10001 in
+  let cc = CCExpr.distinct cc (Expr.curry etrue) (Expr.curry efalse) in
+  ref cc
 
 let cur_cc () = !cc ;;
 
 let cc_inconsistency = ref None ;;  (* cause of closure of the branch *)
 
-(* TODO stack for inconsistency?In case several inconsistent changes are pushed *)
+let cc_backtrack = Stack.create () ;;  (* backtracking actions *)
 
 let cc_inconsistent () = !cc_inconsistency ;;
 
 let add_cc e =
   Printf.printf "add_cc %a\n" Expr.print_short e;
-  assert ((!cc_inconsistency) === None);
-  try
+  if !cc_inconsistency === None then try
     (* save current CC *)
     let cc' = !cc in
     (* see if we merge two equivalence classes *)
@@ -316,58 +314,44 @@ let add_cc e =
       let cb = curry b in
       Printf.printf "merge %a %a\n" Expr.print_short a Expr.print_short b;
       cc := CCExpr.merge !cc ca cb;
-      Stack.push (e,cc') old_cc;
+      Stack.push (fun () -> cc := cc') cc_backtrack;
     | Enot (Eequiv (a, b, _), _)
     | Enot (Eapp ("=", [a; b], _), _) -> (* term inequality *)
       let ca = curry a in
       let cb = curry b in
       Printf.printf "distinct %a %a\n" Expr.print_short a Expr.print_short b;
       cc := CCExpr.distinct !cc ca cb;
-      Stack.push (e,cc') old_cc;
+      Stack.push (fun () -> cc := cc') cc_backtrack;
     | Eapp (p, l, _) ->  (* predicate *)
       let ce = curry e in
       Printf.printf "merge %a true\n" Expr.print_short e;
       cc := CCExpr.merge !cc ce (Expr.curry etrue);
-      Stack.push (e,cc') old_cc;
+      Stack.push (fun () -> cc := cc') cc_backtrack;
     | Enot ((Eapp (p, l, _) as e'), _) ->  (* not predicate *)
       let ce = curry e' in
       Printf.printf "merge %a false\n" Expr.print_short e';
       cc := CCExpr.merge !cc ce (Expr.curry efalse);
-      Stack.push (e,cc') old_cc;
-    | _ -> ()
+      Stack.push (fun () -> cc := cc') cc_backtrack;
+    | _ ->
+      Stack.push (fun () -> ()) cc_backtrack;
     end;
-  with CCExpr.Inconsistent (cc', ca', cb', ca'', cb'') ->
+  with CCExpr.Inconsistent (cc', ca', cb', ca'', cb'') -> begin
     (* ca'=cb' is inconsistent *)
     Printf.printf "inconsistent CC with %a = %a != %a = %a\n"
       Expr.print_short (uncurry ca'') 
       Expr.print_short (uncurry ca') 
       Expr.print_short (uncurry cb')
       Expr.print_short (uncurry cb'');
-    cc_inconsistency := Some (cc', ca', cb', ca'', cb'')
+    cc_inconsistency := Some (cc', ca', cb', ca'', cb'');
+    Stack.push (fun () -> cc_inconsistency := None) cc_backtrack;
+  end
+  else Stack.push (fun () -> ()) cc_backtrack
 ;;
-(* TODO also add equivalence/xor *)
 
 let remove_cc e =
   Printf.printf "remove_cc %a\n" Expr.print_short e;
-  (* inconsistency is removed *)
-  cc_inconsistency := None;
-  match e with
-  | _ when Stack.is_empty old_cc -> ()
-  | Eapp ("=", [_; _], _)
-  | Enot (Eapp ("=", [_; _], _), _)
-  | Eapp (_, _, _)
-  | Eequiv _
-  | Enot (Eequiv _, _)
-  | Enot (Eapp (_, _, _), _) ->
-    begin match Stack.top old_cc with
-      | (e', cc') when Expr.equal e e' ->
-        (* put back old CC *)
-        ignore (Stack.pop old_cc);
-        Printf.printf "pop %a from CC\n" Expr.print_short e;
-        cc := cc'
-      | _ -> ()
-    end
-  | _ -> ()
+  let action = Stack.pop cc_backtrack in
+  action ()
 ;;
 
 (* ===== *)
