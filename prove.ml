@@ -347,10 +347,20 @@ let newnodes_closure st fm g _ =
   | _ -> st, false
 ;;
 
+(** Find when the congruence closure is able to close a branch *)
 let newnodes_congruence_closure st fm g _ =
+  (* proof reconstruction: gives a mlproof for [a=b] in [cc] *)
+  (*
+  let rec explain cc a b : Mlproof.proof =
+    let open Expr.Curry in
+    match a, b with  (* TODO use CC.explain, etc. ... *)
+    | ByMerge a', ByMerge
+
+  in
+  *)
   match Index.cc_inconsistent () with
   | None -> st, false
-  | Some (cc, a, b) ->  (* inconsistency in CC *)
+  | Some (cc, a, b, a', b') ->  (* inconsistency in CC *)
     add_node st {
       nconc = [fm];
       nrule = Close_sym ("=", uncurry a, uncurry b);  (* TODO: list of premises *)

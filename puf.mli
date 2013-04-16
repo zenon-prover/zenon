@@ -113,8 +113,10 @@ module type S = sig
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
         is congruent to [a], including [a] itself. *)
 
-  val inconsistent : _ t -> (elt * elt) option
-    (** Check whether the UF is inconsistent *)
+  val inconsistent : _ t -> (elt * elt * elt * elt) option
+    (** Check whether the UF is inconsistent. It returns [Some (a, b, a', b')]
+        in case of inconsistency, where a = b, a = a' and b = b' by congruence,
+        and a' != b' was a call to [distinct]. *)
 
   val common_ancestor : 'e t -> elt -> elt -> elt
     (** Closest common ancestor of the two elements in the proof forest *)
@@ -126,6 +128,11 @@ module type S = sig
   val explain : 'e t -> elt -> elt -> 'e list
     (** [explain uf a b] returns a list of labels that justify why
         [find uf a = find uf b]. Such labels were provided by [union]. *)
+
+  val explain_distinct : 'e t -> elt -> elt -> elt * elt
+    (** [explain_distinct uf a b] gives the original pair [a', b'] that
+        made [a] and [b] distinct by calling [distinct a' b']. The
+        terms must be distinct, otherwise Failure is raised. *)
 end
 
 module Make(X : ID) : S with type elt = X.t

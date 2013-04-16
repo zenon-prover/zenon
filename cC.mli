@@ -54,10 +54,10 @@ module type S = sig
   type t
     (** Congruence Closure instance *)
 
-  exception Inconsistent of t * CT.t * CT.t
+  exception Inconsistent of t * CT.t * CT.t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
-        inconsistent. The two given terms should be different
-        but are equal in the given CC instance. *)
+        inconsistent. [Inconsistent (a, b, a', b')] means that [a=b, a=a', b=b'] in
+        the congruence closure, but [a' != b'] was asserted before. *)
 
   val create : int -> t
     (** Create an empty CC of given size *)

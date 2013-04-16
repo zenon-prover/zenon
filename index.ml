@@ -298,6 +298,8 @@ let cur_cc () = !cc ;;
 
 let cc_inconsistency = ref None ;;  (* cause of closure of the branch *)
 
+(* TODO stack for inconsistency?In case several inconsistent changes are pushed *)
+
 let cc_inconsistent () = !cc_inconsistency ;;
 
 let add_cc e =
@@ -334,12 +336,14 @@ let add_cc e =
       Stack.push (e,cc') old_cc;
     | _ -> ()
     end;
-  with CCExpr.Inconsistent (cc', ca', cb') ->
+  with CCExpr.Inconsistent (cc', ca', cb', ca'', cb'') ->
     (* ca'=cb' is inconsistent *)
-    Printf.printf "inconsistent CC with %a %a\n"
+    Printf.printf "inconsistent CC with %a = %a != %a = %a\n"
+      Expr.print_short (uncurry ca'') 
       Expr.print_short (uncurry ca') 
-      Expr.print_short (uncurry cb');
-    cc_inconsistency := Some (cc', ca', cb')
+      Expr.print_short (uncurry cb')
+      Expr.print_short (uncurry cb'');
+    cc_inconsistency := Some (cc', ca', cb', ca'', cb'')
 ;;
 (* TODO also add equivalence/xor *)
 

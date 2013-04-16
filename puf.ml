@@ -204,8 +204,10 @@ module type S = sig
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
         is congruent to [a], including [a] itself. *)
 
-  val inconsistent : _ t -> (elt * elt) option
-    (** Check whether the UF is inconsistent *)
+  val inconsistent : _ t -> (elt * elt * elt * elt) option
+    (** Check whether the UF is inconsistent. It returns [Some (a, b, a', b')]
+        in case of inconsistency, where a = b, a = a' and b = b' by congruence,
+        and a' != b' was a call to [distinct]. *)
 
   val common_ancestor : 'e t -> elt -> elt -> elt
     (** Closest common ancestor of the two elements in the proof forest *)
@@ -214,10 +216,13 @@ module type S = sig
     (** Edge from the element to its parent in the proof forest; Returns
         None if the element is a root of the forest. *)
 
-
   val explain : 'e t -> elt -> elt -> 'e list
     (** [explain uf a b] returns a list of labels that justify why
         [find uf a = find uf b]. Such labels were provided by [union]. *)
+
+  val explain_distinct : 'e t -> elt -> elt -> elt * elt
+    (** [explain_distinct uf a b] gives the original pair [a', b'] that
+        made [a] and [b] distinct by calling [distinct a' b'] *)
 end
 
 module IH = Hashtbl.Make(struct type t = int let equal i j = i = j let hash i = i end)
@@ -227,15 +232,15 @@ module Make(X : ID) : S with type elt = X.t = struct
 
   type 'e t = {
     mutable parent : int PArray.t;      (* idx of the parent, with path compression *)
-    mutable data : elt_data option PArray.t;   (* ID -> data for an element *)
-    inconsistent : (elt * elt) option;  (* is the UF inconsistent? *)
+    mutable data : elt_data option PArray.t;        (* ID -> data for an element *)
+    inconsistent : (elt * elt * elt * elt) option;  (* is the UF inconsistent? *)
     forest : 'e edge PArray.t;          (* explanation forest *)
   } (** An instance of the union-find, ie a set of equivalence classes *)
   and elt_data = {
     elt : elt;
     size : int;                         (* number of elements in the class *)
     next : int;                         (* next element in equiv class *)
-    distinct : int list;                (* classes distinct from this one *)
+    distinct : (int * elt * elt) list;  (* classes distinct from this one, and why *)
   } (** Data associated to the element. Most of it is only meaningful for
         a representative (ie when elt = parent(elt)). *)
   and 'e edge =
@@ -330,9 +335,12 @@ module Make(X : ID) : S with type elt = X.t = struct
     let data = PArray.set data ib' (Some data_b') in
     (* inconsistency check *)
     let inconsistent =
-      if List.exists (fun id -> find_root uf id = ib') data_a.distinct
-        then Some (a, b)
-        else None
+      List.fold_left
+        (fun acc (id, a', b') -> match acc with
+          | Some _ -> acc
+          | None when find_root uf id = ib' -> Some (a, b, a', b')  (* found! *)
+          | None -> None)
+        None data_a.distinct
     in
     (* update forest *)
     let forest = merge_forest uf.forest (X.get_id a) (X.get_id b) why in
@@ -373,15 +381,15 @@ module Make(X : ID) : S with type elt = X.t = struct
     (* representatives of a and b *)
     let ia' = find_root uf ia in
     let ib' = find_root uf ib in
-    (* check inconsistency *)
-    let inconsistent = if ia' = ib' then Some (a, b) else None in
     (* update 'distinct' lists *)
     let data_a = get_data uf ia' in
-    let data_a' = {data_a with distinct= ib' :: data_a.distinct; } in
+    let data_a' = {data_a with distinct= (ib',a,b) :: data_a.distinct; } in
     let data_b = get_data uf ib' in
-    let data_b' = {data_b with distinct= ia' :: data_b.distinct; } in
+    let data_b' = {data_b with distinct= (ia',a,b) :: data_b.distinct; } in
     let data = PArray.set uf.data ia' (Some data_a') in
     let data = PArray.set data ib' (Some data_b') in
+    (* check inconsistency *)
+    let inconsistent = if ia' = ib' then Some (data_a.elt, data_b.elt, a, b) else None in
     { uf with inconsistent; data; }
 
   let must_be_distinct uf a b =
@@ -398,7 +406,7 @@ module Make(X : ID) : S with type elt = X.t = struct
         match PArray.get uf.data ia' with
         | None -> false  (* ia' not present *)
         | Some data_a ->
-          List.exists (fun id -> find_root uf id = ib') data_a.distinct
+          List.exists (fun (id,_,_) -> find_root uf id = ib') data_a.distinct
 
   (** [fold_equiv_class uf a f acc] folds on [acc] and every element
       that is congruent to [a] with [f]. *)
@@ -494,4 +502,18 @@ module Make(X : ID) : S with type elt = X.t = struct
             build_path (e::path) x'
     in
     build_path (build_path [] a) b
+
+  (** [explain_distinct uf a b] gives the original pair [a', b'] that
+      made [a] and [b] distinct by calling [distinct a' b']. The
+      terms must be distinct, otherwise Failure is raised. *)
+  let explain_distinct uf a b =
+    let ia' = find_root uf (X.get_id a) in
+    let ib' = find_root uf (X.get_id b) in
+    let node_a = get_data uf ia' in
+    let rec search l = match l with
+      | [] -> failwith "Puf.explain_distinct: classes are not distinct"
+      | (ib'', a', b')::_ when ib' = ib'' -> (a', b')  (* explanation found *)
+      | _ :: l' -> search l'
+    in
+    search node_a.distinct
 end

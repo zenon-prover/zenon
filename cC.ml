@@ -105,10 +105,10 @@ module type S = sig
   type t
     (** Congruence Closure instance *)
 
-  exception Inconsistent of t * CT.t * CT.t
+  exception Inconsistent of t * CT.t * CT.t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
-        inconsistent. The two given terms should be different
-        but are equal in the given CC instance. *)
+        inconsistent. [Inconsistent (a, b, a', b')] means that [a=b, a=a', b=b'] in
+        the congruence closure, but [a' != b'] was asserted before. *)
 
   val create : int -> t
     (** Create an empty CC of given size *)
@@ -182,10 +182,10 @@ module Make(T : CurryfiedTerm) = struct
     | PendingSimple of eqn
     | PendingDouble of eqn * eqn
 
-  exception Inconsistent of t * CT.t * CT.t
+  exception Inconsistent of t * CT.t * CT.t * CT.t * CT.t
     (** Exception raised when equality and inequality constraints are
-        inconsistent. The two given terms should be different
-       but are equal in the given CC instance. *)
+        inconsistent. [Inconsistent (a, b, a', b')] means that [a=b, a=a', b=b'] in
+        the congruence closure, but [a' != b'] was asserted before. *)
 
   (** Create an empty CC of given size *)
   let create size =
@@ -277,10 +277,10 @@ module Make(T : CurryfiedTerm) = struct
         (* check for inconsistencies *)
         match Puf.inconsistent !uf with
         | None -> ()  (* consistent *)
-        | Some (t1, t2) ->
+        | Some (t1, t2, t1', t2') ->
           (* inconsistent *)
           let cc = { cc with use= !use; lookup= !lookup; uf= !uf; } in
-          raise (Inconsistent (cc, t1, t2))
+          raise (Inconsistent (cc, t1, t2, t1', t2'))
     end
   done;
   let cc = { cc with use= !use; lookup= !lookup; uf= !uf; } in
@@ -324,7 +324,7 @@ module Make(T : CurryfiedTerm) = struct
     let t1' = Puf.find cc.uf t1 in
     let t2' = Puf.find cc.uf t2 in
     if CT.eq t1' t2'
-      then raise (Inconsistent (cc, t1, t2))   (* they are equal, fail *)
+      then raise (Inconsistent (cc, t1', t2', t1, t2)) (* they are equal, fail *)
       else
         (* remember that they should not become equal *)
         let uf = Puf.distinct cc.uf t1 t2 in

@@ -34,7 +34,8 @@ module CCExpr : CC.S with module CT = Expr.Curry ;;
 val cur_cc : unit -> CCExpr.t ;;
   (** Current congruence closure *)
 
-val cc_inconsistent : unit -> (CCExpr.t * Expr.Curry.t * Expr.Curry.t) option;;
+val cc_inconsistent : unit ->
+  (CCExpr.t * Expr.Curry.t * Expr.Curry.t * Expr.Curry.t * Expr.Curry.t) option;;
   (** Check whether an inconsistency has been detected *)
 
 (* ==== transitive relations ==== *)
