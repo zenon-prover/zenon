@@ -1,0 +1,11 @@
+*.o
+*.cmx
+*.cmo
+*.cmi
+*.cmxa
+*.cma
+*~
+*.output
+*.spec
+*.bin
+*.byt
