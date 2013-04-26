@@ -9,3 +9,6 @@
 *.spec
 *.bin
 *.byt
+test.p
+test.dk
+test.lua
