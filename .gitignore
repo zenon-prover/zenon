@@ -15,3 +15,13 @@ test.lua
 zenon
 .depend
 .config_var
+checksum.ml
+lexcoq.ml
+lextptp.ml
+lexzen.ml
+parsecoq.ml
+parsecoq.mli
+parsetptp.ml
+parsetptp.mli
+parsezen.ml
+parsezen.mli
