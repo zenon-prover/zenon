@@ -196,49 +196,50 @@ weakening is implicit*)
 
 let rec p_proof oc (lkproof, goal, gamma) =
   let poc fmt = fprintf oc fmt in
+  let g, d, lkrule = lkproof in
   let p_hyp oc e =
     try (List.assoc e gamma) oc
     with Not_found -> fprintf oc "axiom error" in
-  match lkproof with
-  | SCAxiom (e) -> 
+  match lkrule with
+  | SCaxiom (e) -> 
     poc "%a" p_hyp e
-  | SCFalse -> 
+  | SCfalse -> 
     poc "(%a %a)" p_hyp efalse p_expr goal
-  | SCTrue -> 
+  | SCtrue -> 
     let prop = new_prop () in
     let var = new_hypo () in
     poc "(%s : Prop => %s : prf %s => %s)"
       prop var prop var
-  | SCEqref (a) -> 
+  | SCeqref (a) -> 
     let prop = new_prop () in
     poc "(%s : (Term -> Prop) => %a)"
       prop p_proof (
-	SCRand (
+	scrand (
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
-	  SCRimply (
+	  scrimply (
 	    eapp (prop, [a]), 
 	    eapp (prop, [a]), 
-	    SCAxiom (eapp (prop, [a]))),
-	  SCRimply (
+	    scaxiom (eapp (prop, [a]))),
+	  scrimply (
 	    eapp (prop, [a]), 
 	    eapp (prop, [a]), 
-	    SCAxiom (eapp (prop, [a])))),
+	    scaxiom (eapp (prop, [a])))),
 	eand (
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
 	  eimply (eapp (prop, [a]), eapp (prop, [a]))), gamma)
-  | SCEqsym (a, b) -> 
+  | SCeqsym (a, b) -> 
     let prop = new_prop () in
     poc "(%s : (Term -> Prop) => %a)"
       prop p_proof (
-	SCLand (
+	scland (
 	  eimply (eapp (prop, [a]), eapp (prop, [b])),
 	  eimply (eapp (prop, [b]), eapp (prop, [a])),
-	  SCRand (
+	  scrand (
 	    eimply (eapp (prop, [b]), eapp (prop, [a])),
 	    eimply (eapp (prop, [a]), eapp (prop, [b])),
-	    SCAxiom (eimply (eapp (prop, [b]), eapp (prop, [a]))),
-	    SCAxiom (eimply (eapp (prop, [a]), eapp (prop, [b]))))),
+	    scaxiom (eimply (eapp (prop, [b]), eapp (prop, [a]))),
+	    scaxiom (eimply (eapp (prop, [a]), eapp (prop, [b]))))),
 	eand (
 	  eimply (eapp (prop, [b]), eapp (prop, [a])),
 	  eimply (eapp (prop, [a]), eapp (prop, [b]))), 
@@ -247,11 +248,11 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	 fun oc -> 
 	   fprintf oc "%a %s" p_hyp (eapp ("=", [a; b]))
 	     prop) :: gamma)
-  | SCCut (e, lkrule1, lkrule2) ->
+  | SCcut (e, lkrule1, lkrule2) ->
     poc "%a" p_proof 
       (lkrule2, goal,
        (e, fun oc -> p_proof oc (lkrule1, e, gamma)) :: gamma)
-  | SCLand (e1, e2, lkrule) ->
+  | SCland (e1, e2, lkrule) ->
     let var1 = new_hypo () in
     let var2 = new_hypo () in
     poc "(%a %a (%a => %a => %a))"
@@ -259,7 +260,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_expr goal
       p_declare_prf (e1, p_str var1) p_declare_prf (e2, p_str var2)
       p_proof (lkrule, goal, (e1, p_str var1) :: (e2, p_str var2) :: gamma)
-  | SCLor (e1, e2, lkrule1, lkrule2) ->
+  | SClor (e1, e2, lkrule1, lkrule2) ->
     let var1 = new_hypo () in
     let var2 = new_hypo () in
     poc "(%a %a (%a => %a) (%a => %a))"
@@ -269,23 +270,23 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_proof (lkrule1, goal, (e1, p_str var1) :: gamma)
       p_declare_prf (e2, p_str var2) 
       p_proof (lkrule2, goal, (e2, p_str var2) :: gamma)      
-  | SCLimply (e1, e2, lkrule1, lkrule2) ->
+  | SClimply (e1, e2, lkrule1, lkrule2) ->
     let p_aux oc = 
       fprintf oc "(%a %a)"
 	p_hyp (eimply (e1, e2))
 	p_proof (lkrule1, e1, gamma) in
     poc "%a"
       p_proof (lkrule2, goal, (e2, p_aux) :: gamma)
-  | SCLnot (e, lkrule) ->
+  | SClnot (e, lkrule) ->
     poc "(%a %a)" p_hyp (enot e) p_proof (lkrule, e, gamma)
-  | SCLall (Eall (x, ty, p, _) as ap, t, lkrule) ->
+  | SClall (Eall (x, ty, p, _) as ap, t, lkrule) ->
     let p_aux oc =
       fprintf oc "(usetau (%a: Term => %a) %a %a)"
 	p_expr x p_expr p p_expr t p_hyp ap in
     poc "%a" 
       p_proof 
       (lkrule, goal, (substitute [(x, t)] p, p_aux) :: gamma)
-  | SCLex (Eex (x, ty, p, _) as ep, v, lkrule) ->
+  | SClex (Eex (x, ty, p, _) as ep, v, lkrule) ->
     let p_aux oc =
       fprintf oc "%a" 
 	p_hyp ep in
@@ -293,7 +294,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
     poc "%a"
       p_proof
       (lkrule, goal, (q, p_aux) :: gamma)
-  | SCLcongruence (p, a, b, lkrule) ->
+  | SClcongruence (p, a, b, lkrule) ->
       let term = new_term () in
       let var1 = new_hypo () in
       let var2 = new_hypo () in
@@ -306,14 +307,14 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	  p_hyp (apply p a) in
       poc "%a"
 	p_proof (lkrule, goal, (apply p b, p_aux) :: gamma)
-  | SCRand (e1, e2, lkrule1, lkrule2) ->
+  | SCrand (e1, e2, lkrule1, lkrule2) ->
     let prop = new_prop () in
     let var = new_hypo () in
     poc "(\n%s : Prop => \n%s : (%a -> %a -> prf %s) => %s %a %a)"
       prop var
       p_prf e1 p_prf e2 prop
       var p_proof (lkrule1, e1, gamma) p_proof (lkrule2, e2, gamma)
-  | SCRorl (e1, e2, lkrule) ->
+  | SCrorl (e1, e2, lkrule) ->
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
@@ -321,7 +322,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
 %s %a)"
       prop var1 p_prf e1 prop var2 p_prf e2 prop
       var1 p_proof (lkrule, e1, gamma)
-  | SCRorr (e1, e2, lkrule) ->
+  | SCrorr (e1, e2, lkrule) ->
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
@@ -329,15 +330,15 @@ let rec p_proof oc (lkproof, goal, gamma) =
 %s %a)"
       prop var1 p_prf e1 prop var2 p_prf e2 prop
       var2 p_proof (lkrule, e2, gamma)
-  | SCRimply (e1, e2, lkrule) ->
+  | SCrimply (e1, e2, lkrule) ->
     let var = new_hypo () in
     poc "(\n%s : %a => %a)"
       var p_prf e1 p_proof (lkrule, e2, (e1, p_str var) :: gamma)
-  | SCRnot (e, lkrule) ->
+  | SCrnot (e, lkrule) ->
     let var = new_hypo () in
     poc "(%a => %a)" p_declare_prf (e, p_str var) 
       p_proof (lkrule, efalse, (e, p_str var) :: gamma)
-  | SCRall (Eall (Evar (x, _), ty, p, _) as ap, v, lkrule) ->
+  | SCrall (Eall (Evar (x, _), ty, p, _) as ap, v, lkrule) ->
     let p_aux oc =
       fprintf oc "%a" 
 	p_hyp ap in
@@ -345,13 +346,11 @@ let rec p_proof oc (lkproof, goal, gamma) =
     poc "%a"
       p_proof
       (lkrule, goal, (q, p_aux) :: gamma)
-  | SCRex (Eex (Evar (x, _), ty, p, _), t, lkrule) ->
-    poc "maketau (%s: Term => %a) %a %a"
+  | SCrex (Eex (Evar (x, _), ty, p, _), t, lkrule) ->
+    poc "(maketau (%s: Term => %a) %a %a)"
       x p_expr p p_expr t
       p_proof (lkrule, substitute [(evar (x), t)] p, gamma)
-  | SCRweak (e, lkrule) ->
-    poc "(%a %a)" p_proof (lkrule, efalse, gamma) p_expr goal
-  | SCRcontr (e, lkrule) -> 
+  | SCrcontr (e, lkrule) -> 
     poc "proof must be constructive"
   | _ -> 
     poc "error"
