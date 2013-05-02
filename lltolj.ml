@@ -5,6 +5,15 @@ open Namespace;;
 
 exception Found of expr;;
 
+let p_debug s es = 
+  eprintf "%s |" s;
+  List.iter
+    (eprintf " %a |" 
+       (fun oc x -> Print.expr (Print.Chan oc) x)
+    ) es; 
+  eprintf "\n";
+;;
+
 type sequent = expr list * expr list
 
 type lkrule =
@@ -30,6 +39,7 @@ type lkrule =
 | SCrnot of expr * lkproof
 | SCrall of expr * expr * lkproof
 | SCrex of expr * expr * lkproof
+| SCrcongruence of expr * expr * expr * lkproof
 | SCrcontr of expr * lkproof
 
 and lkproof = 
@@ -43,12 +53,13 @@ let rec rm a list =
   | [] -> assert false
 ;;
 
-let scaxiom (e) = [e], [e], SCaxiom e;;
-let scfalse = [efalse], [], SCfalse;;
-let sctrue = [], [etrue], SCtrue;;
-let sceqref (a) = [], [eapp ("=", [a; a])], SCeqref (a);;
-let sceqsym (a, b) =
-  [eapp ("=", [a; b])], [eapp ("=", [b; a])], SCeqsym (a, b);;
+let scaxiom (e, g, d) = e :: g, e :: d, SCaxiom e;;
+let scfalse (g, d) = efalse :: g, d, SCfalse;;
+let sctrue (g, d) = g, etrue :: d, SCtrue;;
+let sceqref (a, g, d) = g, eapp ("=", [a; a]) :: d, SCeqref (a);;
+let sceqsym (a, b, g, d) =
+  eapp ("=", [a; b]) :: g, 
+  eapp ("=", [b; a]) :: d, SCeqsym (a, b);;
 let sceqprop (e1, e2, proofs) =
   match proofs with
   | [] -> [e1], [e2], SCeqprop (e1, e2, [])
@@ -91,13 +102,13 @@ let sclall (e1, t, proof) =
   | _ -> assert false;;
 let sclex (e1, v, proof) = 
   match e1 with
-  | Eall (x, ty, p, _) ->
+  | Eex (x, ty, p, _) ->
     let (g, d, rule) = proof in
-    e1 :: rm (substitute [(x, v)] p) g, d, SCrall (e1, v, proof)
+    e1 :: rm (substitute [(x, v)] p) g, d, SClex (e1, v, proof)
   | _ -> assert false;;
 let sclcongruence (p, a, b, proof) = 
   let (g, d, rule) = proof in
-  apply p a :: eapp ("=", [a; b]) :: rm (apply p b) g, 
+  apply p a :: eapp ("=", [a; b]) :: (rm (apply p b) g), 
   d, SClcongruence (p, a, b, proof);;
 let scrand (e1, e2, proof1, proof2) = 
   let (g1, d1, rule1) = proof1 in
@@ -110,7 +121,7 @@ let scrorr (e1, e2, proof) =
   g, eor (e1, e2) :: rm e2 d, SCrorr (e1, e2, proof);;
 let scrimply (e1, e2, proof) = 
   let (g, d, rule) = proof in
-  e1 :: g, eimply (e1, e2) :: rm e2 d, SCrimply (e1, e2, proof);;
+  rm e1 g, eimply (e1, e2) :: rm e2 d, SCrimply (e1, e2, proof);;
 let scrnot (e, proof) = 
   let (g, d, rule) = proof in
   rm e g, enot e :: d, SCrnot (e, proof);;
@@ -126,6 +137,10 @@ let screx (e1, t, proof) =
       let (g, d, rule) = proof in
       g, e1 :: rm (substitute [(x, t)] p) d, SCrex (e1, t, proof)
   | _ -> assert false;;
+let scrcongruence (p, a, b, proof) = 
+  let (g, d, rule) = proof in
+  eapp ("=", [a; b]) :: g, apply p a :: (rm (apply p b) d), 
+  SCrcongruence (p, a, b, proof);;
 let scrcontr (e, proof) = 
   let (g, d, rule) = proof in
   g, rm e d, SCrcontr (e, proof);;
@@ -164,17 +179,18 @@ let hypsofrule lkrule =
   | SCrnot (e, proof) -> [proof]
   | SCrall (e1, e2, proof) -> [proof]
   | SCrex (e1, e2, proof) -> [proof]
+  | SCrcongruence (p, a, b, proof) -> [proof]
   | SCrcontr (e, proof) -> [proof]
 ;;
 
 let applytohyps f lkproof =
   let g, d, lkrule = lkproof in
   match lkrule with
-  | SCaxiom (e) -> scaxiom (e)
-  | SCfalse -> scfalse
-  | SCtrue -> sctrue
-  | SCeqref (e) -> sceqref (e)
-  | SCeqsym (e1, e2) -> sceqsym (e1, e2)
+  | SCaxiom (e) -> g, d, SCaxiom (e)
+  | SCfalse -> g, d, SCfalse
+  | SCtrue -> g, d, SCtrue
+  | SCeqref (e) -> g, d, SCeqref (e)
+  | SCeqsym (e1, e2) -> g, d, SCeqsym (e1, e2)
   | SCeqprop (e1, e2, proofs) -> 
     sceqprop (e1, e2, List.map f proofs)
   | SCeqfunc (e1, e2, proofs) -> 
@@ -203,6 +219,8 @@ let applytohyps f lkproof =
   | SCrnot (e, proof) -> scrnot (e, f proof)
   | SCrall (e1, e2, proof) -> scrall (e1, e2, f proof)
   | SCrex (e1, e2, proof) -> screx (e1, e2, f proof)
+  | SCrcongruence (p, a, b, proof) -> 
+    scrcongruence (p, a, b, f proof)
   | SCrcontr (e, proof) -> scrcontr (e, f proof)
 ;;
 
@@ -289,93 +307,89 @@ and use_defs_rule rule =
   | Rnotequal (e1, e2) -> Rnotequal (use_defs e1, use_defs e2)
   | RcongruenceLR (p, a, b) -> RcongruenceLR (use_defs p, a, b)
   | RcongruenceRL (p, a, b) -> RcongruenceRL (use_defs p, a, b)
-  | Rdefinition (_, _, _, _, _, c, h) -> rule
+  | Rdefinition (name, sym, args, body, recarg, c, h) -> 
+    rule
   | Rextension (ext, name, args, cons, hyps) ->
     Rextension (
       ext, name, List.map use_defs args, 
       List.map use_defs cons, List.map (List.map use_defs) hyps)
   | Rlemma (name, args) -> rule
-    
-and addhyps (rule, l) =
-  match rule, l with
-  | Rfalse, [] -> []
-  | Rnottrue, [] -> []
-  | Raxiom (p), [] -> []
-  | Rcut (p), [prf1; prf2] -> 
-    [addhyp [p] prf1; addhyp [enot p] prf2]
-  | Rnoteq (a), [] -> []
-  | Reqsym (a, b), [] -> []
-  | Rnotnot (p), [prf] -> [addhyp [p] prf]
-  | Rconnect (b, p, q), l -> 
-    begin match b, l with
-    | And, [prf] -> 
-      [addhyp [p; q] prf]
-    | Or, [prf1; prf2] -> 
-      [addhyp [p] prf1; addhyp [q] prf2]
-    | Imply, [prf1; prf2] -> 
-      [addhyp [enot p] prf1; addhyp [q] prf2]
-    | Equiv, [prf1; prf2] -> 
-      [addhyp [enot p; enot q] prf1; 
-       addhyp [p; q] prf2] 
-    | _ -> assert false end
-  | Rnotconnect (b, p, q), l -> 
-    begin match b, l with
-    | And, [prf1; prf2] ->
-      [addhyp [enot p] prf1; addhyp [enot q] prf2]
-    | Or, [prf] ->
-      [addhyp [enot p; enot q] prf] 
-    | Imply, [prf] ->
-      [addhyp [p; enot q] prf]
-    | Equiv, [prf1; prf2] ->
-      [addhyp [enot p; q] prf1; 
-       addhyp [p; enot q] prf2] 
-    | _ -> assert false end
-  | Rex (ep, v), [prf] -> 
-    begin match ep with
-    | Eex (x, ty, p, _) ->
-      [addhyp [substitute [(x, v)] p] prf]
-    | _ -> assert false end
-  | Rall (ap, t), [prf] -> 
-    begin match ap with
-    | Eall (x, ty, p, _) ->
-      [addhyp [substitute [(x, t)] p] prf]
-    | _ -> assert false end
-  | Rnotex (ep, t), [prf] -> 
-    begin match ep with
-    | Eex (x, ty, p, _) ->
-      [addhyp [substitute [(x, t)] p] prf]
-    | _ -> assert false end
-  | Rnotall (ap, v), [prf] -> 
-    begin match ap with
-    | Eall (x, ty, p, _) ->
-      [addhyp [substitute [(x, v)] p] prf]
-    | _ -> assert false end
-  | Rpnotp (e1, e2), prfs -> 
-    begin match e1, e2 with
-    | Eapp (p, ts, _), Enot (Eapp (q, us, _), _) ->
-      let list = List.map2 
-	(fun x y -> [enot (eapp ("=", [x; y]))]) ts us in
-      List.map2 addhyp list prfs
-    | _ -> assert false end
-  | Rnotequal (e1, e2), prfs -> 
-    begin match e1, e2 with
-    | Eapp (p, ts, _), Eapp (q, us, _) ->
-      let list = List.map2 
-	(fun x y -> [enot (eapp ("=", [x; y]))]) ts us in
-      List.map2 addhyp list prfs
-    | _ -> assert false end
-  | RcongruenceLR (p, a, b), [prf] -> 
-    [addhyp [apply p b] prf]
-  | RcongruenceRL (p, a, b), [prf] -> 
-    [addhyp [apply p b] prf]
-  | Rextension (ext, name, args, cons, hyps), prfs ->
-    List.map2 addhyp hyps prfs
-  | Rlemma (name, args), [] -> []
-  | _ -> assert false
 ;;
 
-let rec lltolk proof =
-  lltolkrule proof
+let rec hypstoadd rule =
+  match rule with
+  | Rfalse -> [], [efalse]
+  | Rnottrue -> [], [enot etrue]
+  | Raxiom (p) -> [], [p; enot p]
+  | Rcut (p) -> [[p]; [enot p]], []
+  | Rnoteq (a) -> [], [enot (eapp ("=", [a; a]))]
+  | Reqsym (a, b) -> 
+    [], [eapp ("=", [a; b]); enot (eapp ("=", [b; a]))]
+  | Rnotnot (p) -> [[p]], [enot (enot p)]
+  | Rconnect (b, p, q) -> 
+    begin match b with
+    | And -> [[p; q]], [eand (p, q)]
+    | Or -> [[p]; [q]], [eor (p, q)]
+    | Imply -> [[enot p]; [q]], [eimply (p, q)]
+    | Equiv -> [[enot p; enot q]; [p; q]], [eequiv (p, q)]  end
+  | Rnotconnect (b, p, q) -> 
+    begin match b with
+    | And -> [[enot p]; [enot q]], [enot (eand (p, q))]
+    | Or -> [[enot p; enot q]], [enot (eor (p, q))]
+    | Imply -> [[p; enot q]], [enot (eimply (p, q))]
+    | Equiv -> 
+      [[enot p; q]; [p; enot q]], [enot (eequiv (p, q))]  end
+  | Rex (ep, v) -> 
+    begin match ep with
+    | Eex (x, ty, p, _) -> [[substitute [(x, v)] p]], [ep]
+    | _ -> assert false end
+  | Rall (ap, t) -> 
+    begin match ap with
+    | Eall (x, ty, p, _) -> [[substitute [(x, t)] p]], [ap]
+    | _ -> assert false end
+  | Rnotex (ep, t) -> 
+    begin match ep with
+    | Eex (x, ty, p, _) -> 
+      [[enot (substitute [(x, t)] p)]], [enot ep]
+    | _ -> assert false end
+  | Rnotall (ap, v) -> 
+    begin match ap with
+    | Eall (x, ty, p, _) -> 
+      [[enot (substitute [(x, v)] p)]], [enot ap]
+    | _ -> assert false end
+  | Rpnotp (e1, e2) -> 
+    begin match e1, e2 with
+    | Eapp (p, ts, _), Enot (Eapp (q, us, _), _) ->
+      List.map2 
+	(fun x y -> [enot (eapp ("=", [x; y]))]) ts us, 
+      [e1; e2]
+    | _ -> assert false end
+  | Rnotequal (e1, e2) -> 
+    begin match e1, e2 with
+    | Eapp (p, ts, _), Eapp (q, us, _) ->
+      List.map2 
+	(fun x y -> [enot (eapp ("=", [x; y]))]) ts us, 
+      [enot (eapp ("=", [e1; e2]))]
+    | _ -> assert false end
+  | RcongruenceLR (p, a, b) -> 
+    [[apply p b]], [apply p a; eapp ("=", [a; b])]
+  | RcongruenceRL (p, a, b) -> 
+    [[apply p b]], [apply p a; eapp ("=", [b; a])]
+  | Rextension (ext, name, args, concs, hyps) ->
+    hyps, concs
+  | Rlemma (name, args) -> 
+    let g, d, rule = lltolk (Hashtbl.find lemma_env name) None in
+    [], g
+  | _ -> assert false
+
+and lltolk proof goal =
+  let pregamma = 
+    match goal with
+    | Some (Enot (g, _)) -> enot g :: !hypothesis_env
+    | None -> !hypothesis_env
+    | _ -> assert false in
+  let gamma = List.map use_defs pregamma in
+  lltolkrule proof gamma
 
 and righttoleft e proof =
   sclnot (e, proof)
@@ -384,34 +398,52 @@ and lefttoright expr lkproof =
   let g, d, lkrule = lkproof in
   match lkrule with
   | SClnot (e, proof) 
-    when equal expr e ->
+      when equal expr e ->
     proof
+  | SClcongruence (p, a, b, proof) 
+      when equal (enot expr) (apply p a) -> 
+    begin match p with
+    | Elam (v, ty, Enot (f, _), _) -> 
+      let q = elam (v, ty, f) in
+      scrcongruence (q, a, b, lefttoright (apply q b) proof)
+    | _ -> assert false end
   | SCaxiom (e) 
     when equal e (enot expr) ->
-    scrnot (expr, scaxiom (expr))
+    scrnot (expr, scaxiom (expr, rm e g, rm e d))
   | SCaxiom _ | SCfalse 
-  | SCtrue | SCeqref _ | SCeqsym _ -> 
+  | SCtrue | SCeqref _ | SCeqsym _ ->
     rm (enot expr) g, expr :: d, lkrule
   | _ -> applytohyps (lefttoright expr) lkproof
 
-and lltolkrule proof =
-  let hypos = List.map lltolkrule proof.hyps in
-  let rule = use_defs_rule proof.rule in
-  let hyps = addhyps (rule, hypos) in
-  match use_defs_rule proof.rule, hyps with
+and lltolkrule proof gamma =
+  let rule = use_defs_rule proof.rule in 
+  (*is use_defs_rule necessary ?*)
+  let prehypslist, preconclist = hypstoadd rule in
+  let hypslist = List.map (List.map use_defs) prehypslist in
+  let conclist = List.map use_defs preconclist in
+  let list = 
+    List.fold_left (fun es e -> rm e es) 
+      gamma conclist in
+  let hyps = 
+    List.map2 lltolkrule proof.hyps 
+      (List.map (List.rev_append list) hypslist) in
+  addhyp gamma (xlltolkrule rule hyps list)
+
+and xlltolkrule rule hyps gamma =
+  match rule, hyps with
   | Rfalse, [] ->
-    scfalse
-  | Rnottrue, [] -> 
-    righttoleft etrue sctrue
+    scfalse (gamma, [])
+  | Rnottrue, [] ->
+    righttoleft etrue (sctrue (gamma, []))
   | Raxiom (p), [] -> 
-    righttoleft p (scaxiom (p))
+    righttoleft p (scaxiom (p, gamma, []))
   | Rcut (p), [proof1; proof2] -> 
     sccut (p, lefttoright p proof2, proof1)
   | Rnoteq (a), [] -> 
-    righttoleft (eapp ("=", [a; a])) (sceqref (a))
+    righttoleft (eapp ("=", [a; a])) (sceqref (a, gamma, []));
   | Reqsym (a, b), [] ->
     righttoleft (eapp ("=", [b; a]))
-      (sceqsym (a, b))
+      (sceqsym (a, b, gamma, []))
   | Rnotnot (p), [proof] ->
     righttoleft (enot (p))
       (scrnot (p, proof))
@@ -427,8 +459,12 @@ and lltolkrule proof =
       sclimply (
 	p, q,
 	sclimply (
-	  q, p, lefttoright p (lefttoright q proof1), scaxiom (p)),
-	sclimply (q, p, scaxiom (q), proof2)))
+	  q, p, 
+	  lefttoright p (lefttoright q proof1), 
+	  scaxiom (p, gamma, [])),
+	sclimply (
+	  q, p, 
+	  scaxiom (q, gamma, []), proof2)))
   | Rnotconnect (And, p, q), [proof1; proof2] ->
     righttoleft (eand (p, q))
       (scrand (p, q, lefttoright p proof1, lefttoright q proof2))
@@ -471,12 +507,12 @@ and lltolkrule proof =
 	List.map2 lefttoright 
 	  (List.map2 
 	     (fun t u -> eapp ("=", [t; u])) ts us) proofs))
-  | RcongruenceLR (p, a, b), [proof] -> 
+  | RcongruenceLR (p, a, b), [proof] ->
     sclcongruence (p, a, b, proof)
-  | RcongruenceRL (p, a, b), [proof] -> 
+  | RcongruenceRL (p, a, b), [proof] ->
     sccut (
       eapp ("=", [a; b]),
-      sceqsym (b, a),
+      sceqsym (b, a, gamma, []),
       sclcongruence (p, a, b, proof)) 
   | Rdefinition (name, sym, args, body, recarg, fld, unf), [proof] 
     -> proof
@@ -488,13 +524,14 @@ and lltolkrule proof =
       (scrall (ap, etau (x, s, enot e), sccut (
 	ep,
 	screx (
-	  ep, etau (x, s, enot e), scrnot (q, scaxiom (q))),
+	  ep, etau (x, s, enot e), 
+	  scrnot (q, scaxiom (q, gamma, []))),
 	addconc q proof)))
   | Rextension (ext, name, args, cons, hyps), proofs -> 
     assert false
   | Rlemma (name, args), [] -> 
     let proof = Hashtbl.find lemma_env name in
-    lltolkrule proof
+    lltolk proof None
   | _ -> assert false
 ;;
 
@@ -536,7 +573,8 @@ let rec ll e = match e with
 and l e = match e with
   | Etrue -> etrue
   | Efalse -> efalse
-  | Evar (s, _) -> evar (s);
+  | Evar (s, _) -> evar (s)
+  | Eapp ("=", args, _) -> enot (enot (eapp ("=", args)))
   | Eapp (s, args, _) -> eapp (s, args)
   | Eand (e1, e2, _) -> 
     eand (enot (enot (ll e1)),enot (enot (ll e2)))
@@ -565,44 +603,67 @@ let lll e f rule=
 ;;
 
 let rec lltolj proof goal =
-  let newgoal = use_defs goal in
+  let result = match goal with 
+    | Some (Enot (g, _)) -> 
+      let newgoal = use_defs g in
+      newgoal, lefttoright newgoal (lltolk proof goal)
+    | None ->
+      efalse, addconc efalse (lltolk proof goal);
+    | _ -> assert false in
   let conc, lkproof = List.fold_left
     (fun (conc, rule) stmt ->
-      eimply (stmt, conc), scrimply (stmt, conc, rule))
-    (newgoal, lefttoright newgoal (lltolk proof)) !hypothesis_env in
+      let newstmt = use_defs stmt in
+      eimply (newstmt, conc), 
+      scrimply (newstmt, conc, addhyp [newstmt] rule)
+    )
+    result !hypothesis_env in
   let ljrule = lltoljrule lkproof in
-  ll conc, scrnot (enot (l conc), ljrule)
+  scrnot (enot (l conc), ljrule)
     
 and lltoljrule proof =
   let g, d, rule = proof in
   match rule,
     List.map lltoljrule (hypsofrule rule) with
   | SCaxiom (e), [] -> 
+    assert (List.mem e g & List.mem e d);
     let gamma = 
-    List.map l g @ List.map (fun e -> enot (l e)) d in 
+      List.map l (rm e g) @ 
+	List.map (fun e -> enot (l e)) (rm e d) in 
     righttoleft (l e) 
-      (rm (enot (l e)) gamma, [l e], SCaxiom (l e))
+      (scaxiom (l e, gamma, []))
   | SCfalse, [] -> 
+    assert (List.mem efalse g);
     let gamma = 
-    List.map l g @ List.map (fun e -> enot (l e)) d in 
-    gamma, [], SCfalse
+      List.map l (rm efalse g) @ 
+	List.map (fun e -> enot (l e)) d in
+    scfalse (gamma, [])
   | SCtrue, [] ->
+    assert (List.mem etrue d);
     let gamma = 
-    List.map l g @ List.map (fun e -> enot (l e)) d in 
+      List.map l g @ 
+	List.map (fun e -> enot (l e)) (rm etrue d) in 
     righttoleft (etrue) 
-      (rm (enot (etrue)) gamma, [etrue], SCtrue)
+      (sctrue (gamma, []))
   | SCeqref (a), [] -> 
+    assert (List.mem (eapp ("=", [a; a])) d);
     let gamma = 
-    List.map l g @ List.map (fun e -> enot (l e)) d in 
-    righttoleft (eapp ("=", [a; a])) 
-      (rm (enot (eapp ("=", [a; a]))) gamma, [eapp ("=", [a; a])],
-       SCeqref (a))
+      List.map l g @ 
+	List.map (fun e -> enot (l e)) 
+	(rm (eapp ("=", [a; a])) d) in 
+    lnotnot (enot (eapp ("=", [a; a])))
+      (righttoleft (eapp ("=", [a; a])) 
+	 (sceqref (a, gamma, [])))
   | SCeqsym (a, b), [] ->
+    assert (List.mem (eapp ("=", [a; b])) g &
+	      List.mem (eapp ("=", [b; a])) d);
     let gamma = 
-    List.map l g @ List.map (fun e -> enot (l e)) d in 
-    righttoleft (eapp ("=", [b; a])) 
-      (rm (enot (eapp ("=", [b; a]))) gamma, [eapp ("=", [b; a])],
-       SCeqsym (a, b))
+      List.map l (rm (eapp ("=", [a; b])) g) @ 
+	List.map (fun e -> enot (l e)) 
+	(rm (eapp ("=", [b; a])) d) in 
+    lnotnot (eapp ("=", [a; b]))
+      (lnotnot (enot (eapp ("=", [b; a])))
+	 (righttoleft (eapp ("=", [b; a])) 
+	    (sceqsym (a, b, gamma,[]))))
   | SCcut (e, _, _), [proof1; proof2] ->
     sccut (enot (l e), scrnot (l e, proof2), proof1)
   | SCland (e1, e2, _), [proof] ->
@@ -643,7 +704,8 @@ and lltoljrule proof =
       lnotnot (ll q)
 	(lll q (lnotnot (l q)) proof))
   | SClcongruence (Elam (x, t, e, _), a, b, _), [proof] -> 
-    sclcongruence (elam (x, t, l e), a, b, proof)
+    lnotnot (eapp ("=", [a; b]))
+      (sclcongruence (elam (x, t, l e), a, b, proof))
   | SCrand (e1, e2, _, _), [proof1; proof2] ->
     righttoleft (l (eand (e1, e2)))
       (scrand (
@@ -697,6 +759,9 @@ and lltoljrule proof =
 	scrnot (
 	  enot (ll q), 
 	  lll q (lnotnot (enot (l q))) proof)))
+  | SCrcongruence (Elam (x, ty, e, _), a, b, _), [proof] ->
+    lnotnot (eapp ("=", [a; b]))
+      (sclcongruence (elam (x, ty, enot (l e)), a, b, proof))
   | SCrcontr (e, lkproof), [proof] -> 
     let g, d, rule = proof in
     rm (enot (l e)) g, d, rule

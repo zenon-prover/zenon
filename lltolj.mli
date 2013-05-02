@@ -22,17 +22,21 @@ type lkrule =
 | SCrnot of Expr.expr * lkproof
 | SCrall of Expr.expr * Expr.expr * lkproof
 | SCrex of Expr.expr * Expr.expr * lkproof
+| SCrcongruence of Expr.expr * Expr.expr * Expr.expr * lkproof
 | SCrcontr of Expr.expr * lkproof
 
 and lkproof =
   Expr.expr list * Expr.expr list * lkrule
 ;;
 
-val scaxiom : Expr.expr -> lkproof;;
-val scfalse : lkproof;;
-val sctrue : lkproof;;
-val sceqref : Expr.expr -> lkproof;;
-val sceqsym : Expr.expr * Expr.expr -> lkproof;;
+val scaxiom : 
+  Expr.expr * Expr.expr list * Expr.expr list -> lkproof;;
+val scfalse : Expr.expr list * Expr.expr list -> lkproof;;
+val sctrue : Expr.expr list * Expr.expr list -> lkproof;;
+val sceqref : 
+  Expr.expr * Expr.expr list * Expr.expr list -> lkproof;;
+val sceqsym : 
+  Expr.expr * Expr.expr * Expr.expr list * Expr.expr list -> lkproof;;
 val sceqprop : Expr.expr * Expr.expr * lkproof list -> lkproof;;
 val sceqfunc : Expr.expr * Expr.expr * lkproof list -> lkproof;;
 val sccut : Expr.expr * lkproof * lkproof -> lkproof;;
@@ -59,5 +63,5 @@ val scrcontr : Expr.expr * lkproof -> lkproof;;
 val lemma_env : (string, Llproof.prooftree) Hashtbl.t;;
 val hypothesis_env : Expr.expr list ref;;
 val definition_env : (string, Expr.expr list * Expr.expr) Hashtbl.t;;
-val lltolj : Llproof.prooftree -> Expr.expr -> (Expr.expr * lkproof);;
+val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;
 exception Found of Expr.expr;;

@@ -220,34 +220,44 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	  scrimply (
 	    eapp (prop, [a]), 
 	    eapp (prop, [a]), 
-	    scaxiom (eapp (prop, [a]))),
+	    scaxiom (eapp (prop, [a]), [], [])),
 	  scrimply (
 	    eapp (prop, [a]), 
 	    eapp (prop, [a]), 
-	    scaxiom (eapp (prop, [a])))),
+	    scaxiom (eapp (prop, [a]), [], []))),
 	eand (
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
 	  eimply (eapp (prop, [a]), eapp (prop, [a]))), gamma)
   | SCeqsym (a, b) -> 
     let prop = new_prop () in
+    let imp1 = eimply (eapp (prop, [a]), eapp (prop, [b])) in
+    let imp2 = eimply (eapp (prop, [b]), eapp (prop, [a])) in
+    let eq = eand (imp1, imp2) in
+    let var1 = new_hypo () in
+    let var2 = new_hypo () in
     poc "(%s : (Term -> Prop) => %a)"
       prop p_proof (
-	scland (
-	  eimply (eapp (prop, [a]), eapp (prop, [b])),
-	  eimply (eapp (prop, [b]), eapp (prop, [a])),
-	  scrand (
-	    eimply (eapp (prop, [b]), eapp (prop, [a])),
-	    eimply (eapp (prop, [a]), eapp (prop, [b])),
-	    scaxiom (eimply (eapp (prop, [b]), eapp (prop, [a]))),
-	    scaxiom (eimply (eapp (prop, [a]), eapp (prop, [b]))))),
-	eand (
-	  eimply (eapp (prop, [b]), eapp (prop, [a])),
-	  eimply (eapp (prop, [a]), eapp (prop, [b]))), 
-	(eand (eimply (eapp (prop, [a]), eapp (prop, [b])),
-	       eimply (eapp (prop, [b]), eapp (prop, [a]))),
-	 fun oc -> 
-	   fprintf oc "%a %s" p_hyp (eapp ("=", [a; b]))
-	     prop) :: gamma)
+	scland (imp1, imp2, scrand (
+	  imp2, imp1,
+	  scaxiom ( eimply (
+	    eapp (prop, [b]), eapp (prop, [a])), [imp1], []),
+	  scaxiom ( eimply ( 
+	    eapp (prop, [a]), eapp (prop, [b])), [imp2], []))),
+	eand (imp2, imp1), 
+	(imp1, fun oc ->
+	  fprintf oc "(%a %s %a (%a => %a => %s))"
+	    p_hyp (eapp ("=", [a; b])) prop p_expr imp1
+	    p_declare_prf (imp1, p_str var1)
+	    p_declare_prf (imp2, p_str var2) var1) ::
+	  (imp2, fun oc ->
+	    fprintf oc "(%a %s %a (%a => %a => %s))"
+	      p_hyp (eapp ("=", [a; b])) prop p_expr imp2
+	      p_declare_prf (imp1, p_str var1)
+	      p_declare_prf (imp2, p_str var2) var2) ::
+	  (eq, fun oc -> 
+	    fprintf oc "(%a %s)"
+	      p_hyp (eapp ("=",[a; b])) prop) ::
+	  gamma)
   | SCcut (e, lkrule1, lkrule2) ->
     poc "%a" p_proof 
       (lkrule2, goal,
@@ -299,18 +309,20 @@ let rec p_proof oc (lkproof, goal, gamma) =
       let var1 = new_hypo () in
       let var2 = new_hypo () in
       let p_aux oc =
-	fprintf oc "(%a (\n%s: Term => %a) (\n%s : %a => \n%s : %a => %s) %a)"
+	fprintf oc "(%a (%s: Term => %a) %a 
+(%s : %a => %s : %a => %s %a))"
 	  p_hyp (eapp ("=", [a; b]))
 	  term p_expr (apply p (evar (term)))
+	  p_expr (apply p b)
 	  var1 p_prf (eimply (apply p a, apply p b))
-	  var2 p_prf (eimply (apply p b, apply p a)) var1
-	  p_hyp (apply p a) in
+	  var2 p_prf (eimply (apply p b, apply p a)) 
+	  var1 p_hyp (apply p a) in
       poc "%a"
 	p_proof (lkrule, goal, (apply p b, p_aux) :: gamma)
   | SCrand (e1, e2, lkrule1, lkrule2) ->
     let prop = new_prop () in
     let var = new_hypo () in
-    poc "(\n%s : Prop => \n%s : (%a -> %a -> prf %s) => %s %a %a)"
+    poc "(%s : Prop => %s : (%a -> %a -> prf %s) => %s %a %a)"
       prop var
       p_prf e1 p_prf e2 prop
       var p_proof (lkrule1, e1, gamma) p_proof (lkrule2, e2, gamma)
@@ -318,21 +330,19 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
-    poc "(\n%s : Prop => \n%s : (%a -> prf %s) => \n%s : (%a -> prf %s) => 
-%s %a)"
+    poc "(%s : Prop => %s : (%a -> prf %s) => %s : (%a -> prf %s) => %s %a)"
       prop var1 p_prf e1 prop var2 p_prf e2 prop
       var1 p_proof (lkrule, e1, gamma)
   | SCrorr (e1, e2, lkrule) ->
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
-    poc "(\n%s : Prop => \n%s : (%a -> prf %s) => \n%s : (%a -> prf %s) => 
-%s %a)"
+    poc "(%s : Prop => %s : (%a -> prf %s) => %s : (%a -> prf %s) => %s %a)"
       prop var1 p_prf e1 prop var2 p_prf e2 prop
       var2 p_proof (lkrule, e2, gamma)
   | SCrimply (e1, e2, lkrule) ->
     let var = new_hypo () in
-    poc "(\n%s : %a => %a)"
+    poc "(%s : %a => %a)"
       var p_prf e1 p_proof (lkrule, e2, (e1, p_str var) :: gamma)
   | SCrnot (e, lkrule) ->
     let var = new_hypo () in
@@ -352,16 +362,32 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_proof (lkrule, substitute [(evar (x), t)] p, gamma)
   | SCrcontr (e, lkrule) -> 
     poc "proof must be constructive"
+  | SCrcongruence (p, a, b, lkrule) ->
+      let term = new_term () in
+      let var1 = new_hypo () in
+      let var2 = new_hypo () in
+      poc "(%a (%s: Term => %a) %a
+(%s : %a => \n%s : %a => %s %a))"
+	p_hyp (eapp ("=", [a; b]))
+	term p_expr (apply p (evar (term)))
+	p_expr (apply p a)
+	var1 p_prf (eimply (apply p a, apply p b))
+	var2 p_prf (eimply (apply p b, apply p a)) 
+	var2 p_proof (lkrule, apply p b, gamma)
   | _ -> 
     poc "error"
 ;;
 
 let rec p_tree oc proof goal =
-  let conc, lkproof = lltolj proof goal in
-  fprintf oc "conjecture_proof : %a :=\n"
-    p_prf conc;
-  fprintf oc "%a."
-    p_proof (lkproof, conc, []);
+  let lkproof = lltolj proof goal in
+  let g, d, lkrule = lkproof in
+  match d with
+  | [conc] ->
+    fprintf oc "conjecture_proof : %a :=\n"
+      p_prf conc;
+    fprintf oc "%a."
+      p_proof (lkproof, conc, []) 
+  | _ -> assert false
 ;;
 
 let rec get_goal phrases =
@@ -379,10 +405,7 @@ let p_theorem oc phrases l =
       (fun lemma -> 
 	Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
       lemmas;
-    let goal =  match get_goal phrases with
-      | Some (Enot (g, _)) -> g;
-      | None -> efalse;
-      | _ -> assert false in
+    let goal = get_goal phrases in
     p_tree oc thm.proof goal;
 ;;
 
@@ -494,9 +517,10 @@ let declare_hyps oc h =
 ;;
 
 let output oc phrases ppphrases llp =
-    declare_header oc;
-    let sigs = get_signatures phrases in
-    List.iter (p_signature oc) sigs;
-    List.iter (declare_hyps oc) phrases;
-    p_theorem oc phrases (List.rev llp);
+  Lltolj.hypothesis_env := [];
+  declare_header oc;
+  let sigs = get_signatures phrases in
+  List.iter (p_signature oc) sigs;
+  List.iter (declare_hyps oc) phrases;
+  p_theorem oc phrases (List.rev llp);
 ;;
