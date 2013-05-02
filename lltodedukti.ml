@@ -380,14 +380,11 @@ let rec p_proof oc (lkproof, goal, gamma) =
 
 let rec p_tree oc proof goal =
   let lkproof = lltolj proof goal in
-  let g, d, lkrule = lkproof in
-  match d with
-  | [conc] ->
-    fprintf oc "conjecture_proof : %a :=\n"
-      p_prf conc;
-    fprintf oc "%a."
-      p_proof (lkproof, conc, []) 
-  | _ -> assert false
+  let conc = scconc lkproof in
+  fprintf oc "conjecture_proof : %a :=\n"
+    p_prf conc;
+  fprintf oc "%a."
+    p_proof (lkproof, conc, []) 
 ;;
 
 let rec get_goal phrases =

@@ -60,8 +60,12 @@ val scrall : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val screx : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val scrcontr : Expr.expr * lkproof -> lkproof;;
 
+val scconc : lkproof -> Expr.expr;;
+
 val lemma_env : (string, Llproof.prooftree) Hashtbl.t;;
 val hypothesis_env : Expr.expr list ref;;
-val definition_env : (string, Expr.expr list * Expr.expr) Hashtbl.t;;
+val definition_env : 
+  (string, Expr.expr list * Expr.expr) Hashtbl.t;;
+
 val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;
 exception Found of Expr.expr;;

@@ -145,6 +145,12 @@ let scrcontr (e, proof) =
   let (g, d, rule) = proof in
   g, rm e d, SCrcontr (e, proof);;
 
+let scconc (g, d, rule) =
+  match d with 
+  | [c] -> c
+  | _ -> assert false;
+;;
+
 let lemma_env = 
   (Hashtbl.create 97 : (string, prooftree) Hashtbl.t)
 ;;
@@ -617,8 +623,11 @@ let rec lltolj proof goal =
       scrimply (newstmt, conc, addhyp [newstmt] rule)
     )
     result !hypothesis_env in
-  let ljrule = lltoljrule lkproof in
-  scrnot (enot (l conc), ljrule)
+  let ljproof = lltoljrule lkproof in
+  let g, d, ljrule = ljproof in
+  match g with
+  | [Enot (lconc, _)] -> scrnot (enot (lconc), ljproof)
+  | _ -> assert false;
     
 and lltoljrule proof =
   let g, d, rule = proof in
