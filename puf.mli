@@ -73,21 +73,11 @@ module type S = sig
         union-find structure [uf]. By default, [find uf a = a]. *)
 
   val union : t -> elt -> elt -> t
-    (** [union uf a b] returns an update of [uf] where [find a = find b].
-        May raise Inconsistent. *)
-
-  val distinct : t -> elt -> elt -> t
-    (** Ensure that the two elements are distinct. May raise Inconsistent *)
-
-  val must_be_distinct : t -> elt -> elt -> bool
-    (** Should the two elements be distinct? *)
+    (** [union uf a b] returns an update of [uf] where [find a = find b]. *)
 
   val iter_equiv_class : t -> elt -> (elt -> unit) -> unit
     (** [iter_equiv_class uf a f] calls [f] on every element of [uf] that
         is congruent to [a], including [a] itself. *)
-
-  val inconsistent : t -> (elt * elt) option
-    (** Check whether the UF is inconsistent *)
 end
 
 module Make(X : ID) : S with type elt = X.t
