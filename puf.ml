@@ -137,7 +137,7 @@ module type S = sig
   val create : int -> t
     (** Create a union-find of the given size. *)
 
-  val find : t -> elt -> elt
+  val find : t -> elt -> t
     (** [find uf a] returns the current representative of [a] in the given
         union-find structure [uf]. By default, [find uf a = a]. *)
 
