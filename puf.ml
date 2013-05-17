@@ -125,6 +125,49 @@ module type ID = sig
   val get_id : t -> int
 end
 
+(** {2 Curryfied terms} *)
+
+module CurryfiedTerm = struct
+  type t = {
+    shape : shape;      (** Which kind of term is it? *)
+    mutable tag : int;  (** Unique ID *)
+  }
+  and shape =
+    | Const of int      (** Constant *)
+    | Apply of t * t    (** Curryfied application *)
+
+  type term = t
+
+  module WE = Weak.Make(struct
+    type t = term
+    let equal a b = match a.shape, b.shape with
+      | Const ia, Const ib -> ia = ib
+      | Apply (a1,a2), Apply (b1,b2) -> a1 == a2 && b1 == b2
+      | _ -> false
+    let hash a = match a.shape with
+      | Const i -> i
+      | Apply (a, b) -> a.tag * 65539 + b.tag
+  end)
+
+  let __table = WE.create 10001
+  let count = ref 0
+
+  let hashcons t =
+    let t' = WE.merge __table t in
+    (if t == t' then incr count);
+    t'
+
+  let mk_const i =
+    let t = {shape=Const i; tag= !count; } in
+    hashcons t
+
+  let mk_app a b =
+    let t = {shape=Apply (a, b); tag= !count; } in
+    hashcons t
+
+  let get_id t = t.tag
+end
+
 (** {2 Persistent Union-Find} *)
 
 module type S = sig
