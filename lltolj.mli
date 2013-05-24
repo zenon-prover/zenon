@@ -1,12 +1,14 @@
 type sequent;;
 type lkrule =
 | SCaxiom of Expr.expr
-| SCfalse
+| SClfalse
 | SCtrue
 | SCeqref of Expr.expr
 | SCeqsym of Expr.expr * Expr.expr
 | SCeqprop of Expr.expr * Expr.expr * lkproof list
 | SCeqfunc of Expr.expr * Expr.expr * lkproof list
+| SCrfalse of Expr.expr * lkproof
+| SClcontr of Expr.expr * lkproof
 | SCcut of Expr.expr * lkproof * lkproof
 | SCland of Expr.expr * Expr.expr * lkproof
 | SClor of Expr.expr * Expr.expr * lkproof * lkproof
@@ -14,7 +16,6 @@ type lkrule =
 | SClnot of Expr.expr * lkproof
 | SClall of Expr.expr * Expr.expr * lkproof
 | SClex of Expr.expr * Expr.expr * lkproof
-| SClcongruence of Expr.expr * Expr.expr * Expr.expr * lkproof
 | SCrand of Expr.expr * Expr.expr * lkproof * lkproof
 | SCrorl of Expr.expr * Expr.expr * lkproof
 | SCrorr of Expr.expr * Expr.expr * lkproof
@@ -22,34 +23,30 @@ type lkrule =
 | SCrnot of Expr.expr * lkproof
 | SCrall of Expr.expr * Expr.expr * lkproof
 | SCrex of Expr.expr * Expr.expr * lkproof
-| SCrcongruence of Expr.expr * Expr.expr * Expr.expr * lkproof
-| SCrcontr of Expr.expr * lkproof
+| SCcnot of Expr.expr * lkproof
 
 and lkproof =
-  Expr.expr list * Expr.expr list * lkrule
+  Expr.expr list * Expr.expr * lkrule
 ;;
 
-val scaxiom : 
-  Expr.expr * Expr.expr list * Expr.expr list -> lkproof;;
-val scfalse : Expr.expr list * Expr.expr list -> lkproof;;
-val sctrue : Expr.expr list * Expr.expr list -> lkproof;;
-val sceqref : 
-  Expr.expr * Expr.expr list * Expr.expr list -> lkproof;;
-val sceqsym : 
-  Expr.expr * Expr.expr * Expr.expr list * Expr.expr list -> lkproof;;
+val scaxiom : Expr.expr * Expr.expr list -> lkproof;;
+val sclfalse : Expr.expr list * Expr.expr -> lkproof;;
+val sctrue : Expr.expr list -> lkproof;;
+val sceqref : Expr.expr * Expr.expr list -> lkproof;;
+val sceqsym : Expr.expr * Expr.expr * Expr.expr list -> lkproof;;
 val sceqprop : Expr.expr * Expr.expr * lkproof list -> lkproof;;
 val sceqfunc : Expr.expr * Expr.expr * lkproof list -> lkproof;;
+val scrfalse : Expr.expr * lkproof -> lkproof;;
+val sclcontr : Expr.expr * lkproof -> lkproof;;
 val sccut : Expr.expr * lkproof * lkproof -> lkproof;;
 val scland : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val sclor : 
   Expr.expr * Expr.expr * lkproof * lkproof -> lkproof;;
 val sclimply :
   Expr.expr * Expr.expr * lkproof * lkproof -> lkproof;;
-val sclnot : Expr.expr * lkproof -> lkproof;;
+val sclnot : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val sclall : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val sclex : Expr.expr * Expr.expr * lkproof -> lkproof;;
-val sclcongruence : 
-  Expr.expr * Expr.expr * Expr.expr * lkproof -> lkproof;;
 val scrand : 
   Expr.expr * Expr.expr * lkproof * lkproof -> lkproof;;
 val scrorl : Expr.expr * Expr.expr * lkproof -> lkproof;;
@@ -58,7 +55,7 @@ val scrimply : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val scrnot  : Expr.expr * lkproof -> lkproof;;
 val scrall : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val screx : Expr.expr * Expr.expr * lkproof -> lkproof;;
-val scrcontr : Expr.expr * lkproof -> lkproof;;
+val sccnot : Expr.expr * lkproof -> lkproof;;
 
 val scconc : lkproof -> Expr.expr;;
 
@@ -67,5 +64,6 @@ val hypothesis_env : Expr.expr list ref;;
 val definition_env : 
   (string, Expr.expr list * Expr.expr) Hashtbl.t;;
 
-val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;
+val lltolj : Llproof.prooftree -> Expr.expr option -> 
+  Expr.expr list * lkproof;;
 exception Found of Expr.expr;;
