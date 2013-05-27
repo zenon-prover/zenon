@@ -159,14 +159,12 @@ let rec p_expr oc e =
     fprintf oc "(forall (%s:Term => %a))" x p_expr e
   | Eex (Evar (x, _), s, e, _) ->
     fprintf oc "(exists (%s:Term => %a))" x p_expr e
-  | Etau (Evar (x, _), s, e, _) ->
-    fprintf oc "(tau (%s:Term => %a))" x p_expr e
   | Elam _ -> fprintf oc "errorlam"
   | Eequiv _ -> fprintf oc "errorequiv"
   | Emeta _ -> fprintf oc "errormeta"
   | Eall _ -> fprintf oc "errorall"
   | Eex _ -> fprintf oc "errorex"
-  | Etau _ -> fprintf oc "errortau"
+  | Etau _ -> assert false
 ;;
 
 let p_prf oc e = 
@@ -340,17 +338,25 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_expr x p_expr p prop
       var p_expr t 
       p_proof (lkrule, substitute [(x, t)] p, gamma)
-  | SCcnot (e, lkrule) -> 
+  | SCrnotnot (e, lkrule) -> 
     poc "proof must be constructive"
+  | SClnotnot _ -> assert false;
   | SClcontr (e, lkrule) ->
     poc "%a"
       p_proof (lkrule, goal, gamma)
+  | SCrfalse (e, lkrule) -> 
+    poc "(%a %a)"
+      p_proof (lkrule, efalse, gamma)
+      p_expr e
+  | SCeqfunc _ -> assert false;
+  | SCeqprop _ -> assert false;
+  | _ -> assert false;
 ;;
 
 let rec p_tree oc proof goal =
-  let new_terms, ljproof = lltolj proof goal in
-  List.iter 
-    (fprintf oc "%a : Term.\n" p_expr) new_terms;
+  let ljproof = lltolj proof goal in
+  (*List.iter 
+    (fprintf oc "%a : Term.\n" p_expr) new_terms;*)
   let conc = scconc ljproof in
   fprintf oc "conjecture_proof : %a :=\n"
     p_prf conc;

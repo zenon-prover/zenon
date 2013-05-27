@@ -23,7 +23,9 @@ type lkrule =
 | SCrnot of Expr.expr * lkproof
 | SCrall of Expr.expr * Expr.expr * lkproof
 | SCrex of Expr.expr * Expr.expr * lkproof
-| SCcnot of Expr.expr * lkproof
+| SClnotnot of Expr.expr * lkproof
+| SCrnotnot of Expr.expr * lkproof
+
 
 and lkproof =
   Expr.expr list * Expr.expr * lkrule
@@ -55,7 +57,8 @@ val scrimply : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val scrnot  : Expr.expr * lkproof -> lkproof;;
 val scrall : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val screx : Expr.expr * Expr.expr * lkproof -> lkproof;;
-val sccnot : Expr.expr * lkproof -> lkproof;;
+val sclnotnot : Expr.expr * lkproof -> lkproof;;
+val scrnotnot : Expr.expr * lkproof -> lkproof;;
 
 val scconc : lkproof -> Expr.expr;;
 
@@ -64,6 +67,5 @@ val hypothesis_env : Expr.expr list ref;;
 val definition_env : 
   (string, Expr.expr list * Expr.expr) Hashtbl.t;;
 
-val lltolj : Llproof.prooftree -> Expr.expr option -> 
-  Expr.expr list * lkproof;;
+val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;
 exception Found of Expr.expr;;
