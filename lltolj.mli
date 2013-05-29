@@ -62,6 +62,7 @@ val scrnotnot : Expr.expr * lkproof -> lkproof;;
 
 val scconc : lkproof -> Expr.expr;;
 
+val distinct_terms : (Expr.expr * int) list ref;;
 val lemma_env : (string, Llproof.prooftree) Hashtbl.t;;
 val hypothesis_env : Expr.expr list ref;;
 val definition_env : 

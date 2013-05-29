@@ -54,6 +54,9 @@ existsc: (Term -> Prop) -> Prop :=
 equal: Term -> Term -> Prop.
 equalc: Term -> Term -> Prop :=
   a:Term => b:Term => not (not (equal a b)).
+equiv: Prop -> Prop -> Prop := 
+  A:Prop => B:Prop => and (imply A B) (imply B A).
+
 
 [] prf True --> P:Prop -> (prf P -> prf P)
 [] prf False --> P:Prop -> prf P
@@ -113,8 +116,25 @@ let p_anyterm oc =
   fprintf oc "anyterm"
 ;;
 
+let rec p_chars oc s =
+  let n = Char.code (String.get s 0) in
+  if not ((64 < n && n < 91)||(96 < n && n < 123))
+  then fprintf oc "V";
+  String.iter (fprintf oc "%a" p_char) s
+
+and p_char oc c =
+  let n = Char.code c in
+  if (47 < n && n < 58) ||(64 < n && n < 91)
+    ||(96 < n && n < 123) || (n = 95)
+  then fprintf oc "%c" c
+  else fprintf oc "%d" n
+;;
+
 let rec p_expr oc e = 
   match e with
+  | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _) 
+    when (equal e3 e2 && equal e4 e1) ->
+    fprintf oc "(equiv %a %a)" p_expr e1 p_expr e2
   | Enot (Enot (Enot (Enot (Enot (e, _), _), _), _), _) ->
     fprintf oc "(notc %a)" p_expr e
   | Enot (Enot ( Eand (
@@ -138,13 +158,16 @@ let rec p_expr oc e =
     fprintf oc "(equalc %a %a)" p_expr e1 p_expr e2
   | Evar (v, _) when Mltoll.is_meta v -> 
     fprintf oc "%t" p_anyterm
-  | Evar (v, _) -> fprintf oc "%s" v
+  | Evar (v, _) -> 
+    fprintf oc "%a" p_chars v
+  | Eapp ("$string", [v], _) -> 
+    fprintf oc "S%a" p_expr v
   | Eapp ("=", [e1;e2], _) ->
     fprintf oc "(equal %a %a)" p_expr e1 p_expr e2
   | Eapp (s, [], _) ->
-    fprintf oc "%s" s
+    fprintf oc "%a" p_chars s
   | Eapp (s, args, _) ->
-    fprintf oc "(%s %a)" s (p_list p_expr) args
+    fprintf oc "(%a %a)" p_chars s (p_list p_expr) args
   | Enot (e, _) ->
     fprintf oc "(not %a)" p_expr e
   | Eand (e1, e2, _) ->
@@ -349,7 +372,32 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_proof (lkrule, efalse, gamma)
       p_expr e
   | SCeqfunc _ -> assert false;
-  | SCeqprop _ -> assert false;
+  | SCeqprop (Eapp (p, ts, _), Eapp (_, us, _), lkrules) -> 
+    let rec itereq oc (xts,ts,us,lkrules) =
+      match ts, us, lkrules with
+      | [], [], [] -> fprintf oc "%a" p_hyp (eapp (p, xts))
+      | t :: ts, u :: us, lkrule :: lkrules ->
+	let var1 = new_hypo () in
+	let var2 = new_hypo () in
+	let term = new_term () in
+	poc "(%a (%s:Term => %a) %a (%a => %a => %s %a))" 
+	  p_proof (lkrule, eapp ("=", [t; u]), gamma)
+	  term p_expr (eapp (p, xts @ ((evar term) :: us)))
+	  p_expr (eapp (p, xts @ (u :: us)))
+	  p_declare_prf (
+	    eimply (
+	      eapp (p, xts @ (t :: us)), 
+	      eapp (p, xts @ (u :: us))), 
+	    p_str var1)
+	  p_declare_prf (
+	    eimply (
+	      eapp (p, xts @ (u :: us)), 
+	      eapp (p, xts @ (t :: us))), 
+	    p_str var2)
+	  var1 itereq ((xts@[t]), ts, us, lkrules)
+      | _ -> assert false;
+    in 
+    poc "%a" itereq ([], ts, us, lkrules)
   | _ -> assert false;
 ;;
 
@@ -390,10 +438,9 @@ type result =
 ;;
 type signature =
   | Default of int * result
-  | Hyp_name
 ;;
 
-let predefined = ["="]
+let predefined = ["="; "$string"]
 ;;
 
 let rec get_signatures ps =
@@ -406,6 +453,12 @@ let rec get_signatures ps =
     match e with
     | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 r;
     | Emeta  _ | Etrue | Efalse -> ()
+    | Eapp ("$string", [Evar (s, _)], _) ->
+      (if not (List.mem_assoc e !Lltolj.distinct_terms)
+       then 
+	  Lltolj.distinct_terms := 
+	    (e, (List.length !Lltolj.distinct_terms) + 1) 
+	  :: !Lltolj.distinct_terms; add_sig ("string"^s) 0 Term)
     | Eapp (s, args, _) ->
         add_sig s (List.length args) r;
 	List.iter (get_sig Term env) args;
@@ -418,15 +471,10 @@ let rec get_signatures ps =
       -> get_sig Prop (v::env) e1;
     | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
   in
-  let set_type sym typ =
-    Hashtbl.remove symtbl sym;
-    Hashtbl.add symtbl sym typ;
-  in 
   let do_phrase p = 
     match p with
       | Phrase.Hyp (name, e, _) ->
 	get_sig Prop [] e;
-	set_type name Hyp_name;
       | Phrase.Def (DefReal ("", s, _, e, None)) ->
 	get_sig (Indirect s) [] e;
       | _ -> assert false
@@ -438,7 +486,6 @@ let rec get_signatures ps =
         match Hashtbl.find symtbl s with
 	| Default (_, ((Prop|Term) as kind)) -> kind
 	| Default (_, Indirect s1) -> follow_indirect (s::path) s1
-	| _ -> assert false
       with Not_found -> Prop
       end
   in
@@ -449,7 +496,6 @@ let rec get_signatures ps =
       | Default (arity, (Prop|Term)) -> (sym, sign) :: l
       | Default (arity, Indirect s) ->
           (sym, Default (arity, follow_indirect [] s)) :: l
-      | Hyp_name -> l
     end
   in
   Hashtbl.fold find_sig symtbl []
@@ -462,7 +508,7 @@ let p_signature oc (sym, sign) =
       p_arity (n-1);
     end;
   in
-  fprintf oc "%s : " sym;
+  fprintf oc "%a : " p_expr (evar sym);
   match sign with
   | Default (arity, kind) ->
       begin
@@ -472,10 +518,9 @@ let p_signature oc (sym, sign) =
         | Term -> fprintf oc "Term.\n";
         | _ -> assert false;
       end;
-  | Hyp_name -> assert false
 ;;
 
-let declare_hyps oc h =
+let declare_hyp oc h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
@@ -490,11 +535,25 @@ let declare_hyps oc h =
   | _ -> assert false
 ;;
 
+let rec add_distinct_terms_axioms l =
+  match l with
+  | (x, n) :: (y, m) :: l -> 
+    Lltolj.hypothesis_env := 
+      enot (eapp ("=", [y; x])) :: !Lltolj.hypothesis_env;
+    add_distinct_terms_axioms ((x, n) :: l);
+    add_distinct_terms_axioms ((y, m) :: l);
+  | _ -> ()
+;;
+
 let output oc phrases ppphrases llp =
+(*  eprintf "%a" 
+    (fun oc x -> Print.llproof (Print.Chan oc) x)
+    llp;*)
   Lltolj.hypothesis_env := [];
   declare_header oc;
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
-  List.iter (declare_hyps oc) phrases;
+  List.iter (declare_hyp oc) phrases;
+  add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp);
 ;;
