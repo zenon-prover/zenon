@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.13 2012-02-24 14:31:28 doligez Exp $  *)
+(*  $Id$  *)
 
 type translator =
     (Expr.expr -> Expr.expr) ->
@@ -27,10 +27,14 @@ type t = {
   predef : unit -> string list;
 };;
 
+val active : t list ref;;
+val theories : t list ref;;
+
 val register : t -> unit;;
 val activate : string -> unit;;
 
 val is_active: string -> bool;;
+val find_extension : string -> t list -> t;;
 
 val newnodes :
   Expr.expr ->

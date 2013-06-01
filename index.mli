@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: index.mli,v 1.11 2010-04-20 12:01:12 doligez Exp $  *)
+(*  $Id$  *)
 
 open Expr;;
 
@@ -71,3 +71,5 @@ val get_formula : int -> expr (* raises Not_found *);;
 (* ==== numbering for tau-expressions ==== *)
 
 val make_tau_name : expr -> string;;
+
+val clear : unit -> unit;;

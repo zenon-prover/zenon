@@ -516,3 +516,23 @@ let make_tau_name p =
      Printf.sprintf "%s%s_%s" Namespace.tau_prefix v (base26 (get_number p))
   | _ -> assert false
 ;;
+
+let clear () =
+  suspects := [[]];
+  HE.clear allforms ;
+  Hashtbl.clear posforms ;
+  Hashtbl.clear negforms ;
+  HE.clear proofs ;
+  Hashtbl.clear pos_trans_left ;
+  Hashtbl.clear pos_trans_right ;
+  Hashtbl.clear neg_trans_left ;
+  Hashtbl.clear neg_trans_right ;
+  Hashtbl.clear all_neg_trans_left ;
+  Hashtbl.clear all_neg_trans_right ;
+  HE.clear eq_lr ;
+  HE.clear eq_rl ;
+  HE.clear neq_lr ;
+  HE.clear neq_rl ;
+  HE.clear meta_set ;
+  HE.clear metas ;
+  HE.clear numforms ;;

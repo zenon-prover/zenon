@@ -1,5 +1,5 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.22 2012-04-11 18:27:26 doligez Exp $  *)
+(*  $Id$  *)
 
 type private_info;;
 
@@ -97,6 +97,8 @@ val remove_scope : expr -> expr;;
 val newvar : unit -> expr;;
 val newname : unit -> string;;
 
+val rm_binding : 'a -> ('a * 'b) list -> ('a * 'b) list;;
+val conflict : expr -> ('a * expr) list -> bool;;
 val size : expr -> int;;
 val get_taus : expr -> int;;   (* tau nesting level *)
 val has_metas : expr -> bool;;

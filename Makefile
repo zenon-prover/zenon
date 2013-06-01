@@ -26,7 +26,9 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           enum.ml isar_case.ml lltoisar.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
           ext_equiv.ml ext_induct.ml \
-          prove.ml checksum.dummy versionnum.ml main.ml zenon.ml
+          prove.ml super_hashtab.ml super_match_rules.ml super_globals.ml \
+          super_rules.ml checksum.dummy \
+          versionnum.ml super_main.ml
 
 COQSRC = zenon.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
 
@@ -60,32 +62,32 @@ COQOBJ = $(COQSRC:%.v=%.vo)
 
 .PHONY: all byt bin coq
 
-all: byt bin zenon coq
+all: byt bin super_zenon coq
 
 coq: $(COQOBJ)
 
-byt: zenon.byt
+byt: super_zenon.byt
 
-bin: zenon.bin
+bin: super_zenon.bin
 
-zenon.bin: $(BINOBJS)
-	$(CAMLBIN) $(CAMLBINFLAGS) -o zenon.bin $(BINOBJS)
+super_zenon.bin: $(BINOBJS)
+	$(CAMLBIN) $(CAMLBINFLAGS) -o super_zenon.bin $(BINOBJS)
 
-zenon.byt: $(BYTOBJS)
-	$(CAMLBYT) $(CAMLBYTFLAGS) -o zenon.byt $(BYTOBJS)
+super_zenon.byt: $(BYTOBJS)
+	$(CAMLBYT) $(CAMLBYTFLAGS) -o super_zenon.byt $(BYTOBJS)
 
-zenon: zenon.byt
-	if test -x zenon.bin; then \
-	  cp zenon.bin zenon; \
+super_zenon: super_zenon.byt
+	if test -x super_zenon.bin; then \
+	  cp super_zenon.bin super_zenon; \
         else \
-	  cp zenon.byt zenon; \
+	  cp super_zenon.byt super_zenon; \
 	fi
 
 
 .PHONY: install
 install:
 	mkdir -p "$(DESTDIR)$(INSTALL_BIN_DIR)"
-	cp zenon "$(DESTDIR)$(INSTALL_BIN_DIR)/"
+	cp super_zenon "$(DESTDIR)$(INSTALL_BIN_DIR)/"
 	mkdir -p "$(DESTDIR)$(INSTALL_LIB_DIR)"
 	cp $(COQSRC) "$(DESTDIR)$(INSTALL_LIB_DIR)/"
 	for i in $(COQOBJ); \
@@ -94,8 +96,8 @@ install:
 
 .PHONY: uninstall
 uninstall:
-	rm -f "$(DESTDIR)$(BIN_DIR)/zenon$(EXE)"
-	rm -rf "$(DESTDIR)$(LIB_DIR)/zenon"
+	rm -f "$(DESTDIR)$(BIN_DIR)/super_zenon$(EXE)"
+	rm -rf "$(DESTDIR)$(LIB_DIR)/super_zenon"
 
 .SUFFIXES: .ml .mli .cmo .cmi .cmx .v .vo
 
@@ -148,9 +150,9 @@ checksum.ml: $(IMPL:checksum.ml=)
 
 .PHONY: dist
 dist: $(ALLSRC)
-	mkdir -p dist/zenon
-	cp $(ALLSRC) dist/zenon
-	cd dist && tar cf - zenon | gzip >../zenon.tar.gz
+	mkdir -p dist/super_zenon
+	cp $(ALLSRC) dist/super_zenon
+	cd dist && tar cf - super_zenon | gzip >../super_zenon.tar.gz
 
 .PHONY: doc odoc docdir
 doc docdir:
@@ -166,8 +168,8 @@ clean:
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml
 	rm -f checksum.ml
-	rm -f zenon *.bin *.byt
-	rm -rf dist zenon.tar.gz
+	rm -f super_zenon *.bin *.byt
+	rm -rf dist super_zenon.tar.gz
 
 .PHONY: depend
 depend: $(IMPL) $(INTF) $(COQSRC)
