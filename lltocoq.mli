@@ -10,3 +10,9 @@ val output :
 ;;
 
 val p_expr : out_channel -> Expr.expr -> unit;;
+
+val p_list : string -> (out_channel -> 'a -> unit) -> string -> out_channel ->
+  'a list -> unit;;
+val p_expr_list : out_channel -> Expr.expr list  -> unit;;
+val p_name_list : out_channel -> Expr.expr list  -> unit;;
+val p_intros : out_channel -> Expr.expr list  -> unit;;
