@@ -774,13 +774,15 @@ let add_phrase x =
 let postprocess l = l;;
 
 let add_formula e =
-  match e with
+  begin match e with
   | Eapp ("=", [e1; e2], _) when constr_head e2 -> HE.add eqs e1 e2
-  | _ ->
-    match get_matching e with
-    | Some (ctx, ee, cases) when not (constr_head ee) ->
-        HE.add matches ee (ctx, cases)
-    | _ -> ()
+  | _ -> ()
+  end;
+  begin match get_matching e with
+  | Some (ctx, ee, cases) when not (constr_head ee) ->
+      HE.add matches ee (ctx, cases)
+  | _ -> ()
+  end;
 ;;
 
 let remove_formula e =
