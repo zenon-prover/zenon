@@ -218,13 +218,13 @@ let make_match_congruence e g ctx ee cases rhs =
   let x = Expr.newvar () in
   (* FIXME could recover the type as in mknode below *)
   let p = elam (x, "", ctx (eapp ("$match", x :: cases))) in
-  [ Node {
+  Node {
     nconc = [e; eapp ("=", [ee; rhs])];
     nrule = CongruenceLR (p, ee, rhs);
     nprio = Arity;
     ngoal = g;
     nbranches = [| [apply p rhs] |];
-  }]
+  }
 ;;
 
 let newnodes_match_cases e g =
@@ -250,11 +250,10 @@ let newnodes_match_cases e g =
   | Some (ctx, ee, cases) when constr_head ee ->
      make_match_redex e g ctx ee cases
   | Some (ctx, ee, cases) ->
-     begin try
-       make_match_congruence e g ctx ee cases (HE.find eqs ee)
-     with Not_found ->
-       mknode ctx ee cases
-     end
+     let l =
+       List.map (make_match_congruence e g ctx ee cases) (HE.find_all eqs ee)
+     in
+     if l <> [] then l else mknode ctx ee cases
   | None -> []
 ;;
 
@@ -436,6 +435,39 @@ let newnodes_injective e g =
   | _ -> []
 ;;
 
+let constr_expr = (Hashtbl.create tblsize : (string, expr) Hashtbl.t);;
+
+let newnodes_constr_eq e g =
+  let mk_nodes e0 =
+    let mk_node accu ee =
+      if Expr.equal e0 ee then accu
+      else begin
+        let eqn = eapp ("=", [e0; ee]) in
+        Node {
+          nconc = [];
+          nrule = Cut eqn;
+          nprio = Arity;
+          ngoal = g;
+          nbranches = [| [eqn]; [enot eqn] |];
+        } :: accu
+      end
+    in
+    let l = Hashtbl.find_all constr_expr (get_constr e0) in
+    List.fold_left mk_node [] l
+  in
+  let l1 =
+    match e with
+    | Eapp ("=", [e1; e2], _) when constr_head e1 -> mk_nodes e1
+    | _ -> []
+  in
+  let l2 =
+    match e with
+    | Eapp ("=", [e1; e2], _) when constr_head e2 -> mk_nodes e2
+    | _ -> []
+  in
+  l1 @ l2
+;;
+
 let newnodes_fix e g =
   let mknode unfolded ctx fix =
     [Node {
@@ -518,6 +550,7 @@ let newnodes_fix e g =
 
 let newnodes e g _ =
     newnodes_fix e g
+  @ newnodes_constr_eq e g
   @ (try newnodes_match_cases e g with Empty -> [])
   @ (try newnodes_match_cases_eq e g with Empty -> [])
   @ (try newnodes_injective e g with Empty -> [])
@@ -775,7 +808,14 @@ let postprocess l = l;;
 
 let add_formula e =
   begin match e with
-  | Eapp ("=", [e1; e2], _) when constr_head e2 -> HE.add eqs e1 e2
+  | Eapp ("=", [e1; e2], _) when constr_head e2 ->
+      HE.add eqs e1 e2;
+      Hashtbl.add constr_expr (get_constr e2) e2;
+  | _ -> ()
+  end;
+  begin match e with
+  | Eapp ("=", [e1; e2], _) when constr_head e1 ->
+      Hashtbl.add constr_expr (get_constr e1) e1;
   | _ -> ()
   end;
   begin match get_matching e with
@@ -786,13 +826,22 @@ let add_formula e =
 ;;
 
 let remove_formula e =
-  match e with
-  | Eapp ("=", [e1; e2], _) when constr_head e2 -> HE.remove eqs e1
-  | _ ->
-    match get_matching e with
-    | Some (ctx, ee, cases) when not (constr_head ee) ->
-       HE.remove matches ee
-    | _ -> ()
+  begin match e with
+  | Eapp ("=", [e1; e2], _) when constr_head e2 ->
+      HE.remove eqs e1;
+      Hashtbl.remove constr_expr (get_constr e2);
+  | _ -> ()
+  end;
+  begin match e with
+  | Eapp ("=", [e1; e2], _) when constr_head e1 ->
+      Hashtbl.remove constr_expr (get_constr e1);
+  | _ -> ()
+  end;
+  begin match get_matching e with
+  | Some (ctx, ee, cases) when not (constr_head ee) ->
+     HE.remove matches ee
+  | _ -> ()
+  end;
 ;;
 
 let declare_context_coq oc =
