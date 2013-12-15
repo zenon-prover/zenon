@@ -5,6 +5,10 @@ open Printf;;
 
 open Globals;;
 open Namespace;;
+open Expr;;
+open Print;;
+open Mlproof;;
+open Phrase;;
 
 type proof_level =
   | Proof_none
@@ -15,6 +19,7 @@ type proof_level =
   | Proof_coq
   | Proof_coqterm
   | Proof_isar
+  | Proof_dedukti
 ;;
 let proof_level = ref Proof_none;;
 
@@ -67,12 +72,12 @@ let parse_size_time s =
 ;;
 
 let short_version () =
-  printf "zenon version %s\n" Versionnum.full;
+  printf "zenon_modulo version %s\n" Versionnum.full;
   exit 0;
 ;;
 
 let cvs_version () =
-  printf "zenon version %s\n" Versionnum.full;
+  printf "zenon_modulo version %s\n" Versionnum.full;
   Version.print_cvs stdout;
   printf "source checksum: %s\n" Checksum.v;
   exit 0;
@@ -88,7 +93,7 @@ let set_random seed =
 
 let print_libdir () = Printf.printf "%s\n%!" Config.libdir; exit 0
 
-let usage_msg = "Usage: zenon [options] <file>";;
+let usage_msg = "Usage: zenon_modulo [options] <file>";;
 
 let argspec = [
   "-", Arg.Unit (fun () -> input_file "-"),
@@ -127,6 +132,8 @@ let argspec = [
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (5m)";
+  "-odedukti", Arg.Unit (fun () -> proof_level := Proof_dedukti; opt_level := 0),
+            "          print the proof in Dedukti script format";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "              print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
@@ -315,6 +322,8 @@ let main () =
     let phrases = List.map fst phrases_dep in
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
+    let tables = Phrase.parse_rules ppphrases in
+    Index.tables := tables;
     let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
@@ -330,20 +339,20 @@ let main () =
       flush stderr;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
-    let proof = Prove.prove Prove.default_params defs hyps in
+    let proof = Prove.prove Prove.default_params defs hyps tables in
     if not !quiet_flag then begin
       printf "(* PROOF-FOUND *)\n";
       flush stdout;
     end;
     let llp = lazy (optim (Extension.postprocess
-                             (Mltoll.translate th_name ppphrases proof)))
+                             (Mltoll.translate th_name ppphrases proof tables)))
     in
     begin match !proof_level with
     | Proof_none -> ()
     | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
     | Proof_m -> Print.mlproof (Print.Chan stdout) proof;
     | Proof_lx ->
-        let lxp = Mltoll.translate th_name ppphrases proof in
+        let lxp = Mltoll.translate th_name ppphrases proof tables in
         Print.llproof (Print.Chan stdout) lxp;
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
     | Proof_coq ->
@@ -356,6 +365,10 @@ let main () =
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
+    | Proof_dedukti -> 
+      begin 
+	Lltodedukti.output stdout phrases ppphrases tables (Lazy.force llp);
+      end
     end;
   with
   | Prove.NoProof ->

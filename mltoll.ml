@@ -9,6 +9,11 @@ open Printf;;
 
 module LL = Llproof;;
 
+type rewritetable = (string, Expr.expr * Expr.expr) Hashtbl.t;;
+type rewritetables = rewritetable * rewritetable;;
+
+let tables = ref ((Hashtbl.create 97 : (string, expr * expr) Hashtbl.t),(Hashtbl.create 97 : (string, expr * expr) Hashtbl.t));;
+
 let lemma_num = ref 0;;
 let lemma_suffix = ref "";;
 let lemma_list = ref [];;
@@ -184,6 +189,8 @@ let tr_rule r =
      let h = enot (eapp ("=", [e1; e2])) in
      LL.Rextension ("", "zenon_stringdiffrl", [e1; v1; e2; v2], [c1; c2], [[h]])
 
+  | Root (e) -> LL.Rroot (e)
+
   (* derived rules, handled by translate_derived: *)
   | ConjTree _
   | DisjTree _
@@ -305,6 +312,8 @@ let is_derived = function
   | Miniscope _ -> true
   | Ext ("", _, _) -> false
   | Ext _ -> true
+
+  | Root _ -> false
 ;;
 
 let remove f l = Expr.diff l [f];;
@@ -1051,6 +1060,7 @@ and translate_derived p =
   | Cut _
   | CongruenceLR _
   | CongruenceRL _
+  | Root _
     -> assert false
 
 and translate_pseudo_def p def_hyp s args folded unfolded =
@@ -1128,7 +1138,8 @@ let discharge_extra ll e =
   nn
 ;;
 
-let translate th_name phrases p =
+let translate th_name phrases p xtables =
+  tables := xtables;
   lemma_num := 0;
   (*lemma_suffix := th_name;*)
   lemma_list := [];

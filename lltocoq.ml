@@ -362,6 +362,7 @@ let p_rule oc r =
       let h = apply p b in
       poc "apply (zenon_congruence_rl_s _ %a _ _ %s %s). zenon_intro %s.\n"
           p_expr p (getname c1) (getname c2) (getname h);
+  | Rroot _ -> assert false
 ;;
 
 let rec p_tree oc proof =

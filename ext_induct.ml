@@ -802,6 +802,7 @@ let add_phrase x =
   | Sig _ -> ()
   | Inductive (ty, args, constrs, schema) ->
      add_induct_def ty args constrs schema;
+  | Rew _ -> ()
 ;;
 
 let postprocess l = l;;

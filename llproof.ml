@@ -32,6 +32,8 @@ type rule =
                    * expr * expr
   | Rextension of string * string * expr list * expr list * expr list list
   | Rlemma of string * expr list
+
+  | Rroot of expr
 ;;
 
 type prooftree = {
@@ -113,6 +115,8 @@ let reduce conc rule hyps =
     | Rdefinition (name, sym, args, body, recarg, fld, unf) -> [fld]
     | Rextension (ext, name, args, cons, hyps) -> cons
     | Rlemma (name, args) -> (get_lemma name).proof.conc
+
+    | Rroot (e) -> [e]
   in
   let useful = List.fold_left (fun accu h -> h.conc @@ accu) eliminated hyps in
   List.filter (fun x -> List.exists (Expr.equal x) useful) conc

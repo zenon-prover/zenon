@@ -10,6 +10,9 @@ open Printf;;
 let ( =%= ) = ( = );;
 let ( = ) = Expr.equal;;
 
+type rewritetable = (string, expr * expr) Hashtbl.t;;
+type rewritetables = rewritetable * rewritetable;;
+
 type state = {
   queue : queue;
   (* forms : indexes of the current branch's formulas *)
@@ -1017,6 +1020,16 @@ let newnodes_extensions state fm g fms =
   (state2, stop)
 ;;
 
+let newnode_root st fm g _ = 
+    add_node st {
+      nconc = [fm];
+      nrule = Root fm;
+      nprio = Prop;
+      ngoal = g;
+      nbranches = [| [fm] |];
+    }, false
+;;
+
 let prove_rules = [
   newnodes_absurd;
   newnodes_closure;
@@ -1345,49 +1358,95 @@ and params = {
   end_progress : string -> unit;
 };;
 
-let rec refute_aux prm stk st forms =
+let rec refute_aux prm stk st forms tables =
   prm.progress ();
   match forms with
   | [] ->
       if good_head st.queue then begin
         match Index.search_proof () with
-        | Some p -> p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p)
-        | None -> next_node prm stk st
+        | Some p -> p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p) tables
+        | None -> next_node prm stk st tables
       end else begin
-        next_node prm stk st
+        next_node prm stk st tables
       end
   | (Etrue, _) :: fms
   | (Enot (Efalse, _), _) :: fms
-    -> refute_aux prm stk st fms
+    -> refute_aux prm stk st fms tables
   | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
-      refute_aux prm stk st fms
+      refute_aux prm stk st fms tables
   | (fm, g) :: fms ->
       Index.add fm g;
       Extension.add_formula fm;
-      refute_aux prm stk (add_nodes prm.rules st fm g fms) fms
+      refute_aux prm stk (add_nodes prm.rules st fm g fms) fms tables
 
-and refute prm stk st forms =
+and refute_aux_root prm stk st forms tables =
+  prm.progress ();
+  match forms with
+  | [] ->
+      if good_head st.queue then begin
+        match Index.search_proof () with
+        | Some p ->
+	  p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p) tables 
+        | None -> 
+	  next_node prm stk st tables
+      end else begin
+        next_node prm stk st tables
+      end
+  | (Etrue, _) :: fms
+  | (Enot (Efalse, _), _) :: fms
+    -> refute_aux_root prm stk st fms tables
+  | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 -> refute_aux_root prm stk st fms tables
+  | (fm, g) :: fms ->
+
+      Index.add fm g;
+      Extension.add_formula fm;
+      let rules_root = newnode_root :: prm.rules in 
+      refute_aux_root prm stk (add_nodes rules_root st fm g fms) fms tables
+
+and refute prm stk st forms tables =
   Step.forms "refute" forms;
-  refute_aux prm stk st forms
+  refute_aux prm stk st forms tables
 
-and next_node prm stk st =
+and refute_root prm stk st forms tables =
+  Step.forms "refute" forms;
+  refute_aux_root prm stk st forms tables
+
+and next_node prm stk st tables =
   prm.progress ();
   incr Globals.inferences;
   match remove st.queue with
   | None -> prm.fail ()
   | Some (n, q1) ->
+    begin
+      
+      (* begin of the rewrite on branches
+      *)
+      let size = Array.length n.nbranches in 
+      let new_branches = Array.make size [] in 
+      for i=0 to size-1
+      do
+	new_branches.(i) <- Rewrite.normalize_list tables n.nbranches.(i);
+      done;
+      let new_node = {nconc = n.nconc;
+		      nrule = n.nrule;
+		      nprio = n.nprio;
+		      ngoal = n.ngoal;
+		      nbranches = new_branches;} in 
+      (* end of rewrite
+      *)
       let st1 = {(*st with*) queue = q1} in
-      match reduce_branches n with
+      match reduce_branches new_node with
       | Some n1 ->
 (*
           let (n2, brstate) = add_virtual_branch n1 in
           next_branch stk n2 st1 brstate
 *)
-         let brstate = Array.make (Array.length n.nbranches) Open in
-         next_branch prm stk n1 st1 brstate
-      | None -> next_node prm stk st1
+         let brstate = Array.make (Array.length new_node.nbranches) Open in
+         next_branch prm stk n1 st1 brstate tables
+      | None -> next_node prm stk st1 tables
+    end
 
-and next_branch prm stk n st brstate =
+and next_branch prm stk n st brstate  tables=
   Step.rule "next_branch" n.nrule;
   match find_open_branch n brstate with
   | Some i ->
@@ -1395,10 +1454,10 @@ and next_branch prm stk n st brstate =
       incr cur_depth;
       if !cur_depth > !top_depth then top_depth := !cur_depth;
       if !cur_depth > !max_depth then begin
-        unwind prm stk Backtrack
+        unwind prm stk Backtrack tables
       end else begin
         refute prm (fr :: stk) st
-               (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
+               (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i)) tables
       end
   | None ->
 (*
@@ -1406,9 +1465,9 @@ and next_branch prm stk n st brstate =
       let result = make_result n1 brstate1 in
 *)
       let result = make_result n brstate in
-      unwind prm stk result
+      unwind prm stk result tables
 
-and unwind prm stk res =
+and unwind prm stk res tables =
   prm.progress ();
   decr cur_depth;
   match stk with
@@ -1424,11 +1483,11 @@ and unwind prm stk res =
       List.iter f (List.rev fr.node.nbranches.(fr.curbr));
       begin match res with
       | Closed p when disjoint fr.node.nbranches.(fr.curbr) p.mlconc ->
-          unwind prm stk1 res
-      | Backtrack -> unwind prm stk1 res
+          unwind prm stk1 res tables
+      | Backtrack -> unwind prm stk1 res tables
       | Closed _ ->
           fr.brst.(fr.curbr) <- res;
-          next_branch prm stk1 fr.node fr.state fr.brst
+          next_branch prm stk1 fr.node fr.state fr.brst tables
       | Open -> assert false
       end;
 ;;
@@ -1455,18 +1514,18 @@ let ticker finished () =
   if not finished then periodic '#';
 ;;
 
-let rec iter_refute prm rl =
-  match refute prm [] {queue = empty} rl with
+let rec iter_refute prm rl tables =
+  match refute_root prm [] {queue = empty} rl tables with
   | Backtrack ->
       max_depth := 2 * !max_depth;
       Progress.do_progress begin fun () ->
         eprintf "increase max_depth to %d\n" !max_depth;
       end '*';
-      iter_refute prm rl;
+      iter_refute prm rl tables;
   | x -> x
 ;;
 
-let prove prm defs l =
+let prove prm defs l tables =
   if !Globals.random_flag then begin
     rndstate := Random.State.make [| !Globals.random_seed |];
     max_depth := 100;
@@ -1479,7 +1538,7 @@ let prove prm defs l =
   cur_depth := 0;
   top_depth := 0;
   try
-    match iter_refute prm rl with
+    match iter_refute prm rl tables with
     | Closed p ->
         Gc.delete_alarm al;
         ticker true ();

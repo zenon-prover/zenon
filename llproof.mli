@@ -247,6 +247,8 @@ type rule =
        parametres de "name".
 
      ********************)
+
+  | Rroot of expr
 ;;
 
 type prooftree = {

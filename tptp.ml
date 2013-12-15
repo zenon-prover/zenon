@@ -35,6 +35,7 @@ let add_ignore_directive ext fname =
 let keep form =
   match form with
     | Hyp (name, _, _) -> not (List.mem name !to_ignore)
+    | Rew (name, _, _) -> not (List.mem name !to_ignore)
     | Def _
     | Sig _
     | Inductive _
@@ -98,12 +99,161 @@ let process_annotations forms =
             make_definition name form (make_annot_expr body) kind
           else
             Hyp (tptp_to_coq name, make_annot_expr body, kind)
+      | Rew (name, body, kind) ->
+	Rew (tptp_to_coq name, make_annot_expr body, kind)
       | Def _
       | Sig _
       | Inductive _
         -> assert false
   in
   List.rev (List.rev_map process_one (List.filter keep forms))
+;;
+
+let is_commut_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) -> 
+    begin 
+      match t1, t2 with 
+      | Eapp (sym1, [e11; e12], _), Eapp (sym2, [e21; e22], _) 
+	  when 
+	    (sym1 = sym2) 
+	    && (Expr.equal e11 e22) 
+	    && (Expr.equal e12 e21)
+	    -> true
+      | _ -> false
+    end 
+  | _ -> false
+;;
+
+let is_assoc_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) -> 
+    begin 
+      match t1, t2 with 
+      | Eapp (sym11, [e11; Eapp (sym12, [e12; e13], _)], _),
+        Eapp (sym21, [Eapp (sym22, [e21; e22], _); e23], _)
+	  when 
+	    (sym11 = sym12)
+	    && (sym12 = sym21)
+	    && (sym21 = sym22)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e23)
+	    -> true
+      | Eapp (sym11, [Eapp (sym12, [e11; e12], _); e13], _),
+	Eapp (sym21, [e21; Eapp (sym22, [e22; e23], _)], _)
+	  when 
+	    (sym11 = sym12)
+	    && (sym12 = sym21)
+	    && (sym21 = sym22)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e23)
+	    -> true
+      | _ -> false
+    end
+  | _ -> false
+;;
+
+let is_distrib_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) -> 
+    begin 
+      match t1, t2 with 
+      | Eapp (sym11, [e11; Eapp (sym12, [e12; e13], _)], _),
+        Eapp (sym21, [Eapp (sym22, [e21; e22], _); 
+		      Eapp (sym23, [e23; e24], _)], _)
+	  when
+	    (sym11 = sym22)
+	    && (sym22 = sym23)
+	    && (sym12 = sym21)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e21 e23)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e24)
+	    -> true
+      | Eapp (sym11, [Eapp (sym12, [e11; e12], _); e13], _),
+        Eapp (sym21, [Eapp (sym22, [e21; e22], _);
+		      Eapp (sym23, [e23; e24], _)], _)
+	  when
+	    (sym11 = sym22)
+	    && (sym22 = sym23)
+	    && (sym12 = sym21)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e23)
+	    && (Expr.equal e13 e22)
+	    && (Expr.equal e22 e24)
+	    -> true
+      | _ -> false
+    end
+  | _ -> false
+;;
+
+let is_litteral body = 
+  match body with 
+  | Eapp(sym, _, _) when sym <> "=" -> true
+  | Enot(Eapp(sym, _, _), _) when sym <> "=" -> true
+  | _ -> false
+;;
+
+let is_litteral_eq body = 
+  match body with 
+  | Eapp(sym, _, _)  -> true
+  | Enot(Eapp(sym, _, _), _)  -> true
+  | _ -> false
+;;
+
+let rec is_equal_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) 
+      when not (is_commut_term body)
+      -> true
+  | _ -> false
+;;
+
+let rec is_conj_term body = 
+  match body with 
+  | Eand (e1, e2, _) -> is_conj_term e1 && is_conj_term e2
+  | _ -> is_equal_term body
+;;
+
+let rec is_rwrt_term body = 
+  match body with 
+  | Eall (_, _, pred, _) -> is_rwrt_term pred
+  | _ -> is_conj_term body
+;;
+
+
+let rec test_fv l1 l2 = 
+  match l2 with 
+  | [] -> true
+  | h :: tl when List.mem h l1 -> test_fv l1 tl
+  | _ -> false
+;;
+
+let rec is_equiv_prop body = 
+  match body with
+  | Eequiv (e1, e2, _) -> 
+    begin 
+      (is_litteral e1 
+       && test_fv (get_fv e1) (get_fv e2))
+      || 
+	(is_litteral e2 
+	 && test_fv (get_fv e2) (get_fv e1))
+    end
+  | _ -> false
+;;
+
+let rec is_conj_prop body = 
+  match body with 
+  | Eand (e1, e2, _) -> (is_conj_prop e1 && is_conj_prop e2)
+  | _ -> is_equiv_prop body
+;;
+
+let rec is_rwrt_prop body = 
+  match body with 
+  | Eall (_, _, pred, _) -> is_rwrt_prop pred
+  | _ -> is_conj_prop body
 ;;
 
 let rec translate_one dirs accu p =
@@ -114,10 +264,40 @@ let rec translate_one dirs accu p =
       (* for the moment, we just ignore the include *)
       accu
   | Annotation s -> add_annotation s; accu
-  | Formula (name, ("axiom" | "definition"), body) ->
-      Hyp (name, body, 2) :: accu
+  | Formula (name, "axiom" , body) ->
+    begin 
+      if is_rwrt_term body
+      then Rew (name, body, 0) :: accu
+      else if is_rwrt_prop body 
+      then Rew (name, body, 1) :: accu
+      else Hyp (name, body, 2) :: accu
+    end
+  | Formula (name, "definition", body) ->
+    begin 
+      if is_rwrt_term body
+      then Rew (name, body, 0) :: accu
+      else if is_rwrt_prop body 
+      then Rew (name, body, 1) :: accu
+      else Hyp (name, body, 2) :: accu
+    end
   | Formula (name, "hypothesis", body) ->
-      Hyp (name, body, 1) :: accu
+    begin 
+      if is_rwrt_term body
+      then Rew (name, body, 0) :: accu
+      else if is_rwrt_prop body 
+      then Rew (name, body, 1) :: accu
+      else Hyp (name, body, 1) :: accu
+    end
+(*  | Formula (name, "axiom", body) -> 
+    Hyp (name, body, 2) :: accu
+  | Formula (name, "rwrt_term", body) -> 
+    Rew (name, body, 0) :: accu
+  | Formula (name, "rwrt_prop", body) -> 
+    Rew (name, body, 1) :: accu*)
+(*  | Formula (name, "definition", body) ->
+      Hyp (name, body, 2) :: accu
+  | Formula (name, ("axiom" | "definition"), body) ->
+      Hyp (name, body, 2) :: accu*)
   | Formula (name, ("lemma"|"theorem"), body) ->
       Hyp (name, body, 1) :: accu
   | Formula (name, "conjecture", body) ->

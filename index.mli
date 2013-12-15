@@ -5,6 +5,8 @@ open Expr;;
 
 (* ==== main formula list ==== *)
 
+val tables : Phrase.rewritetables ref;;
+
 (* [add] and [remove] must be used in LIFO order *)
 val add : expr -> int -> unit;;
 val remove : expr -> unit;;

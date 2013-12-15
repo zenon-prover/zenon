@@ -152,6 +152,7 @@ let phrase o ph =
   let pro f = oprintf o f in
   begin match ph with
   | Phrase.Hyp (n, e, p) -> pro "# %s:\n$%d " n p; expr o e; pro "\n";
+  | Phrase.Rew (n, e, p) -> pro "# %s:\n$%d " n p; expr o e; pro "\n";
   | Phrase.Def (DefReal (name, s, args, e, None)) ->
       pro "$def \"%s\" %s (" name s;
       print_list (buf o) print_var " " args;
@@ -234,6 +235,7 @@ let get_rule_name = function
   | CongruenceRL (p, a, b) -> "CongruenceRL", [p; a; b]
   | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
+  | Root (e) -> "Root", [e]
 ;;
 
 let mlproof_rule o r =
@@ -327,6 +329,7 @@ let hlrule_name = function
   | CongruenceRL (p, a, b) -> "CongruenceRL", [p; a; b]
   | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> ("Extension/"^th^"/"^ru), args
+  | Root (e) -> "Root", [e]
 ;;
 
 let hlrule o r =
@@ -542,6 +545,10 @@ let llproof_rule o r =
       pr "---lemma %s [ " name;
       List.iter (fun x -> llproof_expr o x; pr " ") args;
       pr "]";
+  | Rroot (e) -> 
+    pr "---root (";
+    llproof_expr o e;
+    pr ")";
 ;;
 
 let nodes = ref 0;;

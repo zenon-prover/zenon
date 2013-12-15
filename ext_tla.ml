@@ -1591,6 +1591,7 @@ let pp_rule r =
      LL.Rextension (ext, n, List.map pp_expr a, List.map pp_expr cs,
                  List.map (List.map pp_expr) hss)
   | LL.Rlemma (n, args) -> LL.Rlemma (n, List.map pp_expr args)
+  | LL.Rroot (e) -> LL.Rroot (pp_expr e)
 ;;
 
 let rec pp_prooftree t = {

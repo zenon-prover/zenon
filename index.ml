@@ -12,6 +12,8 @@ let string_equal x y = String.compare x y == 0;;
 
 let tblsize = 997;;  (* reduce to 17 for debugging *)
 
+let tables = ref ((Hashtbl.create 42), (Hashtbl.create 42));
+
 module HE = Hashtbl.Make (Expr);;
 
 let allforms = (HE.create tblsize : int HE.t);;
