@@ -68,13 +68,16 @@ let is_goal e =
 ;;
 
 let induct_map = ref [];;
+let constructor_table = (Hashtbl.create 100 : (string, unit) Hashtbl.t);;
 
 let init_induct phrases =
   induct_map := [];
+  Hashtbl.clear constructor_table;
   let add_induct p =
     match p with
     | Phrase.Inductive (name, args, cons, schema) ->
        induct_map := (name, (args, cons, schema)) :: !induct_map;
+       List.iter (fun (c, _) -> Hashtbl.add constructor_table c ()) cons;
     | Phrase.Hyp _ | Phrase.Def _ | Phrase.Sig _ -> ()
   in
   List.iter add_induct phrases;
@@ -83,6 +86,13 @@ let init_induct phrases =
 let get_induct name =
   try List.assoc name !induct_map
   with Not_found -> assert false
+;;
+
+let is_constr e =
+  match e with
+  | Eapp ("@", Evar (f, _) :: _, _) | Eapp (f, _, _)
+    when Hashtbl.mem constructor_table f -> true
+  | _ -> false
 ;;
 
 

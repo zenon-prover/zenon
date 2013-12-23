@@ -311,8 +311,12 @@ let p_rule oc r =
         | h1::t1, h2::t2 -> if h1 = vv then h2 else find_recarg t1 t2
         | _ -> assert false
       in
-      poc "assert (%s: %a). destruct %a; simpl; auto.\n"
-          (getname h) p_expr h p_expr (find_recarg a args);
+      let recarg = find_recarg a args in
+      poc "assert (%s: %a). " (getname h) p_expr h;
+      (* Fix bug 37: do not destruct a constructor value. *)
+      if not (Coqterm.is_constr recarg) then
+        poc "destruct %a; " p_expr (find_recarg a args);
+      poc "simpl; auto.\n"
   | Rnotequal (Eapp (f, args1, _), Eapp (g, args2, _)) ->
      assert (f = g);
      let f a1 a2 =
