@@ -4,8 +4,6 @@
 open Expr;;
 open Print;;
 
-type rewritetable = (string, expr * expr) Hashtbl.t;;
-type rewritetables = rewritetable * rewritetable;;
 
 val rename_aux : expr -> (expr * expr) list -> expr * (expr * expr) list;;
 (* [rename e l]
@@ -35,9 +33,9 @@ val rewrite_term : (expr * expr) -> expr -> expr;;
 
 val rewrite_prop : (expr * expr) -> expr -> expr;;
 
-val normalize_fm : rewritetables -> expr -> expr;;
+val normalize_fm : expr -> expr;;
 
-val normalize_list : rewritetables -> expr list -> expr list;;
+val normalize_list : expr list -> expr list;;
 
 
 val print_list_expr : expr list -> unit;;

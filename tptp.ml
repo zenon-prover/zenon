@@ -264,6 +264,35 @@ let rec translate_one dirs accu p =
       (* for the moment, we just ignore the include *)
       accu
   | Annotation s -> add_annotation s; accu
+  | Formula (name, "axiom", body) -> 
+    Hyp (name, body, 2) :: accu
+  | Formula (name, "rwrt_term", body) -> 
+    Rew (name, body, 0) :: accu
+  | Formula (name, "rwrt_prop", body) -> 
+    Rew (name, body, 1) :: accu
+  | Formula (name, "definition", body) ->
+      Hyp (name, body, 2) :: accu
+  | Formula (name, "hypothesis", body) ->
+    Hyp (name, body, 1) :: accu
+  | Formula (name, ("lemma"|"theorem"), body) ->
+      Hyp (name, body, 1) :: accu
+  | Formula (name, "conjecture", body) ->
+      tptp_thm_name := name;
+      Hyp (goal_name, enot (body), 0) :: accu
+  | Formula (name, "negated_conjecture", body) ->
+      Hyp (name, body, 0) :: accu
+  | Formula (name, k, body) ->
+      Error.warn ("unknown formula kind: " ^ k);
+      Hyp (name, body, 1) :: accu
+
+and translate_one_rwrt dirs accu p =
+  match p with
+  | Include (f, None) -> try_incl dirs f accu
+  | Include (f, Some _) ->
+      (* FIXME change try_incl and incl to implement selective include *)
+      (* for the moment, we just ignore the include *)
+      accu
+  | Annotation s -> add_annotation s; accu
   | Formula (name, "axiom" , body) ->
     begin 
       if is_rwrt_term body
@@ -288,16 +317,6 @@ let rec translate_one dirs accu p =
       then Rew (name, body, 1) :: accu
       else Hyp (name, body, 1) :: accu
     end
-(*  | Formula (name, "axiom", body) -> 
-    Hyp (name, body, 2) :: accu
-  | Formula (name, "rwrt_term", body) -> 
-    Rew (name, body, 0) :: accu
-  | Formula (name, "rwrt_prop", body) -> 
-    Rew (name, body, 1) :: accu*)
-(*  | Formula (name, "definition", body) ->
-      Hyp (name, body, 2) :: accu
-  | Formula (name, ("axiom" | "definition"), body) ->
-      Hyp (name, body, 2) :: accu*)
   | Formula (name, ("lemma"|"theorem"), body) ->
       Hyp (name, body, 1) :: accu
   | Formula (name, "conjecture", body) ->
@@ -310,7 +329,9 @@ let rec translate_one dirs accu p =
       Hyp (name, body, 1) :: accu
 
 and xtranslate dirs ps accu =
-  List.fold_left (translate_one dirs) accu ps
+  if !Globals.build_rwrt_sys 
+  then List.fold_left (translate_one_rwrt dirs) accu ps
+  else List.fold_left (translate_one dirs) accu ps
 
 and try_incl dirs f accu =
   let rec loop = function

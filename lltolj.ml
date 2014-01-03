@@ -58,9 +58,6 @@ let definition_env =
 let new_terms = ref [];;
 
 
-let rew_env = ref ((Hashtbl.create 97 : (string, expr * expr) Hashtbl.t),
-		   (Hashtbl.create 97 : (string, expr * expr) Hashtbl.t));;
-
 let new_var = 
   let r = ref 0 in
   fun () -> 
@@ -119,8 +116,8 @@ let rec p_debug_llprf s proof =
 ;;
 
 let equalmod e1 e2 = 
-  let f1 = Rewrite.normalize_fm (!rew_env) e1 in
-  let f2 = Rewrite.normalize_fm (!rew_env) e2 in
+  let f1 = Rewrite.normalize_fm e1 in
+  let f2 = Rewrite.normalize_fm e2 in
   (*if Expr.equal f1 f2
   then p_debug "equal" [e1; e2]
   else p_debug "not equal" [e1; e2];*)
@@ -234,7 +231,7 @@ and hypstoadd rule =
   List.map (List.map use_defs) l1, List.map use_defs l2
 
 and use_defs expr = 
-  let e = Rewrite.normalize_fm (!rew_env) expr in
+  let e = Rewrite.normalize_fm expr in
   match e with
   | Evar (v, _) when Hashtbl.mem definition_env v -> 
     let (params, body) = Hashtbl.find definition_env v in

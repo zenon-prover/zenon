@@ -8,10 +8,6 @@ open Print;;
 open Node;;
 open Mlproof;;
 
-type rewritetable = (string, expr * expr) Hashtbl.t;;
-type rewritetables = rewritetable * rewritetable;;
-
-
 
 let printer e = expr_soft (Chan stdout) e;;
 
@@ -48,58 +44,11 @@ let rec print_list_de_list l =
 ;;
 
 
-let rec find_all_sym_aux accu t = 
-  match t with 
-    | Evar (sym, _) -> sym::accu
-    | Emeta _ -> accu
-    | Eapp (sym, args, _) -> 
-       List.fold_left find_all_sym_aux (sym::accu) args
-    | Enot (t1, _) -> 
-      find_all_sym_aux accu t1
-    | Eand (t1, t2, _) ->
-      List.fold_left find_all_sym_aux accu [t1;t2]
-    | Eor (t1, t2, _) ->
-      List.fold_left find_all_sym_aux accu [t1;t2]
-    | Eimply (t1, t2, _) -> 
-      List.fold_left find_all_sym_aux accu [t1;t2]
-    | Eequiv (t1, t2, _) ->
-      List.fold_left find_all_sym_aux accu [t1;t2]
-    | Etrue -> accu
-    | Efalse -> accu
-
-    | Eall (_, _, t1, _) -> find_all_sym_aux accu t1
-    | Eex  (_, _, t1, _) -> find_all_sym_aux accu t1
-    | Etau (_, _, t1, _) -> find_all_sym_aux accu t1
-    | Elam (_, _, t1, _) -> find_all_sym_aux accu t1
-;;
-
-
-let find_all_sym t = find_all_sym_aux [] t
-;;
-
-let rec find_rules_aux table sym rules =
-  match sym with 
-    | [] -> rules
-    | h::tl -> 
-      let new_rules = (Hashtbl.find_all table h)@rules in 
-      find_rules_aux table tl new_rules
-;;
-
-let find_rules table t = 
-  let sym = find_all_sym t in 
-  find_rules_aux table sym []
-;;
-
 let rec find_first_sym t = 
   match t with 
     | Evar (sym, _) -> sym
     | Eapp (sym, _, _) -> sym
     | Enot (t1, _) -> find_first_sym t1
-  (*  | Eequiv (t1, _, _) -> find_first_sym t1
-    | Eimply (t1, _, _) -> find_first_sym t1
-    | Enot (t1, _) -> find_first_sym t1
-    | Eand (t1, _, _) -> find_first_sym t1
-    | Eor (t1, _, _) -> find_first_sym t1*)
     | _ -> ""
 ;;
 
@@ -220,43 +169,6 @@ let rec unif_aux l e1 e2 =
 let unif t1 t2 = unif_aux [] t1 t2;; 
 
 
-  
-(* The rewrite function.
-   Used to rewrite the term t with rule (l, r)
-*)
-let rec rewrite_term (l, r) t =
-
-  try
-    let subst = unif l t in    
-    Expr.substitute subst r 
-  with
-  | Unif_failed ->
-    (match t with
-      | Eapp (f, args, _) -> 
-	eapp (f, (List.map (rewrite_term (l, r)) args))
-      | Enot (t1, _) -> 
-	enot (rewrite_term (l, r) t1)
-      | Eand (t1, t2, _) -> 
-	eand (rewrite_term (l, r) t1, rewrite_term (l, r) t2)
-      | Eor (t1, t2, _) -> 
-	eor (rewrite_term (l, r) t1, rewrite_term (l, r) t2)
-      | Eimply (t1, t2, _) -> 
-	eimply (rewrite_term (l, r) t1, rewrite_term (l, r) t2)
-      | Eequiv (t1, t2, _) -> 
-	eequiv (rewrite_term (l, r) t1, rewrite_term (l, r) t2)
-
-      | Eall (x, typex, t1, _) -> 
-	eall (x, typex, rewrite_term (l, r) t1)
-      | Eex (x, typex, t1, _) -> 
-	eex (x, typex, rewrite_term (l, r) t1)
-      | Etau (x, typex, t1, _) -> 
-	etau (x, typex, rewrite_term (l, r) t1)
-      | Elam (x, typex, t1, _) -> 
-	elam (x, typex, rewrite_term (l, r) t1)
-
-      | _ -> t)
-;;
-
  
 
 (* normalisation des propositions
@@ -303,31 +215,62 @@ let rec norm_prop_aux rules fm =
 ;;
 
 
-let norm_prop tables fm = 
-  let rules = Hashtbl.find_all (snd tables) (find_first_sym fm) in 
+let norm_prop fm = 
+  let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in 
   let rules_sort = List.sort ordering rules in 
   norm_prop_aux rules_sort fm
 ;;
 
-let rec norm_term_aux rules fm = 
+
+
+let rec rewrite_term (l, r) p = 
+  try
+    let subst = unif l p in
+    Expr.substitute subst r 
+  with
+  | Unif_failed -> p
+;;
+  
+let rec norm_term_aux rules t = 
   match rules with 
-  | [] -> fm 
-  | (l, r) :: tl -> 
-    begin 
-      let new_fm = rewrite_term (l, r) fm in 
-      if not (Expr.equal new_fm fm)
-      then 
-	begin 
-	  (*Globals.compteur_rwrt_t := !Globals.compteur_rwrt_t + 1;*)
-	end; 
-      norm_term_aux tl new_fm
-    end 
+    | [] -> t 
+    | (l, r) :: tl -> 
+      norm_term_aux tl (rewrite_term (l, r) t)
 ;;
 
-let norm_term tables fm = 
-  let rules = find_rules (fst tables) fm in 
+let rec norm_term t =
+  let rules = Hashtbl.find_all !Expr.tbl_term (find_first_sym t) in 
   let rules_sort = List.sort ordering rules in 
-  norm_term_aux rules_sort fm 
+  let new_t = norm_term_aux rules_sort t in
+  if not (Expr.equal t new_t) 
+  then norm_term new_t
+  else 
+    begin
+      match t with 
+      | Eapp (f, args, _) -> 
+	eapp (f, (List.map norm_term args))
+      | Enot (t1, _) -> 
+	enot (norm_term t1)
+      | Eand (t1, t2, _) -> 
+	eand (norm_term t1, norm_term t2)
+      | Eor (t1, t2, _) -> 
+	eor (norm_term t1, norm_term t2)
+      | Eimply (t1, t2, _) -> 
+	eimply (norm_term t1, norm_term t2)
+      | Eequiv (t1, t2, _) -> 
+	eequiv (norm_term t1, norm_term t2)
+
+      | Eall (x, typex, t1, _) -> 
+	eall (x, typex, norm_term t1)
+      | Eex (x, typex, t1, _) -> 
+	eex (x, typex, norm_term t1)
+      | Etau (x, typex, t1, _) -> 
+	etau (x, typex, norm_term t1)
+      | Elam (x, typex, t1, _) -> 
+	elam (x, typex, norm_term t1)
+
+      | _ -> t
+    end
 ;;
 
 let is_litteral fm = 
@@ -338,27 +281,27 @@ let is_litteral fm =
 ;;
 
 
-let rec normalize_fm tables fm = 
+let rec normalize_fm fm = 
 if is_litteral fm then
   begin 
-    let fm_t = norm_term tables fm in 
-    let fm_p = norm_prop tables fm_t in 
+    let fm_t = norm_term fm in 
+    let fm_p = norm_prop fm_t in 
     if (Expr.equal fm_p fm)
     then fm
-    else normalize_fm tables fm_p
+    else normalize_fm fm_p
   end
 else
   fm
 ;;
 
-let rec normalize_list_aux tables accu list = 
+let rec normalize_list_aux accu list = 
   match list with 
   | [] -> List.rev accu
   | h :: t -> 
-    let new_accu = (normalize_fm tables h) :: accu in 
-    normalize_list_aux tables new_accu t
+    let new_accu = (normalize_fm h) :: accu in 
+    normalize_list_aux new_accu t
 ;;
 
-let normalize_list tables list = 
-  normalize_list_aux tables [] list
+let normalize_list list = 
+  normalize_list_aux [] list
 ;;

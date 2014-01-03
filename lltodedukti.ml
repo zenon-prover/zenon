@@ -722,20 +722,19 @@ let rec p_rews oc sigs (sym, list) =
     p_rews oc sigs (sym, list);
 ;;
 
-let output oc phrases ppphrases tables llp =
+let output oc phrases ppphrases llp =
   (*eprintf "%a" 
     (fun oc x -> Print.llproof (Print.Chan oc) x)
     llp;*)
-  Lltolj.rew_env := tables;
   Lltolj.hypothesis_env := [];
   declare_header oc;
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;
   let assoc_rew =
-    Hashtbl.fold get_rews (fst tables) [] in
+    Hashtbl.fold get_rews !Expr.tbl_term [] in
   let assoc_rew2 = 
-    Hashtbl.fold get_rews (snd tables) assoc_rew in
+    Hashtbl.fold get_rews !Expr.tbl_prop assoc_rew in
   
   List.iter (p_rews oc sigs) assoc_rew2 ;
   add_distinct_terms_axioms !Lltolj.distinct_terms;

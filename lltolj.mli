@@ -64,6 +64,5 @@ val lemma_env : (string, Llproof.prooftree) Hashtbl.t;;
 val hypothesis_env : Expr.expr list ref;;
 val definition_env : 
   (string, Expr.expr list * Expr.expr) Hashtbl.t;;
-val rew_env : (Phrase.rewritetables) ref;;
 
 val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;

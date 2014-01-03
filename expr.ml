@@ -42,6 +42,9 @@ type definition =
 
 exception Higher_order;;
 
+type rwrt_tbl = (string, expr * expr) Hashtbl.t;;
+type rwrt_tbls = rwrt_tbl * rwrt_tbl;;
+
 
 (************************)
 (* small sets of formulas (represented as lists) *)
@@ -564,3 +567,6 @@ let rec remove_scope e =
 ;;
 
 type goalness = int;;
+
+let tbl_term = ref (Hashtbl.create 42);;
+let tbl_prop = ref (Hashtbl.create 42);;

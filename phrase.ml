@@ -3,8 +3,6 @@ Version.add "$Id$";;
 
 open Expr;;
 
-type rewritetable = (string, expr * expr) Hashtbl.t;;
-type rewritetables = rewritetable * rewritetable;;
 
 type inductive_arg =
   | Param of string
@@ -221,11 +219,6 @@ let rec find_first_sym t =
     | Evar (sym, _) -> sym
     | Eapp (sym, _, _) -> sym
     | Enot (p1, _) -> find_first_sym p1
-  (*  | Eequiv (p1, _, _) -> find_first_sym p1
-    | Eimply (p1, _, _) -> find_first_sym p1
-    | Enot (p1, _) -> find_first_sym p1
-    | Eand (t1, _, _) -> find_first_sym t1
-    | Eor (t1, _, _) -> find_first_sym t1*)
     | _ -> assert false
 ;;
 
@@ -243,109 +236,104 @@ let is_litteral_eq body =
   | _ -> false
 ;;
 
-let add_rule tables t1 t2 = 
+let add_rule_term t1 t2 = 
   let sym = find_first_sym t1 in 
-  Hashtbl.add tables sym (t1, t2)
+  Hashtbl.add !Expr.tbl_term sym (t1, t2)
 ;;
 
-let rec parse_equal_term tables body = 
+let add_rule_prop t1 t2 = 
+  let sym = find_first_sym t1 in 
+  Hashtbl.add !Expr.tbl_prop sym (t1, t2)
+;;
+
+let rec parse_equal_term body = 
       match body with 
       | Eapp ("=", [t1; t2], _) 
 	  when test_fv (get_fv t1) (get_fv t2)
-	    -> add_rule tables t1 t2
+	    -> add_rule_term t1 t2
       | Eapp ("=", [t1; t2], _) 
 	  when test_fv (get_fv t2) (get_fv t1)
-	    -> add_rule tables t2 t1
+	    -> add_rule_term t2 t1
       | _ -> assert false
 ;;
 
-let rec parse_conj_term tables body = 
+let rec parse_conj_term body = 
   match body with 
   | Eand (e1, e2, _) -> 
     begin 
-      parse_conj_term tables e1;
-      parse_conj_term tables e2;
+      parse_conj_term e1;
+      parse_conj_term e2;
     end
-  | _ -> parse_equal_term tables body
+  | _ -> parse_equal_term body
 ;;
 
-let rec parse_term_rule tables body = 
+let rec parse_term_rule body = 
   match body with 
-  | Eall (_, _, pred, _) -> parse_term_rule tables pred
-  | _ -> parse_conj_term tables body
+  | Eall (_, _, pred, _) -> parse_term_rule pred
+  | _ -> parse_conj_term body
 ;;
 
 
 
-let rec parse_equiv_prop tables body = 
+let rec parse_equiv_prop body = 
   match body with 
-
   | Eequiv (e1, e2, _) 
       when is_litteral e1 
 	&& test_fv (get_fv e1) (get_fv e2)
-	-> add_rule tables e1 e2
+	-> add_rule_prop e1 e2
   | Eequiv (e1, e2, _)
       when is_litteral e2
 	&& test_fv (get_fv e2) (get_fv e1)
-	-> add_rule tables e2 e1
+	-> add_rule_prop e2 e1
   | _ -> assert false
 ;;
 
-let rec parse_conj_prop tables body = 
+let rec parse_conj_prop body = 
   match body with 
   | Eand (e1, e2, _) -> 
     begin 
-      parse_conj_prop tables e1;
-      parse_conj_prop tables e2;
+      parse_conj_prop e1;
+      parse_conj_prop e2;
     end
-  | _ -> parse_equiv_prop tables body
+  | _ -> parse_equiv_prop body
 ;;
 
-let rec parse_prop_rule tables body = 
+let rec parse_prop_rule body = 
   match body with 
-  | Eall (_, _, pred, _) -> parse_prop_rule tables pred
-  | _ -> parse_conj_prop tables body
+  | Eall (_, _, pred, _) -> parse_prop_rule pred
+  | _ -> parse_conj_prop body
 ;;
 
 
-let rec parse_rules_aux tables phrases = 
+let rec parse_rwrt phrases = 
   match phrases with 
-    | [] -> tables
+    | [] -> ()
     | Rew (name, body, flag) :: tl ->
       begin 
 	match flag with 
 	| 0 -> 
 	  begin 
-	    parse_term_rule (fst tables) body;
-	    parse_rules_aux tables tl;
+	    parse_term_rule body;
+	    parse_rwrt tl;
 	  end 
 	| 1 -> 
 	  begin 
-	    parse_prop_rule (snd tables) body;
-	    parse_rules_aux tables tl;
+	    parse_prop_rule body;
+	    parse_rwrt tl;
 	  end
 	    
 	| _ -> assert false
       end 
     | Hyp _ :: tl
-	-> parse_rules_aux tables tl
+      -> parse_rwrt tl
     | Def _ :: tl
-      -> parse_rules_aux tables tl
+      -> parse_rwrt tl
     | Sig _ :: tl 
-      -> parse_rules_aux tables tl
+      -> parse_rwrt tl
     | Inductive _ :: tl
-      -> parse_rules_aux tables tl
+      -> parse_rwrt tl
 ;;
 
-(* the public function
-   argument : phrases
-   return : couple of hash table
-*)
-let parse_rules phrases = 
-  let tbl_term = Hashtbl.create 42 in 
-  let tbl_prop = Hashtbl.create 42 in 
-  parse_rules_aux (tbl_term, tbl_prop) phrases
-;; 
 
 
 

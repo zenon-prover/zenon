@@ -10,6 +10,7 @@ Prerequisites:
   - Coq 8.0.x
   - ImageMagick (optional)
   - Ghostscript (optional)
+  - dedukti     (optional)
 
 
 Compile and install with:

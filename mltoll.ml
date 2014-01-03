@@ -9,11 +9,6 @@ open Printf;;
 
 module LL = Llproof;;
 
-type rewritetable = (string, Expr.expr * Expr.expr) Hashtbl.t;;
-type rewritetables = rewritetable * rewritetable;;
-
-let tables = ref ((Hashtbl.create 97 : (string, expr * expr) Hashtbl.t),(Hashtbl.create 97 : (string, expr * expr) Hashtbl.t));;
-
 let lemma_num = ref 0;;
 let lemma_suffix = ref "";;
 let lemma_list = ref [];;
@@ -1138,8 +1133,7 @@ let discharge_extra ll e =
   nn
 ;;
 
-let translate th_name phrases p xtables =
-  tables := xtables;
+let translate th_name phrases p =
   lemma_num := 0;
   (*lemma_suffix := th_name;*)
   lemma_list := [];

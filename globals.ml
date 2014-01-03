@@ -21,3 +21,5 @@ let proof_nodes = ref 0;;
 let top_num_forms = ref 0;;
 let stored_lemmas = ref 0;;
 let num_expr = ref 0;;
+
+let build_rwrt_sys = ref false;;

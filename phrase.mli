@@ -8,8 +8,6 @@ type inductive_arg =
   | Self
 ;;
 
-type rewritetable = (string, expr * expr) Hashtbl.t;;
-type rewritetables = rewritetable * rewritetable;;
 
 type phrase =
   | Hyp of string * expr * int
@@ -43,4 +41,4 @@ val change_to_def : string list -> expr -> definition;;
 (** Turn a def-shaped formula into a (real) definition.
     Raise [Invalid_argument] if the argument is not def-shaped. *)
 
-val parse_rules : phrase list -> rewritetables;;
+val parse_rwrt : phrase list -> unit;;

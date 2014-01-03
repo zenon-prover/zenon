@@ -21,3 +21,5 @@ val proof_nodes : int ref;;
 val top_num_forms : int ref;;
 val stored_lemmas : int ref;;
 val num_expr : int ref;;
+
+val build_rwrt_sys : bool ref;;

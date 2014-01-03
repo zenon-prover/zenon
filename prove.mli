@@ -12,8 +12,6 @@ type branch_state =
   | Backtrack
 ;;
 
-type rewritetable = (string, expr * expr) Hashtbl.t;;
-type rewritetables = rewritetable * rewritetable;;
 
 type rule;;
 type params = {
@@ -23,7 +21,7 @@ type params = {
   end_progress : string -> unit;
 };;
 
-val prove : params -> definition list -> (expr * int) list -> rewritetables -> Mlproof.proof;;
+val prove : params -> definition list -> (expr * int) list -> Mlproof.proof;;
 val default_params : params;;
 
 val newnodes_absurd : rule;;

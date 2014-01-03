@@ -183,7 +183,9 @@ let argspec = [
   "-wout", Arg.Set_string Error.err_file,
         "<file>        output errors and warnings to <file> instead of stderr";
   "-x", Arg.String Extension.activate,
-     "<ext>            activate extension <ext>"
+     "<ext>            activate extension <ext>";
+  "-rwrt", Arg.Set build_rwrt_sys,
+     "             build automatically the rewrite system"
 ];;
 
 let print_usage () =
@@ -322,8 +324,7 @@ let main () =
     let phrases = List.map fst phrases_dep in
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
-    let tables = Phrase.parse_rules ppphrases in
-    Index.tables := tables;
+    Phrase.parse_rwrt ppphrases;
     let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
@@ -339,20 +340,20 @@ let main () =
       flush stderr;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
-    let proof = Prove.prove Prove.default_params defs hyps tables in
+    let proof = Prove.prove Prove.default_params defs hyps in
     if not !quiet_flag then begin
       printf "(* PROOF-FOUND *)\n";
       flush stdout;
     end;
     let llp = lazy (optim (Extension.postprocess
-                             (Mltoll.translate th_name ppphrases proof tables)))
+                             (Mltoll.translate th_name ppphrases proof)))
     in
     begin match !proof_level with
     | Proof_none -> ()
     | Proof_h n -> Print.hlproof (Print.Chan stdout) n proof;
     | Proof_m -> Print.mlproof (Print.Chan stdout) proof;
     | Proof_lx ->
-        let lxp = Mltoll.translate th_name ppphrases proof tables in
+        let lxp = Mltoll.translate th_name ppphrases proof in
         Print.llproof (Print.Chan stdout) lxp;
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
     | Proof_coq ->
@@ -367,7 +368,7 @@ let main () =
         Watch.warn phrases_dep llp u;
     | Proof_dedukti -> 
       begin 
-	Lltodedukti.output stdout phrases ppphrases tables (Lazy.force llp);
+	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp);
       end
     end;
   with
