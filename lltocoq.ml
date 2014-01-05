@@ -358,14 +358,14 @@ let p_rule oc r =
       let c1 = apply p a in
       let c2 = eapp ("=", [a; b]) in
       let h = apply p b in
-      poc "apply (zenon_congruence_lr_s _ %a _ _ %s %s). zenon_intro %s.\n"
-          p_expr p (getname c1) (getname c2) (getname h);
+      poc "apply (zenon_congruence_lr_s _ %a %a %a %s %s). zenon_intro %s.\n"
+          p_expr p p_expr a p_expr b (getname c1) (getname c2) (getname h);
   | RcongruenceRL (p, a, b) ->
       let c1 = apply p a in
       let c2 = eapp ("=", [b; a]) in
       let h = apply p b in
-      poc "apply (zenon_congruence_rl_s _ %a _ _ %s %s). zenon_intro %s.\n"
-          p_expr p (getname c1) (getname c2) (getname h);
+      poc "apply (zenon_congruence_rl_s _ %a %a %a %s %s). zenon_intro %s.\n"
+          p_expr p p_expr a p_expr b (getname c1) (getname c2) (getname h);
 ;;
 
 let rec p_tree oc proof =
