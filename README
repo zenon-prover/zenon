@@ -1,0 +1,48 @@
+2014.01.09
+README file for Zenon Modulo v 0.1.1
+
+----------------------------------------
+
+For license information, see LICENSE
+For install information, see INSTALL
+
+----------------------------------------
+
+Remarks:
+
+- Zenon Modulo is an automated theorem prover for classical
+  first order logic
+
+- Zenon Modulo is part of the BWare project
+  http://bware.lri.fr/index.php/BWare_project
+
+- Proceedings about Zenon Modulo may be found here
+  http://hal.inria.fr/hal-00909784
+  http://hal.inria.fr/hal-00909688
+
+- Zenon Modulo accepts input files with the TPTP syntax 
+  http://www.cs.miami.edu/~tptp/
+
+- Zenon Modulo may produce proof certificats for Dedukti
+  https://www.rocq.inria.fr/deducteam/Dedukti/
+
+- Zenon Modulo may be used in two different ways: without or with heuristic
+  1. user builds himself theories modulo (rewrite rules and axioms)
+     >> two new TPTP keywords for rewrite rules : rwrt_term & rwrt_prop
+  2. user prefers a fully automatic method (with heuristic)
+     >> use flag rwrt (see examples)
+
+----------------------------------------
+
+Examples:
+
+- Run Zenon Modulo to the TPTP file problem.p without heuristic
+  # zenon_modulo -itptp /path/to/file/problem.p
+
+- Run Zenon Modulo to the TPTP file problem.p with heuristic
+  # zenon_modulo -itptp -rwrt /path/to/file/problem.p
+
+- Run Zenon Modulo to the TPTP file problem.p without heuristic and produce 
+  a proof certificat for Dedukti
+  # zenon_modulo -itptp -q -odedukti /path/to/file/problem.p > test.dk
+
