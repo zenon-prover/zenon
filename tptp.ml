@@ -189,6 +189,13 @@ let is_distrib_term body =
   | _ -> false
 ;;
 
+let rec test_fv l1 l2 = 
+  match l2 with 
+  | [] -> true
+  | h :: tl when List.mem h l1 -> test_fv l1 tl
+  | _ -> false
+;;
+
 let is_litteral body = 
   match body with 
   | Eapp(sym, _, _) when sym <> "=" -> true
@@ -203,11 +210,25 @@ let is_litteral_eq body =
   | _ -> false
 ;;
 
-let rec is_equal_term body = 
+(* let rec is_equal_term body = 
   match body with 
   | Eapp ("=", [t1; t2], _) 
       when not (is_commut_term body)
       -> true
+  | _ -> false
+;; *)
+
+let rec is_equal_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) 
+      when not (is_commut_term body) -> 
+     begin 
+       match t1, t2 with 
+       | Evar (_, _), Evar(_, _) -> false
+       | _, Evar (_, _) -> test_fv (get_fv t1) (get_fv t2)
+       | Evar (_, _) , _ -> test_fv (get_fv t2) (get_fv t1)
+       | _, _ -> true
+     end
   | _ -> false
 ;;
 
@@ -221,14 +242,6 @@ let rec is_rwrt_term body =
   match body with 
   | Eall (_, _, pred, _) -> is_rwrt_term pred
   | _ -> is_conj_term body
-;;
-
-
-let rec test_fv l1 l2 = 
-  match l2 with 
-  | [] -> true
-  | h :: tl when List.mem h l1 -> test_fv l1 tl
-  | _ -> false
 ;;
 
 let rec is_equiv_prop body = 

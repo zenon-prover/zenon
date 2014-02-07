@@ -246,7 +246,7 @@ let add_rule_prop t1 t2 =
   Hashtbl.add !Expr.tbl_prop sym (t1, t2)
 ;;
 
-let rec parse_equal_term body = 
+(* let rec parse_equal_term body = 
       match body with 
       | Eapp ("=", [t1; t2], _) 
 	  when test_fv (get_fv t1) (get_fv t2)
@@ -254,6 +254,25 @@ let rec parse_equal_term body =
       | Eapp ("=", [t1; t2], _) 
 	  when test_fv (get_fv t2) (get_fv t1)
 	    -> add_rule_term t2 t1
+      | _ -> assert false
+;; *)
+
+let rec parse_equal_term body = 
+      match body with 
+      | Eapp ("=", [t1; t2], _) -> 
+	 begin
+	   match t1, t2 with
+	   | Evar (_, _), Evar (_, _) -> assert false
+	   | _, Evar (_, _) when test_fv (get_fv t1) (get_fv t2) 
+	     -> add_rule_term t1 t2
+	   | Evar (_, _), _ when test_fv (get_fv t2) (get_fv t1)
+	     -> add_rule_term t2 t1
+	   | _, _ when test_fv (get_fv t1) (get_fv t2) 
+	     -> add_rule_term t1 t2
+	   | _, _ when test_fv (get_fv t2) (get_fv t1)
+	     -> add_rule_term t2 t1
+	   | _, _ -> assert false
+	 end
       | _ -> assert false
 ;;
 
