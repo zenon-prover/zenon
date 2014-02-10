@@ -297,11 +297,11 @@ let rec parse_term_rule body =
 let rec parse_equiv_prop body = 
   match body with 
   | Eequiv (e1, e2, _) 
-      when is_litteral e1 
+      when is_litteral_eq e1 
 	&& test_fv (get_fv e1) (get_fv e2)
 	-> add_rule_prop e1 e2
   | Eequiv (e1, e2, _)
-      when is_litteral e2
+      when is_litteral_eq e2
 	&& test_fv (get_fv e2) (get_fv e1)
 	-> add_rule_prop e2 e1
   | _ -> assert false

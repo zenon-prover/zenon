@@ -248,10 +248,10 @@ let rec is_equiv_prop body =
   match body with
   | Eequiv (e1, e2, _) -> 
     begin 
-      (is_litteral e1 
+      (is_litteral_eq e1 
        && test_fv (get_fv e1) (get_fv e2))
       || 
-	(is_litteral e2 
+	(is_litteral_eq e2 
 	 && test_fv (get_fv e2) (get_fv e1))
     end
   | _ -> false
