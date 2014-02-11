@@ -109,6 +109,30 @@ let process_annotations forms =
   List.rev (List.rev_map process_one (List.filter keep forms))
 ;;
 
+(* axioms list from B book to transform into rewrite rules.
+   names are "hard-coded" / coming from file SimpleBwhy.why
+ *)
+
+let axiom_to_rwrt_prop = [
+  "mem_times";
+  "mem_power";
+  "extensionality";
+  "choice_exists";
+  "infinite_big";
+  "subseteq_def";
+  "subsetnoteq_def";
+  "mem_union";
+  "mem_intersection";
+  "mem_difference";
+  "empty_set";
+];;
+
+
+let axiom_to_rwrt_term = [
+
+];;
+
+
 let is_commut_term body = 
   match body with 
   | Eapp ("=", [t1; t2], _) -> 
@@ -196,14 +220,14 @@ let rec test_fv l1 l2 =
   | _ -> false
 ;;
 
-let is_litteral body = 
+let is_literal_noteq body = 
   match body with 
   | Eapp(sym, _, _) when sym <> "=" -> true
   | Enot(Eapp(sym, _, _), _) when sym <> "=" -> true
   | _ -> false
 ;;
 
-let is_litteral_eq body = 
+let is_literal_eq body = 
   match body with 
   | Eapp(sym, _, _)  -> true
   | Enot(Eapp(sym, _, _), _)  -> true
@@ -245,16 +269,21 @@ let rec is_rwrt_term body =
 ;;
 
 let rec is_equiv_prop body = 
-  match body with
-  | Eequiv (e1, e2, _) -> 
-    begin 
-      (is_litteral_eq e1 
-       && test_fv (get_fv e1) (get_fv e2))
-      || 
-	(is_litteral_eq e2 
-	 && test_fv (get_fv e2) (get_fv e1))
+  if is_literal_noteq body 
+  then true
+  else
+    begin
+      match body with
+      | Eequiv (e1, e2, _) -> 
+	 begin 
+	   (is_literal_eq e1 
+	    && test_fv (get_fv e1) (get_fv e2))
+	   || 
+	     (is_literal_eq e2 
+	      && test_fv (get_fv e2) (get_fv e1))
+	 end
+      | _ -> false
     end
-  | _ -> false
 ;;
 
 let rec is_conj_prop body = 
@@ -269,7 +298,7 @@ let rec is_rwrt_prop body =
   | _ -> is_conj_prop body
 ;;
 
-let rec translate_one dirs accu p =
+let rec translate_one_rwrt_B dirs accu p =
   match p with
   | Include (f, None) -> try_incl dirs f accu
   | Include (f, Some _) ->
@@ -278,15 +307,29 @@ let rec translate_one dirs accu p =
       accu
   | Annotation s -> add_annotation s; accu
   | Formula (name, "axiom", body) -> 
-    Hyp (name, body, 2) :: accu
-  | Formula (name, "rwrt_term", body) -> 
-    Rew (name, body, 0) :: accu
-  | Formula (name, "rwrt_prop", body) -> 
-    Rew (name, body, 1) :: accu
+     begin
+       if List.mem name axiom_to_rwrt_term
+       then Rew (name, body, 0) :: accu
+       else if List.mem name axiom_to_rwrt_prop
+       then Rew (name, body, 1) :: accu
+       else Hyp (name, body, 2) :: accu
+     end
   | Formula (name, "definition", body) ->
-      Hyp (name, body, 2) :: accu
+     begin
+       if List.mem name axiom_to_rwrt_term
+       then Rew (name, body, 0) :: accu
+       else if List.mem name axiom_to_rwrt_prop
+       then Rew (name, body, 1) :: accu
+       else Hyp (name, body, 2) :: accu
+     end
   | Formula (name, "hypothesis", body) ->
-    Hyp (name, body, 1) :: accu
+     begin
+       if List.mem name axiom_to_rwrt_term
+       then Rew (name, body, 0) :: accu
+       else if List.mem name axiom_to_rwrt_prop
+       then Rew (name, body, 1) :: accu
+       else Hyp (name, body, 1) :: accu
+     end
   | Formula (name, ("lemma"|"theorem"), body) ->
       Hyp (name, body, 1) :: accu
   | Formula (name, "conjecture", body) ->
@@ -341,8 +384,39 @@ and translate_one_rwrt dirs accu p =
       Error.warn ("unknown formula kind: " ^ k);
       Hyp (name, body, 1) :: accu
 
+and translate_one dirs accu p =
+  match p with
+  | Include (f, None) -> try_incl dirs f accu
+  | Include (f, Some _) ->
+      (* FIXME change try_incl and incl to implement selective include *)
+      (* for the moment, we just ignore the include *)
+      accu
+  | Annotation s -> add_annotation s; accu
+  | Formula (name, "axiom", body) -> 
+    Hyp (name, body, 2) :: accu
+  | Formula (name, "rwrt_term", body) -> 
+    Rew (name, body, 0) :: accu
+  | Formula (name, "rwrt_prop", body) -> 
+    Rew (name, body, 1) :: accu
+  | Formula (name, "definition", body) ->
+      Hyp (name, body, 2) :: accu
+  | Formula (name, "hypothesis", body) ->
+    Hyp (name, body, 1) :: accu
+  | Formula (name, ("lemma"|"theorem"), body) ->
+      Hyp (name, body, 1) :: accu
+  | Formula (name, "conjecture", body) ->
+      tptp_thm_name := name;
+      Hyp (goal_name, enot (body), 0) :: accu
+  | Formula (name, "negated_conjecture", body) ->
+      Hyp (name, body, 0) :: accu
+  | Formula (name, k, body) ->
+      Error.warn ("unknown formula kind: " ^ k);
+      Hyp (name, body, 1) :: accu
+
 and xtranslate dirs ps accu =
-  if !Globals.build_rwrt_sys 
+  if !Globals.build_rwrt_sys_B
+  then List.fold_left (translate_one_rwrt_B dirs) accu ps
+  else if !Globals.build_rwrt_sys 
   then List.fold_left (translate_one_rwrt dirs) accu ps
   else List.fold_left (translate_one dirs) accu ps
 

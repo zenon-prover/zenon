@@ -72,6 +72,7 @@ rule token = parse
   | "fof"            { INPUT_FORMULA }
   | "$true"          { TRUE }
   | "$false"         { FALSE }
+  | "()"             { EMPTY }
   | "\'"             { single_quoted (Buffer.create 20) lexbuf }
   | "\""             { double_quoted (Buffer.create 20) lexbuf }
   | lowerid idchar * { LIDENT (Lexing.lexeme lexbuf) }

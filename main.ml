@@ -185,7 +185,9 @@ let argspec = [
   "-x", Arg.String Extension.activate,
      "<ext>            activate extension <ext>";
   "-rwrt", Arg.Set build_rwrt_sys,
-     "             build automatically the rewrite system"
+     "             build automatically the rewrite system";
+  "-b-rwrt", Arg.Set build_rwrt_sys_B,
+     "             build automatically the rewrite system for B"
 ];;
 
 let print_usage () =

@@ -64,6 +64,7 @@ let cnf_to_formula l =
 %token NOR
 %token NAND
 %token <string> ANNOT
+%token EMPTY
 
 %nonassoc OPEN
 %nonassoc ALL EXISTS
@@ -97,6 +98,7 @@ phrase:
 ;
 expr:
   | UIDENT                             { evar (ns_var $1) }
+  | LIDENT EMPTY                       { eapp (ns_fun $1, []) }
   | LIDENT arguments                   { eapp (ns_fun $1, $2) }
   | STRING                             { eapp ("$string", [evar $1]) }
   | expr EQSYM expr                    { eapp ("=", [$1; $3]) }

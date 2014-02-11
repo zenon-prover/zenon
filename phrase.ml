@@ -222,14 +222,14 @@ let rec find_first_sym t =
     | _ -> assert false
 ;;
 
-let is_litteral body = 
+let is_literal_noteq body = 
   match body with 
   | Eapp(sym, _, _) when sym <> "=" -> true
   | Enot(Eapp(sym, _, _), _) when sym <> "=" -> true
   | _ -> false
 ;;
 
-let is_litteral_eq body = 
+let is_literal_eq body = 
   match body with 
   | Eapp(sym, _, _)  -> true
   | Enot(Eapp(sym, _, _), _)  -> true
@@ -292,19 +292,30 @@ let rec parse_term_rule body =
   | _ -> parse_conj_term body
 ;;
 
-
-
 let rec parse_equiv_prop body = 
-  match body with 
-  | Eequiv (e1, e2, _) 
-      when is_litteral_eq e1 
-	&& test_fv (get_fv e1) (get_fv e2)
+  if is_literal_noteq body
+  then 
+    begin
+      match body with 
+      | Eapp(sym, _, _) as e1 when sym <> "=" -> 
+	 add_rule_prop e1 etrue
+      | Enot(Eapp(sym, _, _) as e1, _) when sym <> "=" -> 
+	 add_rule_prop e1 efalse
+      | _ -> assert false
+    end
+  else
+    begin
+      match body with 
+      | Eequiv (e1, e2, _) 
+	   when is_literal_eq e1 
+		&& test_fv (get_fv e1) (get_fv e2)
 	-> add_rule_prop e1 e2
-  | Eequiv (e1, e2, _)
-      when is_litteral_eq e2
-	&& test_fv (get_fv e2) (get_fv e1)
+      | Eequiv (e1, e2, _)
+	   when is_literal_eq e2
+		&& test_fv (get_fv e2) (get_fv e1)
 	-> add_rule_prop e2 e1
-  | _ -> assert false
+      | _ -> assert false
+    end
 ;;
 
 let rec parse_conj_prop body = 
