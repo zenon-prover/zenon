@@ -15,3 +15,6 @@ val mlproof_rule : output -> Mlproof.rule -> unit;;
 val mlproof_rule_soft : output -> Mlproof.rule -> unit;;
 
 val llproof : output -> Llproof.proof -> unit;;
+
+val print_tbl_term : output -> Expr.rwrt_tbl -> unit;;
+val print_tbl_prop : output -> Expr.rwrt_tbl -> unit;;

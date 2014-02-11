@@ -591,3 +591,25 @@ let llproof o p =
   List.iter (llproof_lemma o) p;
   flush ();
 ;;
+
+let print_rwrt_rule o key (l, r) = 
+  let pr f = oprintf o f in
+  let pr_expr e = expr_soft o e in
+  pr "%s : " key;
+  pr_expr l; pr "  -->  ";
+  pr_expr r; pr "\n";
+;;
+
+let print_tbl_term o tbl = 
+  let pr f = oprintf o f in
+  pr " -- Term Rewrite Rules -- \n";
+  Hashtbl.iter (print_rwrt_rule o) tbl;
+  pr "\n";
+;;
+
+let print_tbl_prop o tbl = 
+  let pr f = oprintf o f in
+  pr " -- Prop Rewrite Rules -- \n";
+  Hashtbl.iter (print_rwrt_rule o) tbl;
+  pr "\n";
+;;

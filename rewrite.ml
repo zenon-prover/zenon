@@ -196,8 +196,6 @@ let rec rewrite_prop (l, r) p =
       | _ -> p)
 ;;
   
-
-
 let rec norm_prop_aux rules fm = 
   match rules with 
     | [] -> fm 
@@ -209,19 +207,28 @@ let rec norm_prop_aux rules fm =
 	else 
 	  begin
 	   (* Globals.compteur_rwrt_p := !Globals.compteur_rwrt_p + 1;*)
+	    if !Globals.debug_flag || !Globals.debug_rwrt
+	    then 
+	      begin
+		print_endline "";
+		print_endline " -- Rewriting Prop -- ";
+		print_string "Fm : ";
+		printer fm;
+		print_string " --> ";
+		printer new_fm;
+		print_endline "";
+		print_endline "";
+	      end;
 	    new_fm
 	  end 
       end 
 ;;
-
 
 let norm_prop fm = 
   let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in 
   let rules_sort = List.sort ordering rules in 
   norm_prop_aux rules_sort fm
 ;;
-
-
 
 let rec rewrite_term (l, r) p = 
   try
@@ -243,7 +250,22 @@ let rec norm_term t =
   let rules_sort = List.sort ordering rules in 
   let new_t = norm_term_aux rules_sort t in
   if not (Expr.equal t new_t) 
-  then norm_term new_t
+  then 
+    begin 
+      if !Globals.debug_flag || !Globals.debug_rwrt
+      then 
+	begin
+	  print_endline "";
+	  print_endline " -- Rewriting Term -- ";
+	  print_string "t : ";
+	  printer t;
+	  print_string " --> ";
+	  printer new_t;
+	  print_endline "";
+	  print_endline "";
+	end;
+      norm_term new_t
+    end
   else 
     begin
       match t with 
