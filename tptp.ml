@@ -116,7 +116,7 @@ let process_annotations forms =
 let axiom_to_rwrt_prop = [
   "mem_times";
   "mem_power";
-  "extensionality";
+ (* "extensionality"; *)
   "choice_exists";
   "infinite_big";
   "subseteq_def";

@@ -335,8 +335,7 @@ let main () =
 	Print.print_tbl_term (Print.Chan stdout) !tbl_term;
 	Print.print_tbl_prop (Print.Chan stdout) !tbl_prop;
       end;
-    print_endline "print of tables done ...";
-    let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
+     let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
     if !debug_flag then begin
