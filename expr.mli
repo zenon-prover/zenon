@@ -108,6 +108,7 @@ type goalness = int;;
 
 val print_stats : out_channel -> unit;;
 
+
 type rwrt_tbl = (string, expr * expr) Hashtbl.t;;
 type rwrt_tbls = rwrt_tbl * rwrt_tbl;;
 

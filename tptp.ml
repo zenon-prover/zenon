@@ -114,23 +114,55 @@ let process_annotations forms =
  *)
 
 let axiom_to_rwrt_prop = [
+  "subseteq_def"; 
+  "subsetnoteq_def";
+  "mem_singleton";
   "mem_times";
-  "mem_times_2";
   "mem_power";
   "extensionality";
   "choice_exists";
   "infinite_big";
-  "subseteq_def";
-  "subsetnoteq_def";
   "mem_union";
   "mem_intersection";
   "mem_difference";
   "empty_set";
+  "mem_relation_set";
+  "mem_relation";
+  "mem_inverse";
+  "mem_dom";
+  "mem_composition";
+  "mem_id";
+  "mem_direct_product";
+  "mem_parallel_product";
+  "mem_partial_function_set";
+  "mem_total_function_set";
+  "mem_partial_injection_set";
+  "mem_partial_surjection_set";
+  "mem_tuple";
+  "mem_apply";
 ];;
 
 
 let axiom_to_rwrt_term = [
-
+  "tuple_projection_1";
+  "tuple_projection_2";
+  "tuple_inversion";
+  "relation_set";
+  "ran";
+  "composition_back";
+  "dom_restriction";
+  "ran_restriction";
+  "dom_substraction";
+  "ran_substraction";
+  "image";
+  "overriding";
+  "proj_op_1";
+  "proj_op_2";
+  "parallel_product";
+  "total_injection_set";
+  "total_surjection_set";
+  "partial_bijection_set";
+  "total_bijection_set";
 ];;
 
 

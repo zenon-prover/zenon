@@ -43,15 +43,40 @@ let rec print_list_de_list l =
        print_list_de_list t)
 ;;
 
+let rec print_rules l = 
+  match l with 
+  | [] -> print_endline " -- -- end rules -- -- "
+  | (l, r) :: tl -> 
+     printer l; 
+     print_string "  -->  "; 
+     printer r; 
+     print_endline "";
+     print_rules tl
+;;
+
 
 let rec find_first_sym t = 
   match t with 
-    | Evar (sym, _) -> sym
+ (*   | Evar (sym, _) -> sym *)
     | Eapp (sym, _, _) -> sym
     | Enot (t1, _) -> find_first_sym t1
     | _ -> ""
 ;;
 
+let find_sym_args t = 
+  match t with
+  | Evar _ -> "useless_variable"
+  | Eapp ( sym, _, _) -> sym
+  | _ -> assert false
+;;
+
+let rec find_syms t =
+  match t with
+  | Eapp (sym, args, _) -> 
+     (sym, List.length args, List.map find_sym_args args)
+  | Enot (f, _) -> find_syms f
+  | _ -> assert false
+;;
 
 (* The rename function.
    Used to rename variables of expr
@@ -175,13 +200,35 @@ let unif t1 t2 = unif_aux [] t1 t2;;
 
 *)
 
-let ordering (l1, r1) (l2, r2) = 
+ let rec find_best_match incr left_rule fm = 
+  match left_rule, fm with 
+  | Evar _ , Evar _ -> incr
+  | Eapp (sym1, [], _), Eapp (sym2, [], _) 
+       when sym1 = sym2 
+    -> incr + 1
+  | Eapp (sym1, args1, _), Eapp (sym2, args2, _) 
+       when sym1 = sym2 
+    -> let new_incr = incr + 1 in 
+       List.fold_left2 find_best_match new_incr args1 args2
+  | _ -> incr
+;;
+
+let ordering_two fm (l1, r1) (l2, r2) =
+  if find_best_match 0 l1 fm = find_best_match 0 l2 fm 
+  then 0
+  else if find_best_match 0 l1 fm < find_best_match 0 l2 fm 
+  then 1
+  else -1
+;; 
+
+ let ordering (l1, r1) (l2, r2) = 
   let fv_l1 = get_fv l1 in
   let fv_l2 = get_fv l2 in 
   if List.length fv_l1 = List.length fv_l2 then 0
   else if List.length fv_l1 > List.length fv_l2 then 1
   else -1
-;;
+;; 
+
 
 let rec rewrite_prop (l, r) p = 
   try
@@ -226,7 +273,7 @@ let rec norm_prop_aux rules fm =
 
 let norm_prop fm = 
   let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in 
-  let rules_sort = List.sort ordering rules in 
+  let rules_sort = List.sort ordering rules in
   norm_prop_aux rules_sort fm
 ;;
 
@@ -247,7 +294,7 @@ let rec norm_term_aux rules t =
 
 let rec norm_term t =
   let rules = Hashtbl.find_all !Expr.tbl_term (find_first_sym t) in 
-  let rules_sort = List.sort ordering rules in 
+  let rules_sort = List.sort ordering rules in
   let new_t = norm_term_aux rules_sort t in
   if not (Expr.equal t new_t) 
   then 
@@ -282,20 +329,20 @@ let rec norm_term t =
       | Eequiv (t1, t2, _) -> 
 	eequiv (norm_term t1, norm_term t2)
 
-      | Eall (x, typex, t1, _) -> 
+   (*   | Eall (x, typex, t1, _) -> 
 	eall (x, typex, norm_term t1)
       | Eex (x, typex, t1, _) -> 
 	eex (x, typex, norm_term t1)
       | Etau (x, typex, t1, _) -> 
 	etau (x, typex, norm_term t1)
       | Elam (x, typex, t1, _) -> 
-	elam (x, typex, norm_term t1)
+	elam (x, typex, norm_term t1) *)
 
       | _ -> t
     end
 ;;
 
-let is_litteral fm = 
+let is_literal fm = 
   match fm with 
   | Eapp(sym, _, _) -> true
   | Enot(Eapp(sym, _, _), _) -> true
@@ -304,18 +351,26 @@ let is_litteral fm =
 
 
 let rec normalize_fm fm = 
-if is_litteral fm then
-  begin 
-    let fm_t = norm_term fm in 
-    let fm_p = norm_prop fm_t in 
-    if (Expr.equal fm_p fm)
-    then fm
-    else normalize_fm fm_p
-  end
-else
-  fm
+(*  if !Globals.debug_flag || !Globals.debug_rwrt
+  then 
+    begin
+      print_endline "";
+      print_endline " -- Formula -- ";
+      printer fm;
+      print_endline "";
+    end; *)
+  if is_literal fm then
+    begin 
+      let fm_t = norm_term fm in 
+      let fm_p = norm_prop fm_t in 
+      if (Expr.equal fm_p fm)
+      then fm
+      else normalize_fm fm_p
+    end
+  else
+    fm
 ;;
-
+  
 let rec normalize_list_aux accu list = 
   match list with 
   | [] -> List.rev accu

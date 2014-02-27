@@ -216,7 +216,7 @@ let rec test_fv l1 l2 =
 
 let rec find_first_sym t = 
   match t with 
-    | Evar (sym, _) -> sym
+   (* | Evar (sym, _) -> sym *)
     | Eapp (sym, _, _) -> sym
     | Enot (p1, _) -> find_first_sym p1
     | _ -> assert false

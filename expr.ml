@@ -42,6 +42,7 @@ type definition =
 
 exception Higher_order;;
 
+
 type rwrt_tbl = (string, expr * expr) Hashtbl.t;;
 type rwrt_tbls = rwrt_tbl * rwrt_tbl;;
 
