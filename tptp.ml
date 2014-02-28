@@ -140,6 +140,9 @@ let axiom_to_rwrt_prop = [
   "mem_partial_surjection_set";
   "mem_tuple";
   "mem_apply";
+  "equal_set_tuple_1";
+  "equal_set_tuple_2";
+  "equal_set_tuple_3";
 ];;
 
 

@@ -200,25 +200,40 @@ let unif t1 t2 = unif_aux [] t1 t2;;
 
 *)
 
- let rec find_best_match incr left_rule fm = 
+let rec find_best_match incr left_rule fm = 
   match left_rule, fm with 
-  | Evar _ , Evar _ -> incr
-  | Eapp (sym1, [], _), Eapp (sym2, [], _) 
-       when sym1 = sym2 
-    -> incr + 1
-  | Eapp (sym1, args1, _), Eapp (sym2, args2, _) 
-       when sym1 = sym2 
+  | Evar _ , Evar _ 
     -> let new_incr = incr + 1 in 
+       new_incr
+  | Eapp (sym1, args1, _), Eapp (sym2, args2, _) 
+       when sym1 = sym2 && List.length args1 = List.length args2
+    -> let new_incr = incr + 3 in 
        List.fold_left2 find_best_match new_incr args1 args2
-  | _ -> incr
-;;
+  | Eapp _, _ 
+    -> let new_incr = incr - 1 in 
+       new_incr
+  | _, _ -> incr
+;; 
 
 let ordering_two fm (l1, r1) (l2, r2) =
-  if find_best_match 0 l1 fm = find_best_match 0 l2 fm 
-  then 0
-  else if find_best_match 0 l1 fm < find_best_match 0 l2 fm 
-  then 1
-  else -1
+  match fm with 
+  | Enot (r_fm, _) 
+    -> 
+     begin
+       if find_best_match 0 l1 r_fm = find_best_match 0 l2 r_fm 
+       then 0
+       else if find_best_match 0 l1 r_fm < find_best_match 0 l2 r_fm 
+       then 1
+       else -1
+     end
+  | _  -> 
+     begin
+       if find_best_match 0 l1 fm = find_best_match 0 l2 fm 
+       then 0
+       else if find_best_match 0 l1 fm < find_best_match 0 l2 fm 
+       then 1
+       else -1
+     end
 ;; 
 
  let ordering (l1, r1) (l2, r2) = 
@@ -272,8 +287,9 @@ let rec norm_prop_aux rules fm =
 ;;
 
 let norm_prop fm = 
-  let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in 
-  let rules_sort = List.sort ordering rules in
+  let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in
+(*  let rules_sort = List.sort ordering rules in*)
+  let rules_sort = List.sort (ordering_two fm) rules in
   norm_prop_aux rules_sort fm
 ;;
 
@@ -293,8 +309,9 @@ let rec norm_term_aux rules t =
 ;;
 
 let rec norm_term t =
-  let rules = Hashtbl.find_all !Expr.tbl_term (find_first_sym t) in 
-  let rules_sort = List.sort ordering rules in
+  let rules = Hashtbl.find_all !Expr.tbl_term (find_first_sym t) in
+(*  let rules_sort = List.sort ordering rules in *)
+  let rules_sort = List.sort (ordering_two t) rules in
   let new_t = norm_term_aux rules_sort t in
   if not (Expr.equal t new_t) 
   then 
