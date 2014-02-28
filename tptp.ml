@@ -127,7 +127,6 @@ let axiom_to_rwrt_prop = [
   "mem_difference";
   "empty_set";
   "mem_relation_set";
-  "mem_relation";
   "mem_inverse";
   "mem_dom";
   "mem_composition";
