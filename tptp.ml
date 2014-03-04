@@ -196,14 +196,14 @@ let rec test_fv l1 l2 =
   | _ -> false
 ;;
 
-let is_litteral body = 
+let is_literal_noteq body = 
   match body with 
   | Eapp(sym, _, _) when sym <> "=" -> true
   | Enot(Eapp(sym, _, _), _) when sym <> "=" -> true
   | _ -> false
 ;;
 
-let is_litteral_eq body = 
+let is_literal_eq body = 
   match body with 
   | Eapp(sym, _, _)  -> true
   | Enot(Eapp(sym, _, _), _)  -> true
@@ -218,7 +218,7 @@ let is_litteral_eq body =
   | _ -> false
 ;; *)
 
-let rec is_equal_term body = 
+(* let rec is_equal_term body = 
   match body with 
   | Eapp ("=", [t1; t2], _) 
       when not (is_commut_term body) -> 
@@ -228,6 +228,19 @@ let rec is_equal_term body =
        | _, Evar (_, _) -> test_fv (get_fv t1) (get_fv t2)
        | Evar (_, _) , _ -> test_fv (get_fv t2) (get_fv t1)
        | _, _ -> true
+     end
+  | _ -> false
+;; *)
+
+let rec is_equal_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _)
+       when not (is_commut_term body) ->
+     begin
+       match t1, t2 with 
+       | Eapp _, _ -> test_fv (get_fv t1) (get_fv t2)
+       | _, Eapp _ -> test_fv (get_fv t2) (get_fv t1)
+       | _, _ -> false
      end
   | _ -> false
 ;;
@@ -245,16 +258,21 @@ let rec is_rwrt_term body =
 ;;
 
 let rec is_equiv_prop body = 
-  match body with
-  | Eequiv (e1, e2, _) -> 
-    begin 
-      (is_litteral_eq e1 
-       && test_fv (get_fv e1) (get_fv e2))
-      || 
-	(is_litteral_eq e2 
-	 && test_fv (get_fv e2) (get_fv e1))
+  if is_literal_noteq body
+  then true
+  else 
+    begin
+      match body with
+      | Eequiv (e1, e2, _) -> 
+	 begin 
+	   (is_literal_noteq e1 
+	    && test_fv (get_fv e1) (get_fv e2))
+	   || 
+	     (is_literal_noteq e2 
+	      && test_fv (get_fv e2) (get_fv e1))
+	 end
+      | _ -> false
     end
-  | _ -> false
 ;;
 
 let rec is_conj_prop body = 

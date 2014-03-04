@@ -169,7 +169,6 @@ let rec unif_aux l e1 e2 =
 let unif t1 t2 = unif_aux [] t1 t2;; 
 
 
- 
 
 (* normalisation des propositions
 
@@ -196,8 +195,6 @@ let rec rewrite_prop (l, r) p =
       | _ -> p)
 ;;
   
-
-
 let rec norm_prop_aux rules fm = 
   match rules with 
     | [] -> fm 
@@ -213,7 +210,6 @@ let rec norm_prop_aux rules fm =
 	  end 
       end 
 ;;
-
 
 let norm_prop fm = 
   let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in 
@@ -260,7 +256,7 @@ let rec norm_term t =
       | Eequiv (t1, t2, _) -> 
 	eequiv (norm_term t1, norm_term t2)
 
-      | Eall (x, typex, t1, _) -> 
+  (*    | Eall (x, typex, t1, _) -> 
 	eall (x, typex, norm_term t1)
       | Eex (x, typex, t1, _) -> 
 	eex (x, typex, norm_term t1)
@@ -268,7 +264,7 @@ let rec norm_term t =
 	etau (x, typex, norm_term t1)
       | Elam (x, typex, t1, _) -> 
 	elam (x, typex, norm_term t1)
-
+   *)
       | _ -> t
     end
 ;;
