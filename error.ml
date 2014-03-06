@@ -30,12 +30,12 @@ let print kind msg =
 
 let warn msg =
   if !warnings_flag then begin
-    print "Zenon warning: " msg;
+    print "Zenon_Modulo warning: " msg;
     got_warning := true;
   end;
 ;;
 
-let err msg = print "Zenon error: " msg;;
+let err msg = print "Zenon_Modulo error: " msg;;
 
 let errpos pos msg =
   let s = sprintf "File \"%s\", line %d, character %d:"
@@ -43,7 +43,7 @@ let errpos pos msg =
                   (pos.Lexing.pos_cnum - pos.Lexing.pos_bol)
   in
   print "" s;
-  print "Zenon error: " msg;
+  print "Zenon_Modulo error: " msg;
 ;;
 
 exception Lex_error of string;;
