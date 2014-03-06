@@ -1406,7 +1406,7 @@ and refute prm stk st forms =
   refute_aux prm stk st forms
 
 and refute_root prm stk st forms =
-  Step.forms "refute" forms;
+  Step.forms "refute_root" forms;
   refute_aux_root prm stk st forms
 
 and next_node prm stk st =

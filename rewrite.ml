@@ -244,6 +244,60 @@ let ordering_two fm (l1, r1) (l2, r2) =
   else -1
 ;; 
 
+(* let equal_is_equal rules fm = 
+  match fm with 
+  | Eapp ("=", [a1; a2], _)
+  | Enot ( Eapp ("=", [a1; a2], _), _)
+    -> 
+     begin
+       match a1, a2 with 
+       | _, _ when Expr.equal a1 a2 
+	 -> [] (*[(eapp ("=", [evar("x"); evar("y")]),
+	      eapp ("=", [evar("x"); evar("y")]))] *)
+       
+       | Eapp _, _
+       | _, Eapp _ -> rules
+       | _, _ -> [] (* [(eapp ("=", [evar("x"); evar("y")]),
+		   eapp ("=", [evar("x"); evar("y")]))] *)
+     end
+  | _ -> rules
+;; *)
+
+let equal_is_equal rules fm = 
+  match fm with 
+  | Eapp ("=", [a1; a2], _)
+       when Expr.equal a1 a2
+    -> []
+  | Enot (Eapp ("=", [a1; a2], _), _)
+       when Expr.equal a1 a2
+    -> []
+  | Eapp ("=", [a1; a2], _)
+    ->
+     begin
+       match a1, a2 with 
+       | Emeta _, _
+       | _, Emeta _
+	 -> []
+       | Eapp _, _
+       | _, Eapp _
+	 -> rules
+       | _, _ -> []
+     end
+  | Enot (Eapp ("=", [a1; a2], _), _)
+    -> 
+     begin
+       match a1, a2 with
+       | Emeta _, _
+       | _, Emeta _
+	 -> []
+       | Eapp _, _
+       | _, Eapp _
+	 -> rules
+       | _, _ -> []
+     end
+  | _ -> rules
+;;
+
 
 let rec rewrite_prop (l, r) p = 
   try
@@ -287,9 +341,22 @@ let rec norm_prop_aux rules fm =
 ;;
 
 let norm_prop fm = 
+(*  print_endline "";
+  print_endline " ## FM ##";
+  printer fm; 
+  print_endline "";*)
+  
   let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in
 (*  let rules_sort = List.sort ordering rules in*)
+
+(*  let rules_equal = equal_is_equal rules fm in*)
+(*  print_endline "      ---  --- rules equal ---- --- ";
+  print_rules rules_last;
+  print_endline "";*)
   let rules_sort = List.sort (ordering_two fm) rules in
+(*  print_endline " --  ---  --- rules sorted ---- ---  - -";
+  print_rules rules_sort;
+  print_endline "";*)
   norm_prop_aux rules_sort fm
 ;;
 
