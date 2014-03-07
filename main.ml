@@ -185,7 +185,9 @@ let argspec = [
   "-x", Arg.String Extension.activate,
      "<ext>            activate extension <ext>";
   "-rwrt", Arg.Set build_rwrt_sys,
-     "             build automatically the rewrite system"
+     "             build automatically the rewrite system";
+  "-dbg-rwrt", Arg.Set debug_rwrt,
+     "             debug mode for rewriting"
 ];;
 
 let print_usage () =
@@ -325,6 +327,12 @@ let main () =
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
     Phrase.parse_rwrt ppphrases;
+    if !Globals.debug_rwrt
+    then 
+      begin 
+	Print.print_tbl_term (Print.Chan stdout) !tbl_term;
+	Print.print_tbl_prop (Print.Chan stdout) !tbl_prop;
+      end;
     let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in

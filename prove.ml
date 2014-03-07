@@ -1373,6 +1373,8 @@ let rec refute_aux prm stk st forms =
   | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
       refute_aux prm stk st fms
   | (fm, g) :: fms ->
+     (* new rewrite place *)
+  (*   let new_fm = Rewrite.normalize_fm fm in *)
       Index.add fm g;
       Extension.add_formula fm;
       refute_aux prm stk (add_nodes prm.rules st fm g fms) fms
@@ -1430,10 +1432,10 @@ and next_node prm stk st =
 		      nprio = n.nprio;
 		      ngoal = n.ngoal;
 		      nbranches = new_branches;} in 
-      (* end of rewrite
+     (* end of rewrite
       *)
       let st1 = {(*st with*) queue = q1} in
-      match reduce_branches new_node with
+      match reduce_branches  new_node with
       | Some n1 ->
          let brstate = Array.make (Array.length new_node.nbranches) Open in
          next_branch prm stk n1 st1 brstate

@@ -23,3 +23,6 @@ val stored_lemmas : int ref;;
 val num_expr : int ref;;
 
 val build_rwrt_sys : bool ref;;
+
+
+val debug_rwrt : bool ref;;

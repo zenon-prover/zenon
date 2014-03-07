@@ -174,6 +174,42 @@ let unif t1 t2 = unif_aux [] t1 t2;;
 
 *)
 
+let rec find_best_match incr left_rule fm = 
+  match left_rule, fm with 
+  | Evar _ , Evar _ 
+    -> let new_incr = incr + 1 in 
+       new_incr
+  | Eapp (sym1, args1, _), Eapp (sym2, args2, _) 
+       when sym1 = sym2 && List.length args1 = List.length args2
+    -> let new_incr = incr + 3 in 
+       List.fold_left2 find_best_match new_incr args1 args2
+  | Eapp _, _ 
+    -> let new_incr = incr - 1 in 
+       new_incr
+  | _, _ -> incr
+;; 
+
+let ordering_two fm (l1, r1) (l2, r2) =
+  match fm with 
+  | Enot (r_fm, _) 
+    -> 
+     begin
+       if find_best_match 0 l1 r_fm = find_best_match 0 l2 r_fm 
+       then 0
+       else if find_best_match 0 l1 r_fm < find_best_match 0 l2 r_fm 
+       then 1
+       else -1
+     end
+  | _  -> 
+     begin
+       if find_best_match 0 l1 fm = find_best_match 0 l2 fm 
+       then 0
+       else if find_best_match 0 l1 fm < find_best_match 0 l2 fm 
+       then 1
+       else -1
+     end
+;; 
+
 let ordering (l1, r1) (l2, r2) = 
   let fv_l1 = get_fv l1 in
   let fv_l2 = get_fv l2 in 
@@ -206,6 +242,18 @@ let rec norm_prop_aux rules fm =
 	else 
 	  begin
 	   (* Globals.compteur_rwrt_p := !Globals.compteur_rwrt_p + 1;*)
+	    if !Globals.debug_flag || !Globals.debug_rwrt
+	    then 
+	      begin
+		print_endline "";
+		print_endline " -- Rewriting Prop -- ";
+		print_string "Fm : ";
+		printer fm;
+		print_string " --> ";
+		printer new_fm;
+		print_endline "";
+		print_endline "";
+	      end;
 	    new_fm
 	  end 
       end 
@@ -213,7 +261,7 @@ let rec norm_prop_aux rules fm =
 
 let norm_prop fm = 
   let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in 
-  let rules_sort = List.sort ordering rules in 
+  let rules_sort = List.sort (ordering_two fm) rules in 
   norm_prop_aux rules_sort fm
 ;;
 
@@ -236,10 +284,25 @@ let rec norm_term_aux rules t =
 
 let rec norm_term t =
   let rules = Hashtbl.find_all !Expr.tbl_term (find_first_sym t) in 
-  let rules_sort = List.sort ordering rules in 
+  let rules_sort = List.sort (ordering_two t) rules in 
   let new_t = norm_term_aux rules_sort t in
   if not (Expr.equal t new_t) 
-  then norm_term new_t
+  then 
+    begin 
+      if !Globals.debug_flag || !Globals.debug_rwrt
+      then 
+	begin
+	  print_endline "";
+	  print_endline " -- Rewriting Term -- ";
+	  print_string "t : ";
+	  printer t;
+	  print_string " --> ";
+	  printer new_t;
+	  print_endline "";
+	  print_endline "";
+	end;
+      norm_term new_t
+    end
   else 
     begin
       match t with 
@@ -269,7 +332,7 @@ let rec norm_term t =
     end
 ;;
 
-let is_litteral fm = 
+let is_literal fm = 
   match fm with 
   | Eapp(sym, _, _) -> true
   | Enot(Eapp(sym, _, _), _) -> true
@@ -278,7 +341,7 @@ let is_litteral fm =
 
 
 let rec normalize_fm fm = 
-if is_litteral fm then
+if is_literal fm then
   begin 
     let fm_t = norm_term fm in 
     let fm_p = norm_prop fm_t in 

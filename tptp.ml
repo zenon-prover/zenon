@@ -210,6 +210,12 @@ let is_literal_eq body =
   | _ -> false
 ;;
 
+let is_eq body = 
+  match body with 
+  | Eapp ("=", _, _) -> true
+  | _ -> false
+;;
+
 (* let rec is_equal_term body = 
   match body with 
   | Eapp ("=", [t1; t2], _) 
@@ -263,13 +269,31 @@ let rec is_equiv_prop body =
   else 
     begin
       match body with
-      | Eequiv (e1, e2, _) -> 
-	 begin 
+      | Eequiv (e1, e2, _) 
+	 when
 	   (is_literal_noteq e1 
 	    && test_fv (get_fv e1) (get_fv e2))
 	   || 
 	     (is_literal_noteq e2 
 	      && test_fv (get_fv e2) (get_fv e1))
+	 -> true
+      | Eequiv (Eapp ("=", [a1; a2], _) as e1, e2, _)
+	   when not (is_eq e2) 
+	-> 
+	 begin
+	   match a1, a2 with 
+	   | Eapp _, _ -> test_fv (get_fv e1) (get_fv e2)
+	   | _, Eapp _ -> test_fv (get_fv e1) (get_fv e2)
+	   | _, _ -> false
+	 end
+      | Eequiv (e1, (Eapp ("=", [a1; a2], _) as e2), _)
+	   when not (is_eq e1)
+	->
+	 begin
+	   match a1, a2 with 
+	   | Eapp _, _ -> test_fv (get_fv e2) (get_fv e1)
+	   | _, Eapp _ -> test_fv (get_fv e2) (get_fv e1)
+	   | _, _ -> false
 	 end
       | _ -> false
     end

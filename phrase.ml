@@ -236,6 +236,12 @@ let is_literal_eq body =
   | _ -> false
 ;;
 
+let is_eq body = 
+  match body with 
+  | Eapp ("=", _, _) -> true
+  | _ -> false
+;;
+
 let add_rule_term t1 t2 = 
   let sym = find_first_sym t1 in 
   Hashtbl.add !Expr.tbl_term sym (t1, t2)
@@ -329,10 +335,52 @@ let rec parse_equiv_prop body =
 	   when is_literal_noteq e2
 		&& test_fv (get_fv e2) (get_fv e1)
 	-> add_rule_prop e2 e1
+      | Eequiv (Eapp ("=", [a1; a2], _) as e1, e2, _)
+	   when not (is_eq e2) 
+	-> 
+	 begin
+	   match a1, a2 with 
+	   | Eapp _, _ 
+		when test_fv (get_fv e1) (get_fv e2) 
+	     -> 
+	      begin 
+		add_rule_prop (eapp("=", [a1; a2])) e2;
+		add_rule_prop (eapp("=", [a2; a1])) e2;
+	      end
+	   | _, Eapp _ 
+		when test_fv (get_fv e1) (get_fv e2) 
+	     -> 
+	      begin 
+		add_rule_prop (eapp("=", [a1; a2])) e2;
+		add_rule_prop (eapp("=", [a2; a1])) e2;
+	      end
+	   | _, _ -> assert false
+	 end
+      | Eequiv (e1, (Eapp("=", [a1; a2], _) as e2), _)
+	   when not (is_eq e1)
+	->
+	 begin
+	   match a1, a2 with 
+	   | Eapp _, _ 
+		when test_fv (get_fv e2) (get_fv e1) 
+	     -> 
+	      begin 
+		add_rule_prop (eapp("=", [a1; a2])) e1;
+		add_rule_prop (eapp("=", [a2; a1])) e1;
+	      end
+	   | _, Eapp _ 
+		when test_fv (get_fv e2) (get_fv e1) 
+	     -> 
+	      begin 
+		add_rule_prop (eapp("=", [a1; a2])) e1;
+		add_rule_prop (eapp("=", [a2; a1])) e1;
+	      end
+	   | _, _ -> assert false
+	 end
       | _ -> assert false      
     end
 ;;
-
+  
 let rec parse_conj_prop body = 
   match body with 
   | Eand (e1, e2, _) -> 
