@@ -91,6 +91,8 @@ let rec p_expr oc e =
       poc "(if %a then %a else %a)" p_expr e1 p_expr e2 p_expr e3;
   | Eapp ("$string", [Evar (v, _)], _) ->
       poc "%s" v;
+  | Eapp ("*", [e1; e2], _) ->
+      poc "%a*%a" p_expr e1 p_expr e2;
   | Eapp ("%", [e1; e2], _) ->
       poc "%a%%%a" p_expr e1 p_expr e2;
   | Eapp (f, l, _) ->

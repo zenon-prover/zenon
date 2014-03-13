@@ -3,8 +3,8 @@ Version.add "$Id$";;
 
 open Printf;;
 
-let number = 257;;      (* strictly increasing *)
-let date = "2014-01-05";;
+let number = 258;;      (* strictly increasing *)
+let date = "2014-03-13";;
 
 let major = 0;;
 let minor = 7;;
