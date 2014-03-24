@@ -76,9 +76,11 @@ let rec expr o ex =
   | Eex (v, t, e, _) ->
       pr "(E. ((%a \"%s\") " print_var v t; expr o e; pr "))";
   | Etau (v, t, e, _) when t = univ_name ->
-      pr "(t. ((%a) " print_var v; expr o e; pr "))";
+     pr "T_%d" (Index.get_number e);
+     (* pr "(t. ((%a) " print_var v; expr o e; pr "))";*)
   | Etau (v, t, e, _) ->
-      pr "(t. ((%a \"%s\") " print_var v t; expr o e; pr "))";
+     pr "T_%d" (Index.get_number e);
+     (* pr "(t. ((%a \"%s\") " print_var v t; expr o e; pr "))";*)
   | Elam (v, t, e, _) when t = univ_name ->
       pr "((%a) " print_var v; expr o e; pr ")";
   | Elam (v, t, e, _) ->
