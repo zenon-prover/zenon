@@ -32,6 +32,7 @@ let cnf_to_formula l =
 
 %}
 
+%token RWRT
 %token EQUIV
 %token IMPLY
 %token RIMPLY
@@ -120,6 +121,7 @@ formula:
   | atom XOR formula           { enot (eequiv ($1, $3)) }
   | atom NOR formula           { enot (eor ($1, $3)) }
   | atom NAND formula          { enot (eand ($1, $3)) }
+  | atom RWRT formula          { eapp ("fof_rwrt", [$1; $3]) }
 ;
 atom:
   | ALL LBRACKET var_list RBRACKET COLON atom

@@ -310,6 +310,7 @@ let rec parse_conj_term body =
 let rec parse_term_rule body = 
   match body with 
   | Eall (_, _, pred, _) -> parse_term_rule pred
+  | Eapp ("fof_rwrt", [a1; a2], _) -> add_rule_term a1 a2
   | _ -> parse_conj_term body
 ;;
 
@@ -394,6 +395,7 @@ let rec parse_conj_prop body =
 let rec parse_prop_rule body = 
   match body with 
   | Eall (_, _, pred, _) -> parse_prop_rule pred
+  | Eapp ("fof_rwrt", [a1; a2], _) -> add_rule_prop a1 a2
   | _ -> parse_conj_prop body
 ;;
 

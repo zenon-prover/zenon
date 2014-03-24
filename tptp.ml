@@ -320,25 +320,25 @@ let rec translate_one dirs accu p =
       accu
   | Annotation s -> add_annotation s; accu
   | Formula (name, "axiom", body) -> 
-    Hyp (name, body, 2) :: accu
+     Hyp (name, body, 2) :: accu
   | Formula (name, "rwrt_term", body) -> 
-    Rew (name, body, 0) :: accu
+     Rew (name, body, 0) :: accu
   | Formula (name, "rwrt_prop", body) -> 
-    Rew (name, body, 1) :: accu
+     Rew (name, body, 1) :: accu
   | Formula (name, "definition", body) ->
-      Hyp (name, body, 2) :: accu
+     Hyp (name, body, 2) :: accu
   | Formula (name, "hypothesis", body) ->
-    Hyp (name, body, 1) :: accu
+     Hyp (name, body, 1) :: accu
   | Formula (name, ("lemma"|"theorem"), body) ->
-      Hyp (name, body, 1) :: accu
+     Hyp (name, body, 1) :: accu
   | Formula (name, "conjecture", body) ->
-      tptp_thm_name := name;
-      Hyp (goal_name, enot (body), 0) :: accu
+     tptp_thm_name := name;
+     Hyp (goal_name, enot (body), 0) :: accu
   | Formula (name, "negated_conjecture", body) ->
-      Hyp (name, body, 0) :: accu
+     Hyp (name, body, 0) :: accu
   | Formula (name, k, body) ->
-      Error.warn ("unknown formula kind: " ^ k);
-      Hyp (name, body, 1) :: accu
+     Error.warn ("unknown formula kind: " ^ k);
+     Hyp (name, body, 1) :: accu
 
 and translate_one_rwrt dirs accu p =
   match p with

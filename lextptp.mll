@@ -65,6 +65,7 @@ rule token = parse
   | "="              { EQSYM }
   | "!="             { NEQSYM }
   | "<~>"            { XOR }
+  | "--->"           { RWRT }
   | "~|"             { NOR }
   | "~&"             { NAND }
   | "include"        { INCLUDE }
