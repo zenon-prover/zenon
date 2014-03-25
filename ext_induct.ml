@@ -901,7 +901,13 @@ let p_rule_coq oc r =
   | Rextension (_, "zenon_induct_induction_notall", [Evar (ty, _); p], [c], hs)
     ->
      fprintf oc "apply %s.\n" (getname c);
-     fprintf oc "apply %s_ind; [" ty;
+     let (args, constrs, schema) = Hashtbl.find type_table ty in
+     let unders =
+       let l1 = List.map (fun _ -> "_") args in
+       let l2 = List.map (fun _ -> "_") constrs in
+       String.concat " " ("_" :: l1 @ l2)
+     in
+     fprintf oc "refine (%s %s); [" schema unders;
      let p_case oc h =
        match h with
        | [h] -> fprintf oc "apply NNPP; zenon_intro %s" (getname h);
