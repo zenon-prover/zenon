@@ -101,8 +101,8 @@ expr:
   | LIDENT EMPTY                       { eapp (ns_fun $1, []) }
   | LIDENT arguments                   { eapp (ns_fun $1, $2) }
   | STRING                             { eapp ("$string", [evar $1]) }
-  | expr EQSYM expr                    { eapp ("=", [$1; $3]) }
-  | expr NEQSYM expr                   { enot (eapp ("=", [$1; $3])) }
+  | expr EQSYM expr                    { eapp ("B_equal_set", [$1; $3]) }
+  | expr NEQSYM expr                   { enot (eapp ("B_equal_set", [$1; $3])) }
 ;
 arguments:
   | OPEN expr_list CLOSE         { $2 }

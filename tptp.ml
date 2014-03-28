@@ -143,7 +143,16 @@ let axiom_to_rwrt_prop = [
   "equal_set_tuple_3";
   "equal_set_apply_1";
   "equal_set_apply_2";
-  "equal_set_apply_3";
+  "mem_ran";
+  "mem_dom_restriction";
+  "mem_ran_restriction";
+  "mem_dom_substraction";
+  "mem_ran_substraction";
+  "mem_image";
+  "mem_overriding";
+  "mem_proj_op_1";
+  "mem_proj_op_2";
+  
 ];;
 
 
@@ -151,10 +160,9 @@ let axiom_to_rwrt_term = [
   "tuple_projection_1";
   "tuple_projection_2";
   "tuple_inversion";
-  "relation_set";
-  "ran";
+(*  "ran";*)
   "composition_back";
-  "dom_restriction";
+(*  "dom_restriction";
   "ran_restriction";
   "dom_substraction";
   "ran_substraction";
@@ -162,7 +170,7 @@ let axiom_to_rwrt_term = [
   "overriding";
   "proj_op_1";
   "proj_op_2";
-  "parallel_product";
+  "parallel_product"; *)
   "total_injection_set";
   "total_surjection_set";
   "partial_bijection_set";
@@ -172,7 +180,7 @@ let axiom_to_rwrt_term = [
 
 let is_commut_term body = 
   match body with 
-  | Eapp ("=", [t1; t2], _) -> 
+  | Eapp ("B_equal_set", [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (sym1, [e11; e12], _), Eapp (sym2, [e21; e22], _) 
@@ -188,7 +196,7 @@ let is_commut_term body =
 
 let is_assoc_term body = 
   match body with 
-  | Eapp ("=", [t1; t2], _) -> 
+  | Eapp ("B_equal_set", [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (sym11, [e11; Eapp (sym12, [e12; e13], _)], _),
@@ -218,7 +226,7 @@ let is_assoc_term body =
 
 let is_distrib_term body = 
   match body with 
-  | Eapp ("=", [t1; t2], _) -> 
+  | Eapp ("B_equal_set", [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (sym11, [e11; Eapp (sym12, [e12; e13], _)], _),
@@ -259,8 +267,8 @@ let rec test_fv l1 l2 =
 
 let is_literal_noteq body = 
   match body with 
-  | Eapp(sym, _, _) when sym <> "=" -> true
-  | Enot(Eapp(sym, _, _), _) when sym <> "=" -> true
+  | Eapp(sym, _, _) when sym <> "B_equal_set" -> true
+  | Enot(Eapp(sym, _, _), _) when sym <> "B_equal_set" -> true
   | _ -> false
 ;;
 
@@ -281,7 +289,7 @@ let is_literal_eq body =
 
 let rec is_equal_term body = 
   match body with 
-  | Eapp ("=", [t1; t2], _) 
+  | Eapp ("B_equal_set", [t1; t2], _) 
       when not (is_commut_term body) -> 
      begin 
        match t1, t2 with 

@@ -263,7 +263,7 @@ let ordering_two fm (l1, r1) (l2, r2) =
   | _ -> rules
 ;; *)
 
-let equal_is_equal rules fm = 
+(*let equal_is_equal rules fm = 
   match fm with 
   | Eapp ("=", [a1; a2], _)
        when Expr.equal a1 a2
@@ -296,6 +296,49 @@ let equal_is_equal rules fm =
        | _, _ -> []
      end
   | _ -> rules
+;;*)
+
+let restore_equal fm = 
+  match fm with 
+(*  | Eapp ("B_equal_set", [a1; a2], _)
+       when (Expr.equal a1 a2)
+    -> eapp ("=", [a1; a2])
+  | Enot (Eapp ("B_equal_set", [a1; a2], _), _)
+       when (Expr.equal a1 a2)
+    -> enot (eapp ("=", [a1; a2]))*)
+  | Eapp ("B_equal_set", [a1; a2], _)
+    ->
+     begin
+       match a1, a2 with 
+       | Evar _, Evar _
+       | Evar _, Emeta _
+       | Emeta _, Evar _
+       | Emeta _, Emeta _
+       | Etau _, Etau _
+       | Evar _, Etau _
+       | Etau _, Evar _
+       | Emeta _, Etau _
+       | Etau _, Emeta _
+	 -> eapp ("=", [a1; a2])
+       | _, _ -> fm
+     end
+  | Enot (Eapp ("B_equal_set", [a1; a2], _), _)
+    ->
+     begin
+       match a1, a2 with 
+       | Evar _, Evar _
+       | Evar _, Emeta _
+       | Emeta _, Evar _
+       | Emeta _, Emeta _
+       | Etau _, Etau _
+       | Evar _, Etau _
+       | Etau _, Evar _
+       | Emeta _, Etau _
+       | Etau _, Emeta _
+	 -> enot (eapp ("=", [a1; a2]))
+       | _, _ -> fm
+     end
+  | _ -> fm
 ;;
 
 
@@ -341,22 +384,11 @@ let rec norm_prop_aux rules fm =
 ;;
 
 let norm_prop fm = 
-(*  print_endline "";
-  print_endline " ## FM ##";
-  printer fm; 
-  print_endline "";*)
   
   let rules = Hashtbl.find_all !Expr.tbl_prop (find_first_sym fm) in
-(*  let rules_sort = List.sort ordering rules in*)
 
-(*  let rules_equal = equal_is_equal rules fm in*)
-(*  print_endline "      ---  --- rules equal ---- --- ";
-  print_rules rules_last;
-  print_endline "";*)
   let rules_sort = List.sort (ordering_two fm) rules in
-(*  print_endline " --  ---  --- rules sorted ---- ---  - -";
-  print_rules rules_sort;
-  print_endline "";*)
+
   norm_prop_aux rules_sort fm
 ;;
 
@@ -435,14 +467,7 @@ let is_literal fm =
 
 
 let rec normalize_fm fm = 
-(*  if !Globals.debug_flag || !Globals.debug_rwrt
-  then 
-    begin
-      print_endline "";
-      print_endline " -- Formula -- ";
-      printer fm;
-      print_endline "";
-    end; *)
+  let fm = restore_equal fm in
   if is_literal fm then
     begin 
       let fm_t = norm_term fm in 
