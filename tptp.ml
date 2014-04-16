@@ -136,13 +136,15 @@ let axiom_to_rwrt_prop = [
   "mem_partial_function_set";
   "mem_total_function_set";
   "mem_partial_injection_set";
+  "mem_total_injection_set";
   "mem_partial_surjection_set";
-  "mem_apply_1";
+  "mem_total_surjection_set";
+  "mem_partial_bijection_set";
+  "mem_total_bijection_set";
+(*  "mem_apply_1";*)
   "equal_set_tuple_1";
   "equal_set_tuple_2";
-  "equal_set_tuple_3";
-  "equal_set_apply_1";
-  "equal_set_apply_2";
+(*  "equal_set_tuple_3";*)
   "mem_ran";
   "mem_dom_restriction";
   "mem_ran_restriction";
@@ -171,10 +173,10 @@ let axiom_to_rwrt_term = [
   "proj_op_1";
   "proj_op_2";
   "parallel_product"; *)
-  "total_injection_set";
+(*  "total_injection_set";
   "total_surjection_set";
   "partial_bijection_set";
-  "total_bijection_set";
+  "total_bijection_set";*)
 ];;
 
 

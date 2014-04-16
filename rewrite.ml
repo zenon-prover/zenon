@@ -467,7 +467,7 @@ let is_literal fm =
 
 
 let rec normalize_fm fm = 
-  let fm = restore_equal fm in
+(*  let fm = restore_equal fm in*)
   if is_literal fm then
     begin 
       let fm_t = norm_term fm in 
