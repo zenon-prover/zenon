@@ -252,6 +252,8 @@ let parse_file f =
       match !input_format with
       | I_tptp ->
           let tpphrases = Parsetptp.file Lextptp.token lexbuf in
+          (* TODO: type after translating includes ? *)
+          let tpphrases = Typetptp.typecheck tpphrases in
           closer ();
           let d = Filename.dirname f in
           let pp = Filename.parent_dir_name in

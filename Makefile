@@ -21,6 +21,7 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
           print.ml step.ml node.ml extension.ml mltoll.ml \
           parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
+	  typetptp.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
