@@ -16,7 +16,7 @@ let ns_fun s = ns "f_" s;;
 let rec mk_quant q vs body =
   match vs with
   | [] -> body
-  | h::t -> q (h, Namespace.univ_name, mk_quant q t body)
+  | (h, s)::t -> q (h, s, mk_quant q t body)
 ;;
 
 let cnf_to_formula l =
@@ -27,7 +27,7 @@ let cnf_to_formula l =
     | [] -> assert false
     | a::l2 -> List.fold_left (fun x y -> eor (x,y)) a l2
   in
-  mk_quant eall (List.map evar vs) body
+  mk_quant eall (List.map (fun x -> (evar x, Namespace.univ_name)) vs) body
 ;;
 
 %}
@@ -49,6 +49,7 @@ let cnf_to_formula l =
 %token DOT
 %token INPUT_CLAUSE
 %token INPUT_FORMULA
+%token INPUT_TYPED_FORMULA
 %token LBRACKET
 %token RBRACKET
 %token <string> LIDENT
@@ -93,6 +94,8 @@ phrase:
                                    { Phrase.Formula (ns_hyp $3, $5, $7) }
   | INPUT_CLAUSE OPEN LIDENT COMMA LIDENT COMMA cnf_formula CLOSE DOT
      { Phrase.Formula (ns_hyp $3, $5, cnf_to_formula $7) }
+  | INPUT_TYPED_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
+     { Phrase.Formula (ns_hyp $3, "typed_" ^ $5, $7) }
   | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:
@@ -133,8 +136,10 @@ atom:
   | expr                           { $1 }
 ;
 var_list:
-  | UIDENT COMMA var_list          { evar (ns_var $1) :: $3 }
-  | UIDENT                         { [evar (ns_var $1)] }
+  | UIDENT COMMA var_list               { (evar (ns_var $1), Namespace.univ_name) :: $3 }
+  | UIDENT COLON LIDENT COMMA var_list  { (evar (ns_var $1), $3) :: $5 }
+  | UIDENT                              { [evar (ns_var $1), Namespace.univ_name] }
+  | UIDENT COLON LIDENT                 { [evar (ns_var $1), $3] }
 ;
 name_list:
   | LIDENT COMMA name_list         { $1 :: $3 }
