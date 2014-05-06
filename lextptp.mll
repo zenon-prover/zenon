@@ -78,7 +78,7 @@ rule token = parse
   | lowerid idchar * { LIDENT (Lexing.lexeme lexbuf) }
   | upperid idchar * { UIDENT (Lexing.lexeme lexbuf) }
   | '$' lowerid idchar *
-    { LIDENT (Lexing.lexeme lexbuf) } (* TODO: strip beginning $ ? *)
+    { LIDENT (Lexing.lexeme lexbuf) }
 
   | ['+' '-']? ['0' - '9']+
        ('.' ['0' - '9']+)?
