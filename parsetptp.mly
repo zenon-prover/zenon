@@ -55,6 +55,9 @@ let cnf_to_formula l =
 %token <string> LIDENT
 %token <string> UIDENT
 %token <string> STRING
+%token <string> INT
+%token <string> RAT
+%token <string> REAL
 %token POSITIVE
 %token NEGATIVE
 %token COMMA
@@ -102,6 +105,9 @@ expr:
   | UIDENT                             { evar (ns_var $1) }
   | LIDENT arguments                   { eapp (ns_fun $1, $2) }
   | STRING                             { eapp ("$string", [evar $1]) }
+  | INT                                { eapp ("$int", [evar $1]) }
+  | RAT                                { eapp ("$rat", [evar $1]) }
+  | REAL                               { eapp ("$real", [evar $1]) }
   | expr EQSYM expr                    { eapp ("=", [$1; $3]) }
   | expr NEQSYM expr                   { enot (eapp ("=", [$1; $3])) }
 ;

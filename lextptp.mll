@@ -81,10 +81,11 @@ rule token = parse
     { LIDENT (Lexing.lexeme lexbuf) }
 
   | ['+' '-']? ['0' - '9']+
-       ('.' ['0' - '9']+)?
-       (['E' 'e'] ['+' '-']? ['0' - '9']+)?
-    { LIDENT (Lexing.lexeme lexbuf) }
-  | ['+' '-']? ['0' - '9']+ '/' ['0' - '9']+ { LIDENT (Lexing.lexeme lexbuf) }
+        { INT (Lexing.lexeme lexbuf) }
+  | ['+' '-']? ['0' - '9']+ '/' ['0' - '9']+
+        { RAT (Lexing.lexeme lexbuf) }
+  | ['+' '-']? ['0' - '9']+ '.' ['0' - '9']+ (['E' 'e'] ['+' '-']? ['0' - '9']+)?
+        { REAL (Lexing.lexeme lexbuf) }
 
   | eof              { EOF }
   | _                {
