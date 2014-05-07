@@ -75,10 +75,8 @@ rule token = parse
   | "$false"         { FALSE }
   | "\'"             { single_quoted (Buffer.create 20) lexbuf }
   | "\""             { double_quoted (Buffer.create 20) lexbuf }
-  | lowerid idchar * { LIDENT (Lexing.lexeme lexbuf) }
   | upperid idchar * { UIDENT (Lexing.lexeme lexbuf) }
-  | '$' lowerid idchar *
-    { LIDENT (Lexing.lexeme lexbuf) }
+  | '$'? lowerid idchar * { LIDENT (Lexing.lexeme lexbuf) }
 
   | ['+' '-']? ['0' - '9']+
         { INT (Lexing.lexeme lexbuf) }

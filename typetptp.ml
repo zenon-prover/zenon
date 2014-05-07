@@ -9,61 +9,21 @@ module M = Map.Make(struct type t = string let compare = Pervasives.compare end)
 (* Types for TFF *)
 type tff_type =
     | Base of string
-    | Arrow of (string list) * string
+    | Arrow of ((string list) * string) list
 
 let tff_bool = Base "$o"
 let tff_int = Base "$int"
+let tff_rat = Base "$rat"
+let tff_real = Base "$real"
 let tff_is_bool = function Base "$o" -> true | _ -> false
 let tff_is_num = function Base "$int" | Base "$rat" | Base "$real" -> true | _ -> false
 let tff_is_num_r = function Base "$rat" | Base "$real" -> true | _ -> false
 let tff_is_atomic = function Base _ -> true | Arrow _ -> false
 let tff_is_fun = function Base _ -> false | Arrow _ -> true
-let tff_type_args = function Base _ -> assert false | Arrow (l, _) -> List.map (fun s -> Base s) l
-let tff_type_return = function Base _ -> assert false | Arrow (_, t) -> Base t
+
 let tff_to_string = function
     | Base s -> s
-    | Arrow (l, s) -> (String.concat ", " l) ^ " -> " ^ s
-
-let num_type s =
-    let is_digit c = match c with
-        | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' -> true
-        | _ -> false
-    in
-    (* Manual automata for numbers *)
-    let rec aux1 s n = (* starting point *)
-        if 0 <= n && n < String.length s then
-            if s.[n] = '+' || s.[n] = '-' then aux2 s (n + 1) else aux2 s n
-        else
-            raise (Type_error "number expected")
-    and aux2 s n = (* check for any number *)
-        if 0 <= n && n < String.length s then
-            if is_digit s.[n] then aux2 s (n + 1) else
-            if s.[n] = '/' then let _ = aux3 s (n + 1) in Base "$rat" else
-            if s.[n] = '.' then let _ = aux4 s (n + 1) in Base "$real" else
-                raise (Type_error "not a number")
-        else
-            Base "$int"
-    and aux3 s n = (* check for a pure integer *)
-        if 0 <= n && n < String.length s then
-            if is_digit s.[n] then aux3 s (n + 1) else
-                raise (Type_error "not an integer")
-        else
-            Base "$int" (* should not ever be really used *)
-    and aux4 s n = (* check for an integer plus an exponent *)
-        if 0 <= n && n < String.length s then
-            if is_digit s.[n] then aux4 s (n + 1) else
-            if s.[n] = 'e' || s.[n] = 'E' then aux5 s (n + 1) else
-                raise (Type_error "not a correct real")
-        else
-            Base "$int" (* should not ever really be used *)
-    and aux5 s n = (* check for a pure signed integer *)
-        if 0 <= n && n < String.length s then
-            if s.[n] = '+' || s.[n] = '-' then aux3 s (n + 1) else aux3 s n
-        else
-            raise (Type_error "number expected")
-    in
-    aux1 s 0
-
+    | Arrow t -> String.concat " or " (List.map (fun (l, s) -> (String.concat ", " l) ^ " -> " ^ s) t)
 
 (* Typing Environnment for TFF *)
 type tff_env = {
@@ -86,6 +46,18 @@ let tff_add_var env v t = match v with
     | Evar (s, _) ->
             { (* env with *) types = M.add s (Base t) env.types; }
     | _ -> assert false
+
+exception Type_found of tff_type
+let tff_match_app env f args =
+    let aux (l, t) = if (List.map (fun x -> Base x) l) = args then raise (Type_found (Base t)) in
+    match (find_tff_type f env) with
+    | Base _ -> raise (Type_error "Not a function")
+    | Arrow t ->
+            try
+                List.iter aux t;
+                raise (Type_error "No siganture match found")
+            with Type_found t' -> t'
+
 
 let tff_default_env =
     let base = [] in
@@ -215,35 +187,16 @@ and type_tff_app env s l = match s, l with
                     tff_bool, eapp (s, [e; e'])
             else
                 raise (Type_error ("Bad types for equality : " ^ (tff_to_string t) ^ " <> " ^ (tff_to_string t')))
-    | ("$is_int" | "$is_rat"), a :: []  ->
-            let t, e = type_tff_aux env a in
-            if tff_is_num t then
-                tff_bool, eapp (s, [e])
-            else
-                raise (Type_error ("Wrong type for prediacte " ^ s))
-    | ("$less" | "$lesseq" | "$greater" | "$greatereq"), a :: b :: []  ->
-            let t, e = type_tff_aux env a in
-            let t', e' = type_tff_aux env b in
-            if tff_is_num t && tff_is_num t' && t = t' then
-                tff_bool, eapp (s, [e; e'])
-            else
-                raise (Type_error ("Wrong type for prediacte " ^ s))
-    | ("$sum" | "$difference" | "$product"), a :: b :: [] ->
-            let t, e = type_tff_aux env a in
-            let t', e' = type_tff_aux env b in
-            if tff_is_num t && tff_is_num t' && t = t' then
-                t, eapp (s, [e; e'])
-            else
-                raise (Type_error ("Wrong type for prediacte " ^ s))
-    | "$quotient", a :: b :: [] ->
-            let t, e = type_tff_aux env a in
-            let t', e' = type_tff_aux env b in
-            if tff_is_num_r t && tff_is_num_r t' && t = t' then
-                t, eapp (s, [e; e'])
-            else
-                raise (Type_error ("Wrong type for prediacte " ^ s))
-    | s , [] -> num_type s, eapp (s, [])
-    | _ -> raise (Type_error ("Unknown operator/ Bad arity for operator " ^ s))
+    | "$int", a :: [] -> (* TODO: check that 'a' is indeed a var of a string from an integer ? *)
+            tff_int, eapp (s, l)
+    | "$rat", a :: [] ->
+            tff_rat, eapp (s, l)
+    | "$real", a :: [] ->
+            tff_real, eapp (s, l)
+    | _ ->
+            let l', l'' = List.split (List.map (type_tff_aux env) l) in
+            let t = tff_match_app env s l' in
+            t, eapp (s, l'')
 
 let type_tff_expr env e =
     let t, e' = type_tff_aux env e in
