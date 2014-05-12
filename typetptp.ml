@@ -45,7 +45,10 @@ let tff_mem v env = M.mem v env.types
 
 let tff_add_var env v t = match v with
     | Evar (s, _) ->
-            { (* env with *) types = M.add s (Base t) env.types; }
+            if t = Namespace.univ_name then
+                raise (Type_error "'untyped' variable detected.")
+            else
+                { (* env with *) types = M.add s (Base t) env.types; }
     | _ -> assert false
 
 exception Type_found of tff_type
@@ -219,10 +222,9 @@ and type_tff_app env s l = match s, l with
             let t, e = type_tff_aux env a in
             let t', e' = type_tff_aux env b in
             if tff_is_atomic t && tff_is_atomic t' && t = t' then
-                if tff_is_num t then begin
-                    eprintf "transformed an equality@.";
+                if tff_is_num t then
                     tff_bool, eapp ("$eq_num", [e; e'])
-                end else
+                else
                     tff_bool, eapp (s, [e; e'])
             else
                 raise (Type_error ("Bad types for equality : " ^ (tff_to_string t) ^ " <> " ^ (tff_to_string t')))
@@ -274,7 +276,7 @@ let type_phrase env p = match p with
             if is_typed kind then begin
                 (* TODO: in case of a definition, extend environment *)
                 let e' = type_tff_expr env e in
-                eprintf "%a@." print_expr e';
+                (* eprintf "%a@." print_expr e'; *)
                 Phrase.Formula (name, notype_kind kind, e'), env
             end else begin
                 type_fof_expr e;
