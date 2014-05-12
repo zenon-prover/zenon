@@ -1,0 +1,6 @@
+
+* Parse/Type all of TFF
+  - parse/type type definitions
+  - infer functions/predicates types
+  - type double quoted identifiers
+

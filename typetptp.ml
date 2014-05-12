@@ -9,12 +9,13 @@ module M = Map.Make(struct type t = string let compare = Pervasives.compare end)
 (* Types for TFF *)
 type tff_type =
     | Base of string
-    | Arrow of ((string list) * string) list
+    | Arrow of ((string list) * string) list (* support overloading *)
 
 let tff_bool = Base "$o"
 let tff_int = Base "$int"
 let tff_rat = Base "$rat"
 let tff_real = Base "$real"
+
 let tff_is_bool = function Base "$o" -> true | _ -> false
 let tff_is_num = function Base "$int" | Base "$rat" | Base "$real" -> true | _ -> false
 let tff_is_num_r = function Base "$rat" | Base "$real" -> true | _ -> false
@@ -30,11 +31,11 @@ type tff_env = {
     types : tff_type M.t;
 }
 
-let empty_tff_env = {
+let tff_empty_env = {
     types = M.empty;
 }
 
-let find_tff_type v env =
+let tff_find_type v env =
     try
         M.find v env.types
     with Not_found ->
@@ -50,7 +51,7 @@ let tff_add_var env v t = match v with
 exception Type_found of tff_type
 let tff_match_app env f args =
     let aux (l, t) = if (List.map (fun x -> Base x) l) = args then raise (Type_found (Base t)) in
-    match (find_tff_type f env) with
+    match (tff_find_type f env) with
     | Base _ -> raise (Type_error "Not a function")
     | Arrow t ->
             try
@@ -60,8 +61,46 @@ let tff_match_app env f args =
 
 
 let tff_default_env =
-    let base = [] in
-    let env = empty_tff_env in
+    let int_id = ["$int"],"$int"
+    and rat_id = ["$rat"], "$rat"
+    and real_id = ["$real"], "$real"
+    and int_id_2 = ["$int"; "$int"], "$int"
+    and rat_id_2 = ["$rat"; "$rat"], "$rat"
+    and real_id_2 = ["$real"; "$real"], "$real"
+    and int_pred = ["$int"], "$o"
+    and rat_pred = ["$rat"], "$o"
+    and real_pred = ["$real"], "$o"
+    and int_pred_2 = ["$int"; "$int"], "$o"
+    and rat_pred_2 = ["$rat"; "$rat"], "$o"
+    and real_pred_2 = ["$real"; "$real"], "$o"
+    in
+    let base = [
+        "$less",        Arrow [int_pred_2; rat_pred_2; real_pred_2];
+        "$lesseq",      Arrow [int_pred_2; rat_pred_2; real_pred_2];
+        "$greater",     Arrow [int_pred_2; rat_pred_2; real_pred_2];
+        "$greatereq",   Arrow [int_pred_2; rat_pred_2; real_pred_2];
+        "$uminus",      Arrow [int_id; rat_id; real_id];
+        "$sum",         Arrow [int_id_2; rat_id_2; real_id_2];
+        "$difference",  Arrow [int_id_2; rat_id_2; real_id_2];
+        "$product",     Arrow [int_id_2; rat_id_2; real_id_2];
+        "quotient",     Arrow [rat_id_2; real_id_2];
+        "quotient_e",   Arrow [int_id_2; rat_id_2; real_id_2];
+        "quotient_t",   Arrow [int_id_2; rat_id_2; real_id_2];
+        "quotient_f",   Arrow [int_id_2; rat_id_2; real_id_2];
+        "remainder_e",  Arrow [int_id_2; rat_id_2; real_id_2];
+        "remainder_t",  Arrow [int_id_2; rat_id_2; real_id_2];
+        "remainder_f",  Arrow [int_id_2; rat_id_2; real_id_2];
+        "$floor",       Arrow [int_id; rat_id; real_id];
+        "$ceiling",     Arrow [int_id; rat_id; real_id];
+        "$truncate",    Arrow [int_id; rat_id; real_id];
+        "$round",       Arrow [int_id; rat_id; real_id];
+        "$is_int",      Arrow [int_pred; rat_pred; real_pred];
+        "$is_rat",      Arrow [int_pred; rat_pred; real_pred];
+        "$to_int",      Arrow [["$int"], "$int"; ["$rat"], "$int"; ["$real"], "$int"];
+        "$to_rat",      Arrow [["$int"], "$rat"; ["$rat"], "$rat"; ["$real"], "$rat"];
+        "$to_real",     Arrow [["$int"], "$real"; ["$rat"], "$real"; ["$real"], "$real"];
+    ] in
+    let env = tff_empty_env in
     let def = List.fold_left (fun acc (s, t) -> M.add s t acc) env.types base in
     { types = def; }
 
@@ -102,11 +141,11 @@ let type_of_meta = function
     | _ -> assert false
 
 let rec type_tff_aux env e = match e with
-    | Evar (v, _) -> (find_tff_type v env), e
+    | Evar (v, _) -> (tff_find_type v env), e
     | Emeta (e', _) ->
             (* Typecheck meta-variable body ? *)
             let v = var_of_meta e in
-            if tff_mem v env && ((find_tff_type v env) <> (type_of_meta e)) then
+            if tff_mem v env && ((tff_find_type v env) <> (type_of_meta e)) then
                 raise (Type_error "Type conflict.")
             else
                 (type_of_meta e), e
@@ -187,7 +226,7 @@ and type_tff_app env s l = match s, l with
                     tff_bool, eapp (s, [e; e'])
             else
                 raise (Type_error ("Bad types for equality : " ^ (tff_to_string t) ^ " <> " ^ (tff_to_string t')))
-    | "$int", a :: [] -> (* TODO: check that 'a' is indeed a var of a string from an integer ? *)
+    | "$int", a :: [] ->
             tff_int, eapp (s, l)
     | "$rat", a :: [] ->
             tff_rat, eapp (s, l)
@@ -248,6 +287,6 @@ let map_fold f s l =
     List.rev e, env
 
 let typecheck x =
-    let p, _ = map_fold type_phrase empty_tff_env x in
+    let p, _ = map_fold type_phrase tff_default_env x in
     p
 
