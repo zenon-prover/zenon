@@ -11,6 +11,8 @@ type tff_type =
     | Base of string
     | Arrow of ((string list) * string) list (* support overloading *)
 
+let strip = function Base s -> s | _ -> assert false
+
 let tff_bool = Base "$o"
 let tff_int = Base "$int"
 let tff_rat = Base "$rat"
@@ -146,12 +148,12 @@ let type_of_meta = function
 let rec type_tff_aux env e = match e with
     | Evar (v, _) -> (tff_find_type v env), e
     | Emeta (e', _) ->
-            (* Typecheck meta-variable body ? *)
+            assert false (*
             let v = var_of_meta e in
             if tff_mem v env && ((tff_find_type v env) <> (type_of_meta e)) then
                 raise (Type_error "Type conflict.")
             else
-                (type_of_meta e), e
+                (type_of_meta e), e *)
     | Eapp (s, l, _) ->
             type_tff_app env s l
     | Enot (e', _) ->
@@ -204,17 +206,19 @@ let rec type_tff_aux env e = match e with
             else
                 raise (Type_error "Quantification over non-boolean expression (exists).")
     | Etau (Evar (s, _) as v, t, body, _) ->
+            assert false (*
             let t', body = type_tff_aux (tff_add_var env v t) body in
             if tff_is_bool t' then
                 tff_bool, etau (v, t, body)
             else
-                raise (Type_error "Quantification over non-boolean expression (tau).")
+                raise (Type_error "Quantification over non-boolean expression (tau).") *)
     | Elam (Evar (s, _) as v, t, body, _) ->
+            assert false (*
             let t', body = type_tff_aux (tff_add_var env v t) body in
             if tff_is_bool t' then
                 tff_bool, elam (v, t, body)
             else
-                raise (Type_error "Quantification over non-boolean expression (lam).")
+                raise (Type_error "Quantification over non-boolean expression (lam).") *)
     | _ -> raise (Type_error "Ill-formed expression.")
 
 and type_tff_app env s l = match s, l with
@@ -223,7 +227,7 @@ and type_tff_app env s l = match s, l with
             let t', e' = type_tff_aux env b in
             if tff_is_atomic t && tff_is_atomic t' && t = t' then
                 if tff_is_num t then
-                    tff_bool, eapp ("$eq_num", [e; e'])
+                    tff_bool, eapp ("$eq_" ^ (strip t), [e; e'])
                 else
                     tff_bool, eapp (s, [e; e'])
             else
