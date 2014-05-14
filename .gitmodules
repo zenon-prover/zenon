@@ -1,0 +1,3 @@
+[submodule "simplex"]
+	path = simplex
+	url = git@github.com:Gbury/Ocaml-simplex.git

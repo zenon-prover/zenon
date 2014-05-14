@@ -8,7 +8,7 @@ include .config_var
 # Staging directory for package managers
 DESTDIR =
 
-CAMLFLAGS = -warn-error "$(WARN_ERROR)"
+CAMLFLAGS = -warn-error "$(WARN_ERROR)" -I `ocamlfind query zarith` -I simplex
 
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
@@ -21,7 +21,7 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
           print.ml step.ml node.ml extension.ml mltoll.ml \
           parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
-	  typetptp.ml \
+	  typetptp.ml simplex/simplex.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
@@ -70,10 +70,10 @@ byt: zenon.byt
 bin: zenon.bin
 
 zenon.bin: $(BINOBJS)
-	$(CAMLBIN) $(CAMLBINFLAGS) -o zenon.bin $(BINOBJS)
+	$(CAMLBIN) $(CAMLBINFLAGS) -o zenon.bin zarith.cmxa $(BINOBJS)
 
 zenon.byt: $(BYTOBJS)
-	$(CAMLBYT) $(CAMLBYTFLAGS) -o zenon.byt $(BYTOBJS)
+	$(CAMLBYT) $(CAMLBYTFLAGS) -o zenon.byt zarith.cma $(BYTOBJS)
 
 zenon: zenon.byt
 	if test -x zenon.bin; then \
