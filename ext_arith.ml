@@ -12,6 +12,10 @@ module S = Simplex.Make(struct type t = Expr.t let compare = Expr.compare end)
 (* Manipulation of expressions/formulas *)
 exception NotaFormula
 
+let const s = eapp ("$int", [evar s])
+let sum a b = eapp ("$sum", [a; b])
+let mul a b = eapp ("$product", [a; b])
+
 let rec fadd_aux (c, x) = function
     | [] -> [(c, x)]
     | (c', y) :: r ->
@@ -25,6 +29,10 @@ let fdiff a b = fadd a (List.map (fun (c, x) -> (Q.neg c, x)) b)
 let fmul c a = List.map (fun (c', x) -> (Q.mul c c', x)) a
 
 let normalize a b =
+    let rec sanitize = function
+        | [] -> []
+        | (c, _) as a :: r -> if Q.equal Q.zero c then r else a :: (sanitize r)
+    in
     let rec pop_const = function
         | [] -> (Q.zero, [])
         | (c, x) :: r ->
@@ -35,7 +43,7 @@ let normalize a b =
                     c', (c, x) :: r'
     in
     let c = fdiff a b in
-    pop_const c
+    pop_const (sanitize c)
 
 let of_cexpr = function
     | Evar (s, _) -> Q.of_string s
@@ -58,6 +66,11 @@ let of_bexpr = function
             (e, s, c)
     | _ -> raise NotaFormula
 
+let to_nexpr = function
+    | [] -> const "0"
+    | (c, x) :: r -> List.fold_left (fun e (c', x') -> sum e (mul (const (Q.to_string c')) x')) (mul (const (Q.to_string c)) x) r
+
+let to_bexpr (e, s, c) = eapp (s, [to_nexpr e; const c])
 
 (* Helper around the simplex module *)
 type simplex = {
