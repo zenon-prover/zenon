@@ -232,10 +232,9 @@ let const_node e g = (* comparison of constants *)
     end
 
 let newnodes e g _ = match e with
-    | Enot (Eapp ("$eq_num", [a; b], _), _) ->
-            Type.print_expr Format.std_formatter e;
+    | Enot (Eapp ("$eq_num", [a; b], _), _) when get_type a = "$int" ->
             [mk_node_neq e g a b]
-    | Eapp (("$lesseq"|"$greatereq"|"$less"|"$greater") as s,
+    | Eapp (("$lesseq"|"$greatereq"|"$less"|"$greater"),
         [Eapp (("$int"|"$rat"), [v], _); Eapp (("$int"|"$rat"), [v'], _)], _) ->
             const_node e g
     | _ ->

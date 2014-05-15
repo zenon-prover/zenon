@@ -141,7 +141,7 @@ and print_list_expr fmt l = List.iter (fun e -> fprintf fmt "@[<hov 3>-> %a@]@\n
 let first_chars s n = String.sub s 0 n
 let after_chars s n = String.sub s n (String.length s - n)
 
-let is_typed s = (10 <= s & s <= 12)
+let is_typed s = (10 <= s && s <= 12)
 let notype_kind s = s - 10
 
 let var_of_meta = function
@@ -283,7 +283,7 @@ let type_phrase env p = match p with
             if is_typed kind then begin
                 (* TODO: in case of a definition, extend environment *)
                 let e' = type_tff_expr env e in
-                eprintf "%a@." print_expr e';
+                (* eprintf "%a@." print_expr e'; *)
                 Phrase.Hyp (name, e', notype_kind kind), env
             end else begin
                 type_fof_expr e;
