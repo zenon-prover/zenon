@@ -49,7 +49,7 @@ let cnf_to_formula l =
 %token DOT
 %token INPUT_CLAUSE
 %token INPUT_FORMULA
-%token INPUT_TYPED_FORMULA
+%token INPUT_TFF_FORMULA
 %token LBRACKET
 %token RBRACKET
 %token <string> LIDENT
@@ -97,8 +97,8 @@ phrase:
                                    { Phrase.Formula (ns_hyp $3, $5, $7) }
   | INPUT_CLAUSE OPEN LIDENT COMMA LIDENT COMMA cnf_formula CLOSE DOT
      { Phrase.Formula (ns_hyp $3, $5, cnf_to_formula $7) }
-  | INPUT_TYPED_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
-     { Phrase.Formula (ns_hyp $3, "typed_" ^ $5, $7) }
+  | INPUT_TFF_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
+     { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
   | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:

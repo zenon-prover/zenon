@@ -125,6 +125,19 @@ let rec translate_one dirs accu p =
       Hyp (goal_name, enot (body), 0) :: accu
   | Formula (name, "negated_conjecture", body) ->
       Hyp (name, body, 0) :: accu
+  (* TFF formulas *)
+  | Formula (name, ("tff_axiom" | "tff_definition"), body) ->
+      Hyp (name, body, 12) :: accu
+  | Formula (name, "tff_hypothesis", body) ->
+      Hyp (name, body, 11) :: accu
+  | Formula (name, ("tff_lemma"|"tff_theorem"), body) ->
+      Hyp (name, body, 11) :: accu
+  | Formula (name, "tff_conjecture", body) ->
+      tptp_thm_name := name;
+      Hyp (goal_name, enot (body), 10) :: accu
+  | Formula (name, "tff_negated_conjecture", body) ->
+      Hyp (name, body, 10) :: accu
+  (* Fallback *)
   | Formula (name, k, body) ->
       Error.warn ("unknown formula kind: " ^ k);
       Hyp (name, body, 1) :: accu

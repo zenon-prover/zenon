@@ -2,7 +2,7 @@
 (*  $Id: expr.mli,v 1.22 2012-04-11 18:27:26 doligez Exp $  *)
 
 type private_info;;
-
+type typ = string;;
 
 type expr = private
   | Evar of string * private_info
@@ -107,3 +107,7 @@ val get_fv : expr -> string list;;
 type goalness = int;;
 
 val print_stats : out_channel -> unit;;
+
+(* Type information *)
+val priv_type : expr -> typ option;;
+val add_type : typ -> expr -> expr;;

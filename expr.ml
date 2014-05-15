@@ -7,6 +7,8 @@ open Namespace;;
 let ( =%= ) = ( = );;
 let ( = ) = ();;
 
+type typ = string
+
 type expr =
   | Evar of string * private_info
   | Emeta of expr * private_info
@@ -32,6 +34,7 @@ and private_info = {
   size : int;
   taus : int;           (* depth of tau nesting *)
   metas : expr list;
+  etype : typ option;
 };;
 
 type definition =
@@ -88,6 +91,7 @@ let mkpriv skel fv sz taus metas = {
   size = sz;
   taus = taus;
   metas = metas;
+  etype = None;
 };;
 
 let priv_true = mkpriv k_true [] 1 0 [];;
@@ -196,6 +200,29 @@ let priv_tau v t e =
 let priv_lam v t e =
   mkpriv (combine k_lam (combine (Hashtbl.hash t) (get_skel e)))
          (remove v (get_fv e)) 1 (get_taus e) (get_metas e)
+;;
+
+let priv_type e = (get_priv e).etype
+
+let add_type t e =
+  let f h = { h with etype = Some t } in
+  match e with
+  | Evar (v, h) -> Evar (v, f h)
+  | Emeta (v, h) -> Emeta (v, f h)
+  | Eapp (s, l, h) -> Eapp (s, l, f h)
+
+  | Enot (p, h) -> Enot (p, f h)
+  | Eand (p, q, h) -> Eand (p, q, f h)
+  | Eor (p, q, h) -> Eor (p, q, f h)
+  | Eimply (p, q, h) -> Eimply (p, q, f h)
+  | Eequiv (p, q, h) -> Eequiv (p, q, f h)
+  | Etrue -> Etrue
+  | Efalse -> Efalse
+
+  | Eall (v, s, b, h) -> Eall (v, s, b, f h)
+  | Eex (v, s, b, h) -> Eex (v, s, b, f h)
+  | Etau (v, s, b, h) -> Etau (v, s, b, f h)
+  | Elam (v, s, b, h) -> Elam (v, s, b, f h)
 ;;
 
 

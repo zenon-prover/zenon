@@ -28,6 +28,15 @@ let tff_to_string = function
     | Base s -> s
     | Arrow t -> String.concat " or " (List.map (fun (l, s) -> (String.concat ", " l) ^ " -> " ^ s) t)
 
+let set_tff_type t e = add_type (tff_to_string t) e
+
+let get_type = function
+    | Etrue | Efalse -> "$o"
+    | e -> begin match priv_type e with
+        | None -> Namespace.univ_name
+        | Some s -> s
+    end
+
 (* Typing Environnment for TFF *)
 type tff_env = {
     types : tff_type M.t;
@@ -61,7 +70,7 @@ let tff_match_app env f args =
     | Arrow t ->
             try
                 List.iter aux t;
-                raise (Type_error "No siganture match found")
+                raise (Type_error ("No signature match found for " ^ f))
             with Type_found t' -> t'
 
 
@@ -110,10 +119,10 @@ let tff_default_env =
     { types = def; }
 
 (* DEBUG CODE *)
-let rec print_expr fmt = function
-    | Evar (s, _) ->        fprintf fmt "@[<hov 4>Var :@\n%s@]" s
-    | Emeta (e, _) ->       fprintf fmt "@[<hov 4>Meta :@\n%a@]" print_expr e
-    | Eapp (s, l, _) ->     fprintf fmt "@[<hov 4>App (%s) :@\n%a@]" s print_list_expr l
+let rec print_expr fmt f = match f with
+    | Evar (s, _) ->        fprintf fmt "@[<hov 4>Var (%s):@ %s@]" (get_type f) s
+    | Emeta (e, _) ->       fprintf fmt "@[<hov 4>Meta (%s):@ %a@]" (get_type f) print_expr e
+    | Eapp (s, l, _) ->     fprintf fmt "@[<hov 4>App (%s) %s :@ %a@]" (get_type f) s print_list_expr l
     | Enot (e, _) ->        fprintf fmt "@[<hov 4>Not :@\n%a@]" print_expr e
     | Eand (e, e', _) ->    fprintf fmt "  @[<hov>%a@]@\nAND@\n  @[<hov>%a@]" print_expr e print_expr e'
     | Eor (e, e', _) ->     fprintf fmt "  @[<hov>%a@]@\nOR@\n  @[<hov>%a@]" print_expr e print_expr e'
@@ -132,8 +141,8 @@ and print_list_expr fmt l = List.iter (fun e -> fprintf fmt "@[<hov 3>-> %a@]@\n
 let first_chars s n = String.sub s 0 n
 let after_chars s n = String.sub s n (String.length s - n)
 
-let is_typed s = (first_chars s 6) = "typed_"
-let notype_kind s = after_chars s 6
+let is_typed s = (10 <= s & s <= 12)
+let notype_kind s = s - 10
 
 let var_of_meta = function
     | Emeta (Eall (Evar(v, _), _, _, _), _)
@@ -145,7 +154,8 @@ let type_of_meta = function
     | Emeta (Eex (Evar(_, _), t, _, _), _) -> Base t
     | _ -> assert false
 
-let rec type_tff_aux env e = match e with
+let rec type_tff_aux env e =
+    let rec aux e = match e with
     | Evar (v, _) -> (tff_find_type v env), e
     | Emeta (e', _) ->
             assert false (*
@@ -205,21 +215,14 @@ let rec type_tff_aux env e = match e with
                 tff_bool, eex (v, t, body)
             else
                 raise (Type_error "Quantification over non-boolean expression (exists).")
-    | Etau (Evar (s, _) as v, t, body, _) ->
-            assert false (*
-            let t', body = type_tff_aux (tff_add_var env v t) body in
-            if tff_is_bool t' then
-                tff_bool, etau (v, t, body)
-            else
-                raise (Type_error "Quantification over non-boolean expression (tau).") *)
-    | Elam (Evar (s, _) as v, t, body, _) ->
-            assert false (*
-            let t', body = type_tff_aux (tff_add_var env v t) body in
-            if tff_is_bool t' then
-                tff_bool, elam (v, t, body)
-            else
-                raise (Type_error "Quantification over non-boolean expression (lam).") *)
+    | Etau (Evar (s, _), t, body, _) ->
+            assert false
+    | Elam (Evar (s, _), t, body, _) ->
+            assert false
     | _ -> raise (Type_error "Ill-formed expression.")
+    in
+    let t, e = aux e in
+    t, set_tff_type t e
 
 and type_tff_app env s l = match s, l with
     | "=", a :: b :: [] ->
@@ -227,17 +230,17 @@ and type_tff_app env s l = match s, l with
             let t', e' = type_tff_aux env b in
             if tff_is_atomic t && tff_is_atomic t' && t = t' then
                 if tff_is_num t then
-                    tff_bool, eapp ("$eq_" ^ (strip t), [e; e'])
+                    tff_bool, eapp ("$eq_num", [e; e'])
                 else
                     tff_bool, eapp (s, [e; e'])
             else
                 raise (Type_error ("Bad types for equality : " ^ (tff_to_string t) ^ " <> " ^ (tff_to_string t')))
-    | "$int", a :: [] ->
-            tff_int, eapp (s, l)
-    | "$rat", a :: [] ->
-            tff_rat, eapp (s, l)
-    | "$real", a :: [] ->
-            tff_real, eapp (s, l)
+    | "$int", [a] ->
+            tff_int, eapp (s, [set_tff_type tff_int a])
+    | "$rat", [a] ->
+            tff_rat, eapp (s, [set_tff_type tff_rat a])
+    | "$real", [a] ->
+            tff_real, eapp (s, [set_tff_type tff_real a])
     | _ ->
             let l', l'' = List.split (List.map (type_tff_aux env) l) in
             let t = tff_match_app env s l' in
@@ -276,12 +279,12 @@ let rec type_fof_expr e = match e with
             type_fof_expr e''
 
 let type_phrase env p = match p with
-    | Phrase.Formula (name, kind, e) ->
+    | Phrase.Hyp (name, e, kind) ->
             if is_typed kind then begin
                 (* TODO: in case of a definition, extend environment *)
                 let e' = type_tff_expr env e in
-                (* eprintf "%a@." print_expr e'; *)
-                Phrase.Formula (name, notype_kind kind, e'), env
+                eprintf "%a@." print_expr e';
+                Phrase.Hyp (name, e', notype_kind kind), env
             end else begin
                 type_fof_expr e;
                 p, env
