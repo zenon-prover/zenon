@@ -1,7 +1,6 @@
 
 (* TODO:
- * - finish wrapper function aroun ssimplex
- * - put equations in normal form whenever we encounter one (mainly the ones we add in a node)
+ * - finish wrapper functions around simplex
 *)
 
 open Expr
@@ -62,7 +61,7 @@ let rec of_nexpr = function
 let of_bexpr = function
     | Eapp (("$lesseq"|"$greatereq"|"$eq_$int"|"$eq_$rat") as s, [a; b], _ ) ->
             let a', b' = of_nexpr a, of_nexpr b in
-            let e, c = normalize a' b' in
+            let c, e = normalize a' b' in
             (e, s, c)
     | _ -> raise NotaFormula
 
@@ -70,7 +69,9 @@ let to_nexpr = function
     | [] -> const "0"
     | (c, x) :: r -> List.fold_left (fun e (c', x') -> sum e (mul (const (Q.to_string c')) x')) (mul (const (Q.to_string c)) x) r
 
-let to_bexpr (e, s, c) = eapp (s, [to_nexpr e; const c])
+let to_bexpr (e, s, c) = eapp (s, [to_nexpr e; const (Q.to_string c)])
+
+let expr_norm e = to_bexpr (of_bexpr e)
 
 (* Helper around the simplex module *)
 type simplex = {
@@ -158,7 +159,7 @@ let newnodes e g _ =
         nrule = Ext ("arith", "neq", [a; b]);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [lesseq a (minus_one b)]; [greatereq a (plus_one b)] |]; }]
+        nbranches = [| [expr_norm (lesseq a (minus_one b))]; [expr_norm (greatereq a (plus_one b))] |]; }]
     | _ -> []
     end
 
