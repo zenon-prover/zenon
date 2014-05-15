@@ -18,15 +18,24 @@ let get_type = function
 (* Manipulation of expressions/formulas *)
 exception NotaFormula
 
-let lesseq a b = eapp ("$lesseq", [a; b])
-let greatereq a b = eapp ("$greatereq", [a; b])
-let minus_one e = eapp ("$difference", [e; eapp ("$int", [evar "1"])])
-let plus_one e = eapp ("$sum", [e; eapp ("$int", [evar "1"])])
+let ctype t t' = match t, t' with
+    | "$int", "$int" -> "$int"
+    | "$int", "$rat" | "$rat", "$int" | "$rat", "$rat" -> "$rat"
+    | _ -> "$real"
+let etype e e' = ctype (get_type e) (get_type e')
 
-let const s = eapp ("$int", [evar s])
-let sum a b = eapp ("$sum", [a; b])
-let mul a b = eapp ("$product", [a; b])
-let eeq a b = eapp ("$eq_$rat", [a; b])
+let mk_app t s l = add_type t (eapp (s, l))
+
+let const s = mk_app "$int" "$int" [evar s]
+
+let sum a b = mk_app (etype a b) "$sum" [a; b]
+let mul a b = mk_app (etype a b) "$product" [a; b]
+let minus_one e = mk_app (get_type e) "$difference" [e; const "1"]
+let plus_one e = mk_app (get_type e) "$sum" [e; const "1"]
+
+let eeq a b = mk_app "$o" "$eq_num" [a; b]
+let lesseq a b = mk_app "$o" "$lesseq" [a; b]
+let greatereq a b = mk_app "$o" "$greatereq" [a; b]
 
 let rec fadd_aux (c, x) = function
     | [] -> [(c, x)]
@@ -83,7 +92,7 @@ let to_nexpr = function
     | [] -> const "0"
     | (c, x) :: r -> List.fold_left (fun e (c', x') -> sum e (mul (const (Q.to_string c')) x')) (mul (const (Q.to_string c)) x) r
 
-let to_bexpr (e, s, c) = eapp (s, [to_nexpr e; const (Q.to_string c)])
+let to_bexpr (e, s, c) = mk_app "$o" s [to_nexpr e; const (Q.to_string c)]
 
 let expr_norm e = to_bexpr (of_bexpr e)
 
@@ -146,7 +155,7 @@ let simplex_add t (e, s, c) = match e with
             let (inf, upp) = bounds_of_comp s c in
             let v = newvar () in
             let e1 = eeq v (to_nexpr e) in
-            let e2 = eapp (s, [v; const (Q.to_string c)]) in
+            let e2 = mk_app "$o" s [v; const (Q.to_string c)] in
             { core = S.add_bounds (S.add_eq t.core (v, e)) (v, inf, upp);
               ignore = e1 :: e2 :: t.ignore;
               bindings = (v, e1) :: t.bindings;
