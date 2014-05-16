@@ -37,6 +37,16 @@ let get_type = function
         | Some s -> s
     end
 
+let tff_of_expr = function
+    | Evar (t, _) -> t
+    | _ -> raise (Type_error "Expected a type, not an expression")
+
+let tff_of_lexpr = function
+    | [] -> assert false
+    | [Evar(t, _)] -> Base t
+    | (Evar(t, _)) :: l -> Arrow [List.map tff_of_expr l, t]
+    | _ -> raise (Type_error "Expected a type, not an expression")
+
 (* Typing Environnment for TFF *)
 type tff_env = {
     types : tff_type M.t;
@@ -62,11 +72,14 @@ let tff_add_var env v t = match v with
                 { (* env with *) types = M.add s (Base t) env.types; }
     | _ -> assert false
 
+let tff_add_type env name t =
+    { (* env with *) types = M.add name t env.types }
+
 exception Type_found of tff_type
 let tff_match_app env f args =
     let aux (l, t) = if (List.map (fun x -> Base x) l) = args then raise (Type_found (Base t)) in
     match (tff_find_type f env) with
-    | Base _ -> raise (Type_error "Not a function")
+    | Base _ as t -> t
     | Arrow t ->
             try
                 List.iter aux t;
@@ -141,9 +154,10 @@ and print_list_expr fmt l = List.iter (fun e -> fprintf fmt "@[<hov 3>-> %a@]@\n
 let first_chars s n = String.sub s 0 n
 let after_chars s n = String.sub s n (String.length s - n)
 
-let is_typed s = (10 <= s && s <= 12)
+let is_ttdef s = s = 13
+let is_texpr s = (10 <= s && s <= 12)
 let notype_kind = function
-    | s when is_typed s -> s - 10
+    | s when is_texpr s -> s - 10
     | s -> s
 
 let var_of_meta = function
@@ -254,6 +268,10 @@ let type_tff_expr env e =
     | Base "$o" -> e'
     | _ -> raise (Type_error ("Expected a boolean, not a " ^ (tff_to_string t)))
 
+let type_tff_def env = function
+    | Eapp ("#", Evar(s, _) :: l, _) -> tff_add_type env s (tff_of_lexpr l)
+    | _ -> raise (Type_error "Not a definition")
+
 let rec type_fof_expr e = match e with
     | Evar _
     | Etrue
@@ -285,16 +303,15 @@ let relevant = function
     | _ -> true
 
 let type_phrase env p = match p with
+    | Phrase.Hyp (name, e, kind) when is_ttdef kind ->
+            p, type_tff_def env e
+    | Phrase.Hyp (name, e, kind) when is_texpr kind ->
+            let e' = type_tff_expr env e in
+            (* eprintf "%a@." print_expr e'; *)
+            Phrase.Hyp (name, e', notype_kind kind), env
     | Phrase.Hyp (name, e, kind) ->
-            if is_typed kind then begin
-                (* TODO: in case of a definition, extend environment *)
-                let e' = type_tff_expr env e in
-                (* eprintf "%a@." print_expr e'; *)
-                Phrase.Hyp (name, e', notype_kind kind), env
-            end else begin
-                type_fof_expr e;
-                p, env
-            end
+            type_fof_expr e;
+            p, env
     | _ -> p, env
 
 let map_fold f s l =
@@ -302,7 +319,5 @@ let map_fold f s l =
     List.rev e, env
 
 let typecheck l =
-    let l = List.filter relevant l in
     let p, _ = map_fold type_phrase tff_default_env l in
-    p
-
+    List.filter relevant p
