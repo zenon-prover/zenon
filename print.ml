@@ -584,3 +584,41 @@ let llproof o p =
   List.iter (llproof_lemma o) p;
   flush ();
 ;;
+
+
+let new_id =
+    let n = ref 0 in
+    fun _ -> incr n; "node" ^ (string_of_int !n)
+
+let rec expr_list o = function
+    | [] -> ()
+    | [e] -> expr o e
+    | e :: r -> expr o e; oprintf o "; "; expr_list o r
+
+let dot_rule o id conc r =
+    let pr f = oprintf o f in
+    let s, l = get_rule_name r in
+    pr "%s [shape=record, label=\"{" id;
+    expr_list o conc;
+    pr " | { %s | " s;
+    expr_list o l;
+    pr "}}\"];\n"
+
+let rec dot_proof o p s =
+    let pr f = oprintf o f in
+    dot_rule o s p.mlconc p.mlrule;
+    let ids = Array.init (Array.length p.mlhyps) new_id in
+    for i = 0 to Array.length ids - 1 do
+        pr "%s -> %s;\n" s ids.(i)
+    done;
+    for i = 0 to Array.length ids - 1 do
+        dot_proof o p.mlhyps.(i) ids.(i)
+    done
+
+let dot o p =
+    let pr f = oprintf o f in
+    pr "digraph proof {\n";
+    dot_proof o p (new_id 0);
+    pr "}\n";
+    flush ()
+;;

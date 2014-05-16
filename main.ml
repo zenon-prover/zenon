@@ -15,6 +15,7 @@ type proof_level =
   | Proof_coq
   | Proof_coqterm
   | Proof_isar
+  | Proof_dot
 ;;
 let proof_level = ref Proof_none;;
 
@@ -143,6 +144,8 @@ let argspec = [
       "                print the proof in middle-level format";
   "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
          "             do not print the proof (default)";
+  "-odot", Arg.Unit (fun () -> proof_level := Proof_dot),
+         "             print the proof in dot format (use with -q option)";
   "-opt0", Arg.Unit (fun () -> opt_level := 0),
         "              do not optimise the proof";
   "-opt1", Arg.Unit (fun () -> opt_level := 1),
@@ -357,6 +360,7 @@ let main () =
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
+    | Proof_dot -> Print.dot (Print.Chan stdout) proof;
     end;
   with
   | Prove.NoProof ->
