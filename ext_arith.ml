@@ -36,7 +36,7 @@ let etype e e' = ctype (get_type e) (get_type e')
 
 let mk_app t s l = add_type t (eapp (s, l))
 
-let const s = mk_app "$int" "$int" [evar s]
+let const s = mk_app "$int" s []
 
 let sum a b = mk_app (etype a b) "$sum" [a; b]
 let mul a b = mk_app (etype a b) "$product" [a; b]
@@ -84,7 +84,7 @@ let of_cexpr = function
     | _ -> raise NotaFormula
 
 let rec of_nexpr = function
-    | Eapp (("$int"|"$rat"), [v], _) -> [of_cexpr v, etrue]
+    | Eapp (v, [], _) as e when is_int e || is_rat e -> [Q.of_string v, etrue]
     | Evar (v, _) as a when is_int a || is_rat a -> [Q.one, a]
     | Etau (_, ("$int"|"$rat"), _, _) as a -> [Q.one, a]
     | Eapp ("$sum", [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
