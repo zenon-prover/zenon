@@ -142,7 +142,9 @@ let first_chars s n = String.sub s 0 n
 let after_chars s n = String.sub s n (String.length s - n)
 
 let is_typed s = (10 <= s && s <= 12)
-let notype_kind s = s - 10
+let notype_kind = function
+    | s when is_typed s -> s - 10
+    | s -> s
 
 let var_of_meta = function
     | Emeta (Eall (Evar(v, _), _, _, _), _)
@@ -225,7 +227,7 @@ let rec type_tff_aux env e =
     t, set_tff_type t e
 
 and type_tff_app env s l = match s, l with
-    | "=", a :: b :: [] ->
+    | "=", [a; b]  ->
             let t, e = type_tff_aux env a in
             let t', e' = type_tff_aux env b in
             if tff_is_atomic t && tff_is_atomic t' && t = t' then
@@ -235,12 +237,12 @@ and type_tff_app env s l = match s, l with
                     tff_bool, eapp (s, [e; e'])
             else
                 raise (Type_error ("Bad types for equality : " ^ (tff_to_string t) ^ " <> " ^ (tff_to_string t')))
-    | "$int", [a] ->
-            tff_int, eapp (s, [set_tff_type tff_int a])
-    | "$rat", [a] ->
-            tff_rat, eapp (s, [set_tff_type tff_rat a])
-    | "$real", [a] ->
-            tff_real, eapp (s, [set_tff_type tff_real a])
+    | "$int", [Evar (v, _)] ->
+            tff_int, eapp (v, [])
+    | "$rat", [Evar (v, _)] ->
+            tff_rat, eapp (v, [])
+    | "$real", [Evar (v, _)] ->
+            tff_real, eapp (v, [])
     | _ ->
             let l', l'' = List.split (List.map (type_tff_aux env) l) in
             let t = tff_match_app env s l' in
@@ -278,6 +280,10 @@ let rec type_fof_expr e = match e with
             type_fof_expr e';
             type_fof_expr e''
 
+let relevant = function
+    | Phrase.Hyp(_, _, 13) -> false
+    | _ -> true
+
 let type_phrase env p = match p with
     | Phrase.Hyp (name, e, kind) ->
             if is_typed kind then begin
@@ -295,7 +301,8 @@ let map_fold f s l =
     let e, env = List.fold_left (fun (acc, env) e -> let x, env' = f env e in (x :: acc, env')) ([], s) l in
     List.rev e, env
 
-let typecheck x =
-    let p, _ = map_fold type_phrase tff_default_env x in
+let typecheck l =
+    let l = List.filter relevant l in
+    let p, _ = map_fold type_phrase tff_default_env l in
     p
 

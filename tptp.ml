@@ -126,6 +126,8 @@ let rec translate_one dirs accu p =
   | Formula (name, "negated_conjecture", body) ->
       Hyp (name, body, 0) :: accu
   (* TFF formulas *)
+  | Formula (name, "tff_type", body) ->
+      Hyp (name, body, 13) :: accu
   | Formula (name, ("tff_axiom" | "tff_definition"), body) ->
       Hyp (name, body, 12) :: accu
   | Formula (name, "tff_hypothesis", body) ->

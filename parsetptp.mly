@@ -50,8 +50,10 @@ let cnf_to_formula l =
 %token INPUT_CLAUSE
 %token INPUT_FORMULA
 %token INPUT_TFF_FORMULA
+%token RANGL
 %token LBRACKET
 %token RBRACKET
+%token STAR
 %token <string> LIDENT
 %token <string> UIDENT
 %token <string> STRING
@@ -129,6 +131,7 @@ formula:
   | atom XOR formula           { enot (eequiv ($1, $3)) }
   | atom NOR formula           { enot (eor ($1, $3)) }
   | atom NAND formula          { enot (eand ($1, $3)) }
+  | LIDENT COLON tff_type      { eapp ("#", (evar $1) :: $3) }
 ;
 atom:
   | ALL LBRACKET var_list RBRACKET COLON atom
@@ -147,6 +150,14 @@ var_list:
   | UIDENT                              { [evar (ns_var $1), Namespace.univ_name] }
   | UIDENT COLON LIDENT                 { [evar (ns_var $1), $3] }
 ;
+tff_type:
+  | LIDENT                              { [evar $1] }
+  | tuple_type RANGL LIDENT             { (evar $3) :: $1 }
+  | OPEN tuple_type CLOSE RANGL LIDENT  { (evar $5) :: $2 }
+;
+tuple_type:
+  | LIDENT                  { [evar $1] }
+  | LIDENT STAR tuple_type  { evar $1 :: $3 }
 name_list:
   | LIDENT COMMA name_list         { $1 :: $3 }
   | LIDENT                         { [$1] }

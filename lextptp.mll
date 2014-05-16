@@ -51,8 +51,10 @@ rule token = parse
   | ")"              { CLOSE }
   | "["              { LBRACKET }
   | "]"              { RBRACKET }
+  | ">"              { RANGL }
   | ","              { COMMA }
   | ":"              { COLON }
+  | "*"              { STAR }
   | "."              { DOT }
   | "?"              { EX }
   | "!"              { ALL }
