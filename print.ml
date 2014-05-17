@@ -586,23 +586,66 @@ let llproof o p =
 ;;
 
 
+let dot_rule_name = function
+  | Close e -> "Axiom", [e]
+  | Close_refl (s, e) -> "Refl("^s^")", [e]
+  | Close_sym (s, e1, e2) -> "Sym("^s^")", [e1; e2]
+  | False -> "False", []
+  | NotTrue -> "NotTrue", []
+  | NotNot (e) -> "NotNot", [e]
+  | NotAll (e) -> "NotAll", [e]
+  | NotAllEx (e) -> "NotAllEx", [e]
+  | Ex (e) -> "Exists", [e]
+  | NotEqual (e1, e2) -> "NotEqual", [e1; e2]
+  | And (e1, e2) -> "And", [e1; e2]
+  | NotOr (e1, e2) -> "NotOr", [e1; e2]
+  | NotImpl (e1, e2) -> "NotImply", [e1; e2]
+  | All (e1, e2) -> "All", [e2]
+  | NotEx (e1, e2) -> "NotExists", [e2]
+  | Or (e1, e2) -> "Or", [e1; e2]
+  | Impl (e1, e2) -> "Imply", [e1; e2]
+  | NotAnd (e1, e2) -> "NotAnd", [e1; e2]
+  | Equiv (e1, e2) -> "Equiv", [e1; e2]
+  | NotEquiv (e1, e2) -> "NotEquiv", [e1; e2]
+  | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
+  | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^s^")", [e1; e2]
+  | Definition (DefReal (_, s, _, _, _), e, _) -> "Definition("^s^")", [e]
+  | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
+  | Definition (DefRec (_, s, _, _), e, _) -> "Definition-Rec("^s^")", [e]
+  | ConjTree e -> "ConjTree", [e]
+  | DisjTree e -> "DisjTree", [e]
+  | AllPartial (e1, s, n) -> "All-Partial", [e1]
+  | NotExPartial (e1, s, n) -> "NotEx-Partial", [e1]
+  | Refl (s, e1, e2) -> "Refl("^s^")", [e1; e2]
+  | Trans (e1, e2) -> "Trans", [e1; e2]
+  | Trans_sym (e1, e2) -> "Trans-sym", [e1; e2]
+  | TransEq (e1, e2, e3) -> "TransEq", [e1; e2; e3]
+  | TransEq2 (e1, e2, e3) -> "TransEq2", [e1; e2; e3]
+  | TransEq_sym (e1, e2, e3) -> "TransEq-sym", [e1; e2; e3]
+  | Cut (e1) -> "Cut", [e1]
+  | CongruenceLR (p, a, b) -> "CongruenceLR", [p; a; b]
+  | CongruenceRL (p, a, b) -> "CongruenceRL", [p; a; b]
+  | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
+  | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
+;;
+
 let new_id =
     let n = ref 0 in
     fun _ -> incr n; "node" ^ (string_of_int !n)
 
-let rec expr_list o = function
+let rec expr_list sep o = function
     | [] -> ()
-    | [e] -> expr o e
-    | e :: r -> expr o e; oprintf o "; "; expr_list o r
+    | [e] -> expr_soft o e
+    | e :: r -> expr_soft o e; oprintf o "%s" sep; expr_list sep o r
 
 let dot_rule o id conc r =
     let pr f = oprintf o f in
-    let s, l = get_rule_name r in
+    let s, l = dot_rule_name r in
     pr "%s [shape=record, label=\"{" id;
-    expr_list o conc;
-    pr " | { %s | " s;
-    expr_list o l;
-    pr "}}\"];\n"
+    expr_list "; " o conc;
+    pr " | { %s | {" s;
+    expr_list "| " o l;
+    pr "}}}\"];\n"
 
 let rec dot_proof o p s =
     let pr f = oprintf o f in
