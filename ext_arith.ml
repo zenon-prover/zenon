@@ -79,19 +79,29 @@ let normalize a b =
     let c, e = pop_const f in
     c, (sanitize e)
 
-let of_cexpr = function
-    | Evar (s, _) -> Q.of_string s
+let of_cexpr e = match e with
+    | Eapp (s, [], _) when is_int e || is_rat e ->
+            begin try
+                Q.of_string s
+            with Invalid_argument _ ->
+                raise Exit
+            end
     | _ -> raise NotaFormula
 
 let rec of_nexpr = function
-    | Eapp (v, [], _) as e when is_int e || is_rat e -> [Q.of_string v, etrue]
+    | Eapp (v, [], _) as e ->
+        begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
     | Evar (v, _) as a when is_int a || is_rat a -> [Q.one, a]
     | Etau (_, ("$int"|"$rat"), _, _) as a -> [Q.one, a]
     | Eapp ("$sum", [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
     | Eapp ("$difference", [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
-    | Eapp ("$product", [Eapp (("$int"|"$rat"), [v], _); a], _)
-    | Eapp ("$product", [a; Eapp (("$int"|"$rat"), [v], _)], _) ->
-            fmul (of_cexpr v) (of_nexpr a)
+    | Eapp ("$product", [Eapp (_, [], _) as e; a], _)
+    | Eapp ("$product", [a; Eapp (_, [], _) as e], _) ->
+            begin try
+                fmul (of_cexpr e) (of_nexpr a)
+            with Exit ->
+                raise NotaFormula
+            end
     | _ -> raise NotaFormula
 
 let of_bexpr = function
