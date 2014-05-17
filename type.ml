@@ -47,6 +47,12 @@ let tff_of_lexpr = function
     | (Evar(t, _)) :: l -> Arrow [List.map tff_of_expr l, t]
     | _ -> raise (Type_error "Expected a type, not an expression")
 
+let tff_check = function
+    | Base _ -> ()
+    | Arrow [l, t] ->
+            if List.exists (fun x -> x = "$o") l then raise (Type_error "Cannot take a bool argument.")
+    | Arrow _ -> ()
+
 (* Typing Environnment for TFF *)
 type tff_env = {
     types : tff_type M.t;
@@ -69,11 +75,21 @@ let tff_add_var env v t = match v with
             if t = Namespace.univ_name then
                 raise (Type_error "'untyped' variable detected.")
             else
+                if M.mem s env.types then
+                    raise (Type_error ("Adding same variable to env twice."));
                 { (* env with *) types = M.add s (Base t) env.types; }
     | _ -> assert false
 
 let tff_add_type env name t =
-    { (* env with *) types = M.add name t env.types }
+    tff_check t;
+    if M.mem name env.types then
+        let t' = M.find name env.types in
+        if t <> t' then
+            raise (Type_error ("Contradictory type declarations of " ^ name))
+        else
+            env
+    else
+        { (* env with *) types = M.add name t env.types }
 
 exception Type_found of tff_type
 let tff_match_app env f args =
