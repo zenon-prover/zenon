@@ -2,9 +2,9 @@
 
 # hard coded path, please forgive me
 TEMP=./temp.gv
-FILES1=/home/guigui/build/tptp/Problems/ARI/*.p
+FILES=/home/guigui/build/tptp/Problems/ARI/*.p
 
-for f in $FILES1
+for f in $FILES
 do
     ./zenon -x arith -itptp $f > /dev/null 2> /dev/null
     RET=$?
@@ -21,3 +21,4 @@ do
         ./zenon -x arith -itptp $f
     fi
 done
+rm $TEMP

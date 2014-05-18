@@ -585,6 +585,52 @@ let llproof o p =
   flush ();
 ;;
 
+let rec expr_soft o ex =
+  let pr f = oprintf o f in
+  match ex with
+  | Evar (v, _) -> pr "%s" v;
+  | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
+  | Eapp (s, [e1; e2], _) when is_infix_op s ->
+     pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
+  | Eapp (s, es, _) ->
+      pr "(%s" s;
+      List.iter (fun x -> pr " "; expr_soft o x) es;
+      pr ")";
+  | Enot (Eapp ("=", [e1; e2], _), _) ->
+      pr "("; expr_soft o e1; pr " != "; expr_soft o e2; pr ")";
+  | Enot (e, _) -> pr "(-. "; expr_soft o e; pr ")";
+  | Eand (e1, e2, _) ->
+      pr "("; expr_soft o e1; pr " /\\ "; expr_soft o e2; pr ")";
+  | Eor (e1, e2, _) ->
+      pr "("; expr_soft o e1; pr " \\/ "; expr_soft o e2; pr ")";
+  | Eimply (e1, e2, _) ->
+      pr "("; expr_soft o e1; pr " =\\> "; expr_soft o e2; pr ")";
+  | Eequiv (e1, e2, _) ->
+      pr "("; expr_soft o e1; pr " \\<=\\> "; expr_soft o e2; pr ")";
+  | Etrue -> pr "True";
+  | Efalse -> pr "False";
+  | Eall (Evar (v, _), t, e, _) when t = univ_name ->
+      pr "(All %s, " v; expr_soft o e; pr ")";
+  | Eall (Evar (v, _), t, e, _) ->
+      pr "(All %s:%s, " v t; expr_soft o e; pr ")";
+  | Eall _ -> assert false
+  | Eex (Evar (v, _), t, e, _) when t = univ_name ->
+      pr "(Ex %s, " v; expr_soft o e; pr ")";
+  | Eex (Evar (v, _), t, e, _) ->
+      pr "(Ex %s:%s, " v t; expr_soft o e; pr ")";
+  | Eex _ -> assert false
+  | Etau _ as e -> pr "T_%d" (Index.get_number e);
+  | Elam (Evar (v, _), t, e, _) when t = univ_name ->
+      pr "(lambda %s, " v; expr_soft o e; pr ")";
+  | Elam (Evar (v, _), t, e, _) ->
+      pr "(lambda %s:%s, " v t; expr_soft o e; pr ")";
+  | Elam _ -> assert false
+;;
+
+let expr_soft o e =
+  expr_soft o e;
+  flush ();
+;;
 
 let dot_rule_name = function
   | Close e -> "Axiom", [e]

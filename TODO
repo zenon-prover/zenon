@@ -1,6 +1,5 @@
 
 * 'Tau' extension
-  - add zarith at compile time
   - code extension
 
 * Meta-variable extension
@@ -11,7 +10,6 @@
   - rerun proof search with instanciation hints for num variables
 
 * Parse/Type all of TFF
-  - parse/type type definitions
   - infer functions/predicates types
   - type double quoted identifiers
 
