@@ -585,50 +585,69 @@ let llproof o p =
   flush ();
 ;;
 
-let rec expr_soft o ex =
+let is_infix_op s =
+    (s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_' ) || (match s with
+    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "$eq_num"
+    | "$sum" | "$product" | "$difference" -> true
+    | s -> false)
+
+let to_infix = function
+    | "$less" -> "\\<"
+    | "$lesseq" -> "\\<="
+    | "$greater" -> "\\>"
+    | "$greatereq" -> "\\>="
+    | "$eq_num" -> "="
+    | "$sum" -> "+"
+    | "$product" -> "*"
+    | "$difference" -> "-"
+    | s -> s
+
+let rec expr_esc o ex =
   let pr f = oprintf o f in
   match ex with
   | Evar (v, _) -> pr "%s" v;
   | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
   | Eapp (s, [e1; e2], _) when is_infix_op s ->
-     pr "("; expr_soft o e1; pr " %s " s; expr_soft o e2; pr ")";
+     pr "("; expr_esc o e1; pr " %s " (to_infix s); expr_esc o e2; pr ")";
+  | Eapp (s, [], _) ->
+     pr "%s" s
   | Eapp (s, es, _) ->
       pr "(%s" s;
-      List.iter (fun x -> pr " "; expr_soft o x) es;
+      List.iter (fun x -> pr " "; expr_esc o x) es;
       pr ")";
   | Enot (Eapp ("=", [e1; e2], _), _) ->
-      pr "("; expr_soft o e1; pr " != "; expr_soft o e2; pr ")";
-  | Enot (e, _) -> pr "(-. "; expr_soft o e; pr ")";
+      pr "("; expr_esc o e1; pr " != "; expr_esc o e2; pr ")";
+  | Enot (e, _) -> pr "(-. "; expr_esc o e; pr ")";
   | Eand (e1, e2, _) ->
-      pr "("; expr_soft o e1; pr " /\\ "; expr_soft o e2; pr ")";
+      pr "("; expr_esc o e1; pr " /\\ "; expr_esc o e2; pr ")";
   | Eor (e1, e2, _) ->
-      pr "("; expr_soft o e1; pr " \\/ "; expr_soft o e2; pr ")";
+      pr "("; expr_esc o e1; pr " \\/ "; expr_esc o e2; pr ")";
   | Eimply (e1, e2, _) ->
-      pr "("; expr_soft o e1; pr " =\\> "; expr_soft o e2; pr ")";
+      pr "("; expr_esc o e1; pr " =\\> "; expr_esc o e2; pr ")";
   | Eequiv (e1, e2, _) ->
-      pr "("; expr_soft o e1; pr " \\<=\\> "; expr_soft o e2; pr ")";
+      pr "("; expr_esc o e1; pr " \\<=\\> "; expr_esc o e2; pr ")";
   | Etrue -> pr "True";
   | Efalse -> pr "False";
   | Eall (Evar (v, _), t, e, _) when t = univ_name ->
-      pr "(All %s, " v; expr_soft o e; pr ")";
+      pr "(All %s, " v; expr_esc o e; pr ")";
   | Eall (Evar (v, _), t, e, _) ->
-      pr "(All %s:%s, " v t; expr_soft o e; pr ")";
+      pr "(All %s:%s, " v t; expr_esc o e; pr ")";
   | Eall _ -> assert false
   | Eex (Evar (v, _), t, e, _) when t = univ_name ->
-      pr "(Ex %s, " v; expr_soft o e; pr ")";
+      pr "(Ex %s, " v; expr_esc o e; pr ")";
   | Eex (Evar (v, _), t, e, _) ->
-      pr "(Ex %s:%s, " v t; expr_soft o e; pr ")";
+      pr "(Ex %s:%s, " v t; expr_esc o e; pr ")";
   | Eex _ -> assert false
   | Etau _ as e -> pr "T_%d" (Index.get_number e);
   | Elam (Evar (v, _), t, e, _) when t = univ_name ->
-      pr "(lambda %s, " v; expr_soft o e; pr ")";
+      pr "(lambda %s, " v; expr_esc o e; pr ")";
   | Elam (Evar (v, _), t, e, _) ->
-      pr "(lambda %s:%s, " v t; expr_soft o e; pr ")";
+      pr "(lambda %s:%s, " v t; expr_esc o e; pr ")";
   | Elam _ -> assert false
 ;;
 
-let expr_soft o e =
-  expr_soft o e;
+let expr_esc o e =
+  expr_esc o e;
   flush ();
 ;;
 
@@ -681,14 +700,14 @@ let new_id =
 
 let rec expr_list sep o = function
     | [] -> ()
-    | [e] -> expr_soft o e
-    | e :: r -> expr_soft o e; oprintf o "%s" sep; expr_list sep o r
+    | [e] -> expr_esc o e
+    | e :: r -> expr_esc o e; oprintf o "%s" sep; expr_list sep o r
 
 let dot_rule o id conc r =
     let pr f = oprintf o f in
     let s, l = dot_rule_name r in
     pr "%s [shape=record, label=\"{" id;
-    expr_list "; " o conc;
+    expr_list "| " o conc;
     pr " | { %s | {" s;
     expr_list "| " o l;
     pr "}}}\"];\n"

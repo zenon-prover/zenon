@@ -4,6 +4,8 @@
 TEMP=./temp.gv
 FILES=/home/guigui/build/tptp/Problems/ARI/*.p
 
+
+rm /home/guigui/build/tptp/Problems/ARI/*.ps
 for f in $FILES
 do
     ./zenon -x arith -itptp $f > /dev/null 2> /dev/null
@@ -11,6 +13,7 @@ do
     if [ $RET -eq 0 ];
     then
         echo -e "\e[32m[PROOF FOUND] $f \e[0m"
+        grep Rating $f
         ./zenon -q -odot -x arith -itptp $f > $TEMP
         dot -Tps $TEMP -o $f.ps
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ];
