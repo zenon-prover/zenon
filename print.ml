@@ -619,9 +619,9 @@ let rec expr_esc o ex =
       pr "("; expr_esc o e1; pr " != "; expr_esc o e2; pr ")";
   | Enot (e, _) -> pr "(-. "; expr_esc o e; pr ")";
   | Eand (e1, e2, _) ->
-      pr "("; expr_esc o e1; pr " /\\ "; expr_esc o e2; pr ")";
+      pr "("; expr_esc o e1; pr " /\\\\ "; expr_esc o e2; pr ")";
   | Eor (e1, e2, _) ->
-      pr "("; expr_esc o e1; pr " \\/ "; expr_esc o e2; pr ")";
+      pr "("; expr_esc o e1; pr " \\\\/ "; expr_esc o e2; pr ")";
   | Eimply (e1, e2, _) ->
       pr "("; expr_esc o e1; pr " =\\> "; expr_esc o e2; pr ")";
   | Eequiv (e1, e2, _) ->
