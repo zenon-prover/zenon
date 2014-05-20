@@ -707,7 +707,7 @@ let dot_rule o id conc conc' r =
             pr "<TR><TD BGCOLOR=\"GREY\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>"
         end else begin
             pr "<TR><TD BGCOLOR=\"YELLOW\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>" end) conc;
-    pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" rowspan=\"2\">%s</TD>" s;
+    pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" rowspan=\"%i\">%s</TD>" (List.length l) s;
     pr "<TD>"; expr_esc o (List.hd l); pr "</TD></TR>";
     List.iter (fun e -> pr "<TR><TD>"; expr_esc o e; pr "</TD></TR>") (List.tl l);
     pr "</TABLE>>];\n"
