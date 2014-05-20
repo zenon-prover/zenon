@@ -13,7 +13,6 @@ do
     if [ $RET -eq 0 ];
     then
         echo -e "\e[32m[PROOF FOUND] $f \e[0m"
-        grep Rating $f
         ./zenon -q -odot -x arith -itptp $f > $TEMP
         dot -Tps $TEMP -o $f.ps
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ];
