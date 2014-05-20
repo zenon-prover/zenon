@@ -55,6 +55,8 @@ let const s =
         mk_app "$rat" s []
 
 let sum a b = mk_app (etype a b) "$sum" [a; b]
+let diff a b = mk_app (etype a b) "$difference" [a; b]
+let uminus a = mk_app (get_type a) "$uminus" [a]
 let mul a b = mk_app (etype a b) "$product" [a; b]
 let minus_one e = mk_app (get_type e) "$difference" [e; const "1"]
 let plus_one e = mk_app (get_type e) "$sum" [e; const "1"]
@@ -97,13 +99,13 @@ let normalize a b =
         else
             let k = Q.of_bigint (List.fold_left (fun k c -> if Q.is_real c then Z.lcm k (Q.den c) else k) Z.one e) in
             let aux = (fun g c -> Z.gcd g (Q.to_bigint (Q.mul c k))) in
-            Q.of_bigint (List.fold_left aux (Q.to_bigint (Q.mul (List.hd e) k)) (List.tl e))
+            Q.div k (Q.of_bigint (List.fold_left aux (Q.to_bigint (Q.mul (List.hd e) k)) (List.tl e)))
     in
     let f = fdiff a b in
     let c, e = pop_const f in
     let e = sanitize e in
     let k = coef (List.map fst e) in
-    Q.div c k, (List.map (fun (c, x) -> (Q.div c k, x)) e)
+    Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e)
 
 let of_cexpr e = match e with
     | Eapp (s, [], _) when is_int e || is_rat e ->
@@ -119,6 +121,7 @@ let rec of_nexpr = function
         begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
     | Evar (v, _) as a when is_int a || is_rat a -> [Q.one, a]
     | Etau (_, ("$int"|"$rat"), _, _) as a -> [Q.one, a]
+    | Eapp ("$uminus", [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
     | Eapp ("$sum", [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
     | Eapp ("$difference", [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
     | Eapp ("$product", [Eapp (_, [], _) as e; a], _)
@@ -137,9 +140,13 @@ let of_bexpr = function
             (e, s, c)
     | _ -> raise NotaFormula
 
+let to_nexpr_aux (c, x) = if Q.equal Q.one c then x else mul (const (Q.to_string c)) x
+
 let to_nexpr = function
     | [] -> const "0"
-    | (c, x) :: r -> List.fold_left (fun e (c', x') -> sum e (mul (const (Q.to_string c')) x')) (mul (const (Q.to_string c)) x) r
+    | (c, x) :: r -> List.fold_left
+        (fun e (c', x') -> if Q.sign c' < 0 then diff e (to_nexpr_aux (Q.neg c', x')) else sum e (to_nexpr_aux (c', x')))
+        (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
 
 let to_bexpr (e, s, c) = mk_app "$o" s [to_nexpr e; const (Q.to_string c)]
 
@@ -228,10 +235,10 @@ let mk_node_branch v e e' g =
         nbranches = [| [e]; [e'] |];
     }
 
-let mk_node_lin e l g =
+let mk_node_lin x e l g =
     Node {
         nconc = l;
-        nrule = Ext ("arith", "lin", [e]);
+        nrule = Ext ("arith", "lin", [x; e]);
         nprio = Prop;
         ngoal = g;
         nbranches = [| [e] |];
@@ -326,7 +333,7 @@ let new_bindings low high f = function
                         | _ -> assert false
                         end
             end
-    | _ -> assert false
+    | _ -> low, high
 
 let print_opt fmt = function
     | None -> Format.fprintf fmt "empty"
@@ -361,6 +368,7 @@ let bound_of_expr is_high e bounds =
                 end
         | (c, x) :: r ->
                 let l, b = aux r in
+                (* Format.printf "%a@." Type.print_expr x; *)
                 let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
                 if xor is_high (Q.sign c >= 0) then
                     (pop_option einf) :: l, Q.add b (Q.mul c (translate_bound einf (fun () -> raise Exit)))
@@ -375,6 +383,7 @@ let bounds_of_clin v expr bounds =
     let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal y v) bounds in
     let inf = translate_bound einf (fun () -> Q.minus_inf) in
     let upp = translate_bound eupp (fun () -> Q.inf) in
+    (* Format.printf "Bindings : @\n%a@\n-----@.%a@." print_bindings bounds Type.print_expr (to_nexpr expr); *)
     let l_bounds, low = bound_of_expr false expr bounds in
     let h_bounds, high = bound_of_expr true expr bounds in
     if Q.gt low upp then
@@ -429,12 +438,12 @@ let nodes_of_tree s f t =
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
                 (List.filter (fun (y, _, _, _) -> List.exists (fun x -> equal x y) l) s.bindings) in
-            let clin = expr_norm (mk_app "$o" "$eq_num" [v; to_nexpr expr]) in
+            let clin = expr_norm (mk_app "$o" "$eq_num" [to_nexpr expr; v]) in
             let bounds, nb, conflict = bounds_of_clin v expr s.bindings in
             if bounds = [] then
                 [dummy, mk_node_conflict nb conflict]
             else
-                [f, mk_node_lin clin relevant;
+                [f, mk_node_lin v clin relevant;
                  clin, mk_node_sim clin bounds nb;
                  nb, mk_node_conflict nb conflict]
     in
