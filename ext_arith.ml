@@ -38,6 +38,8 @@ let comp_neg = function
     | "$lesseq" -> "$greater"
     | "$greater" -> "$lesseq"
     | "$greatereq" -> "$less"
+    | "$is_int" -> "$not_is_int"
+    | "$is_rat" -> "$not_is_rat"
     | _ -> assert false
 
 let ctype t t' = match t, t' with
@@ -81,7 +83,7 @@ let fmul c a = List.map (fun (c', x) -> (Q.mul c c', x)) a
 
 let rec sanitize = function
     | [] -> []
-    | (c, _) as a :: r -> if Q.equal Q.zero c then r else a :: (sanitize r)
+    | (c, _) as a :: r -> if Q.equal Q.zero c then (sanitize r) else a :: (sanitize r)
 
 let normalize a b =
     let rec pop_const = function
@@ -138,6 +140,10 @@ let of_bexpr = function
             let a', b' = of_nexpr a, of_nexpr b in
             let c, e = normalize a' b' in
             (e, s, c)
+    | Eapp (("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s, [a], _) ->
+            let a' = of_nexpr a in
+            let c, e = normalize [Q.zero, etrue] a' in
+            (e, s, c)
     | _ -> raise NotaFormula
 
 let to_nexpr_aux (c, x) = if Q.equal Q.one c then x else mul (const (Q.to_string c)) x
@@ -157,7 +163,7 @@ let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 let mk_node_const s c e g = (* e is a trivially false comparison of constants *)
     Node {
         nconc = [e];
-        nrule = Ext ("arith", "const_" ^ s, [const "0"; const (Q.to_string c)]);
+        nrule = Ext ("arith", "const_" ^ s, [const (Q.to_string c)]);
         nprio = Prop;
         ngoal = g;
         nbranches = [| |];
@@ -199,7 +205,16 @@ let mk_node_var e1 e2 e g = (* e1 : v = expr, e2 : v {comp} const, e : expr {com
         nbranches = [| [e1; e2] |];
     }
 
-let mk_node_neg s a b e g = (* e : ~ a {s} b *)
+let mk_node_neg s a e g = (* e : ~ a {s} b *)
+    Node {
+        nconc = [e];
+        nrule = Ext ("arith", "neg_" ^ s, [a]);
+        nprio = Prop;
+        ngoal = g;
+        nbranches = [| [mk_app "$o" (comp_neg s) [a] ] |];
+    }
+
+let mk_node_neg2 s a b e g = (* e : ~ a {s} b *)
     Node {
         nconc = [e];
         nrule = Ext ("arith", "neg_" ^ s, [a; b]);
@@ -437,6 +452,7 @@ let nodes_of_tree s f t =
                 (aux (add_binding s v under (of_bexpr under)) under c) @
                 (aux (add_binding s v above (of_bexpr above)) above c'))
     | Some S.Explanation (v, expr) ->
+            let expr = sanitize expr in
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
                 (List.filter (fun (y, y', _, _) -> not (equal y y') && List.exists (fun x -> equal x y) l) s.bindings) in
@@ -544,6 +560,9 @@ let const_node e = (* comparison of constants *)
     | "$greater" when Q.leq Q.zero c -> add_todo e (mk_node_const "gt" c e)
     | "$greatereq" when Q.lt Q.zero c -> add_todo e (mk_node_const "geq" c e)
     | "$eq_num" when not (Q.equal Q.zero c) -> add_todo e (mk_node_const "eq" c e)
+    | "$is_int" when not (is_z c) -> add_todo e (mk_node_const "is_int" c e)
+    | "$not_is_int" when is_z c -> add_todo e (mk_node_const "not_int" c e)
+    | "$not_is_rat" -> add_todo e (mk_node_const "not_rat" c e)
     | _ -> ()
     end
 
@@ -554,7 +573,9 @@ let add_formula e = match e with
     | Enot (Eapp ("$eq_num", [a; b], _), _) ->
             add_todo e (mk_node_neq a b e)
     | Enot (Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq") as s, [a; b], _), _) ->
-            add_todo e (mk_node_neg s a b e)
+            add_todo e (mk_node_neg2 s a b e)
+    | Enot (Eapp (("$is_int"|"$is_rat") as s, [a], _), _) ->
+            add_todo e (mk_node_neg s a e)
     | _ when is_const e ->
             const_node e
     | Eapp ("$eq_num", [a; b], _) ->
