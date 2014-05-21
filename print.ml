@@ -600,6 +600,7 @@ let to_infix = function
     | "$sum" -> "+"
     | "$product" -> "*"
     | "$difference" -> "-"
+    | "$uminus" -> "-"
     | s -> s
 
 let rec expr_esc o ex =
@@ -612,7 +613,7 @@ let rec expr_esc o ex =
   | Eapp (s, [], _) ->
      pr "%s" s
   | Eapp (s, es, _) ->
-      pr "(%s" s;
+      pr "(%s" (to_infix s);
       List.iter (fun x -> pr " "; expr_esc o x) es;
       pr ")";
   | Enot (Eapp ("=", [e1; e2], _), _) ->

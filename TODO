@@ -1,7 +1,4 @@
 
-* 'Tau' extension
-  - code extension
-
 * Meta-variable extension
   - limit the number of instanciations
   - get the incomplete proof tree at end of search

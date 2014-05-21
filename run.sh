@@ -23,4 +23,5 @@ do
         ./zenon -x arith -itptp $f
     fi
 done
+echo `ls -l Problems/ARI/*.ps | wc -l`
 rm $TEMP

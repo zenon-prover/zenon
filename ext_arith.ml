@@ -6,9 +6,9 @@
 open Expr
 open Node
 open Mlproof
+module Eset = Set.Make(struct type t= Expr.t let compare = Expr.compare end)
 module S = Simplex.Make(struct type t = Expr.t let compare = Expr.compare end)
 
-let dummy = eapp ("", [])
 let equal x y = Expr.compare x y = 0
 
 let get_type = function
@@ -104,7 +104,7 @@ let normalize a b =
     let f = fdiff a b in
     let c, e = pop_const f in
     let e = sanitize e in
-    let k = coef (List.map fst e) in
+    let k = Q.abs (coef (List.map fst e)) in
     Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e)
 
 let of_cexpr e = match e with
@@ -229,16 +229,16 @@ let mk_node_int_gt a b e g = (* e : a > b, => a >= b + 1 *)
 let mk_node_branch v e e' g =
     Node {
         nconc = [];
-        nrule = Ext ("arith", "branch", [v; e; e']);
+        nrule = Ext ("arith", "simplex_branch", [e; e']);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [e]; [e'] |];
+        nbranches = [| [e]; [e']; |];
     }
 
 let mk_node_lin x e l g =
     Node {
         nconc = l;
-        nrule = Ext ("arith", "lin", [x; e]);
+        nrule = Ext ("arith", "simplex_lin", e :: l);
         nprio = Prop;
         ngoal = g;
         nbranches = [| [e] |];
@@ -247,7 +247,7 @@ let mk_node_lin x e l g =
 let mk_node_sim e b res g =
     Node {
         nconc = e :: b;
-        nrule = Ext("arith", "simplex", [res]);
+        nrule = Ext("arith", "simplex_bound", e :: b);
         nprio = Prop;
         ngoal = g;
         nbranches = [| [res] |];
@@ -368,7 +368,6 @@ let bound_of_expr is_high e bounds =
                 end
         | (c, x) :: r ->
                 let l, b = aux r in
-                (* Format.printf "%a@." Type.print_expr x; *)
                 let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
                 if xor is_high (Q.sign c >= 0) then
                     (pop_option einf) :: l, Q.add b (Q.mul c (translate_bound einf (fun () -> raise Exit)))
@@ -383,7 +382,6 @@ let bounds_of_clin v expr bounds =
     let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal y v) bounds in
     let inf = translate_bound einf (fun () -> Q.minus_inf) in
     let upp = translate_bound eupp (fun () -> Q.inf) in
-    (* Format.printf "Bindings : @\n%a@\n-----@.%a@." print_bindings bounds Type.print_expr (to_nexpr expr); *)
     let l_bounds, low = bound_of_expr false expr bounds in
     let h_bounds, high = bound_of_expr true expr bounds in
     if Q.gt low upp then
@@ -400,6 +398,15 @@ let bounds_of_clin v expr bounds =
         assert false
     end
 
+let add_binding t x f (e, s, c) =
+    let l1, l2 = List.partition (fun (y, _, _, _) -> equal x y) t.bindings in
+    let _, def, low, high =
+        if List.length l1 = 0 then begin x, x, None, None end
+        else if List.length l1 = 1 then begin List.hd l1 end
+        else assert false in
+    let low, high = new_bindings low high (Some f) (e, s, c) in
+    { t with bindings = (x, def, low, high) :: l2 }
+
 let simplex_add t f (e, s, c) = match e with
     | []  -> assert false
     | [(c', x)] ->
@@ -407,14 +414,7 @@ let simplex_add t f (e, s, c) = match e with
             let (inf, upp) = bounds_of_comp s b in
             let (inf, upp) = if Q.sign c' <= -1 then (Q.neg upp, Q.neg inf) else (inf, upp) in
             (* Format.printf "Bindings : @\n%a@\n-----------@." print_bindings t.bindings; *)
-            let l1, l2 = List.partition (fun (y, _, _, _) -> equal x y) t.bindings in
-            let _, def, low, high =
-                if List.length l1 = 0 then begin x, x, None, None end
-                else if List.length l1 = 1 then begin List.hd l1 end
-                else assert false in
-            let low, high = new_bindings low high (Some f) (e, s, c) in
-            { t with core = S.add_bounds t.core (x, inf, upp);
-                     bindings = (x, def, low, high) :: l2 }, []
+            (add_binding {t with core = S.add_bounds t.core (x, inf, upp)} x f (e, s, c)), []
     | _ ->
             let expr = to_nexpr e in
             let v = add_type (get_type expr) (newvar ()) in
@@ -423,31 +423,33 @@ let simplex_add t f (e, s, c) = match e with
             { core = S.add_eq t.core (v, e);
               ignore = e1 :: t.ignore;
               bindings = (v, e1, None, None) :: t.bindings;
-            }, [f, mk_node_var e1 e2 f]
+            }, [f, mk_node_var e2 e1 f] (* The order (e2 before e1) is actually VERY important here !! *)
 
 exception Internal_error
 let nodes_of_tree s f t =
-    let rec aux f t = match !t with
+    let rec aux s f t = match !t with
     | None -> raise Internal_error
     | Some S.Branch (v, k, c, c') ->
             let k = const (Z.to_string k) in
-            let under = lesseq v k in
+            let under = expr_norm (lesseq v k) in
             let above = expr_norm (greatereq v (plus_one k)) in
-            (f, mk_node_branch v under above) :: (aux under c) @ (aux above c')
+            (f, mk_node_branch v under above) :: (
+                (aux (add_binding s v under (of_bexpr under)) under c) @
+                (aux (add_binding s v above (of_bexpr above)) above c'))
     | Some S.Explanation (v, expr) ->
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
-                (List.filter (fun (y, _, _, _) -> List.exists (fun x -> equal x y) l) s.bindings) in
+                (List.filter (fun (y, y', _, _) -> not (equal y y') && List.exists (fun x -> equal x y) l) s.bindings) in
             let clin = expr_norm (mk_app "$o" "$eq_num" [to_nexpr expr; v]) in
             let bounds, nb, conflict = bounds_of_clin v expr s.bindings in
             if bounds = [] then
-                [dummy, mk_node_conflict nb conflict]
+                [f, mk_node_conflict nb conflict]
             else
                 [f, mk_node_lin v clin relevant;
                  clin, mk_node_sim clin bounds nb;
                  nb, mk_node_conflict nb conflict]
     in
-    aux f t
+    aux s f t
 
 let simplex_solve s e =
     let res = S.nsolve s.core is_int in
@@ -489,6 +491,10 @@ let st_is_head st e =
 (* Extension functions *)
 exception Found of (int -> node_item)
 
+let is_coherent e = function
+    | Stop -> assert false
+    | Node n -> List.for_all (fun e' -> equal e e' || Index.member e') n.nconc
+
 let ignore_expr, add_expr, remove_formula, todo, add_todo =
     let st = empty_state in
     let is_new e =
@@ -522,12 +528,10 @@ let ignore_expr, add_expr, remove_formula, todo, add_todo =
     and remove e = if st_is_head st e then st_pop st
     and add_todo e n = st_push st (e, (st_head st), [e, n])
     and todo e g =
-        try
-            Stack.iter (fun (e', _, l) -> try
-                raise (Found (snd (List.find (fun (e', _) -> equal e e') l)))
-            with Not_found -> ()) st.stack;
-            raise Not_found
-        with Found n -> n g
+        let res = ref [] in
+        Stack.iter (fun (_,_,l) -> List.iter (fun (e', n) ->
+            if equal e e' then res := (n g) :: !res) l) st.stack;
+        List.filter (is_coherent e) !res
     in
     ignore_expr, add, remove, todo, add_todo
 
@@ -576,8 +580,7 @@ let add_formula e = match e with
             end with
             | NotaFormula -> ()
 
-let newnodes e g _ =
-    try [todo dummy 0] with Not_found -> begin try [todo e g] with Not_found -> [] end
+let newnodes e g _ = todo e g
 
 let make_inst term g = assert false
 
