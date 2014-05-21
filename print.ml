@@ -699,13 +699,13 @@ let new_id =
     let n = ref 0 in
     fun _ -> incr n; "node" ^ (string_of_int !n)
 
-let dot_rule o id conc conc' r =
+let dot_rule full o id conc conc' r =
     let pr f = oprintf o f in
     let s, l = dot_rule_name r in
     pr "%s [shape=plaintext, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">" id;
     List.iter (fun e ->
-        if List.mem e conc' then begin
-            pr "<TR><TD BGCOLOR=\"GREY\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>"
+        if List.mem e conc' then begin if full then begin
+            pr "<TR><TD BGCOLOR=\"GREY\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>" end
         end else begin
             pr "<TR><TD BGCOLOR=\"YELLOW\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>" end) conc;
     pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" rowspan=\"%i\">%s</TD>" (List.length l) s;
@@ -713,21 +713,21 @@ let dot_rule o id conc conc' r =
     List.iter (fun e -> pr "<TR><TD>"; expr_esc o e; pr "</TD></TR>") (List.tl l);
     pr "</TABLE>>];\n"
 
-let rec dot_proof o p s l =
+let rec dot_proof full o p s l =
     let pr f = oprintf o f in
-    dot_rule o s p.mlconc l p.mlrule;
+    dot_rule full o s p.mlconc l p.mlrule;
     let ids = Array.init (Array.length p.mlhyps) new_id in
     for i = 0 to Array.length ids - 1 do
         pr "%s -> %s;\n" s ids.(i)
     done;
     for i = 0 to Array.length ids - 1 do
-        dot_proof o p.mlhyps.(i) ids.(i) p.mlconc
+        dot_proof full o p.mlhyps.(i) ids.(i) p.mlconc
     done
 
-let dot o p =
+let dot o ?full_output:(b=true) p =
     let pr f = oprintf o f in
     pr "digraph proof {\n";
-    dot_proof o p (new_id 0) [];
+    dot_proof b o p (new_id 0) [];
     pr "}\n";
     flush ()
 ;;

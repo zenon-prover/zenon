@@ -15,7 +15,7 @@ type proof_level =
   | Proof_coq
   | Proof_coqterm
   | Proof_isar
-  | Proof_dot
+  | Proof_dot of bool
 ;;
 let proof_level = ref Proof_none;;
 
@@ -144,8 +144,10 @@ let argspec = [
       "                print the proof in middle-level format";
   "-onone", Arg.Unit (fun () -> proof_level := Proof_none),
          "             do not print the proof (default)";
-  "-odot", Arg.Unit (fun () -> proof_level := Proof_dot),
-         "             print the proof in dot format (use with -q option)";
+  "-odot", Arg.Unit (fun () -> proof_level := Proof_dot true),
+        "              print the proof in dot format (use with -q option)";
+  "-odotlight", Arg.Unit (fun () -> proof_level := Proof_dot false),
+            "          print the proof in dot format (use with -q option)(less verbose)";
   "-opt0", Arg.Unit (fun () -> opt_level := 0),
         "              do not optimise the proof";
   "-opt1", Arg.Unit (fun () -> opt_level := 1),
@@ -360,7 +362,7 @@ let main () =
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
-    | Proof_dot -> Print.dot (Print.Chan stdout) proof;
+    | Proof_dot b -> Print.dot ~full_output:b (Print.Chan stdout) proof;
     end;
   with
   | Prove.NoProof ->
@@ -390,6 +392,6 @@ let do_main () =
   try main ()
   with
   | Error.Abort -> do_exit 11;
-  | e -> eprintf "Zenon error: uncaught exception %s\n" (Printexc.to_string e);
-         do_exit 14;
+  (* | e -> eprintf "Zenon error: uncaught exception %s\n" (Printexc.to_string e);
+         do_exit 14; *)
 ;;
