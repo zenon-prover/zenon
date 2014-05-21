@@ -157,7 +157,7 @@ let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 let mk_node_const s c e g = (* e is a trivially false comparison of constants *)
     Node {
         nconc = [e];
-        nrule = Ext ("arith", "const_" ^ s, [const (Q.to_string c)]);
+        nrule = Ext ("arith", "const_" ^ s, [const "0"; const (Q.to_string c)]);
         nprio = Prop;
         ngoal = g;
         nbranches = [| |];
@@ -543,6 +543,7 @@ let const_node e = (* comparison of constants *)
     | "$lesseq" when Q.gt Q.zero c -> add_todo e (mk_node_const "leq" c e)
     | "$greater" when Q.leq Q.zero c -> add_todo e (mk_node_const "gt" c e)
     | "$greatereq" when Q.lt Q.zero c -> add_todo e (mk_node_const "geq" c e)
+    | "$eq_num" when not (Q.equal Q.zero c) -> add_todo e (mk_node_const "eq" c e)
     | _ -> ()
     end
 
