@@ -470,7 +470,7 @@ let nodes_of_tree s f t =
 let simplex_solve s e =
     let f = S.nsolve_incr s.core is_int in
     match f () with
-    | None -> Format.printf "Failed to solve system@."; false, []
+    | None -> false, [] (* TODO: rerun f, or try otehr method ? *)
     | Some S.Solution _ -> false, []
     | Some S.Unsatisfiable cert -> true, nodes_of_tree s e cert
 
