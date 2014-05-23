@@ -475,10 +475,11 @@ let nodes_of_tree s f t =
     aux s f t
 
 let simplex_solve s e =
-    let res = S.nsolve s.core is_int in
-    match res with
-    | S.Solution _ -> false, []
-    | S.Unsatisfiable cert -> true, nodes_of_tree s e cert
+    let f = S.nsolve_incr s.core is_int in
+    match f () with
+    | None -> false, [] (* TODO: rerun f, or try otehr method ? *)
+    | Some S.Solution _ -> false, []
+    | Some S.Unsatisfiable cert -> true, nodes_of_tree s e cert
 
 
 (* Internal state *)
