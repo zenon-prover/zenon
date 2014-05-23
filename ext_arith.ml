@@ -1,14 +1,16 @@
 
 (* TODO:
- * - finish wrapper functions around simplex
+ * - Use formula number (from index) instead of storing them.
 *)
 
 open Expr
 open Node
 open Mlproof
-module Eset = Set.Make(struct type t= Expr.t let compare = Expr.compare end)
+module M = Map.Make(struct type t= Expr.t let compare = Expr.compare end)
 module S = Simplex.Make(struct type t = Expr.t let compare = Expr.compare end)
 
+
+(* Expression/Types manipulation *)
 let equal x y = Expr.compare x y = 0
 
 let get_type = function
@@ -42,6 +44,7 @@ let comp_neg = function
     | "$is_rat" -> "$not_is_rat"
     | _ -> assert false
 
+(* Combine types *)
 let ctype t t' = match t, t' with
     | "$int", "$int" -> "$int"
     | "$int", "$rat" | "$rat", "$int" | "$rat", "$rat" -> "$rat"
@@ -68,6 +71,10 @@ let less a b = mk_app "$o" "$less" [a; b]
 let lesseq a b = mk_app "$o" "$lesseq" [a; b]
 let greater a b = mk_app "$o" "$greater" [a; b]
 let greatereq a b = mk_app "$o" "$greatereq" [a; b]
+
+let rec find_coef x = function
+    | [] -> raise Not_found
+    | (c, y) :: r -> if equal x y then c else find_coef x r
 
 let rec fadd_aux (c, x) = function
     | [] -> [(c, x)]
@@ -152,7 +159,7 @@ let to_nexpr = function
     | [] -> const "0"
     | (c, x) :: r -> List.fold_left
         (fun e (c', x') -> if Q.sign c' < 0 then diff e (to_nexpr_aux (Q.neg c', x')) else sum e (to_nexpr_aux (c', x')))
-        (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
+                          (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
 
 let to_bexpr (e, s, c) = mk_app "$o" s [to_nexpr e; const (Q.to_string c)]
 
@@ -205,7 +212,7 @@ let mk_node_var e1 e2 e g = (* e1 : v = expr, e2 : v {comp} const, e : expr {com
         nbranches = [| [e1; e2] |];
     }
 
-let mk_node_neg s a e g = (* e : ~ a {s} b *)
+let mk_node_neg s a e g = (* e : ~ {s} b *)
     Node {
         nconc = [e];
         nrule = Ext ("arith", "neg_" ^ s, [a]);
@@ -278,7 +285,7 @@ let mk_node_conflict e e' g =
     }
 
 (* Helper around the simplex module *)
-type simplex = {
+type simplex_state = {
     core : S.t;
     ignore : expr list;
     bindings : (expr * expr * expr option * expr option) list;
@@ -473,10 +480,11 @@ let simplex_solve s e =
     | S.Solution _ -> false, []
     | S.Unsatisfiable cert -> true, nodes_of_tree s e cert
 
+
 (* Internal state *)
 type state = {
     mutable solved : bool;
-    stack : (expr * simplex * ((expr * (int -> Node.node_item)) list)) Stack.t;
+    stack : (expr * simplex_state * ((expr * (int -> Node.node_item)) list)) Stack.t;
 }
 
 let empty_state = {
@@ -511,13 +519,14 @@ let is_coherent e = function
     | Stop -> assert false
     | Node n -> List.for_all (fun e' -> equal e e' || Index.member e') n.nconc
 
-let ignore_expr, add_expr, remove_formula, todo, add_todo =
+let ignore_expr, add_expr, remove_expr, todo, add_todo =
     let st = empty_state in
     let is_new e =
         try Stack.iter (fun (e', _, l) ->
             if (List.exists (fun (e', _) -> equal e e') l) then raise Exit) st.stack;
         true
         with Exit -> false
+
     and ignore_expr e =
         try
             Stack.iter (fun (_, t, l) ->
@@ -527,6 +536,7 @@ let ignore_expr, add_expr, remove_formula, todo, add_todo =
             false
         with Exit -> true
     in
+
     let add e = (* try and compute a solution *)
         if is_new e && not st.solved && not (ignore_expr e) then begin
             try
@@ -541,8 +551,12 @@ let ignore_expr, add_expr, remove_formula, todo, add_todo =
                 end
             with NotaFormula -> ()
         end
-    and remove e = if st_is_head st e then st_pop st
-    and add_todo e n = st_push st (e, (st_head st), [e, n])
+    in
+
+    let rec remove e = if st_is_head st e then begin st_pop st; remove e end in
+
+    let add_todo e n = st_push st (e, (st_head st), List.map (fun m -> e, m) n)
+
     and todo e g =
         let res = ref [] in
         Stack.iter (fun (_,_,l) -> List.iter (fun (e', n) ->
@@ -551,56 +565,146 @@ let ignore_expr, add_expr, remove_formula, todo, add_todo =
     in
     ignore_expr, add, remove, todo, add_todo
 
+(* Fourier-Motzkin *)
+type fm_state = (Expr.t list * Expr.t list) M.t
+
+let fm_empty = M.empty
+
+let fm_get st x = try M.find x st with Not_found -> [], []
+
+let fm_lower s c = match s with
+    | "$less" | "$lesseq" -> Q.sign c < 0
+    | "$greater" | "$greatereq" -> Q.sign c > 0
+    | _ -> assert false
+
+let fm_deduce_aux x e f =
+    let (be, se, ce) = of_bexpr e in
+    let (bf, sf, cf) = of_bexpr f in
+    let cex = find_coef x be in
+    let cfx = find_coef x bf in
+    match se, sf with
+    | "$less", "$less" | "$lesseq", "$less" | "$less", "$lesseq" ->
+            assert (Q.sign cex < 0 && Q.sign cfx > 0);
+            let t = fdiff
+                (fmul cfx (fdiff be [(cex, x);(ce, etrue)]))
+                (fmul cex (fdiff bf [(cfx, x);(cf, etrue)])) in
+            let g = expr_norm (less t (const "0")) in
+            mk_node_fm e f g
+    | "$lesseq","$lesseq" ->
+            assert (Q.sign cex < 0 && Q.sign cfx > 0);
+            let t = fdiff
+                (fmul cfx (fdiff be [cex, x;ce, etrue]))
+                (fmul cex (fdiff bf [cfx, x;cf, etrue])) in
+            let g = expr_norm (lesseq t (const "0")) in
+            mk_node_fm e f g
+    | "$greater", "$greater" ->
+            assert (Q.sign cex > 0 && Q.sign cfx < 0);
+            let t = fdiff
+                (fmul cfx (fdiff be [cex, x; ce, etrue]))
+                (fmul cfx (fdiff be [cex, x; ce, etrue])) in
+            let g = expr_norm (less t (const "0")) in
+            mk_node_fm e f g
+
+
+let fm_deduce1 x e l = List.concat (List.map (fm_deduce_aux x e) l)
+let fm_deduce2 x e l = List.concat (List.map (fun e' -> fm_deduce_aux x e' e) l)
+
+let fm_add_aux st (s, c, x) e =
+    if fm_lower s c then
+        let low, high = fm_get st x in
+        let res = fm_deduce1 x e high in
+        M.add x (e :: low, high) st, res
+    else
+        let low, high = fm_get st x in
+        let res = fm_deduce2 x e low in
+        M.add x (low, e :: high) st, res
+
+let fm_add st e =
+    let (b, s, _) = of_bexpr e in
+    let aux (acc, l) (c, x) =
+        let st', l' = fm_add_aux st (s, c, x) e in
+        (st', (l @ l'))
+    in
+    List.fold_left aux (st, []) b
+
+let fm_add_expr, fm_rm_expr =
+    let st = ref fm_empty in
+    let add e = match e with
+        | Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq"), [a; b], _) when is_rat a && is_rat b ->
+                begin try
+                    let st', res = fm_add !st e in
+                    add_todo e res;
+                    st := st'
+                with NotaFormula -> () end
+        | _ -> ()
+    in
+    let rm e =
+        st := M.map (fun (l, l') ->
+            List.filter (fun e'' -> not (equal e e'')) l,
+            List.filter (fun e'' -> not (equal e e'')) l') !st
+    in
+    add, rm
+
+
+(* Constants *)
 let const_node e = (* comparison of constants *)
     let (f, s, c) = of_bexpr e in
     assert (f = []);
     begin match s with
-    | "$less" when Q.geq Q.zero c -> add_todo e (mk_node_const "lt" c e)
-    | "$lesseq" when Q.gt Q.zero c -> add_todo e (mk_node_const "leq" c e)
-    | "$greater" when Q.leq Q.zero c -> add_todo e (mk_node_const "gt" c e)
-    | "$greatereq" when Q.lt Q.zero c -> add_todo e (mk_node_const "geq" c e)
-    | "$eq_num" when not (Q.equal Q.zero c) -> add_todo e (mk_node_const "eq" c e)
-    | "$is_int" when not (is_z c) -> add_todo e (mk_node_const "is_int" c e)
-    | "$not_is_int" when is_z c -> add_todo e (mk_node_const "not_int" c e)
-    | "$not_is_rat" -> add_todo e (mk_node_const "not_rat" c e)
+    | "$less" when Q.geq Q.zero c -> add_todo e [mk_node_const "lt" c e]
+    | "$lesseq" when Q.gt Q.zero c -> add_todo e [mk_node_const "leq" c e]
+    | "$greater" when Q.leq Q.zero c -> add_todo e [mk_node_const "gt" c e]
+    | "$greatereq" when Q.lt Q.zero c -> add_todo e [mk_node_const "geq" c e]
+    | "$eq_num" when not (Q.equal Q.zero c) -> add_todo e [mk_node_const "eq" c e]
+    | "$is_int" when not (is_z c) -> add_todo e [mk_node_const "is_int" c e]
+    | "$not_is_int" when is_z c -> add_todo e [mk_node_const "not_int" c e]
+    | "$not_is_rat" -> add_todo e [mk_node_const "not_rat" c e]
     | _ -> ()
     end
 
 let is_const e = try let (f, _, _) = of_bexpr e in f = [] with NotaFormula -> false
 
-let add_formula e = match e with
+(* Adding formulas *)
+let add_formula e =
+    fm_add_expr e;
+    match e with
     | _ when ignore_expr e -> ()
     | Enot (Eapp ("$eq_num", [a; b], _), _) ->
-            add_todo e (mk_node_neq a b e)
+            add_todo e [mk_node_neq a b e]
     | Enot (Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq") as s, [a; b], _), _) ->
-            add_todo e (mk_node_neg2 s a b e)
+            add_todo e [mk_node_neg2 s a b e]
     | Enot (Eapp (("$is_int"|"$is_rat") as s, [a], _), _) ->
-            add_todo e (mk_node_neg s a e)
+            add_todo e [mk_node_neg s a e]
     | _ when is_const e ->
             const_node e
     | Eapp ("$eq_num", [a; b], _) ->
-            add_todo e (mk_node_eq a b e)
+            add_todo e [mk_node_eq a b e]
     | Eapp ("$less", [a; b], _) when is_int a && is_int b ->
-            add_todo e (mk_node_int_lt a b e)
+            add_todo e [mk_node_int_lt a b e]
     | Eapp ("$greater", [a; b], _) when is_int a && is_int b ->
-            add_todo e (mk_node_int_gt a b e)
-    | _ ->
-            try begin match (of_bexpr e) with
+            add_todo e [mk_node_int_gt a b e]
+    | _ -> begin try
+            begin match (of_bexpr e) with
             | [(c', x)], ("$less"|"$lesseq"), c when is_int x && is_q (Q.div c c') ->
                     let c'' = Q.div c c' in
                     if Q.sign c' <= -1 then
-                        add_todo e (mk_node_tighten "$greatereq" x (Q.to_string (ceil c'')) e)
+                        add_todo e [mk_node_tighten "$greatereq" x (Q.to_string (ceil c'')) e]
                     else
-                        add_todo e (mk_node_tighten "$lesseq" x (Q.to_string (floor c'')) e)
+                        add_todo e [mk_node_tighten "$lesseq" x (Q.to_string (floor c'')) e]
             | [(c', x)], ("$greater"|"$greatereq"), c when is_int x && is_q (Q.div c c') ->
                     let c'' = Q.div c c' in
                     if Q.sign c' <= -1 then
-                        add_todo e (mk_node_tighten "$lesseq" x (Q.to_string (floor c'')) e)
+                        add_todo e [mk_node_tighten "$lesseq" x (Q.to_string (floor c'')) e]
                     else
-                        add_todo e (mk_node_tighten "$greatereq" x (Q.to_string (ceil c'')) e)
+                        add_todo e [mk_node_tighten "$greatereq" x (Q.to_string (ceil c'')) e]
             | _ -> add_expr e
             end with
             | NotaFormula -> ()
+    end
+
+let remove_formula e =
+    remove_expr e;
+    fm_rm_expr e
 
 let newnodes e g _ = todo e g
 
