@@ -284,6 +284,15 @@ let mk_node_conflict e e' g =
         nbranches = [| |];
     }
 
+let mk_node_fm x e e' f g =
+    Node {
+        nconc = [e; e'];
+        nrule = Ext("arith", "FM", [x; e; e']);
+        nprio = Prop;
+        ngoal = g;
+        nbranches = [| [f] |];
+    }
+
 (* Helper around the simplex module *)
 type simplex_state = {
     core : S.t;
@@ -589,52 +598,65 @@ let fm_deduce_aux x e f =
             let t = fdiff
                 (fmul cfx (fdiff be [(cex, x);(ce, etrue)]))
                 (fmul cex (fdiff bf [(cfx, x);(cf, etrue)])) in
-            let g = expr_norm (less t (const "0")) in
-            mk_node_fm e f g
-    | "$lesseq","$lesseq" ->
+            let b, a = normalize t [Q.zero, etrue] in
+            let g = expr_norm (to_bexpr (a, "$less", b)) in
+            [mk_node_fm x e f g]
+    | "$lesseq","$lesseq" -> []
+            (*
             assert (Q.sign cex < 0 && Q.sign cfx > 0);
             let t = fdiff
                 (fmul cfx (fdiff be [cex, x;ce, etrue]))
                 (fmul cex (fdiff bf [cfx, x;cf, etrue])) in
             let g = expr_norm (lesseq t (const "0")) in
-            mk_node_fm e f g
-    | "$greater", "$greater" ->
+            [mk_node_fm x e f g]
+            *)
+    | "$greater", "$greater" | "$greatereq", "$greater" | "$greater", "$greatereq" ->
             assert (Q.sign cex > 0 && Q.sign cfx < 0);
             let t = fdiff
                 (fmul cfx (fdiff be [cex, x; ce, etrue]))
                 (fmul cfx (fdiff be [cex, x; ce, etrue])) in
-            let g = expr_norm (less t (const "0")) in
-            mk_node_fm e f g
+            let b, a = normalize t [Q.zero, etrue] in
+            let g = expr_norm (to_bexpr (a, "$less", b)) in
+            [mk_node_fm x e f g]
+    | "less", "$greater" | "$lesseq", "$greater" | "$less", "$greatereq" ->
+            []
+    | "$greater", "$less" | "$greatereq", "$less" | "$greatear", "$lesseq" ->
+            []
+    | _ -> []
 
 
 let fm_deduce1 x e l = List.concat (List.map (fm_deduce_aux x e) l)
 let fm_deduce2 x e l = List.concat (List.map (fun e' -> fm_deduce_aux x e' e) l)
 
 let fm_add_aux st (s, c, x) e =
-    if fm_lower s c then
+    if fm_lower s c then begin
         let low, high = fm_get st x in
         let res = fm_deduce1 x e high in
         M.add x (e :: low, high) st, res
-    else
+    end else begin
         let low, high = fm_get st x in
         let res = fm_deduce2 x e low in
         M.add x (low, e :: high) st, res
+    end
 
 let fm_add st e =
     let (b, s, _) = of_bexpr e in
     let aux (acc, l) (c, x) =
-        let st', l' = fm_add_aux st (s, c, x) e in
-        (st', (l @ l'))
+        if is_rat x then
+            let st', l' = fm_add_aux st (s, c, x) e in
+            (st', (l @ l'))
+        else
+            (acc, l)
     in
     List.fold_left aux (st, []) b
 
 let fm_add_expr, fm_rm_expr =
     let st = ref fm_empty in
     let add e = match e with
-        | Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq"), [a; b], _) when is_rat a && is_rat b ->
+        | Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq"), [a; b], _) when is_rat a || is_rat b ->
                 begin try
                     let st', res = fm_add !st e in
-                    add_todo e res;
+                    if res <> [] then add_todo e res;
                     st := st'
                 with NotaFormula -> () end
         | _ -> ()
@@ -666,8 +688,7 @@ let const_node e = (* comparison of constants *)
 let is_const e = try let (f, _, _) = of_bexpr e in f = [] with NotaFormula -> false
 
 (* Adding formulas *)
-let add_formula e =
-    fm_add_expr e;
+let add_formula e = fm_add_expr e;
     match e with
     | _ when ignore_expr e -> ()
     | Enot (Eapp ("$eq_num", [a; b], _), _) ->
