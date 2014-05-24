@@ -601,15 +601,6 @@ let fm_deduce_aux x e f =
             let b, a = normalize t [Q.zero, etrue] in
             let g = expr_norm (to_bexpr (a, "$less", b)) in
             [mk_node_fm x e f g]
-    | "$lesseq","$lesseq" -> []
-            (*
-            assert (Q.sign cex < 0 && Q.sign cfx > 0);
-            let t = fdiff
-                (fmul cfx (fdiff be [cex, x;ce, etrue]))
-                (fmul cex (fdiff bf [cfx, x;cf, etrue])) in
-            let g = expr_norm (lesseq t (const "0")) in
-            [mk_node_fm x e f g]
-            *)
     | "$greater", "$greater" | "$greatereq", "$greater" | "$greater", "$greatereq" ->
             assert (Q.sign cex > 0 && Q.sign cfx < 0);
             let t = fdiff
@@ -619,10 +610,23 @@ let fm_deduce_aux x e f =
             let g = expr_norm (to_bexpr (a, "$less", b)) in
             [mk_node_fm x e f g]
     | "less", "$greater" | "$lesseq", "$greater" | "$less", "$greatereq" ->
+            assert (Q.sign cex < 0 && Q.sign cfx < 0);
+            let t = fadd
+                (fmul cfx (fdiff [cex, x; ce, etrue] be))
+                (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
+            let b, a = normalize t [Q.zero, etrue] in
+            let g = expr_norm (to_bexpr (a, "$less", b)) in
+            [mk_node_fm x e f g]
+    | "$greater", "$less" | "$greatereq", "$less" | "$greater", "$lesseq" ->
+            assert (Q.sign cex > 0 && Q.sign cfx > 0);
+            let t = fdiff
+                (fmul cfx (fdiff [cex, x; ce, etrue] be))
+                (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
+            let b, a = normalize t [Q.zero, etrue] in
+            let g = expr_norm (to_bexpr (a, "$less", b)) in
+            [mk_node_fm x e f g]
+    | _ ->
             []
-    | "$greater", "$less" | "$greatereq", "$less" | "$greatear", "$lesseq" ->
-            []
-    | _ -> []
 
 
 let fm_deduce1 x e l = List.concat (List.map (fm_deduce_aux x e) l)
