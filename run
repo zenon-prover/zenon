@@ -1,0 +1,54 @@
+#/bin/bash -e
+
+# Arg option
+case $1 in
+    all)
+        echo "Testing all..."
+        FILES=`find /home/guigui/build/tptp/Problems/ARI/*.p`
+        ;;
+    th)
+        echo "Testing theorems..."
+        FILES=`grep -l "Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
+        ;;
+    int)
+        echo "Testing interesting problems..."
+        FILES=`grep -L "real" /home/guigui/build/tptp/Problems/ARI/*.p | xargs grep -l "0 type" | xargs grep -l "0   ?" | xargs grep -l "Theorem"`
+        ;;
+    cs)
+        echo "Testing counter-satisfiable problems..."
+        FILES=`grep -L "Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
+        ;;
+    *)
+        echo "Unknwon option."
+        exit 1
+esac
+
+sleep 2
+
+# Testing all files in $FILES
+TEMP=./temp42.gv
+TOTAL=0
+SOLVED=0
+for f in $FILES
+do
+    TOTAL=$(($TOTAL + 1))
+    ./zenon -x arith -itptp $f > /dev/null 2> /dev/null
+    RET=$?
+    if [ $RET -eq 0 ];
+    then
+        echo -e "\e[32m[PROOF FOUND] $f \e[0m"
+        SOLVED=$(($SOLVED + 1))
+        ./zenon -q -odot -x arith -itptp $f > $TEMP
+        dot -Tps $TEMP -o $f.ps
+    elif [ $RET -eq 12 ] || [ $RET -eq 1 ];
+    then
+        echo -e "\e[31m[NOT FOUND] $f \e[0m"
+    else
+        echo -e "\e[35m[ERROR $RET] $f \e[0m"
+        ./zenon -x arith -itptp $f
+    fi
+done
+echo "$SOLVED solved / $TOTAL total"
+
+# Clean temporary files
+rm -f $TEMP
