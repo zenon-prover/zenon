@@ -50,8 +50,15 @@ let tff_of_lexpr = function
 let tff_check = function
     | Base _ -> ()
     | Arrow [l, t] ->
-            if List.exists (fun x -> x = "$o") l then raise (Type_error "Cannot take a bool argument.")
+            if List.exists ((=) "$o") l then
+                raise (Type_error "A function or predicate cannot take a bool argument.")
     | Arrow _ -> ()
+
+let string_of_tff = function
+    | Base s -> s
+    | Arrow l -> String.concat ";" (List.map (fun (args, t) -> (String.concat "*" args) ^ "->" ^ t) l)
+
+let string_of_tffs l = String.concat "," (List.map string_of_tff l)
 
 (* Typing Environnment for TFF *)
 type tff_env = {
@@ -81,7 +88,7 @@ let tff_add_var env v t = match v with
     | _ -> assert false
 
 let tff_add_type env name t =
-    tff_check t;
+    begin try tff_check t with Type_error s -> raise (Type_error ("While typing '" ^ name ^ "', error : " ^ s)) end;
     if M.mem name env.types then
         let t' = M.find name env.types in
         if t <> t' then
@@ -99,7 +106,7 @@ let tff_match_app env f args =
     | Arrow t ->
             try
                 List.iter aux t;
-                raise (Type_error ("No signature match found for " ^ f))
+                raise (Type_error ("No signature match found for '" ^ f ^ "' with arguments : " ^ (string_of_tffs args)))
             with Type_found t' -> t'
 
 
