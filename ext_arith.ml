@@ -10,7 +10,6 @@ module LL = Llproof
 module M = Map.Make(struct type t= Expr.t let compare = Expr.compare end)
 module S = Simplex.Make(struct type t = Expr.t let compare = Expr.compare end)
 
-
 (* Expression/Types manipulation *)
 let equal x y = Expr.compare x y = 0
 
@@ -678,8 +677,8 @@ let ssub s j = try String.sub s 0 j with Invalid_argument _ -> ""
 let esub s j = try String.sub s j (String.length s - j) with Invalid_argument _ -> ""
 
 let tr_rule = function
-    | Ext("arith", "const", [x; c; e]) ->
-            LL.Rextension ("arith", "const", [x; c], [], [[e]])
+    | Ext("arith", "const", [c; e]) ->
+            LL.Rextension ("arith", "const", [c], [e], [[]])
     | Ext("arith", "eq", [a; b; e]) ->
             LL.Rextension("arith", "eq", [a; b], [e], [[expr_norm (lesseq a b); expr_norm (greatereq a b)]])
     | Ext("arith", "neq", [a; b; e]) ->
@@ -706,6 +705,11 @@ let tr_rule = function
             LL.Rextension("arith", "conflict", [e;e'], [e;e'], [[]])
     | Ext("arith", "FM", [x;e;e';f]) ->
             LL.Rextension("arith", "FM", [x;e;e';f], [e;e'], [[f]])
+    (*
+    | Ext("arith", s, l) ->
+            Format.printf "Unknow rule %s of arity %i@." s (List.length l);
+            raise Exit
+    *)
     | _ -> raise Exit
 
 (* TODO: add nodes for expr normalization ? *)
