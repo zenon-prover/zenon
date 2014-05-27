@@ -676,35 +676,35 @@ let fm_add_expr, fm_rm_expr =
 let ssub s j = try String.sub s 0 j with Invalid_argument _ -> ""
 let esub s j = try String.sub s j (String.length s - j) with Invalid_argument _ -> ""
 
-let tr_rule = function
+let tr_rule f = function
     | Ext("arith", "const", [c; e]) ->
-            LL.Rextension ("arith", "const", [c], [e], [[]])
+            LL.Rextension ("arith", "const", [f c], [f e], [[]])
     | Ext("arith", "eq", [a; b; e]) ->
-            LL.Rextension("arith", "eq", [a; b], [e], [[expr_norm (lesseq a b); expr_norm (greatereq a b)]])
+            LL.Rextension("arith", "eq", [f a; f b], [f e], [[f (expr_norm (lesseq a b)); f (expr_norm (greatereq a b))]])
     | Ext("arith", "neq", [a; b; e]) ->
-            LL.Rextension("arith", "neq", [a; b], [e], [[expr_norm (less e b)];[expr_norm (greater a b)]])
+            LL.Rextension("arith", "neq", [f a; f b], [f e], [[f (expr_norm (less e b))];[f (expr_norm (greater a b))]])
     | Ext("arith", s, [x; c; e]) when ssub s 8 = "tighten_" ->
-            LL.Rextension("arith", s, [x; c], [e], [[mk_app "$o" (esub s 8) [x; c]]])
+            LL.Rextension("arith", s, [f x; f c], [f e], [[f (mk_app "$o" (esub s 8) [x; c])]])
     | Ext("arith", "var", [e1;e2;e]) ->
-            LL.Rextension("arith", "var", [e1;e2], [e], [[e1;e2]])
+            LL.Rextension("arith", "var", [f e1;f e2], [f e], [[f e1;f e2]])
     | Ext("arith", s, [a; e]) when ssub s 5 = "neg1_" ->
-            LL.Rextension("arith", s, [a], [e], [[mk_app "$o" (comp_neg (esub s 5)) [a]]])
+            LL.Rextension("arith", s, [f a], [f e], [[f (mk_app "$o" (comp_neg (esub s 5)) [a])]])
     | Ext("arith", s, [a; b; e]) when ssub s 5 = "neg2_" ->
-            LL.Rextension("arith", s, [a;b], [e], [[mk_app "$o" (comp_neg (esub s 5)) [a; b]]])
+            LL.Rextension("arith", s, [f a;f b], [f e], [[f (mk_app "$o" (comp_neg (esub s 5)) [a; b])]])
     | Ext("arith", "int_lt", [a; b; e]) ->
-            LL.Rextension("arith", "int_lt", [a;b], [e], [[expr_norm (lesseq a (minus_one b))]])
+            LL.Rextension("arith", "int_lt", [f a;f b], [f e], [[f (expr_norm (lesseq a (minus_one b)))]])
     | Ext("arith", "int_gt", [a; b; e]) ->
-            LL.Rextension("arith", "int_gt", [a;b], [e], [[expr_norm (greatereq a (plus_one b))]])
+            LL.Rextension("arith", "int_gt", [f a;f b], [f e], [[f (expr_norm (greatereq a (plus_one b)))]])
     | Ext("arith", "simplex_branch", [e;e']) ->
-            LL.Rextension("arith", "simplex_branch", [e;e'], [], [[e];[e']])
+            LL.Rextension("arith", "simplex_branch", [f e;f e'], [], [[f e];[f e']])
     | Ext("arith", "simplex_lin", e :: l) ->
-            LL.Rextension("arith", "simplex_lin", e :: l, l, [[e]])
+            LL.Rextension("arith", "simplex_lin", List.map f (e :: l), List.map f l, [[f e]])
     | Ext("arith", "simplex_bound", res :: e :: b) ->
-            LL.Rextension("arith", "simplex_bound", e :: b, e :: b, [[res]])
+            LL.Rextension("arith", "simplex_bound", List.map f (e :: b), List.map f (e :: b), [[f res]])
     | Ext("arith", "conflict", [e;e']) ->
-            LL.Rextension("arith", "conflict", [e;e'], [e;e'], [[]])
-    | Ext("arith", "FM", [x;e;e';f]) ->
-            LL.Rextension("arith", "FM", [x;e;e';f], [e;e'], [[f]])
+            LL.Rextension("arith", "conflict", [f e;f e'], [f e;f e'], [[]])
+    | Ext("arith", "FM", [x;e;e';e'']) ->
+            LL.Rextension("arith", "FM", [f x;f e;f e';f e''], [f e;f e'], [[f e'']])
     (*
     | Ext("arith", s, l) ->
             Format.printf "Unknow rule %s of arity %i@." s (List.length l);
@@ -718,7 +718,7 @@ let mltoll f p hyps =
     let extras = Expr.diff (List.concat subextras) p.mlconc in
     let nn = {
         LL.conc = List.map f (extras @ p.mlconc);
-        LL.rule = tr_rule p.mlrule;
+        LL.rule = tr_rule f p.mlrule;
         LL.hyps = subproofs;
     } in
     (nn, extras)
