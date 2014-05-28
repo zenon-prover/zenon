@@ -15,6 +15,12 @@ let get_type = function
 let is_int e = get_type e = "$int"
 let is_rat e = get_type e = "$rat"
 
+let ctype t t' = match t, t' with
+    | "$int", "$int" -> "$int"
+    | "$int", "$rat" | "$rat", "$int" | "$rat", "$rat" -> "$rat"
+    | _ -> "$real"
+let etype e e' = ctype (get_type e) (get_type e')
+
 (* Manipulation of expressions/formulas *)
 exception NotaFormula
 
@@ -36,12 +42,6 @@ let comp_neg = function
     | _ -> assert false
 
 (* Combine types *)
-let ctype t t' = match t, t' with
-    | "$int", "$int" -> "$int"
-    | "$int", "$rat" | "$rat", "$int" | "$rat", "$rat" -> "$rat"
-    | _ -> "$real"
-let etype e e' = ctype (get_type e) (get_type e')
-
 let mk_app t s l = add_type t (eapp (s, l))
 
 let const s =
@@ -155,4 +155,95 @@ let to_nexpr = function
 let to_bexpr (e, s, c) = mk_app "$o" s [to_nexpr e; const (Q.to_string c)]
 
 let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
+
+(* Aanalog to circular lists with a 'stop' element, imperative style *)
+exception EndReached
+
+type 'a clist = {
+    mutable front : 'a list;
+    mutable acc : 'a list;
+}
+
+let cl_from_list l = {
+    front = l;
+    acc = []
+}
+
+let cl_current l =
+    if l.front = [] then
+        raise EndReached
+    else
+        List.hd l.front
+
+let cl_next l =
+    if l.front = [] then
+        raise EndReached
+    else begin
+        let x = List.hd l.front in
+        l.front <- List.tl l.front;
+        l.acc <- x :: l.acc
+    end
+
+let cl_reset l =
+    (* l.front *should* be empty, but just in case,.. *)
+    l.front <- (List.rev l.acc) @ l.front;
+    l.acc <- []
+
+(* Combinatorial tree *)
+type 'a ctree = {
+    node : 'a clist;
+    children : 'a ctree array;
+}
+
+let rec reset t =
+    cl_reset t.node;
+    Array.iter reset t.children
+
+let rec next t =
+    try
+        cl_next t.node
+    with EndReached ->
+        if Array.length t.children = 0 then
+            raise EndReached
+        else begin
+            let i = ref 0 in
+            try
+                while true do
+                    if !i >= Array.length t.children then
+                        raise EndReached;
+                    try
+                        next t.children.(!i);
+                        raise Exit
+                    with EndReached ->
+                        reset t.children.(!i);
+                        incr i
+                done
+            with Exit -> ()
+        end
+
+let rec current t =
+    let rec aux t =
+        try
+            [cl_current t.node]
+        with EndReached ->
+            if Array.length t.children = 0 then
+                raise Exit
+            else
+                List.concat @@ Array.to_list @@ (Array.map aux t.children)
+    in
+    try
+        aux t
+    with Exit ->
+        next t; current t
+
+let ct_all t =
+    let res = ref [] in
+    try
+        while true do
+            res := (current t) :: !res;
+            next t
+        done;
+        !res
+    with EndReached -> List.rev !res
+
 
