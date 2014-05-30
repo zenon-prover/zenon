@@ -247,3 +247,67 @@ let ct_all t =
     with EndReached -> List.rev !res
 
 
+(* Simplex solver with a cache *)
+let lhash l = List.fold_left (+) 0 (List.map Expr.hash l)
+let lequal l l' = try List.for_all2 equal l l' with Invalid_argument _ -> false
+
+module Simplex = Simplex.MakeHelp(struct type t = Expr.t let compare = Expr.compare end)
+module ElH = Hashtbl.Make(struct type t = Expr.t list let hash = lhash let equal = lequal end)
+
+let cache = ElH.create 97
+
+let simplex_is_int = function
+    | Simplex.Extern v -> is_int v
+    | Simplex.Intern _ -> false
+
+let simplex_is_var = function
+    | Simplex.Extern v -> true
+    | Simplex.Intern _ -> false
+
+let simplex_var = function
+    | Simplex.Extern v -> v
+    | Simplex.Intern _ -> assert false
+
+let add_expr e st =
+    try match of_bexpr e with
+    | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
+    | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
+    | (b, "$eq_num", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
+    | _ -> st
+    with
+    | NotaFormula -> assert false
+
+let rec get_state l =
+    try
+        ElH.find cache l
+    with Not_found ->
+        begin match l with
+        | [] -> Some(Simplex.empty, fun () -> None)
+        | e :: r ->
+                let res = match get_state r with
+                | None -> None
+                | Some(st, _) ->
+                    let st = add_expr e st in
+                    let f = Simplex.nsolve_incr st simplex_is_int in
+                    begin match f () with
+                        | None -> Some(st, f)
+                        | Some Simplex.Solution _ -> Some(st, f)
+                        | Some Simplex.Unsatisfiable _ -> None
+                    end
+                in
+                ElH.add cache l res;
+                res
+        end
+
+let try_solve l =
+    match get_state l with
+    | None -> None
+    | Some (_, f) -> begin match f () with
+        | None -> None
+        | Some Simplex.Unsatisfiable _ -> None
+        | Some Simplex.Solution s ->
+                Some (List.map (fun (v, x) -> (simplex_var v, x)) (List.filter (fun (v, _) -> simplex_is_var v) s))
+        end
+
+
+
