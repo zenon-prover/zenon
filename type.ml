@@ -60,6 +60,8 @@ let string_of_tff = function
 
 let string_of_tffs l = String.concat "," (List.map string_of_tff l)
 
+let bnot e = set_tff_type tff_bool (enot e)
+
 (* Typing Environnment for TFF *)
 type tff_env = {
     types : tff_type M.t;
@@ -155,7 +157,9 @@ let tff_default_env =
     { types = def; }
 
 (* DEBUG CODE *)
-let rec print_expr fmt f = match f with
+let rec print_expr fmt f =
+    Format.fprintf fmt "%i " (Expr.hash f);
+    match f with
     | Evar (s, _) ->        fprintf fmt "@[<hov 4>Var (%s):@ %s@]" (get_type f) s
     | Emeta (e, _) ->       fprintf fmt "@[<hov 4>Meta (%s):@ %a@]" (get_type f) print_expr e
     | Eapp (s, l, _) ->     fprintf fmt "@[<hov 4>App (%s) %s :@ %a@]" (get_type f) s print_list_expr l

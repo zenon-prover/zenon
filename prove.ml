@@ -1457,6 +1457,9 @@ let ticker finished () =
   if not finished then periodic '#';
 ;;
 
+let clear_index () =
+    List.iter (fun (e, _) -> Index.remove e) (Index.get_all ())
+
 let rec iter_refute prm rl =
   match refute prm [] {queue = empty} rl with
   | Backtrack ->
@@ -1467,6 +1470,8 @@ let rec iter_refute prm rl =
       iter_refute prm rl;
   | Closed p when Mlproof.is_open_proof p ->
       if Extension.iter_open p then begin
+        Index.clear_proofs ();
+        (* clear_index (); *)
         iter_refute prm rl
       end else
         Closed p

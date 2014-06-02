@@ -32,13 +32,13 @@ SOLVED=0
 for f in $FILES
 do
     TOTAL=$(($TOTAL + 1))
-    ./zenon -max-time 5s -q -x arith -itptp $f > /dev/null 2> /dev/null
+    ./zenon -max-time 5s -q -k -x arith -itptp $f > /dev/null 2> /dev/null
     RET=$?
     if [ $RET -eq 0 ];
     then
         echo -e "\e[32m[PROOF FOUND] $f \e[0m"
         SOLVED=$(($SOLVED + 1))
-        ./zenon -q -odot -x arith -itptp $f > $TEMP
+        ./zenon -q -odot -k -x arith -itptp $f > $TEMP
         dot -Tps $TEMP -o $f.ps
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ];
     then

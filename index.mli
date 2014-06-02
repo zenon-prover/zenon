@@ -50,6 +50,7 @@ val find_all_negtrans_right : head -> (expr * goalness) list;;
 
 val add_proof : Mlproof.proof -> unit;;
 val search_proof : unit -> Mlproof.proof option;;
+val clear_proofs : unit -> unit;;
 
 (* ==== definitions ==== *)
 

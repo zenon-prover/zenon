@@ -155,8 +155,8 @@ let mk_node_inst e v g = match e with
           }
   | Eex (e', t, p, _) ->
           let term = const (Q.to_string v) in
-          let n = Expr.substitute [(e', term)] (enot p) in
-          let ne = enot e in
+          let n = Expr.substitute [(e', term)] (Type.bnot p) in
+          let ne = Type.bnot e in
           Node {
               nconc = [ne];
               nrule = NotEx (ne, term);
@@ -627,7 +627,8 @@ let const_node e = (* comparison of constants *)
 let is_const e = try let (f, _, _) = of_bexpr e in f = [] with NotaFormula -> false
 
 (* Extension functions *)
-let add_formula e = fm_add_expr e;
+let add_formula e =
+    fm_add_expr e;
     match e with
     | _ when ignore_expr e -> ()
     | Enot (Eapp ("$eq_num", [a; b], _), _) ->
@@ -674,15 +675,19 @@ let iter_open p =
         begin match solve_tree t with
         | None -> false
         | Some s ->
-                let tmp = ref 0 in
                 let global = List.fold_left (fun acc (e, v) -> match e with
-                    | Emeta(e', _) -> incr tmp; (e', mk_node_inst e' v) :: acc
+                    | Emeta(Eall(_) as e', _) ->
+                            (e', mk_node_inst e' v) :: acc
+                    | Emeta(Eex(_) as e', _) ->
+                            let e'' = Type.bnot e' in
+                            (e'', mk_node_inst e' v) :: acc
                     | _ -> assert false) [] s in
-                Format.printf "Found %i instanciations@." !tmp;
                 set_global global
         end
 
-let newnodes e g _ = todo e g
+let newnodes e g _ =
+    let res = todo e g in
+    res
 
 let make_inst term g = assert false
 

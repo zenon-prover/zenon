@@ -398,6 +398,11 @@ let search_proof () =
   loop ()
 ;;
 
+let clear_proofs () =
+    suspects := [];
+    Globals.stored_lemmas := 0;
+    HE.clear proofs
+
 (* ==== *)
 
 let defs = (Hashtbl.create tblsize : (string, definition) Hashtbl.t);;
