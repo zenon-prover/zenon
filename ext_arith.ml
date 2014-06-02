@@ -650,6 +650,7 @@ Extension.register {
   Extension.make_inst = make_inst;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
+  Extension.iter_open = (fun _ -> false);
   Extension.preprocess = (fun x -> x);
   Extension.add_phrase = (fun _ -> ());
   Extension.postprocess = (fun x -> x);

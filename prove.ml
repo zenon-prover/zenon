@@ -1465,6 +1465,14 @@ let rec iter_refute prm rl =
         eprintf "increase max_depth to %d\n" !max_depth;
       end '*';
       iter_refute prm rl;
+  | Closed p when Mlproof.is_open_proof p ->
+      if Extension.iter_open p then begin
+        Progress.do_progress begin fun () ->
+          eprintf "Iterating over open proof attempt\n";
+        end '*';
+        iter_refute prm rl
+      end else
+        Closed p
   | x -> x
 ;;
 
