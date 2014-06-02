@@ -708,9 +708,13 @@ let dot_rule full o id conc conc' r =
             pr "<TR><TD BGCOLOR=\"GREY\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>" end
         end else begin
             pr "<TR><TD BGCOLOR=\"YELLOW\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>" end) conc;
-    pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" rowspan=\"%i\">%s</TD>" (List.length l) s;
-    pr "<TD>"; expr_esc o (List.hd l); pr "</TD></TR>";
-    List.iter (fun e -> pr "<TR><TD>"; expr_esc o e; pr "</TD></TR>") (List.tl l);
+    if l = [] then begin
+        pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" colspan=\"2\">%s</TD></TR>" s
+    end else begin
+        pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" rowspan=\"%i\">%s</TD>" (List.length l) s;
+        pr "<TD>"; expr_esc o (List.hd l); pr "</TD></TR>";
+        List.iter (fun e -> pr "<TR><TD>"; expr_esc o e; pr "</TD></TR>") (List.tl l)
+    end;
     pr "</TABLE>>];\n"
 
 let rec dot_proof full o p s l =
