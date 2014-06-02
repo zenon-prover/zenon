@@ -142,6 +142,31 @@ let mk_node_fm x e e' f g =
         nbranches = [| [f] |];
     }
 
+let mk_node_inst e v g = match e with
+  | Eall (e', t, p, _) ->
+          let term = const (Q.to_string v) in
+          let n = Expr.substitute [(e', term)] p in
+          Node {
+              nconc = [e];
+              nrule = All (e, term);
+              nprio = Inst e;
+              ngoal = g;
+              nbranches = [| [n] |];
+          }
+  | Eex (e', t, p, _) ->
+          let term = const (Q.to_string v) in
+          let n = Expr.substitute [(e', term)] (enot p) in
+          let ne = enot e in
+          Node {
+              nconc = [ne];
+              nrule = NotEx (ne, term);
+              nprio = Inst e;
+              ngoal = g;
+              nbranches = [| [n] |];
+          }
+  | _ -> assert false
+
+
 (* Helper around the simplex module *)
 type simplex_state = {
     core : S.t;
@@ -342,11 +367,13 @@ let simplex_solve s e =
 
 (* Internal state *)
 type state = {
+    mutable global : (expr * (int -> Node.node_item)) list;
     mutable solved : bool;
     stack : (expr * simplex_state * ((expr * (int -> Node.node_item)) list)) Stack.t;
 }
 
 let empty_state = {
+    global = [];
     solved = false;
     stack = Stack.create ();
 }
@@ -378,7 +405,7 @@ let is_coherent e = function
     | Stop -> assert false
     | Node n -> List.for_all (fun e' -> equal e e' || Index.member e') n.nconc
 
-let ignore_expr, add_expr, remove_expr, todo, add_todo =
+let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
     let st = empty_state in
     let is_new e =
         try Stack.iter (fun (e', _, l) ->
@@ -418,11 +445,20 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo =
 
     and todo e g =
         let res = ref [] in
-        Stack.iter (fun (_,_,l) -> List.iter (fun (e', n) ->
-            if equal e e' then res := (n g) :: !res) l) st.stack;
+        let aux (e', n) = if equal e e' then res := (n g) :: !res in
+        Stack.iter (fun (_,_,l) -> List.iter aux l) st.stack;
+        List.iter aux st.global;
         List.filter (is_coherent e) !res
+
+    and set_global l =
+        let res = try
+            List.for_all2 (fun (e, n) (e', n') -> equal e e' && n 0 = n' 0) st.global l
+            with Invalid_argument _ -> false
+        in
+        st.global <- l;
+        not res
     in
-    ignore_expr, add, remove, todo, add_todo
+    ignore_expr, add, remove, todo, add_todo, set_global
 
 (* Fourier-Motzkin *)
 type fm_state = (Expr.t list * Expr.t list) M.t
@@ -631,12 +667,19 @@ let remove_formula e =
     remove_expr e;
     fm_rm_expr e
 
-let iter_open p = match ct_from_ml p with
+let iter_open p =
+    match ct_from_ml p with
     | None -> false
     | Some t ->
         begin match solve_tree t with
         | None -> false
-        | Some _ -> false
+        | Some s ->
+                let tmp = ref 0 in
+                let global = List.fold_left (fun acc (e, v) -> match e with
+                    | Emeta(e', _) -> incr tmp; (e', mk_node_inst e' v) :: acc
+                    | _ -> assert false) [] s in
+                Format.printf "Found %i instanciations@." !tmp;
+                set_global global
         end
 
 let newnodes e g _ = todo e g
