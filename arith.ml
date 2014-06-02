@@ -7,7 +7,9 @@ let equal x y = Expr.compare x y = 0
 (* Types manipulation *)
 let get_type = function
     | Etrue | Efalse -> "$o"
-    | Etau (_, t, _, _) -> t
+    | Etau (_, t, _, _)
+    | Emeta(Eall(_, t, _, _), _)
+    | Emeta(Eex(_, t, _, _), _) -> t
     | e -> begin match priv_type e with
         | None -> Namespace.univ_name
         | Some s -> s
@@ -133,6 +135,8 @@ let rec of_nexpr = function
     | Eapp (v, [], _) as e ->
         begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
     | Evar (v, _) as a when is_int a || is_rat a -> [Q.one, a]
+    | Emeta (Eall(_, ("$int"|"$rat"), _, _), _) as a -> [Q.one, a]
+    | Emeta (Eex(_, ("$int"|"$rat"), _, _), _) as a -> [Q.one, a]
     | Etau (_, ("$int"|"$rat"), _, _) as a -> [Q.one, a]
     | Eapp ("$uminus", [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
     | Eapp ("$sum", [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
@@ -213,6 +217,8 @@ type 'a ctree = {
 let ct_is_empty t =
     Array.length t.children = 0 && cl_is_empty t.node
 
+let cl_to_list l = (List.rev l.acc) @ l.front
+
 let rec reset t =
     cl_reset t.node;
     Array.iter reset t.children
@@ -266,7 +272,10 @@ let ct_all t =
 
 let ct_from_ml p =
     let filter l = List.filter (fun e ->
-        try ignore (of_bexpr e); true with NotaFormula -> false
+        try begin match of_bexpr e with
+            | (_, "$eq_num", _) -> false
+            | (_, _, _) -> true
+        end with NotaFormula -> false
         ) l in
     let rec aux p =
         let ehyps = Array.fold_left (fun acc p -> p.mlconc @ acc) [] p.mlhyps in
@@ -326,12 +335,14 @@ let rec get_state l =
                 | None -> None
                 | Some(st, _) ->
                     let st = add_expr e st in
-                    let f = Simplex.nsolve_incr st simplex_is_int in
-                    begin match f () with
+                    try
+                        let f = Simplex.nsolve_incr st simplex_is_int in
+                        begin match f () with
                         | None -> Some(st, f)
                         | Some Simplex.Solution _ -> Some(st, f)
                         | Some Simplex.Unsatisfiable _ -> None
-                    end
+                        end
+                    with Invalid_argument "Simplex is empty." -> None
                 in
                 ElH.add cache l res;
                 res

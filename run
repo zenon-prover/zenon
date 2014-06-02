@@ -32,7 +32,7 @@ SOLVED=0
 for f in $FILES
 do
     TOTAL=$(($TOTAL + 1))
-    ./zenon -x arith -itptp $f > /dev/null 2> /dev/null
+    ./zenon -max-time 5s -q -x arith -itptp $f > /dev/null 2> /dev/null
     RET=$?
     if [ $RET -eq 0 ];
     then

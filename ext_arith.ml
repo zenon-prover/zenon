@@ -633,12 +633,10 @@ let remove_formula e =
 
 let iter_open p = match ct_from_ml p with
     | None -> false
-    | Some t -> begin match solve_tree t with
+    | Some t ->
+        begin match solve_tree t with
         | None -> false
-        | Some s ->
-            List.iter (fun (e, v) ->
-                Format.printf "@[<hov4>Assign %s to :@\n%a@]@." (Q.to_string v) Type.print_expr e) s;
-            false
+        | Some _ -> false
         end
 
 let newnodes e g _ = todo e g

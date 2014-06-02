@@ -245,13 +245,13 @@ let rec type_tff_aux env e =
     | Eall (Evar (s, _) as v, t, body, _) ->
             let t', body = type_tff_aux (tff_add_var env v t) body in
             if tff_is_bool t' then
-                tff_bool, eall (v, t, body)
+                tff_bool, eall (set_tff_type (Base t) v, t, body)
             else
                 raise (Type_error "Quantification over non-boolean expression (forall).")
     | Eex (Evar (s, _) as v, t, body, _) ->
             let t', body = type_tff_aux (tff_add_var env v t) body in
             if tff_is_bool t' then
-                tff_bool, eex (v, t, body)
+                tff_bool, eex (set_tff_type (Base t) v, t, body)
             else
                 raise (Type_error "Quantification over non-boolean expression (exists).")
     | Etau (Evar (s, _), t, body, _) ->
