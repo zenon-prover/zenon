@@ -1,5 +1,6 @@
 
 open Expr
+open Mlproof
 
 let equal x y = Expr.compare x y = 0
 
@@ -78,6 +79,18 @@ let rec fadd_aux (c, x) = function
 let fadd a b = List.fold_left (fun e c -> fadd_aux c e) a b
 let fdiff a b = fadd a (List.map (fun (c, x) -> (Q.neg c, x)) b)
 let fmul c a = List.map (fun (c', x) -> (Q.mul c c', x)) a
+
+let fis_int a = List.for_all (fun (_, e) -> is_int e) a
+
+let fneg (b, s, c) =
+    let s = comp_neg s in
+    if not (fis_int b) then
+        (b, s, c)
+    else begin match s with
+    | "$less" -> (b, "$lesseq", Q.sub c Q.one)
+    | "$greater" -> (b, "$greatereq", Q.add c Q.one)
+    | _ -> (b, s, c)
+    end
 
 let rec sanitize = function
     | [] -> []
@@ -164,6 +177,8 @@ type 'a clist = {
     mutable acc : 'a list;
 }
 
+let cl_is_empty l = l.front = [] && l.acc = []
+
 let cl_from_list l = {
     front = l;
     acc = []
@@ -194,6 +209,9 @@ type 'a ctree = {
     node : 'a clist;
     children : 'a ctree array;
 }
+
+let ct_is_empty t =
+    Array.length t.children = 0 && cl_is_empty t.node
 
 let rec reset t =
     cl_reset t.node;
@@ -246,6 +264,26 @@ let ct_all t =
         !res
     with EndReached -> List.rev !res
 
+let ct_from_ml p =
+    let filter l = List.filter (fun e ->
+        try ignore (of_bexpr e); true with NotaFormula -> false
+        ) l in
+    let rec aux p =
+        let ehyps = Array.fold_left (fun acc p -> p.mlconc @ acc) [] p.mlhyps in
+        let hyps = Array.to_list (Array.map aux p.mlhyps) in
+        let hyps = List.filter (fun t -> not (ct_is_empty t)) hyps in
+        let hyps = Array.of_list hyps in
+        {
+            node = cl_from_list (filter (Expr.diff p.mlconc ehyps));
+            children = hyps;
+        }
+    in
+    let res = aux p in
+    if ct_is_empty res then
+        None
+    else
+        Some res
+
 
 (* Simplex solver with a cache *)
 let lhash l = List.fold_left (+) 0 (List.map Expr.hash l)
@@ -269,7 +307,7 @@ let simplex_var = function
     | Simplex.Intern _ -> assert false
 
 let add_expr e st =
-    try match of_bexpr e with
+    try match fneg (of_bexpr e) with
     | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
     | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
     | (b, "$eq_num", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
@@ -309,5 +347,15 @@ let try_solve l =
                 Some (List.map (fun (v, x) -> (simplex_var v, x)) (List.filter (fun (v, _) -> simplex_is_var v) s))
         end
 
-
-
+let solve_tree t =
+    reset t;
+    let rec aux () =
+        match try_solve (current t) with
+        | Some s -> Some s
+        | None ->
+                try
+                    next t;
+                    aux ()
+                with EndReached -> None
+    in
+    aux ()

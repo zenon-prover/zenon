@@ -1336,7 +1336,7 @@ let prove_fail () =
   raise NoProof
 ;;
 
-let open_fail () = Closed (make_open ())
+let open_fail () = Closed (make_open (List.map fst (Index.get_all ())))
 
 type rule =
   state -> expr -> int -> (expr * int) list -> state * bool

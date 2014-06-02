@@ -74,8 +74,11 @@ val reset : 'a ctree -> unit
 val next : 'a ctree -> unit
 val current : 'a ctree -> 'a list
 val ct_all : 'a ctree -> 'a list list
+val ct_from_ml : Mlproof.proof -> Expr.t ctree option
 
 (* Simplex solver helper *)
 val try_solve : Expr.t list -> (Expr.t * Q.t) list option
+
+val solve_tree : Expr.t ctree -> (Expr.t * Q.t) list option
 
 

@@ -244,8 +244,8 @@ let make_cut p n0 n1 =
 ;;
 
 
-let make_open () = {
-    mlconc = [];
+let make_open l = {
+    mlconc = l;
     mlrule = Ext("dummy", "open", []);
     mlhyps = [| |];
     mlrefc = 1;

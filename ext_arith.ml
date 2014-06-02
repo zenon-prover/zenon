@@ -631,6 +631,16 @@ let remove_formula e =
     remove_expr e;
     fm_rm_expr e
 
+let iter_open p = match ct_from_ml p with
+    | None -> false
+    | Some t -> begin match solve_tree t with
+        | None -> false
+        | Some s ->
+            List.iter (fun (e, v) ->
+                Format.printf "@[<hov4>Assign %s to :@\n%a@]@." (Q.to_string v) Type.print_expr e) s;
+            false
+        end
+
 let newnodes e g _ = todo e g
 
 let make_inst term g = assert false
@@ -650,7 +660,7 @@ Extension.register {
   Extension.make_inst = make_inst;
   Extension.add_formula = add_formula;
   Extension.remove_formula = remove_formula;
-  Extension.iter_open = (fun _ -> false);
+  Extension.iter_open = iter_open;
   Extension.preprocess = (fun x -> x);
   Extension.add_phrase = (fun _ -> ());
   Extension.postprocess = (fun x -> x);
