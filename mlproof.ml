@@ -246,17 +246,19 @@ let make_cut p n0 n1 =
 
 let make_open () = {
     mlconc = [];
-    mlrule = Ext("dummy", "", []);
+    mlrule = Ext("dummy", "open", []);
     mlhyps = [| |];
-    mlrefc = 0;
+    mlrefc = 1;
 }
 
 let is_open_node p = p.mlrule = Ext("dummy", "open", [])
 
 let is_open_proof p =
-    let rec aux p = match p.mlrule with
-    | Ext("dummy", "", []) -> raise Exit
-    | _ -> Array.iter aux p.mlhyps
+    let rec aux p =
+        if is_open_node p then
+            raise Exit
+        else
+            Array.iter aux p.mlhyps
     in
     try aux p; false with Exit -> true
 

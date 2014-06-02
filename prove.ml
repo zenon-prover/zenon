@@ -1425,7 +1425,7 @@ and unwind prm stk res =
       in
       List.iter f (List.rev fr.node.nbranches.(fr.curbr));
       begin match res with
-      | Closed p when (disjoint fr.node.nbranches.(fr.curbr) p.mlconc) && not (is_open_proof p) ->
+      | Closed p when (disjoint fr.node.nbranches.(fr.curbr) p.mlconc) && not (is_open_node p) ->
           unwind prm stk1 res
       | Backtrack -> unwind prm stk1 res
       | Closed _ ->
