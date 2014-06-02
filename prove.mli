@@ -22,6 +22,7 @@ type params = {
 
 val prove : params -> definition list -> (expr * int) list -> Mlproof.proof;;
 val default_params : params;;
+val open_params : params;;
 
 val newnodes_absurd : rule;;
 val newnodes_closure : rule;;

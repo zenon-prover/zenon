@@ -19,6 +19,8 @@ type proof_level =
 ;;
 let proof_level = ref Proof_none;;
 
+let keep_open = ref false;;
+
 type input_format =
   | I_zenon
   | I_focal
@@ -113,6 +115,8 @@ let argspec = [
          "             read input file in TPTP format";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
+  "-k", Arg.Unit (fun () -> keep_open := true),
+     "                 keep incomplete proof attempt";
   "-loadpath", Arg.Set_string load_path,
     sprintf "          path to Zenon's coq libraries (default %s)"
             Config.libdir;
@@ -336,11 +340,16 @@ let main () =
       flush stderr;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
-    let proof = Prove.prove Prove.default_params defs hyps in
-    if not !quiet_flag then begin
-      printf "(* PROOF-FOUND *)\n";
-      flush stdout;
-    end;
+    let params = if !keep_open then Prove.open_params else Prove.default_params in
+    let proof = Prove.prove params defs hyps in
+    if not !quiet_flag then
+      if Mlproof.is_open_proof proof then begin
+        retcode := 12;
+        printf "(* NO-PROOF *)\n"
+      end else begin
+          printf "(* PROOF-FOUND *)\n";
+          flush stdout
+      end;
     let llp = lazy (optim (Extension.postprocess
                              (Mltoll.translate th_name ppphrases proof)))
     in

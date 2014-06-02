@@ -1336,6 +1336,8 @@ let prove_fail () =
   raise NoProof
 ;;
 
+let open_fail () = Closed (make_open ())
+
 type rule =
   state -> expr -> int -> (expr * int) list -> state * bool
 and params = {
@@ -1374,7 +1376,7 @@ and next_node prm stk st =
   prm.progress ();
   incr Globals.inferences;
   match remove st.queue with
-  | None -> prm.fail ()
+  | None -> unwind prm stk (prm.fail ())
   | Some (n, q1) ->
       let st1 = {(*st with*) queue = q1} in
       match reduce_branches n with
@@ -1423,7 +1425,7 @@ and unwind prm stk res =
       in
       List.iter f (List.rev fr.node.nbranches.(fr.curbr));
       begin match res with
-      | Closed p when disjoint fr.node.nbranches.(fr.curbr) p.mlconc ->
+      | Closed p when (disjoint fr.node.nbranches.(fr.curbr) p.mlconc) && not (is_open_proof p) ->
           unwind prm stk1 res
       | Backtrack -> unwind prm stk1 res
       | Closed _ ->
@@ -1494,6 +1496,13 @@ let prove prm defs l =
 let default_params = {
   rules = prove_rules;
   fail = prove_fail;
+  progress = progress;
+  end_progress = Progress.end_progress;
+};;
+
+let open_params = {
+  rules = prove_rules;
+  fail = open_fail;
   progress = progress;
   end_progress = Progress.end_progress;
 };;

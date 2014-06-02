@@ -243,6 +243,23 @@ let make_cut p n0 n1 =
   make_node [] (Cut p) [[p]; [enot p]] [n0; n1]
 ;;
 
+
+let make_open () = {
+    mlconc = [];
+    mlrule = Ext("dummy", "", []);
+    mlhyps = [| |];
+    mlrefc = 0;
+}
+
+let is_open_node p = p.mlrule = Ext("dummy", "open", [])
+
+let is_open_proof p =
+    let rec aux p = match p.mlrule with
+    | Ext("dummy", "", []) -> raise Exit
+    | _ -> Array.iter aux p.mlhyps
+    in
+    try aux p; false with Exit -> true
+
 (*
 
 let make_ctree p ps n0 = assert false;;
