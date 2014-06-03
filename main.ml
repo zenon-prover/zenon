@@ -16,6 +16,7 @@ type proof_level =
   | Proof_coqterm
   | Proof_isar
   | Proof_dot of bool
+  | Proof_dots
 ;;
 let proof_level = ref Proof_none;;
 
@@ -150,7 +151,9 @@ let argspec = [
          "             do not print the proof (default)";
   "-odot", Arg.Unit (fun () -> proof_level := Proof_dot true),
         "              print the proof in dot format (use with -q option)";
-  "-odotlight", Arg.Unit (fun () -> proof_level := Proof_dot false),
+  "-odots", Arg.Unit (fun () -> proof_level := Proof_dots),
+         "             print the proof attempts in dot format (use with -q option)";
+  "-odotlight", Arg.Unit (fun () -> proof_level := Proof_dots),
             "          print the proof in dot format (use with -q option)(less verbose)";
   "-opt0", Arg.Unit (fun () -> opt_level := 0),
         "              do not optimise the proof";
@@ -341,14 +344,17 @@ let main () =
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
     let params = if !keep_open then Prove.open_params else Prove.default_params in
-    let proof = Prove.prove params defs hyps in
-    if not !quiet_flag then
-      if Mlproof.is_open_proof proof then begin
+    let proofs = Prove.prove params defs hyps in
+    let proof= List.hd proofs in
+    let is_open = Mlproof.is_open_proof proof in
+    if is_open then
         retcode := 12;
+    if not !quiet_flag then begin
+      if is_open then
         printf "(* NO-PROOF *)\n"
-      end else begin
-          printf "(* PROOF-FOUND *)\n";
-          flush stdout
+      else
+        printf "(* PROOF-FOUND *)\n";
+      flush stdout
       end;
     let llp = lazy (optim (Extension.postprocess
                              (Mltoll.translate th_name ppphrases proof)))
@@ -372,6 +378,7 @@ let main () =
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
     | Proof_dot b -> Print.dot ~full_output:b (Print.Chan stdout) proof;
+    | Proof_dots -> Print.dots ~full_output:true (Print.Chan stdout) (List.rev proofs);
     end;
   with
   | Prove.NoProof ->

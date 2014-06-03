@@ -20,7 +20,7 @@ type params = {
   end_progress : string -> unit;
 };;
 
-val prove : params -> definition list -> (expr * int) list -> Mlproof.proof;;
+val prove : params -> definition list -> (expr * int) list -> Mlproof.proof list;;
 val default_params : params;;
 val open_params : params;;
 

@@ -1460,22 +1460,22 @@ let ticker finished () =
 let clear_index () =
     List.iter (fun (e, _) -> Index.remove e) (Index.get_all ())
 
-let rec iter_refute prm rl =
+let rec iter_refute prm rl acc =
   match refute prm [] {queue = empty} rl with
   | Backtrack ->
       max_depth := 2 * !max_depth;
       Progress.do_progress begin fun () ->
         eprintf "increase max_depth to %d\n" !max_depth;
       end '*';
-      iter_refute prm rl;
+      iter_refute prm rl acc;
   | Closed p when Mlproof.is_open_proof p ->
       if Extension.iter_open p then begin
         Index.clear_proofs ();
         (* clear_index (); *)
-        iter_refute prm rl
+        iter_refute prm rl (p :: acc)
       end else
-        Closed p
-  | x -> x
+        Closed p, acc
+  | x -> x, acc
 ;;
 
 let prove prm defs l =
@@ -1491,13 +1491,13 @@ let prove prm defs l =
   cur_depth := 0;
   top_depth := 0;
   try
-    match iter_refute prm rl with
-    | Closed p ->
+    match iter_refute prm rl [] with
+    | Closed p, acc ->
         Gc.delete_alarm al;
         ticker true ();
         prm.end_progress "";
-        p
-    | Open | Backtrack -> assert false
+        p :: acc
+    | Open, _ | Backtrack, _ -> assert false
   with e ->
     prm.end_progress " no proof";
     raise e

@@ -17,3 +17,4 @@ val mlproof_rule_soft : output -> Mlproof.rule -> unit;;
 val llproof : output -> Llproof.proof -> unit;;
 
 val dot : output -> ?full_output:bool -> Mlproof.proof -> unit;;
+val dots : output -> ?full_output:bool -> Mlproof.proof list -> unit;;
