@@ -427,6 +427,7 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
         if is_new e && not st.solved && not (ignore_expr e) then begin
             try
                 let (f, s, c) = of_bexpr e in
+                if not (fis_tau f) then raise NotaFormula;
                 let t = st_head st in
                 if f <> [] then begin
                     let t', res = simplex_add t e (f, s, c) in
@@ -668,12 +669,12 @@ let remove_formula e =
     remove_expr e;
     fm_rm_expr e
 
-let iter_open p =
+let rec iter_open p =
     match ct_from_ml p with
     | None -> false
     | Some t ->
         begin match solve_tree t with
-        | None -> false
+        | None -> begin try iter_open (next_inst p) with EndReached -> false end
         | Some s ->
                 let global = List.fold_left (fun acc (e, v) -> match e with
                     | Emeta(Eall(_) as e', _) ->
@@ -681,7 +682,7 @@ let iter_open p =
                     | Emeta(Eex(_) as e', _) ->
                             let e'' = Type.bnot e' in
                             (e'', mk_node_inst e' v) :: acc
-                    | _ -> assert false) [] s in
+                    | _ -> Format.printf "%a@." Type.print_expr e; assert false) [] s in
                 set_global global
         end
 

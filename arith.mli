@@ -43,6 +43,9 @@ val fadd : (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> (Q.t * Expr.t) list
 val fdiff : (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> (Q.t * Expr.t) list
 val fmul : Q.t -> (Q.t * 'a) list -> (Q.t * 'a) list
 
+val fis_tau : (Q.t * Expr.t) list -> bool
+val fis_meta : (Q.t * Expr.t) list -> bool
+
 val sanitize : (Q.t * 'a) list -> (Q.t * 'a) list
 val normalize :
   (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> Q.t * (Q.t * Expr.t) list
@@ -75,6 +78,8 @@ val next : 'a ctree -> unit
 val current : 'a ctree -> 'a list
 val ct_all : 'a ctree -> 'a list list
 val ct_from_ml : Mlproof.proof -> Expr.t ctree option
+
+val next_inst : Mlproof.proof -> Mlproof.proof
 
 (* Simplex solver helper *)
 val try_solve : Expr.t list -> (Expr.t * Q.t) list option

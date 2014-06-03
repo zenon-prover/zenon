@@ -82,7 +82,9 @@ let fadd a b = List.fold_left (fun e c -> fadd_aux c e) a b
 let fdiff a b = fadd a (List.map (fun (c, x) -> (Q.neg c, x)) b)
 let fmul c a = List.map (fun (c', x) -> (Q.mul c c', x)) a
 
-let fis_int a = List.for_all (fun (_, e) -> is_int e) a
+let fis_int = List.for_all (fun (_, e) -> is_int e)
+let fis_tau = List.for_all (fun (_, e) -> match e with Emeta(_) -> false | _ -> true)
+let fis_meta = List.for_all (fun (_, e) -> match e with Emeta(_) -> true | _ -> false)
 
 let fneg (b, s, c) =
     let s = comp_neg s in
@@ -270,28 +272,65 @@ let ct_all t =
         !res
     with EndReached -> List.rev !res
 
+let is_inst_node p = match p.mlrule with
+    | All (_, e) | NotEx(_, e) ->
+        begin match e with
+        | Emeta(_) -> false
+        | _ -> true
+        end
+    | _ -> false
+
+let expr_of_inst p = match p.mlrule with
+    | All (e, _) | NotEx(e, _) -> e
+    | _ -> assert false
+
 let ct_from_ml p =
     let filter l = List.filter (fun e ->
         try begin match of_bexpr e with
             | (_, "$eq_num", _) -> false
-            | (_, _, _) -> true
+            | (f, _, _) -> fis_meta f
         end with NotaFormula -> false
         ) l in
     let rec aux p =
-        let ehyps = Array.fold_left (fun acc p -> p.mlconc @ acc) [] p.mlhyps in
-        let hyps = Array.to_list (Array.map aux p.mlhyps) in
-        let hyps = List.filter (fun t -> not (ct_is_empty t)) hyps in
-        let hyps = Array.of_list hyps in
-        {
-            node = cl_from_list (filter (Expr.diff p.mlconc ehyps));
-            children = hyps;
-        }
+        if is_inst_node p then
+            { node = cl_from_list []; children = [| |]; }
+        else
+            let ehyps = Array.fold_left (fun acc p -> p.mlconc @ acc) [] p.mlhyps in
+            let hyps = Array.to_list p.mlhyps in
+            let hyps = List.filter is_open_proof hyps in
+            let hyps = List.map aux hyps in
+            let hyps = List.filter (fun t -> not (ct_is_empty t)) hyps in
+            let hyps = Array.of_list hyps in
+            {
+                node = cl_from_list (filter (Expr.diff p.mlconc ehyps));
+                children = hyps;
+            }
     in
     let res = aux p in
     if ct_is_empty res then
         None
     else
         Some res
+
+exception Found_inst of proof
+let find_next_inst p =
+    let rec aux p =
+        if is_inst_node p
+        then raise (Found_inst p)
+        else Array.iter aux p.mlhyps
+    in
+    try aux p; raise EndReached with Found_inst p -> p
+
+let replace_inst p inst =
+    let e = expr_of_inst inst in
+    let rec aux p = match p.mlrule with
+        | All(e', _) when equal e e' -> inst
+        | NotEx(e', _) when equal e e' -> inst
+        | _ -> { p with mlhyps = Array.map aux p.mlhyps }
+    in
+    aux p
+
+let next_inst p = replace_inst p (find_next_inst p)
 
 
 (* Simplex solver with a cache *)
