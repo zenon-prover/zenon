@@ -1,10 +1,7 @@
 
 * Meta-variable extension
   - limit the number of instanciations
-  - get the incomplete proof tree at end of search
-  - transform it into an arithmetic tree
-  - search for a solution
-  - rerun proof search with instanciation hints for num variables
+  - correctly instantiate multiple variables
 
 * Parse/Type all of TFF
   - infer functions/predicates types
