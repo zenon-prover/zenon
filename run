@@ -23,12 +23,13 @@ case $1 in
         exit 1
 esac
 
-sleep 2
+sleep 1
 
 # Testing all files in $FILES
 TEMP=./temp42.gv
 TOTAL=0
 SOLVED=0
+
 for f in $FILES
 do
     TOTAL=$(($TOTAL + 1))
@@ -38,14 +39,14 @@ do
     then
         echo -e "\e[32m[PROOF FOUND] $f \e[0m"
         SOLVED=$(($SOLVED + 1))
-        ./zenon -q -odot -k -x arith -itptp $f > $TEMP
+        ./zenon -max-time 5s -q -odot -k -x arith -itptp $f > $TEMP
         dot -Tps $TEMP -o $f.ps
-    elif [ $RET -eq 12 ] || [ $RET -eq 1 ];
+    elif [ $RET -eq 12 ] || [ $RET -eq 1 ] || [ $RET -eq 13 ];
     then
         echo -e "\e[31m[NOT FOUND] $f \e[0m"
     else
         echo -e "\e[35m[ERROR $RET] $f \e[0m"
-        ./zenon -x arith -itptp $f
+        ./zenon -max-time 5s -k -x arith -itptp $f
     fi
 done
 echo "$SOLVED solved / $TOTAL total"
