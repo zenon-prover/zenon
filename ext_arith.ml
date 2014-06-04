@@ -142,7 +142,7 @@ let mk_node_fm x e e' f g =
         nbranches = [| [f] |];
     }
 
-let mk_node_inst e v g = match e with
+let mk_node_inst ?typ:(b=false) e v g = match e with
   | Eall (e', t, p, _) ->
           let term = const (Q.to_string v) in
           let n = Expr.substitute [(e', term)] p in
@@ -155,8 +155,9 @@ let mk_node_inst e v g = match e with
           }
   | Eex (e', t, p, _) ->
           let term = const (Q.to_string v) in
+          let neg = if b then enot else Type.bnot in
           let n = Expr.substitute [(e', term)] (Type.bnot p) in
-          let ne = Type.bnot e in
+          let ne = neg e in
           Node {
               nconc = [ne];
               nrule = NotEx (ne, term);
@@ -452,12 +453,14 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
         List.filter (is_coherent e) !res
 
     and set_global l =
-        let res = try
-            List.for_all2 (fun (e, n) (e', n') -> equal e e' && n 0 = n' 0) st.global l
-            with Invalid_argument _ -> false
-        in
-        st.global <- l;
-        not res
+        let res = ref false in
+        let f (e, n) =
+            if not (List.exists (fun (e', n') -> equal e e') st.global) then begin
+                res := true;
+                st.global <- (e, n) :: st.global
+            end in
+        List.iter f l;
+        !res
     in
     ignore_expr, add, remove, todo, add_todo, set_global
 
@@ -680,8 +683,7 @@ let rec iter_open p =
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc
                     | Emeta(Eex(_) as e', _) ->
-                            let e'' = Type.bnot e' in
-                            (e'', mk_node_inst e' v) :: acc
+                            (Type.bnot e', mk_node_inst e' v) :: (enot e', mk_node_inst ~typ:true e' v) :: acc
                     | _ -> Format.printf "%a@." Type.print_expr e; assert false) [] s in
                 set_global global
         end
