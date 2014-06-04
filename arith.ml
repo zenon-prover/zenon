@@ -185,6 +185,8 @@ type 'a clist = {
 
 let cl_is_empty l = l.front = [] && l.acc = []
 
+let cl_to_list l = (List.rev l.acc) @ l.front
+
 let cl_from_list l = {
     front = l;
     acc = []

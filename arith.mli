@@ -64,6 +64,7 @@ val expr_norm : Expr.expr -> Expr.expr
 (* Choice trees *)
 type 'a clist
 val cl_from_list : 'a list -> 'a clist
+val cl_to_list : 'a clist -> 'a list
 val cl_current : 'a clist -> 'a
 val cl_next : 'a clist -> unit
 val cl_reset : 'a clist -> unit
