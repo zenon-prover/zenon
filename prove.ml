@@ -1472,7 +1472,7 @@ let rec iter_refute prm rl acc =
         prm.iter (iter_refute prm rl) (p :: acc)
       end else
         p :: acc
-  | Closed p -> p :: acc
+  | Closed p -> prm.iter (fun x -> x) (p :: acc)
   | Open -> assert false
 ;;
 

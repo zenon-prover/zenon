@@ -121,7 +121,7 @@ let argspec = [
          "             read input file in TPTP format";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
-  "-k", Arg.Unit (fun () -> keep_open := Open_all),
+  "-k", Arg.Unit (fun () -> keep_open := Open_last 0),
      "                 use incomplete proof attempts to instanciate";
   "-kall", Arg.Unit (fun () -> keep_open := Open_all),
         "              keep all incomplete proof attempts";
@@ -391,7 +391,8 @@ let main () =
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
-    | Proof_dot b -> Print.dots ~full_output:b (Print.Chan stdout) (List.rev proofs);
+    | Proof_dot b ->
+        Print.dots ~full_output:b (Print.Chan stdout) (List.rev proofs);
     end;
   with
   | Prove.NoProof ->
