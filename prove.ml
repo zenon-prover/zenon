@@ -1525,7 +1525,7 @@ let open_params level =
     in
     let f = match level with
     | None -> (fun f acc -> f acc)
-    | Some i when i <= 0 -> (fun f acc -> f (cut acc (i + 1)))
+    | Some i when i <= 0 -> (fun f acc -> f (cut acc ((- i) + 1)))
     | Some i (* i > 0 *) -> (fun f acc -> if List.length acc >= i then acc else f acc)
     in
     { open_params_base with iter = f }
