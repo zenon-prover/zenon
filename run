@@ -39,7 +39,7 @@ do
     then
         echo -e "\e[32m[PROOF FOUND] $f \e[0m"
         SOLVED=$(($SOLVED + 1))
-        ./zenon -max-time 30s -q -odot -k -x arith -itptp $f > $TEMP
+        ./zenon -max-time 5s -q -odot -kl 5 -x arith -itptp $f > $TEMP
         dot -Tps $TEMP -o $f.ps
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ] || [ $RET -eq 13 ];
     then
