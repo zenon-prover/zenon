@@ -16,11 +16,16 @@ type proof_level =
   | Proof_coqterm
   | Proof_isar
   | Proof_dot of bool
-  | Proof_dots
 ;;
 let proof_level = ref Proof_none;;
 
-let keep_open = ref false;;
+type open_level =
+    | Open_none
+    | Open_all
+    | Open_first of int
+    | Open_last of int
+;;
+let keep_open = ref Open_none;;
 
 type input_format =
   | I_zenon
@@ -116,8 +121,14 @@ let argspec = [
          "             read input file in TPTP format";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
-  "-k", Arg.Unit (fun () -> keep_open := true),
-     "                 keep incomplete proof attempt";
+  "-k", Arg.Unit (fun () -> keep_open := Open_all),
+     "                 use incomplete proof attempts to instanciate";
+  "-kall", Arg.Unit (fun () -> keep_open := Open_all),
+        "              keep all incomplete proof attempts";
+  "-kf", Arg.Int (fun n -> keep_open := Open_first n),
+      "<n>             keep the first <n> proof attempts";
+  "-kl", Arg.Int (fun n -> keep_open := Open_last n),
+      "<n>             keep the last <n> proof attempts";
   "-loadpath", Arg.Set_string load_path,
     sprintf "          path to Zenon's coq libraries (default %s)"
             Config.libdir;
@@ -151,10 +162,8 @@ let argspec = [
          "             do not print the proof (default)";
   "-odot", Arg.Unit (fun () -> proof_level := Proof_dot true),
         "              print the proof in dot format (use with -q option)";
-  "-odots", Arg.Unit (fun () -> proof_level := Proof_dots),
-         "             print the proof attempts in dot format (use with -q option)";
-  "-odotlight", Arg.Unit (fun () -> proof_level := Proof_dots),
-            "          print the proof in dot format (use with -q option)(less verbose)";
+  "-odotlight", Arg.Unit (fun () -> proof_level := Proof_dot false),
+             "         print the proof in dot format (use with -q option)(less verbose)";
   "-opt0", Arg.Unit (fun () -> opt_level := 0),
         "              do not optimise the proof";
   "-opt1", Arg.Unit (fun () -> opt_level := 1),
@@ -343,7 +352,12 @@ let main () =
       flush stderr;
       Gc.set {(Gc.get ()) with Gc.verbose = 0x010};
     end;
-    let params = if !keep_open then Prove.open_params else Prove.default_params in
+    let params = match !keep_open with
+        | Open_none -> Prove.default_params
+        | Open_all -> Prove.open_params None
+        | Open_first n -> Prove.open_params (Some n)
+        | Open_last n -> Prove.open_params (Some (-n))
+    in
     let proofs = Prove.prove params defs hyps in
     let proof= List.hd proofs in
     let is_open = Mlproof.is_open_proof proof in
@@ -377,8 +391,7 @@ let main () =
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
-    | Proof_dot b -> Print.dot ~full_output:b (Print.Chan stdout) proof;
-    | Proof_dots -> Print.dots ~full_output:true (Print.Chan stdout) (List.rev proofs);
+    | Proof_dot b -> Print.dots ~full_output:b (Print.Chan stdout) (List.rev proofs);
     end;
   with
   | Prove.NoProof ->

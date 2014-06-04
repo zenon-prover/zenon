@@ -742,24 +742,15 @@ let rec dot_proof full o p s l =
         dot_proof full o p.mlhyps.(i) ids.(i) p.mlconc
     done
 
-let dot o ?full_output:(b=true) p =
-    let pr f = oprintf o f in
-    pr "digraph proof {\n";
-    dot_proof b o p (new_id 0) [];
-    pr "}\n";
-    flush ()
-;;
-
 let dots o ?full_output:(b=true) l =
     let pr f = oprintf o f in
     pr "digraph proofs {\n";
     List.iteri (fun i p ->
         pr "subgraph graph%i {\n" i;
-        pr "label = \"Proof n°%i\";\ncolor = blue;\n" i;
         dot_proof b o p (new_id 0) [];
+        pr "label = \"Proof n°%i\";\ncolor = blue;\n" i;
         pr "}\n"
         ) l;
     pr "}\n";
     flush ()
 ;;
-

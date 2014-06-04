@@ -1345,6 +1345,7 @@ and params = {
   fail : unit -> branch_state;
   progress : unit -> unit;
   end_progress : string -> unit;
+  iter : (proof list -> proof list) -> proof list -> proof list;
 };;
 
 let rec refute_aux prm stk st forms =
@@ -1457,9 +1458,6 @@ let ticker finished () =
   if not finished then periodic '#';
 ;;
 
-let clear_index () =
-    List.iter (fun (e, _) -> Index.remove e) (Index.get_all ())
-
 let rec iter_refute prm rl acc =
   match refute prm [] {queue = empty} rl with
   | Backtrack ->
@@ -1471,11 +1469,11 @@ let rec iter_refute prm rl acc =
   | Closed p when Mlproof.is_open_proof p ->
       if Extension.iter_open p then begin
         Index.clear_proofs ();
-        (* clear_index (); *)
-        iter_refute prm rl (p :: acc)
+        prm.iter (iter_refute prm rl) (p :: acc)
       end else
-        Closed p, acc
-  | x -> x, acc
+        p :: acc
+  | Closed p -> p :: acc
+  | Open -> assert false
 ;;
 
 let prove prm defs l =
@@ -1492,12 +1490,12 @@ let prove prm defs l =
   top_depth := 0;
   try
     match iter_refute prm rl [] with
-    | Closed p, acc ->
+    | p :: acc ->
         Gc.delete_alarm al;
         ticker true ();
         prm.end_progress "";
         p :: acc
-    | Open, _ | Backtrack, _ -> assert false
+    | _ -> assert false
   with e ->
     prm.end_progress " no proof";
     raise e
@@ -1508,11 +1506,29 @@ let default_params = {
   fail = prove_fail;
   progress = progress;
   end_progress = Progress.end_progress;
+  iter = (fun _ -> assert false);
 };;
 
-let open_params = {
+let open_params_base = {
   rules = prove_rules;
   fail = open_fail;
   progress = progress;
   end_progress = Progress.end_progress;
+  iter = (fun _ -> assert false);
 };;
+
+let open_params level =
+    let rec cut l i = match l with
+    | [] -> []
+    | a :: r when i > 0 -> a :: (cut r (i - 1))
+    | _ (* i <= 0 *) -> []
+    in
+    let f = match level with
+    | None -> (fun f acc -> f acc)
+    | Some i when i <= 0 -> (fun f acc -> f (cut acc (i + 1)))
+    | Some i (* i > 0 *) -> (fun f acc -> if List.length acc >= i then acc else f acc)
+    in
+    { open_params_base with iter = f }
+;;
+
+
