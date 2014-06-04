@@ -666,8 +666,8 @@ let dot_rule_name = function
   | And (e1, e2) -> "And", [e1; e2]
   | NotOr (e1, e2) -> "NotOr", [e1; e2]
   | NotImpl (e1, e2) -> "NotImply", [e1; e2]
-  | All (e1, e2) -> "All", [e2]
-  | NotEx (e1, e2) -> "NotExists", [e2]
+  | All (e1, e2) -> "All", [e1;e2]
+  | NotEx (e1, e2) -> "NotExists", [e1;e2]
   | Or (e1, e2) -> "Or", [e1; e2]
   | Impl (e1, e2) -> "Imply", [e1; e2]
   | NotAnd (e1, e2) -> "NotAnd", [e1; e2]
@@ -695,11 +695,25 @@ let dot_rule_name = function
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
 ;;
 
+let default_color = "LIGHTBLUE"
+let color_of_rule = function
+    | Ext("dummy", "open", _) -> "RED"
+    | All(e, e') -> begin match e' with
+        | Emeta(e'', _) when (Expr.compare e e'' = 0) -> "GREEN"
+        | _ -> "PURPLE"
+        end
+    | NotEx(e, e') -> begin match e' with
+        | Emeta(e'', _) when (Expr.compare e (Type.bnot e'') = 0) || (Expr.compare e (enot e'') = 0) -> "GREEN"
+        | _ -> "PURPLE"
+        end
+    | _ -> default_color
+
 let new_id =
     let n = ref 0 in
     fun _ -> incr n; "node" ^ (string_of_int !n)
 
 let dot_rule full o id conc conc' r =
+    let color = color_of_rule r in
     let pr f = oprintf o f in
     let s, l = dot_rule_name r in
     pr "%s [shape=plaintext, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">" id;
@@ -709,9 +723,9 @@ let dot_rule full o id conc conc' r =
         end else begin
             pr "<TR><TD BGCOLOR=\"YELLOW\" colspan=\"2\">"; expr_esc o e; pr "</TD></TR>" end) conc;
     if l = [] then begin
-        pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" colspan=\"2\">%s</TD></TR>" s
+        pr "<TR><TD BGCOLOR=\"%s\" colspan=\"2\">%s</TD></TR>" color s
     end else begin
-        pr "<TR><TD BGCOLOR=\"LIGHTBLUE\" rowspan=\"%i\">%s</TD>" (List.length l) s;
+        pr "<TR><TD BGCOLOR=\"%s\" rowspan=\"%i\">%s</TD>" color (List.length l) s;
         pr "<TD>"; expr_esc o (List.hd l); pr "</TD></TR>";
         List.iter (fun e -> pr "<TR><TD>"; expr_esc o e; pr "</TD></TR>") (List.tl l)
     end;

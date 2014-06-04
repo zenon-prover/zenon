@@ -273,9 +273,12 @@ let ct_all t =
     with EndReached -> List.rev !res
 
 let is_inst_node p = match p.mlrule with
-    | All (_, e) | NotEx(_, e) ->
-        begin match e with
-        | Emeta(_) -> false
+    | All (e, e') -> begin match e' with
+        | Emeta(e'', _) when equal e e'' -> false
+        | _ -> true
+        end
+    | NotEx(e, e') -> begin match e' with
+        | Emeta(e'',_) when equal e (Type.bnot e'') ||  equal e (enot e'') -> false
         | _ -> true
         end
     | _ -> false
