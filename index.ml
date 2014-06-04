@@ -339,17 +339,19 @@ let remove e =
 let suspects = ref [];;
 
 let add_proof p =
-  incr Globals.stored_lemmas;
-  let get_record f =
-    begin try HE.find proofs f
-    with Not_found ->
-      let r = {present = HE.mem allforms f; proofs = []} in
-      HE.add proofs f r;
-      r
-    end
-  in
-  let recs = Array.of_list (List.map get_record p.mlconc) in
-  suspects := [(p, ref 0, recs)] :: !suspects;
+  if not (is_open_proof p) then begin
+    incr Globals.stored_lemmas;
+    let get_record f =
+      begin try HE.find proofs f
+      with Not_found ->
+        let r = {present = HE.mem allforms f; proofs = []} in
+        HE.add proofs f r;
+        r
+      end
+    in
+    let recs = Array.of_list (List.map get_record p.mlconc) in
+    suspects := [(p, ref 0, recs)] :: !suspects;
+  end
 ;;
 
 (* FIXME essayer:
@@ -397,11 +399,6 @@ let search_proof () =
   in
   loop ()
 ;;
-
-let clear_proofs () =
-    suspects := [];
-    Globals.stored_lemmas := 0;
-    HE.clear proofs
 
 (* ==== *)
 

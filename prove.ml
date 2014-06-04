@@ -1468,7 +1468,6 @@ let rec iter_refute prm rl acc =
       iter_refute prm rl acc;
   | Closed p when Mlproof.is_open_proof p ->
       if Extension.iter_open p then begin
-        Index.clear_proofs ();
         prm.iter (iter_refute prm rl) (p :: acc)
       end else
         p :: acc
