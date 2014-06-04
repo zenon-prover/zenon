@@ -148,7 +148,7 @@ let mk_node_inst ?typ:(b=false) e v g = match e with
           let n = Expr.substitute [(e', term)] p in
           Node {
               nconc = [e];
-              nrule = Ext("arith", "All", [e; term]);
+              nrule = All (e, term);
               nprio = Inst e;
               ngoal = g;
               nbranches = [| [n] |];
@@ -160,7 +160,7 @@ let mk_node_inst ?typ:(b=false) e v g = match e with
           let ne = neg e in
           Node {
               nconc = [ne];
-              nrule = Ext("arith", "NotEx", [ne; term]);
+              nrule = NotEx (ne, term);
               nprio = Inst e;
               ngoal = g;
               nbranches = [| [n] |];
