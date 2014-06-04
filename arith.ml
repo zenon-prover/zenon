@@ -324,7 +324,11 @@ let find_next_inst p =
         then raise (Found_inst p)
         else Array.iter aux p.mlhyps
     in
-    try aux p; raise EndReached with Found_inst p -> p
+    try aux p; raise EndReached with Found_inst p -> { p with mlrule =
+        Ext("arith", "inst", match p.mlrule with
+            | All(e, e') -> [e; e']
+            | NotEx(e, e') -> [e; e']
+            | _ -> assert false) }
 
 let replace_inst p inst =
     let e = expr_of_inst inst in
