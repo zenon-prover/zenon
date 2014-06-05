@@ -86,12 +86,12 @@ let make_cl p =
 ;;
 
 let make_clr r a =
-  make_node [enot (eapp (r, [a; a]))] (Close_refl (r, a)) [] []
+  make_node [enot (eapp (evar r, [a; a]))] (Close_refl (r, a)) [] []
 ;;
 
 let make_cls r a b =
-  let rab = eapp (r, [a; b]) in
-  let nrba = enot (eapp (r, [b; a])) in
+  let rab = eapp (evar r, [a; b]) in
+  let nrba = enot (eapp (evar r, [b; a])) in
   make_node [rab; nrba] (Close_sym (r, a, b)) [] []
 ;;
 
@@ -178,19 +178,19 @@ let make_neqv p q n0 n1 =
 ;;
 
 let mk_neqs l1 l2 =
-  try List.map2 (fun x y -> [enot (eapp ("=", [x; y]))]) l1 l2
+  try List.map2 (fun x y -> [enot (eapp (evar "=", [x; y]))]) l1 l2
   with Invalid_argument _ -> assert false
 ;;
 
 let make_pnp pa npb ns =
   let (p, aa) =
     match pa with
-    | Eapp (p, aa, _) -> (p, aa)
+    | Eapp (p, aa, _) -> (get_name p, aa)
     | _ -> assert false
   in
   let bb =
     match npb with
-    | Enot (Eapp (q, bb, _), _) -> assert (q = p); bb
+    | Enot (Eapp (q, bb, _), _) -> assert (get_name q = p); bb
     | _ -> assert false
   in
   make_node [pa; npb] (P_NotP (pa, npb)) (mk_neqs aa bb) ns
@@ -199,30 +199,30 @@ let make_pnp pa npb ns =
 let make_pnps r rab nrcd n0 n1 =
   let (r, a, b) =
     match rab with
-    | Eapp (r, [a; b], _) -> (r, a, b)
+    | Eapp (r, [a; b], _) -> (get_name r, a, b)
     | _ -> assert false
   in
   let (c, d) =
     match nrcd with
-    | Enot (Eapp (s, [c; d], _), _) -> assert (s = r); (c, d)
+    | Enot (Eapp (s, [c; d], _), _) -> assert (get_name s = r); (c, d)
     | _ -> assert false
   in
   make_node [rab; nrcd] (P_NotP_sym (r, rab, nrcd))
-            [[enot (eapp ("=", [b; c]))]; [enot (eapp ("=", [a; d]))]] [n0; n1]
+            [[enot (eapp (evar "=", [b; c]))]; [enot (eapp (evar "=", [a; d]))]] [n0; n1]
 ;;
 
 let make_neql fa fb ns =
   let (f, aa) =
     match fa with
-    | Eapp (f, aa, _) -> (f, aa)
+    | Eapp (f, aa, _) -> (get_name f, aa)
     | _ -> assert false
   in
   let bb =
     match fb with
-    | Eapp (g, bb, _) -> assert (g = f); bb
+    | Eapp (g, bb, _) -> assert (get_name g = f); bb
     | _ -> assert false
   in
-  make_node [enot (eapp ("=", [fa; fb]))] (NotEqual (fa, fb)) (mk_neqs aa bb) ns
+  make_node [enot (eapp (evar "=", [fa; fb]))] (NotEqual (fa, fb)) (mk_neqs aa bb) ns
 ;;
 
 let make_def d folded unfolded n0 =
@@ -230,12 +230,12 @@ let make_def d folded unfolded n0 =
 ;;
 
 let make_conglr p a b n0 =
-  make_node [apply p a; eapp ("=", [a; b])] (CongruenceLR (p, a, b))
+  make_node [apply p a; eapp (evar "=", [a; b])] (CongruenceLR (p, a, b))
             [[apply p b]] [n0]
 ;;
 
 let make_congrl p a b n0 =
-  make_node [apply p a; eapp ("=", [b; a])] (CongruenceRL (p, a, b))
+  make_node [apply p a; eapp (evar "=", [b; a])] (CongruenceRL (p, a, b))
             [[apply p b]] [n0]
 ;;
 
