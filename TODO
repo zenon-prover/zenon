@@ -1,0 +1,3 @@
+
+In eqrel.ml :
+  -> use Type.t instead of string to store types
