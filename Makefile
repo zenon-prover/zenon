@@ -19,7 +19,7 @@ CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           progress.ml namespace.ml expr.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
-          type.ml simplex/simplex.ml arith.ml \
+          typetptp.ml simplex/simplex.ml arith.ml \
 	  print.ml step.ml node.ml extension.ml mltoll.ml \
           parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
           parsecoq.mly lexcoq.mll tptp.ml \

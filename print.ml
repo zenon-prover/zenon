@@ -703,7 +703,7 @@ let color_of_rule = function
         | _ -> "PURPLE"
         end
     | NotEx(e, e') -> begin match e' with
-        | Emeta(e'', _) when (Expr.compare e (Type.bnot e'') = 0) || (Expr.compare e (enot e'') = 0) -> "GREEN"
+        | Emeta(e'', _) when (Expr.compare e (Typetptp.bnot e'') = 0) || (Expr.compare e (enot e'') = 0) -> "GREEN"
         | _ -> "PURPLE"
         end
     | _ -> default_color

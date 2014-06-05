@@ -279,7 +279,7 @@ let parse_file f =
           let upup = Filename.concat (Filename.concat d pp) pp in
           let incpath = List.rev (upup :: d :: !include_path) in
           let (forms, name) = Tptp.translate incpath tpphrases in
-          let forms = Type.typecheck forms in
+          let forms = Typetptp.typecheck forms in
           (name, List.map (fun x -> (x, false)) forms)
       | I_focal ->
           let (name, result) = Parsecoq.file Lexcoq.token lexbuf in

@@ -280,7 +280,7 @@ let is_inst_node p = match p.mlrule with
         | _ -> true
         end
     | NotEx(e, e') -> begin match e' with
-        | Emeta(e'',_) when equal e (Type.bnot e'') ||  equal e (enot e'') -> false
+        | Emeta(e'',_) when equal e (Typetptp.bnot e'') ||  equal e (enot e'') -> false
         | _ -> true
         end
     | _ -> false

@@ -155,8 +155,8 @@ let mk_node_inst ?typ:(b=false) e v g = match e with
           }
   | Eex (e', t, p, _) ->
           let term = const (Q.to_string v) in
-          let neg = if b then enot else Type.bnot in
-          let n = Expr.substitute [(e', term)] (Type.bnot p) in
+          let neg = if b then enot else Typetptp.bnot in
+          let n = Expr.substitute [(e', term)] (Typetptp.bnot p) in
           let ne = neg e in
           Node {
               nconc = [ne];
@@ -243,11 +243,11 @@ let new_bindings low high f = function
 
 let print_opt fmt = function
     | None -> Format.fprintf fmt "empty"
-    | Some e -> Type.print_expr fmt e
+    | Some e -> Typetptp.print_expr fmt e
 
 let print_binding fmt (x, def, inf, upp) =
     Format.fprintf fmt "%a -:- %a@\nInf :%a@\nUpp :%a@]@."
-    Type.print_expr x Type.print_expr def
+    Typetptp.print_expr x Typetptp.print_expr def
     print_opt inf print_opt upp
 
 let print_bindings fmt = List.iter (print_binding fmt)
@@ -683,8 +683,8 @@ let rec iter_open p =
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc
                     | Emeta(Eex(_) as e', _) ->
-                            (Type.bnot e', mk_node_inst e' v) :: (enot e', mk_node_inst ~typ:true e' v) :: acc
-                    | _ -> Format.printf "%a@." Type.print_expr e; assert false) [] s in
+                            (Typetptp.bnot e', mk_node_inst e' v) :: (enot e', mk_node_inst ~typ:true e' v) :: acc
+                    | _ -> Format.printf "%a@." Typetptp.print_expr e; assert false) [] s in
                 set_global global
         end
 
