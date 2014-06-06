@@ -6,8 +6,8 @@ open Printf;;
 
 type rule =
   | Close of expr
-  | Close_refl of string * expr
-  | Close_sym of string * expr * expr
+  | Close_refl of expr * expr
+  | Close_sym of expr * expr * expr
   | False                       (* false  /             *)
   | NotTrue                     (* -true  /             *)
   | NotNot of expr              (* --p    /  p          *)
@@ -25,17 +25,17 @@ type rule =
   | Equiv of expr * expr        (* p<=>q  /  -p, -q | p, q *)
   | NotEquiv of expr * expr     (* -(p<=>q)  /  -p, q | p, -q *)
   | P_NotP of expr * expr
-  | P_NotP_sym of string * expr * expr
+  | P_NotP_sym of expr * expr * expr
   | NotEqual of expr * expr
   | Definition of definition * expr * expr
 
   | ConjTree of expr            (* p1/\p2/\...  /  p1, p2, ... *)
   | DisjTree of expr            (* p1\/p2\/...  /  p1 | p2 | ... *)
-  | AllPartial of expr * string * int
+  | AllPartial of expr * expr * int
                                 (* Ax.p(x)  /  Axyz.p(s(xyz)) *)
-  | NotExPartial of expr * string * int
+  | NotExPartial of expr * expr * int
                                 (* -Ex.p(x)  /  -Exyz.p(s(xyz)) *)
-  | Refl of string * expr * expr
+  | Refl of expr * expr * expr
   | Trans of expr * expr
   | Trans_sym of expr * expr
   | TransEq of expr * expr * expr
@@ -86,12 +86,12 @@ let make_cl p =
 ;;
 
 let make_clr r a =
-  make_node [enot (eapp (evar r, [a; a]))] (Close_refl (r, a)) [] []
+  make_node [enot (eapp (r, [a; a]))] (Close_refl (r, a)) [] []
 ;;
 
 let make_cls r a b =
-  let rab = eapp (evar r, [a; b]) in
-  let nrba = enot (eapp (evar r, [b; a])) in
+  let rab = eapp (r, [a; b]) in
+  let nrba = enot (eapp (r, [b; a])) in
   make_node [rab; nrba] (Close_sym (r, a, b)) [] []
 ;;
 
@@ -178,7 +178,7 @@ let make_neqv p q n0 n1 =
 ;;
 
 let mk_neqs l1 l2 =
-  try List.map2 (fun x y -> [enot (eapp (evar "=", [x; y]))]) l1 l2
+  try List.map2 (fun x y -> [enot (eapp (eeq, [x; y]))]) l1 l2
   with Invalid_argument _ -> assert false
 ;;
 
@@ -199,16 +199,16 @@ let make_pnp pa npb ns =
 let make_pnps r rab nrcd n0 n1 =
   let (r, a, b) =
     match rab with
-    | Eapp (r, [a; b], _) -> (get_name r, a, b)
+    | Eapp (r, [a; b], _) -> (r, a, b)
     | _ -> assert false
   in
   let (c, d) =
     match nrcd with
-    | Enot (Eapp (s, [c; d], _), _) -> assert (get_name s = r); (c, d)
+    | Enot (Eapp (s, [c; d], _), _) -> assert (compare s r = 0); (c, d)
     | _ -> assert false
   in
   make_node [rab; nrcd] (P_NotP_sym (r, rab, nrcd))
-            [[enot (eapp (evar "=", [b; c]))]; [enot (eapp (evar "=", [a; d]))]] [n0; n1]
+            [[enot (eapp (eeq, [b; c]))]; [enot (eapp (eeq, [a; d]))]] [n0; n1]
 ;;
 
 let make_neql fa fb ns =
@@ -222,7 +222,7 @@ let make_neql fa fb ns =
     | Eapp (g, bb, _) -> assert (get_name g = f); bb
     | _ -> assert false
   in
-  make_node [enot (eapp (evar "=", [fa; fb]))] (NotEqual (fa, fb)) (mk_neqs aa bb) ns
+  make_node [enot (eapp (eeq, [fa; fb]))] (NotEqual (fa, fb)) (mk_neqs aa bb) ns
 ;;
 
 let make_def d folded unfolded n0 =
@@ -230,12 +230,12 @@ let make_def d folded unfolded n0 =
 ;;
 
 let make_conglr p a b n0 =
-  make_node [apply p a; eapp (evar "=", [a; b])] (CongruenceLR (p, a, b))
+  make_node [apply p a; eapp (eeq, [a; b])] (CongruenceLR (p, a, b))
             [[apply p b]] [n0]
 ;;
 
 let make_congrl p a b n0 =
-  make_node [apply p a; eapp (evar "=", [b; a])] (CongruenceRL (p, a, b))
+  make_node [apply p a; eapp (eeq, [b; a])] (CongruenceRL (p, a, b))
             [[apply p b]] [n0]
 ;;
 

@@ -141,14 +141,16 @@ let type_app_opt (s, t) args =
 
 let rec to_string_base = function
     | Bool -> "$o"
+    | App (s, []) -> s
     | App (s, l) -> "(" ^ s ^ " " ^ (String.concat " " (List.map to_string_base l)) ^ ")"
     | Arrow (args, ret) -> "(" ^ (String.concat " * " (List.map to_string_base args)) ^ " > " ^ (to_string_base ret) ^ ")"
     | Ttype -> "$tType"
 
 let to_string_binders l =
-    let tvars = List.map (fun s -> s ^ " : $tType") l in
-    let tvars = String.concat ", " tvars in
-    "!>[" ^ tvars ^ "]: "
+    if l = [] then "" else
+        let tvars = List.map (fun s -> s ^ " : $tType") l in
+        let tvars = String.concat ", " tvars in
+        "!>[" ^ tvars ^ "]: "
 
 let to_string (b, t) = (to_string_binders b) ^ (to_string_base t)
 

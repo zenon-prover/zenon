@@ -68,7 +68,7 @@ let rec check_unused name e =
   match e with
   | Evar _ | Emeta _ | Etrue | Efalse
     -> ()
-  | Eapp (s, Elam (f, _, body, _) :: args, _) when get_name s = "$fix" ->
+  | Eapp (Evar("$fix",_), Elam (f, _, body, _) :: args, _) ->
      List.iter (check_unused name) (body :: args)
   | Eapp (f, args, _) -> List.iter (check_unused name) args;
   | Enot (e1, _) -> check_unused name e1;

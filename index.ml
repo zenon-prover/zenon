@@ -34,8 +34,8 @@ type head = Sym of string | Tau of expr | Meta of expr;;
 
 let get_head e =
   match e with
-  | Eapp (s, _, _) | Evar (s, _)
-  -> Sym s
+  | Evar (s, _) -> Sym s
+  | Eapp (s, _, _) -> Sym (get_name s)
   | Emeta _ -> Meta e
   | Etau _ -> Tau e
   | Etrue -> Sym "$true"
@@ -102,7 +102,7 @@ let find_neg s =
 
 type direction = Left | Right | Both;;
 
-type trans_table = (string * head, expr list ref) Hashtbl.t;;
+type trans_table = (expr * head, expr list ref) Hashtbl.t;;
 
 let pos_trans_left = (Hashtbl.create tblsize : trans_table);;
 let pos_trans_right = (Hashtbl.create tblsize : trans_table);;
@@ -229,10 +229,10 @@ let neq_rl = (HE.create tblsize : Expr.t HE.t);;
 
 let add_eq e =
   match e with
-  | Eapp ("=", [e1; e2], _) ->
+  | Eapp (Evar("=",_), [e1; e2], _) ->
      HE.add eq_lr e1 e2;
      HE.add eq_rl e2 e1;
-  | Enot (Eapp ("=", [e1; e2], _), _) ->
+  | Enot (Eapp (Evar("=",_), [e1; e2], _), _) ->
      HE.add neq_lr e1 e2;
      HE.add neq_rl e2 e1;
   | _ -> ()
@@ -240,10 +240,10 @@ let add_eq e =
 
 let remove_eq e =
   match e with
-  | Eapp ("=", [e1; e2], _) ->
+  | Eapp (Evar("=",_), [e1; e2], _) ->
      HE.remove eq_lr e1;
      HE.remove eq_rl e2;
-  | Enot (Eapp ("=", [e1; e2], _), _) ->
+  | Enot (Eapp (Evar("=",_), [e1; e2], _), _) ->
      HE.remove neq_lr e1;
      HE.remove neq_rl e2;
   | _ -> ()
@@ -255,11 +255,11 @@ let find_neq_lr e = HE.find_all neq_lr e;;
 let find_neq_rl e = HE.find_all neq_rl e;;
 
 let find_eq e =
-  List.map (fun x -> eapp ("=", [e; x])) (find_eq_lr e)
-  @ List.map (fun x -> eapp ("=", [x; e])) (find_eq_rl e);;
+  List.map (fun x -> eapp (eeq, [e; x])) (find_eq_lr e)
+  @ List.map (fun x -> eapp (eeq, [x; e])) (find_eq_rl e);;
 let find_neq e =
-  List.map (fun x -> enot (eapp ("=", [e; x]))) (find_neq_lr e)
-  @ List.map (fun x -> enot (eapp ("=", [x; e]))) (find_neq_rl e);;
+  List.map (fun x -> enot (eapp (eeq, [e; x]))) (find_neq_lr e)
+  @ List.map (fun x -> enot (eapp (eeq, [x; e]))) (find_neq_rl e);;
 
 (* ==== *)
 
@@ -267,16 +267,16 @@ let meta_set = (HE.create tblsize : unit HE.t);;
 
 let add_meta_set e =
   match e with
-  | Eapp ("TLA.in", [Emeta _; e1], _)
-  | Enot (Eapp ("TLA.in", [Emeta _; e1], _), _)
+  | Eapp (Evar("TLA.in",_), [Emeta _; e1], _)
+  | Enot (Eapp (Evar("TLA.in",_), [Emeta _; e1], _), _)
     -> HE.add meta_set e1 ()
   | _ -> ()
 ;;
 
 let remove_meta_set e =
   match e with
-  | Eapp ("TLA.in", [Emeta _; e1], _)
-  | Enot (Eapp ("TLA.in", [Emeta _; e1], _), _)
+  | Eapp (Evar("=",_), [Emeta _; e1], _)
+  | Enot (Eapp (Evar("=",_), [Emeta _; e1], _), _)
     -> HE.remove meta_set e1
   | _ -> ()
 ;;
@@ -290,18 +290,18 @@ let str_eq = ref [];;
 
 let add_str e =
   match e with
-  | Eapp ("=", [e1; Eapp ("$string", [Evar (str, _)], _)], _) ->
+  | Eapp (Evar("=",_), [e1; Eapp (Evar("$string",_), [Evar (str, _)], _)], _) ->
      eq_str := (e1, str) :: !eq_str
-  | Eapp ("=", [Eapp ("$string", [Evar (str, _)], _); e2], _) ->
+  | Eapp (Evar("=",_), [Eapp (Evar("$string",_), [Evar (str, _)], _); e2], _) ->
      str_eq := (e2, str) :: !str_eq
   | _ -> ()
 ;;
 
 let remove_str e =
   match e with
-  | Eapp ("=", [e1; Eapp ("$string", [Evar (str, _)], _)], _) ->
+  | Eapp (Evar("=",_), [e1; Eapp (Evar("$string",_), [Evar (str, _)], _)], _) ->
      eq_str := (match !eq_str with _ :: t -> t | _ -> assert false)
-  | Eapp ("=", [Eapp ("$string", [Evar (str, _)], _); e2], _) ->
+  | Eapp (Evar("=",_), [Eapp (Evar("$string",_), [Evar (str, _)], _); e2], _) ->
      str_eq := (match !str_eq with _ :: t -> t | _ -> assert false)
   | _ -> ()
 ;;
@@ -455,7 +455,7 @@ let rec expr o ex =
 
   | Emeta (e, _) -> pr "%s#" Namespace.meta_prefix;
   | Eapp (s, es, _) ->
-      pr "(%s" s; List.iter (fun x -> pr " "; expr o x) es; pr ")";
+      pr "(%s" (get_name s); List.iter (fun x -> pr " "; expr o x) es; pr ")";
   | Enot (e, _) -> pr "(-. "; expr o e; pr ")";
   | Eand (e1, e2, _) ->
       pr "(/\\ "; expr o e1; pr " "; expr o e2; pr ")";
@@ -467,22 +467,22 @@ let rec expr o ex =
       pr "(<=> "; expr o e1; pr " "; expr o e2; pr ")";
   | Etrue -> pr "(True)";
   | Efalse -> pr "(False)";
-  | Eall (v, t, e, _) when t === Namespace.univ_name ->
+  | Eall (v, t, e, _) when (Type.to_string t) === Namespace.univ_name ->
       pr "(A. ((%a) " print_var v; expr o e; pr "))";
   | Eall (v, t, e, _) ->
-      pr "(A. ((%a \"%s\") " print_var v t; expr o e; pr "))";
-  | Eex (v, t, e, _) when t === Namespace.univ_name ->
+      pr "(A. ((%a \"%s\") " print_var v (Type.to_string t); expr o e; pr "))";
+  | Eex (v, t, e, _) when (Type.to_string t) === Namespace.univ_name ->
       pr "(E. ((%a) " print_var v; expr o e; pr "))";
   | Eex (v, t, e, _) ->
-      pr "(E. ((%a \"%s\") " print_var v t; expr o e; pr "))";
-  | Etau (v, t, e, _) when t === Namespace.univ_name ->
+      pr "(E. ((%a \"%s\") " print_var v (Type.to_string t); expr o e; pr "))";
+  | Etau (v, t, e, _) when (Type.to_string t) === Namespace.univ_name ->
       pr "(t. ((%a) " print_var v; expr o e; pr "))";
   | Etau (v, t, e, _) ->
-      pr "(t. ((%a \"%s\") " print_var v t; expr o e; pr "))";
-  | Elam (v, t, e, _) when t === Namespace.univ_name ->
+      pr "(t. ((%a \"%s\") " print_var v (Type.to_string t); expr o e; pr "))";
+  | Elam (v, t, e, _) when (Type.to_string t) === Namespace.univ_name ->
       pr "((%a) " print_var v; expr o e; pr ")";
   | Elam (v, t, e, _) ->
-      pr "((%a \"%s\") " print_var v t; expr o e; pr ")";
+      pr "((%a \"%s\") " print_var v (Type.to_string t); expr o e; pr ")";
 ;;
 
 let dprint_expr e = expr () e;;

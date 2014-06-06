@@ -56,6 +56,11 @@ val eex : expr * etype * expr -> expr;;
 val etau : expr * etype * expr -> expr;;
 val elam : expr * etype * expr -> expr;;
 
+val eeq : expr;;
+val estring : expr;;
+
+val iseq : expr -> bool;;
+
 val all_list : expr list -> expr -> expr;;
 val ex_list : expr list -> expr -> expr;;
 

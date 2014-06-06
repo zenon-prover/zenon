@@ -357,6 +357,7 @@ let print_stats oc =
   ;;
 *)
 
+
 let evar (s) = he_merge (Evar (s, priv_var s));;
 let emeta (e) = he_merge (Emeta (e, priv_meta e));;
 let eapp (s, args) = he_merge (Eapp (s, args, priv_app s args));;
@@ -371,6 +372,9 @@ let eall (v, t, e) = he_merge (Eall (v, t, e, priv_all v t e));;
 let eex (v, t, e) = he_merge (Eex (v, t, e, priv_ex v t e));;
 let etau (v, t, e) = he_merge (Etau (v, t, e, priv_tau v t e));;
 let elam (v, t, e) = he_merge (Elam (v, t, e, priv_lam v t e));;
+
+let eeq = evar "=";;
+let estring = evar "$string";;
 
 let rec all_list vs body =
   match vs with
@@ -393,6 +397,8 @@ let compare x y =
   | x when x < 0 -> -1
   | _ -> 1
 ;;
+
+let iseq e = compare e eeq =%= 0
 
 (************************)
 

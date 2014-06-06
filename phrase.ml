@@ -71,13 +71,13 @@ let rec is_def predef env e =
      env = [] && check_body [] s body
   | Eequiv (body, Evar (s, _), _) when not (List.mem s predef) ->
      env = [] && check_body [] s body
-  | Eapp (f, [Evar (s, _); body], _) when get_name f = "=" && not (List.mem s predef) ->
+  | Eapp (Evar("=",_), [Evar (s, _); body], _) when not (List.mem s predef) ->
      env = [] && check_body [] s body
-  | Eapp (f, [body; Evar (s, _)], _) when get_name f = "=" && not (List.mem s predef) ->
+  | Eapp (Evar("=",_), [body; Evar (s, _)], _) when not (List.mem s predef) ->
      env = [] && check_body [] s body
-  | Eapp (f, [Eapp (s, args, _); body], _) when get_name f = "=" && not (List.mem (get_name s) predef) ->
+  | Eapp (Evar("=",_), [Eapp (s, args, _); body], _) when not (List.mem (get_name s) predef) ->
      check_args env args && check_body [] (get_name s) body
-  | Eapp (f, [body; Eapp (s, args, _)], _) when get_name f = "=" && not (List.mem (get_name s) predef) ->
+  | Eapp (Evar("=",_), [body; Eapp (s, args, _)], _) when not (List.mem (get_name s) predef) ->
      check_args env args && check_body [] (get_name s) body
   | _ -> false
 ;;
@@ -95,15 +95,15 @@ let rec make_def predef orig env e =
       DefPseudo (orig, s, [], body)
   | Eequiv (body, Evar (s, _), _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eapp (f, [Evar (s, _); body], _) when get_name f = "=" && not (List.mem s predef) ->
+  | Eapp (Evar("=",_), [Evar (s, _); body], _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eapp (f, [body; Evar (s, _)], _) when get_name f = "=" && not (List.mem s predef) ->
+  | Eapp (Evar("=",_), [body; Evar (s, _)], _) when not (List.mem s predef) ->
       DefPseudo (orig, s, [], body)
-  | Eapp (f, [Eapp (s, args, _); body], _)
-    when get_name f = "=" && not (List.mem (get_name s) predef) && check_args env args ->
+  | Eapp (Evar("=",_), [Eapp (s, args, _); body], _)
+    when not (List.mem (get_name s) predef) && check_args env args ->
       DefPseudo (orig, (get_name s), extract_args args, body)
-  | Eapp (f, [body; Eapp (s, args, _)], _)
-    when get_name f = "=" && not (List.mem (get_name s) predef) && check_args env args ->
+  | Eapp (Evar("=",_), [body; Eapp (s, args, _)], _)
+    when not (List.mem (get_name s) predef) && check_args env args ->
       DefPseudo (orig, (get_name s), extract_args args, body)
   | _ -> assert false
 ;;

@@ -1,3 +1,8 @@
 
+General :
+  -> when comparing type to Namespace.univ_name,
+     instead of comparing strings, compare values of type Type.t ?
+  -> Change llproof rules to include expr instead of string for functions ?
+
 In eqrel.ml :
   -> use Type.t instead of string to store types
