@@ -16,7 +16,6 @@ exception Base_expected
 exception Not_enough_args
 exception Function_expected
 
-
 (* Type constructors *)
 let base t = [], t
 
@@ -122,6 +121,7 @@ let type_app_base t l = match t with
             | Not_found -> ret
             | Invalid_argument _ -> raise Not_enough_args
             end
+    | _ when l = [] -> t
     | _ -> raise Function_expected
 
 let type_eq = function
