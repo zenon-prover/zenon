@@ -59,8 +59,6 @@ val elam : expr * etype * expr -> expr;;
 val eeq : expr;;
 val estring : expr;;
 
-val iseq : expr -> bool;;
-
 val all_list : expr list -> expr -> expr;;
 val ex_list : expr list -> expr -> expr;;
 
@@ -100,6 +98,8 @@ val substitute_2nd : (expr * expr) list -> expr -> expr;;
 val apply : expr -> expr -> expr;;
 val add_argument : expr -> expr -> expr;;
 val remove_scope : expr -> expr;;
+
+val type_of_expr : expr -> Type.t;;
 
 (* gensym *)
 val newvar : unit -> expr;;

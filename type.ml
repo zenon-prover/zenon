@@ -17,12 +17,23 @@ exception Not_enough_args
 exception Function_expected
 
 
-(* Type constants *)
+(* Type constructors *)
 let base t = [], t
 
 let type_bool = base Bool
 let atomic s = base (App (s, []))
 
+let mk_poly b = function
+    | [], t -> b, t
+    | _ -> raise Base_expected
+
+let mk_constr constr args =
+    let aux = function | [], t -> t | _ -> raise Base_expected in
+    base (App (constr, List.map aux args))
+
+let mk_arrow args ret =
+    let aux = function | [], t -> t | _ -> raise Base_expected in
+    base (Arrow (List.map aux args, aux ret))
 
 (* Type comparison *)
 let _to_int = function
@@ -153,22 +164,4 @@ let to_string_binders l =
         "!>[" ^ tvars ^ "]: "
 
 let to_string (b, t) = (to_string_binders b) ^ (to_string_base t)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 

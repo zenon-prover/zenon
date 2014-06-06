@@ -122,8 +122,8 @@ and tr_expr a = memo expr_tbl xtr_expr a
 let tr_rule r =
   match r with
   | Close (p) -> LL.Raxiom (tr_expr p)
-  | Close_refl (s, e) when iseq s -> LL.Rnoteq (tr_expr e)
-  | Close_sym (s, e, f) when iseq s -> LL.Reqsym (tr_expr e, tr_expr f)
+  | Close_refl (Evar("=",_), e) -> LL.Rnoteq (tr_expr e)
+  | Close_sym (Evar("=",_), e, f) -> LL.Reqsym (tr_expr e, tr_expr f)
   | False -> LL.Rfalse
   | NotTrue -> LL.Rnottrue
   | NotNot (p) -> LL.Rnotnot (tr_expr p)
@@ -268,10 +268,10 @@ let make_lemma llprf extras mlprf =
 let is_derived = function
   | Close _ -> false
 
-  | Close_refl (f, _) when iseq f -> false
+  | Close_refl (Evar("=",_), _) -> false
   | Close_refl (_, _) -> true
 
-  | Close_sym (f, _, _) when iseq f -> false
+  | Close_sym (Evar("=",_), _, _) -> false
   | Close_sym _ -> true
 
   | False | NotTrue

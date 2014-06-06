@@ -398,8 +398,6 @@ let compare x y =
   | _ -> 1
 ;;
 
-let iseq e = compare e eeq =%= 0
-
 (************************)
 
 exception Mismatch;;
@@ -594,3 +592,14 @@ let rec remove_scope e =
 ;;
 
 type goalness = int;;
+
+let rec type_of_expr = function
+    | Evar(s, _) ->
+            atomic s
+    | Eapp(Evar("!>",_), t :: l, _) ->
+            mk_poly (List.map get_name l) (type_of_expr t)
+    | Eapp(Evar("->",_), ret :: args, _) ->
+            mk_arrow (List.map type_of_expr args) (type_of_expr ret)
+    | Eapp(Evar(constr, _), args, _) ->
+            mk_constr constr (List.map type_of_expr args)
+    | _ -> assert false

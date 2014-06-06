@@ -4,5 +4,8 @@ General :
      instead of comparing strings, compare values of type Type.t ?
   -> Change llproof rules to include expr instead of string for functions ?
 
+In parsetptp.mly:
+  -> Apply ns_var and/or ns_fun where expected
+
 In eqrel.ml :
   -> use Type.t instead of string to store types

@@ -8,6 +8,9 @@ exception Function_expected
 
 val type_bool : t
 val atomic : string -> t
+val mk_poly : string list -> t -> t
+val mk_constr : string -> t list -> t
+val mk_arrow : t list -> t -> t
 
 val compare : t -> t -> int
 
