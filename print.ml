@@ -731,23 +731,32 @@ let dot_rule full o id conc conc' r =
     end;
     pr "</TABLE>>];\n"
 
-let rec dot_proof full o p s l =
+let dot_open o s =
     let pr f = oprintf o f in
-    dot_rule full o s p.mlconc l p.mlrule;
-    let ids = Array.init (Array.length p.mlhyps) new_id in
-    for i = 0 to Array.length ids - 1 do
-        pr "%s -> %s;\n" s ids.(i)
-    done;
-    for i = 0 to Array.length ids - 1 do
-        dot_proof full o p.mlhyps.(i) ids.(i) p.mlconc
-    done
+    pr "%s [shape=plaintext, label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">" s;
+    pr "<TR><TD BGCOLOR=\"BLACK\">...</TD></TR></TABLE>>];\n"
 
-let dots o ?full_output:(b=true) l =
+let rec dot_proof full depth o p s l =
+    let pr f = oprintf o f in
+    if depth = 0 then
+        dot_open o s
+    else begin
+        dot_rule full o s p.mlconc l p.mlrule;
+        let ids = Array.init (Array.length p.mlhyps) new_id in
+        for i = 0 to Array.length ids - 1 do
+            pr "%s -> %s;\n" s ids.(i)
+        done;
+        for i = 0 to Array.length ids - 1 do
+            dot_proof full (depth - 1) o p.mlhyps.(i) ids.(i) p.mlconc
+        done
+    end
+
+let dots o ?full_output:(b=true) ?max_depth:(d=(-1)) l =
     let pr f = oprintf o f in
     pr "digraph proofs {\n";
     List.iteri (fun i p ->
         pr "subgraph graph%i {\n" i;
-        dot_proof b o p (new_id 0) [];
+        dot_proof b d o p (new_id 0) [];
         pr "label = \"Proof n°%i\";\ncolor = blue;\n" i;
         pr "}\n"
         ) l;
