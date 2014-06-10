@@ -12,6 +12,7 @@ val mk_poly : string list -> t -> t
 val mk_constr : string -> t list -> t
 val mk_arrow : t list -> t -> t
 
+val equal : t -> t -> bool
 val compare : t -> t -> int
 
 val bool_app : t list -> t

@@ -1,9 +1,17 @@
+These are mostly suggestions
 
 General :
   -> when comparing type to Namespace.univ_name,
      instead of comparing strings, compare values of type Type.t ?
   -> Change llproof rules to include expr instead of string for functions ?
   -> Use polymorphic equality instead of name equality for functions ?
+
+In index.ml:
+  -> Use exprs instead of strings to store definitions
+
+In ext_induct.ml:
+  -> Use Type interface instead of messy operations on strings for types
+     More genreally, use Type.t instead of strings in the module.
 
 In parsetptp.mly:
   -> Apply ns_var and/or ns_fun where expected
