@@ -19,7 +19,6 @@ exception Function_expected
 (* Type constructors *)
 let base t = [], t
 
-let type_bool = base Bool
 let atomic s = base (App (s, []))
 
 let mk_poly b = function
@@ -33,6 +32,13 @@ let mk_constr constr args =
 let mk_arrow args ret =
     let aux = function | [], t -> t | _ -> raise Base_expected in
     base (Arrow (List.map aux args, aux ret))
+
+(* Usual types *)
+let type_bool = base Bool
+let type_int = atomic "Int"
+let type_rat = atomic "Rat"
+let type_real = atomic "Real"
+
 
 (* Type comparison *)
 let _to_int = function
@@ -147,6 +153,19 @@ let type_app_opt (s, t) args =
             Some (type_app (extract t) (List.map extract args))
     with Some_expected -> None
 
+(* Functions for typechecking *)
+let rec is_atomic = function
+    | Bool | Ttype -> true
+    | App (s, l) -> List.for_all is_atomic l
+    | Arrow _ -> false
+
+let is_tff_arg t = t <> Bool && is_atomic t
+
+let rec _tff_check = function
+    | Arrow (l, ret) -> is_atomic ret && List.for_all is_tff_arg l
+    | _ -> true
+
+let tff_check (b, t) = _tff_check t
 
 (* Printing *)
 
