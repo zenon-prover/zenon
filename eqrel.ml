@@ -12,6 +12,10 @@ let symbol = ref None;;
 let leaves = ref [];;
 let typ = ref "";;
 
+let get_name = function
+    | Evar(s, _) -> s
+    | _ -> assert false
+
 let rec check_pattern env sym e =
   match e with
   | Eapp (s, [(Evar _ as x); (Evar _ as y)], _)

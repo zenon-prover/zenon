@@ -185,12 +185,12 @@ let mk_neqs l1 l2 =
 let make_pnp pa npb ns =
   let (p, aa) =
     match pa with
-    | Eapp (p, aa, _) -> (get_name p, aa)
+    | Eapp (Evar(p,_), aa, _) -> (p, aa)
     | _ -> assert false
   in
   let bb =
     match npb with
-    | Enot (Eapp (q, bb, _), _) -> assert (get_name q = p); bb
+    | Enot (Eapp (Evar(q,_), bb, _), _) -> assert (q = p); bb
     | _ -> assert false
   in
   make_node [pa; npb] (P_NotP (pa, npb)) (mk_neqs aa bb) ns
@@ -214,12 +214,12 @@ let make_pnps r rab nrcd n0 n1 =
 let make_neql fa fb ns =
   let (f, aa) =
     match fa with
-    | Eapp (f, aa, _) -> (get_name f, aa)
+    | Eapp (Evar(f,_), aa, _) -> (f, aa)
     | _ -> assert false
   in
   let bb =
     match fb with
-    | Eapp (g, bb, _) -> assert (get_name g = f); bb
+    | Eapp (Evar(g,_), bb, _) -> assert (g = f); bb
     | _ -> assert false
   in
   make_node [enot (eapp (eeq, [fa; fb]))] (NotEqual (fa, fb)) (mk_neqs aa bb) ns

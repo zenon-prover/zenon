@@ -10,6 +10,10 @@ let ( === ) = ( = );;
 let ( = ) = ();;
 let string_equal x y = String.compare x y == 0;;
 
+let get_name = function
+    | Evar(s,_) -> s
+    | _ -> assert false
+
 let tblsize = 997;;  (* reduce to 17 for debugging *)
 
 module HE = Hashtbl.Make (Expr);;

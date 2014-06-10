@@ -153,6 +153,7 @@ let rec remove x l =
 let combine x y = x + y * 131 + 1;;
 
 let priv_var s = mkpriv 0 [s] 1 0 [] None;;
+let priv_tvar s t = mkpriv 0 [s] 1 0 [] (Some t);;
 let priv_meta e =
   mkpriv (combine k_meta (get_skel e)) [] 1 0 [e] (Some (get_meta_type e))
 ;;
@@ -359,6 +360,7 @@ let print_stats oc =
 
 
 let evar (s) = he_merge (Evar (s, priv_var s));;
+let tvar s t = he_merge (Evar (s, priv_tvar s t));;
 let emeta (e) = he_merge (Emeta (e, priv_meta e));;
 let eapp (s, args) = he_merge (Eapp (s, args, priv_app s args));;
 let enot (e) = he_merge (Enot (e, priv_not e));;

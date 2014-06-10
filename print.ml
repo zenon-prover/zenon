@@ -36,6 +36,11 @@ let is_letter c =
   | _ -> false
 ;;
 
+let get_name = function
+    | Evar(s,_) -> s
+    | _ -> assert false
+;;
+
 let print_var b v =
   match v with
   | Evar (s, _) -> bprintf b "%s" s
