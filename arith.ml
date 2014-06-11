@@ -61,11 +61,11 @@ let mul a b = mk_op "$product" a b
 let minus_one e = diff e (const "1")
 let plus_one e = sum e (const "1")
 
-let mk_ubop s a =
+let mk_uop s a =
     let t = get_type a in
     eapp (tvar s (mk_arrow [t] t), [a])
 
-let uminus a = mk_ubop "$uminus" a
+let uminus a = mk_uop "$uminus" a
 
 let mk_bop s a b =
     let ta = get_type a in
@@ -76,6 +76,11 @@ let less a b = mk_bop "$less" a b
 let lesseq a b = mk_bop "$lesseq" a b
 let greater a b = mk_bop "$greater" a b
 let greatereq a b = mk_bop "$greatereq" a b
+
+let mk_ubop s a =
+    let t = get_type a in
+    eapp (tvar s (mk_arrow [t] type_bool), [a])
+
 
 let rec find_coef x = function
     | [] -> raise Not_found
