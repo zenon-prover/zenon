@@ -142,9 +142,9 @@ let mk_node_fm x e e' f g =
         nbranches = [| [f] |];
     }
 
-let mk_node_inst ?typ:(b=false) e v g = match e with
+let mk_node_inst e v g = match e with
   | Eall (e', t, p, _) ->
-          let term = const (Q.to_string v) in
+          let term = tvar (Q.to_string v) t in
           let n = Expr.substitute [(e', term)] p in
           Node {
               nconc = [e];
@@ -154,7 +154,7 @@ let mk_node_inst ?typ:(b=false) e v g = match e with
               nbranches = [| [n] |];
           }
   | Eex (e', t, p, _) ->
-          let term = const (Q.to_string v) in
+          let term = tvar (Q.to_string v) t in
           let n = Expr.substitute [(e', term)] (enot p) in
           let ne = enot e in
           Node {
@@ -656,11 +656,13 @@ let rec iter_open p =
         begin match solve_tree t with
         | None -> begin try iter_open (next_inst p) with EndReached -> false end
         | Some s ->
+                Format.printf "----- Found a %i-solution !@." (List.length s);
+                List.iter (fun (x, v) -> Format.printf "%s <- %s@." (Print.sexpr x) (Q.to_string v)) s;
                 let global = List.fold_left (fun acc (e, v) -> match e with
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc
                     | Emeta(Eex(_) as e', _) ->
-                            (enot e', mk_node_inst ~typ:true e' v) :: acc
+                            (enot e', mk_node_inst e' v) :: acc
                     | _ -> assert false) [] s in
                 set_global global
         end
