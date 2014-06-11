@@ -656,8 +656,6 @@ let rec iter_open p =
         begin match solve_tree t with
         | None -> begin try iter_open (next_inst p) with EndReached -> false end
         | Some s ->
-                Format.printf "----- Found a %i-solution !@." (List.length s);
-                List.iter (fun (x, v) -> Format.printf "%s <- %s@." (Print.sexpr x) (Q.to_string v)) s;
                 let global = List.fold_left (fun acc (e, v) -> match e with
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc
