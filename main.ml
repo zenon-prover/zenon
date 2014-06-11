@@ -386,6 +386,8 @@ let do_main () =
   try main ()
   with
   | Error.Abort -> do_exit 11;
+  (*
   | e -> eprintf "Zenon error: uncaught exception %s\n" (Printexc.to_string e);
          do_exit 14;
+         *)
 ;;

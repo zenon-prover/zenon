@@ -38,8 +38,9 @@ let type_bool = base Bool
 let type_int = atomic "Int"
 let type_rat = atomic "Rat"
 let type_real = atomic "Real"
+let type_tff_i = atomic "$i"
 
-
+let type_type = base Ttype
 (* Type comparison *)
 let _to_int = function
     | Bool -> 0
@@ -89,6 +90,8 @@ let compare (b, t) (b', t') =
 
 let equal t t' = compare t t' = 0
 let neq t t' = compare t t' <> 0
+
+let nbind (b, t) = List.length b
 
 (* Convenience functions *)
 let to_base (b, t) = if b = [] then t else raise Base_expected
@@ -144,7 +147,6 @@ let type_app (b, t) args =
     with Invalid_argument _ ->
         raise Not_enough_args
 
-
 let type_app_opt (s, t) args =
     try
         if s = "=" then
@@ -153,7 +155,7 @@ let type_app_opt (s, t) args =
             Some (type_app (extract t) (List.map extract args))
     with Some_expected -> None
 
-(* Functions for typechecking *)
+(* Functions for TPTP.TFF typechecking *)
 let rec is_atomic = function
     | Bool | Ttype -> true
     | App (s, l) -> List.for_all is_atomic l
@@ -166,6 +168,19 @@ let rec _tff_check = function
     | _ -> true
 
 let tff_check (b, t) = _tff_check t
+
+let rec _tff = function
+    | Bool -> Bool
+    | App ("$o", []) -> Bool
+    | App ("$int", []) -> App ("Int", [])
+    | App ("$rat", []) -> App ("Rat", [])
+    | App ("$real", []) -> App ("Real", [])
+    | App ("$tType", []) -> Ttype
+    | App (s, l) -> App (s, List.map _tff l)
+    | Arrow (l, ret) -> Arrow (List.map _tff l, _tff ret)
+    | Ttype -> Ttype
+
+let tff (b, t) = (b, _tff t)
 
 (* Printing *)
 

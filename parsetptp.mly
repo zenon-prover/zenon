@@ -109,6 +109,7 @@ phrase:
 expr:
   | UIDENT                             { evar (ns_var $1) }
   | LIDENT arguments                   { eapp (evar @@ ns_fun $1, $2) }
+  | TTYPE                              { evar "$tType" }
   | STRING                             { eapp (evar "$string", [evar $1]) }
   | INT                                { eapp (evar "$int", [evar $1]) }
   | RAT                                { eapp (evar "$rat", [evar $1]) }
@@ -136,6 +137,7 @@ formula:
   | atom NAND formula          { enot (eand ($1, $3)) }
 ;
 type_def:
+    | OPEN type_def CLOSE        { $2 }
     | LIDENT COLON tff_type_sig  { eapp (evar "#", [evar $1; $3]) }
 ;
 atom:

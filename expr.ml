@@ -34,7 +34,7 @@ and private_info = {
   size : int;
   taus : int;           (* depth of tau nesting *)
   metas : expr list;
-  mutable typ : etype option;
+  typ : etype option;
 };;
 
 type definition =
@@ -123,7 +123,6 @@ let get_size e = (get_priv e).size;;
 let get_taus e = (get_priv e).taus;;
 let get_metas e = (get_priv e).metas;;
 let get_type e = (get_priv e).typ;;
-let set_type e t = (get_priv e).typ <- t;;
 
 let get_meta_type = function
     | Eall (_, t, _, _) | Eex (_, t, _, _) -> t
@@ -134,6 +133,16 @@ let get_name = function
     | Evar (s, _) -> s
     | _ -> assert false
 ;;
+
+let rec type_of_expr = function
+    | Evar(s, _) -> atomic s
+    | Eapp(Evar("!>",_), t :: l, _) ->
+            mk_poly (List.map get_name l) (type_of_expr t)
+    | Eapp(Evar("->",_), ret :: args, _) ->
+            mk_arrow (List.map type_of_expr args) (type_of_expr ret)
+    | Eapp(Evar(constr, _), args, _) ->
+            mk_constr constr (List.map type_of_expr args)
+    | _ -> assert false
 
 let rec str_union l1 l2 =
   match l1, l2 with
@@ -150,6 +159,14 @@ let rec remove x l =
   | _, h::t -> h :: (remove x t)
 ;;
 
+let extract_args t args =
+    let n = match t with
+    | None -> 0
+    | Some t -> Type.nbind t
+    in
+    let l1, l2 = Type.ksplit n args in
+    (List.map (fun e -> Some (type_of_expr e)) l1) @ (List.map get_type l2)
+
 let combine x y = x + y * 131 + 1;;
 
 let priv_var s = mkpriv 0 [s] 1 0 [] None;;
@@ -164,7 +181,7 @@ let priv_app s args =
   let sz = List.fold_left (fun a e -> a + get_size e) 1 args in
   let taus = List.fold_left (fun a e -> max (get_taus e) a) 0 args in
   let metas = List.fold_left (fun a e -> union (get_metas e) a) [] args in
-  let typ = type_app_opt (get_name s, get_type s) (List.map get_type args) in
+  let typ = type_app_opt (get_name s, get_type s) (extract_args (get_type s) args) in
   mkpriv skel fv sz taus metas typ
 ;;
 let priv_not e =
@@ -297,12 +314,17 @@ module HashedExpr = struct
     || m1 && m2 && equal_in_env [v1] [v2] f1 f2
   ;;
 
+  let opt_equal a b = match a, b with
+  | None, None -> true
+  | Some t1, Some t2 -> Type.equal t1 t2
+  | _ -> false
+
   let equal e1 e2 =
     match e1, e2 with
-    | Evar (v1, _), Evar (v2, _) -> v1 =%= v2
+    | Evar (v1, _), Evar (v2, _) -> v1 =%= v2 && opt_equal (get_type e1) (get_type e2)
     | Emeta (f1, _), Emeta (f2, _) -> f1 == f2
     | Eapp (sym1, args1, _), Eapp (sym2, args2, _) ->
-        sym1 =%= sym2 && List.length args1 =%= List.length args2
+        sym1 == sym2 && List.length args1 =%= List.length args2
         && List.for_all2 (==) args1 args2
     | Enot (f1, _), Enot (f2, _) -> f1 == f2
     | Eand (f1, g1, _), Eand (f2, g2, _)
@@ -595,13 +617,3 @@ let rec remove_scope e =
 
 type goalness = int;;
 
-let rec type_of_expr = function
-    | Evar(s, _) ->
-            atomic s
-    | Eapp(Evar("!>",_), t :: l, _) ->
-            mk_poly (List.map get_name l) (type_of_expr t)
-    | Eapp(Evar("->",_), ret :: args, _) ->
-            mk_arrow (List.map type_of_expr args) (type_of_expr ret)
-    | Eapp(Evar(constr, _), args, _) ->
-            mk_constr constr (List.map type_of_expr args)
-    | _ -> assert false

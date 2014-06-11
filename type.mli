@@ -10,6 +10,9 @@ val type_bool : t
 val type_int : t
 val type_rat : t
 val type_real : t
+val type_tff_i : t
+
+val type_type : t
 
 val atomic : string -> t
 val mk_poly : string list -> t -> t
@@ -18,6 +21,7 @@ val mk_arrow : t list -> t -> t
 
 val equal : t -> t -> bool
 val compare : t -> t -> int
+val nbind : t -> int
 
 val bool_app : t list -> t
 val bool_app_opt : t option list -> t option
@@ -28,6 +32,7 @@ val type_app_opt : string * t option -> t option list -> t option
 val to_string : t -> string
 
 (* TPTP.TFF typing *)
+val tff : t -> t
 val tff_check : t -> bool
 
 (* Auxiliary function *)
