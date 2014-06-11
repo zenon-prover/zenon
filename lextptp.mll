@@ -75,6 +75,7 @@ rule token = parse
   | "tff"            { INPUT_TFF_FORMULA }
   | "$true"          { TRUE }
   | "$false"         { FALSE }
+  | "$tType"         { TTYPE }
   | "\'"             { single_quoted (Buffer.create 20) lexbuf }
   | "\""             { double_quoted (Buffer.create 20) lexbuf }
   | upperid idchar * { UIDENT (Lexing.lexeme lexbuf) }

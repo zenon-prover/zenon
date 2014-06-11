@@ -2,12 +2,13 @@
 (*  $Id: expr.mli,v 1.22 2012-04-11 18:27:26 doligez Exp $  *)
 
 type private_info;;
-type typ = string;;
+
+type etype = Type.t;;
 
 type expr = private
   | Evar of string * private_info
   | Emeta of expr * private_info    (* expr = Eall (...)  or   Eex (...) *)
-  | Eapp of string * expr list * private_info
+  | Eapp of expr * expr list * private_info   (* expr = Evar (...) *)
 
   | Enot of expr * private_info
   | Eand of expr * expr * private_info
@@ -17,10 +18,10 @@ type expr = private
   | Etrue
   | Efalse
 
-  | Eall of expr * string * expr * private_info
-  | Eex of expr * string * expr * private_info
-  | Etau of expr * string * expr * private_info
-  | Elam of expr * string * expr * private_info
+  | Eall of expr * etype * expr * private_info
+  | Eex of expr * etype * expr * private_info
+  | Etau of expr * etype * expr * private_info
+  | Elam of expr * etype * expr * private_info
       (* variable, type, body *)
 ;;
 
@@ -37,9 +38,12 @@ val equal : t -> t -> bool;;
 val compare : t -> t -> int;;
 val hash : t -> int;;
 
+val get_type : expr -> etype option;;
+
 val evar : string -> expr;;
+val tvar : string -> etype -> expr;;
 val emeta : expr -> expr;;
-val eapp : string * expr list -> expr;;
+val eapp : expr * expr list -> expr;;
 
 val enot : expr -> expr;;
 val eand : expr * expr -> expr;;
@@ -48,10 +52,13 @@ val eimply : expr * expr -> expr;;
 val eequiv : expr * expr -> expr;;
 val etrue : expr;;
 val efalse : expr;;
-val eall : expr * string * expr -> expr;;
-val eex : expr * string * expr -> expr;;
-val etau : expr * string * expr -> expr;;
-val elam : expr * string * expr -> expr;;
+val eall : expr * etype * expr -> expr;;
+val eex : expr * etype * expr -> expr;;
+val etau : expr * etype * expr -> expr;;
+val elam : expr * etype * expr -> expr;;
+
+val eeq : expr;;
+val estring : expr;;
 
 val all_list : expr list -> expr -> expr;;
 val ex_list : expr list -> expr -> expr;;
@@ -93,6 +100,8 @@ val apply : expr -> expr -> expr;;
 val add_argument : expr -> expr -> expr;;
 val remove_scope : expr -> expr;;
 
+val type_of_expr : expr -> Type.t;;
+
 (* gensym *)
 val newvar : unit -> expr;;
 val newname : unit -> string;;
@@ -108,6 +117,3 @@ type goalness = int;;
 
 val print_stats : out_channel -> unit;;
 
-(* Type information *)
-val priv_type : expr -> typ option;;
-val add_type : typ -> expr -> expr;;

@@ -17,14 +17,15 @@ CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 # modules in linking order.
 
 SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
-          progress.ml namespace.ml expr.ml \
+          progress.ml namespace.ml type.ml expr.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
-          typetptp.ml simplex/simplex.ml arith.ml \
 	  print.ml step.ml node.ml extension.ml mltoll.ml \
-          parsezen.mly lexzen.mll parsetptp.mly lextptp.mll \
+          parsezen.mly lexzen.mll \
+	  parsetptp.mly lextptp.mll typetptp.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
+          simplex/simplex.ml arith.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
           ext_equiv.ml ext_induct.ml ext_arith.ml \
           prove.ml checksum.dummy versionnum.ml main.ml zenon.ml

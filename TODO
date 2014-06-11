@@ -1,12 +1,8 @@
 
 * Simplex
-  - Fix the schmilblik with multiple solving with int variables
+  - Fix the schmilblik with multiple/repeated solving with int variables
 
 * Meta-variable extension
   - limit the number of instanciations
   - correctly instantiate multiple variables
-
-* Parse/Type all of TFF
-  - infer functions/predicates types
-  - type double quoted identifiers
 

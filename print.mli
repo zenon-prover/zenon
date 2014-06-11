@@ -16,4 +16,6 @@ val mlproof_rule_soft : output -> Mlproof.rule -> unit;;
 
 val llproof : output -> Llproof.proof -> unit;;
 
+val sexpr : Expr.expr -> string;;
+
 val dots : output -> ?full_output:bool -> ?max_depth:int -> Mlproof.proof list -> unit;;

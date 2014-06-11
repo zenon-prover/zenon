@@ -27,7 +27,7 @@ let cnf_to_formula l =
     | [] -> assert false
     | a::l2 -> List.fold_left (fun x y -> eor (x,y)) a l2
   in
-  mk_quant eall (List.map (fun x -> (evar x, Namespace.univ_name)) vs) body
+  mk_quant eall (List.map (fun x -> (evar x, Type.atomic Namespace.univ_name)) vs) body
 ;;
 
 %}
@@ -40,6 +40,7 @@ let cnf_to_formula l =
 %token NOT
 %token TRUE
 %token FALSE
+%token TTYPE
 %token ALL
 %token EX
 %token OPEN
@@ -101,17 +102,20 @@ phrase:
      { Phrase.Formula (ns_hyp $3, $5, cnf_to_formula $7) }
   | INPUT_TFF_FORMULA OPEN LIDENT COMMA LIDENT COMMA formula CLOSE DOT
      { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
+  | INPUT_TFF_FORMULA OPEN LIDENT COMMA LIDENT COMMA type_def CLOSE DOT
+     { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
   | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:
   | UIDENT                             { evar (ns_var $1) }
-  | LIDENT arguments                   { eapp (ns_fun $1, $2) }
-  | STRING                             { eapp ("$string", [evar $1]) }
-  | INT                                { eapp ("$int", [evar $1]) }
-  | RAT                                { eapp ("$rat", [evar $1]) }
-  | REAL                               { eapp ("$real", [evar $1]) }
-  | expr EQSYM expr                    { eapp ("=", [$1; $3]) }
-  | expr NEQSYM expr                   { enot (eapp ("=", [$1; $3])) }
+  | LIDENT arguments                   { eapp (evar @@ ns_fun $1, $2) }
+  | TTYPE                              { evar "$tType" }
+  | STRING                             { eapp (evar "$string", [evar $1]) }
+  | INT                                { eapp (evar "$int", [evar $1]) }
+  | RAT                                { eapp (evar "$rat", [evar $1]) }
+  | REAL                               { eapp (evar "$real", [evar $1]) }
+  | expr EQSYM expr                    { eapp (eeq, [$1; $3]) }
+  | expr NEQSYM expr                   { enot (eapp (eeq, [$1; $3])) }
 ;
 arguments:
   | OPEN expr_list CLOSE         { $2 }
@@ -131,7 +135,10 @@ formula:
   | atom XOR formula           { enot (eequiv ($1, $3)) }
   | atom NOR formula           { enot (eor ($1, $3)) }
   | atom NAND formula          { enot (eand ($1, $3)) }
-  | LIDENT COLON tff_type      { eapp ("#", (evar $1) :: $3) }
+;
+type_def:
+    | OPEN type_def CLOSE        { $2 }
+    | LIDENT COLON tff_type_sig  { eapp (evar "#", [evar $1; $3]) }
 ;
 atom:
   | ALL LBRACKET var_list RBRACKET COLON atom
@@ -145,10 +152,32 @@ atom:
   | expr                           { $1 }
 ;
 var_list:
-  | UIDENT COMMA var_list               { (evar (ns_var $1), Namespace.univ_name) :: $3 }
-  | UIDENT COLON LIDENT COMMA var_list  { (evar (ns_var $1), $3) :: $5 }
-  | UIDENT                              { [evar (ns_var $1), Namespace.univ_name] }
-  | UIDENT COLON LIDENT                 { [evar (ns_var $1), $3] }
+  | UIDENT COMMA var_list             { (evar (ns_var $1), Type.atomic Namespace.univ_name) :: $3 }
+  | UIDENT COLON expr COMMA var_list  { (evar (ns_var $1), type_of_expr $3) :: $5 }
+  | UIDENT                            { [evar (ns_var $1), Type.atomic Namespace.univ_name] }
+  | UIDENT COLON expr                 { [evar (ns_var $1), type_of_expr $3] }
+;
+tff_type_arrow:
+  | expr RANGL expr                   { eapp(evar "->", [$3; $1]) }
+  | OPEN tff_tuple CLOSE RANGL expr   { eapp(evar "->",  $5 :: $2) }
+;
+tff_tuple:
+  | expr                  { [$1] }
+  | expr STAR tff_tuple   {  $1 :: $3 }
+;
+tff_type_sig:
+  | expr
+     { $1 }
+  | tff_type_arrow
+     { $1 }
+  | ALL RANGL LBRACKET tff_quant RBRACKET COLON expr
+     { eapp (evar "!>", $7 :: $4) }
+  | ALL RANGL LBRACKET tff_quant RBRACKET COLON OPEN tff_type_arrow CLOSE
+     { eapp (evar "!>", $8 :: $4) }
+;
+tff_quant:
+  | UIDENT COLON TTYPE COMMA tff_quant  { (evar $1) :: $5 }
+  | UIDENT COLON TTYPE                  { [evar $1] }
 ;
 tff_type:
   | LIDENT                              { [evar $1] }

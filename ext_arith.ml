@@ -49,7 +49,7 @@ let mk_node_tighten s x c e g =
         nrule = Ext ("arith", "tighten_" ^ s, [x; const c; e]);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [mk_app "$o" s [x; const c]] |];
+        nbranches = [| [mk_bop s x (const c)] |];
     }
 
 let mk_node_var e1 e2 e g = (* e1 : v = expr, e2 : v {comp} const, e : expr {comp} const *)
@@ -67,7 +67,7 @@ let mk_node_neg s a e g = (* e : ~ {s} b *)
         nrule = Ext ("arith", "neg1_" ^ s, [a; e]);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [mk_app "$o" (comp_neg s) [a] ] |];
+        nbranches = [| [mk_ubop (comp_neg s) a] |];
     }
 
 let mk_node_neg2 s a b e g = (* e : ~ a {s} b *)
@@ -76,7 +76,7 @@ let mk_node_neg2 s a b e g = (* e : ~ a {s} b *)
         nrule = Ext ("arith", "neg2_" ^ s, [a; b; e]);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [mk_app "$o" (comp_neg s) [a; b] ] |];
+        nbranches = [| [mk_bop (comp_neg s) a b ] |];
     }
 
 let mk_node_int_lt a b e g = (* e : a < b, => a <= b - 1 *)
@@ -155,9 +155,8 @@ let mk_node_inst ?typ:(b=false) e v g = match e with
           }
   | Eex (e', t, p, _) ->
           let term = const (Q.to_string v) in
-          let neg = if b then enot else Typetptp.bnot in
-          let n = Expr.substitute [(e', term)] (Typetptp.bnot p) in
-          let ne = neg e in
+          let n = Expr.substitute [(e', term)] (enot p) in
+          let ne = enot e in
           Node {
               nconc = [ne];
               nrule = Ext("arith", "NotEx", [ne; term]);
@@ -241,17 +240,6 @@ let new_bindings low high f = function
             end
     | _ -> low, high
 
-let print_opt fmt = function
-    | None -> Format.fprintf fmt "empty"
-    | Some e -> Typetptp.print_expr fmt e
-
-let print_binding fmt (x, def, inf, upp) =
-    Format.fprintf fmt "%a -:- %a@\nInf :%a@\nUpp :%a@]@."
-    Typetptp.print_expr x Typetptp.print_expr def
-    print_opt inf print_opt upp
-
-let print_bindings fmt = List.iter (print_binding fmt)
-
 let translate_bound e r = match e with
     | None -> r ()
     | Some e -> begin match (of_bexpr e) with
@@ -296,13 +284,8 @@ let bounds_of_clin v expr bounds =
         h_bounds, lesseq v (const (Q.to_string high)), pop_option einf
     else if Q.gt inf upp then
         [], pop_option einf, pop_option eupp
-    else begin
-        (* Format.printf "Bindings (%i):@\n%a@\n---------------@.%s <= %s@\n%a@\n%a@."
-        (List.length bounds) print_bindings bounds
-        (Q.to_string low) (Q.to_string high)
-        Type.print_expr v Type.print_expr (to_nexpr expr); *)
+    else
         assert false
-    end
 
 let add_binding t x f (e, s, c) =
     let l1, l2 = List.partition (fun (y, _, _, _) -> equal x y) t.bindings in
@@ -319,13 +302,12 @@ let simplex_add t f (e, s, c) = match e with
             let b = Q.div c (Q.abs c') in
             let (inf, upp) = bounds_of_comp s b in
             let (inf, upp) = if Q.sign c' <= -1 then (Q.neg upp, Q.neg inf) else (inf, upp) in
-            (* Format.printf "Bindings : @\n%a@\n-----------@." print_bindings t.bindings; *)
             (add_binding {t with core = S.add_bounds t.core (x, inf, upp)} x f (e, s, c)), []
     | _ ->
             let expr = to_nexpr e in
-            let v = add_type (get_type expr) (newvar ()) in
-            let e1 = eeq v expr in
-            let e2 = mk_app "$o" s [v; const (Q.to_string c)] in
+            let v = tvar (newname ()) (get_type expr) in
+            let e1 = Typetptp.mk_equal v expr in
+            let e2 = mk_bop s v (const (Q.to_string c)) in
             { core = S.add_eq t.core (v, e);
               ignore = e1 :: t.ignore;
               bindings = (v, e1, None, None) :: t.bindings;
@@ -347,7 +329,7 @@ let nodes_of_tree s f t =
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
                 (List.filter (fun (y, y', _, _) -> not (equal y y') && List.exists (fun x -> equal x y) l) s.bindings) in
-            let clin = expr_norm (mk_app "$o" "$eq_num" [to_nexpr expr; v]) in
+            let clin = expr_norm (Typetptp.mk_equal (to_nexpr expr) v) in
             let bounds, nb, conflict = bounds_of_clin v expr s.bindings in
             if bounds = [] then
                 [f, mk_node_conflict nb conflict]
@@ -546,7 +528,7 @@ let fm_add st e =
 let fm_add_expr, fm_rm_expr =
     let st = ref fm_empty in
     let add e = match e with
-        | Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq"), [a; b], _) when is_rat a || is_rat b ->
+        | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"),_), [a; b], _) when is_rat a || is_rat b ->
                 begin try
                     let st', res = fm_add !st e in
                     if res <> [] then add_todo e res;
@@ -573,13 +555,13 @@ let tr_rule f = function
     | Ext("arith", "neq", [a; b; e]) ->
             LL.Rextension("arith", "neq", [f a; f b], [f e], [[f (expr_norm (less e b))];[f (expr_norm (greater a b))]])
     | Ext("arith", s, [x; c; e]) when ssub s 8 = "tighten_" ->
-            LL.Rextension("arith", s, [f x; f c], [f e], [[f (mk_app "$o" (esub s 8) [x; c])]])
+            LL.Rextension("arith", s, [f x; f c], [f e], [[f (mk_bop (esub s 8) x c)]])
     | Ext("arith", "var", [e1;e2;e]) ->
             LL.Rextension("arith", "var", [f e1;f e2], [f e], [[f e1;f e2]])
     | Ext("arith", s, [a; e]) when ssub s 5 = "neg1_" ->
-            LL.Rextension("arith", s, [f a], [f e], [[f (mk_app "$o" (comp_neg (esub s 5)) [a])]])
+            LL.Rextension("arith", s, [f a], [f e], [[f (mk_ubop (comp_neg (esub s 5)) a)]])
     | Ext("arith", s, [a; b; e]) when ssub s 5 = "neg2_" ->
-            LL.Rextension("arith", s, [f a;f b], [f e], [[f (mk_app "$o" (comp_neg (esub s 5)) [a; b])]])
+            LL.Rextension("arith", s, [f a;f b], [f e], [[f (mk_bop (comp_neg (esub s 5)) a b)]])
     | Ext("arith", "int_lt", [a; b; e]) ->
             LL.Rextension("arith", "int_lt", [f a;f b], [f e], [[f (expr_norm (lesseq a (minus_one b)))]])
     | Ext("arith", "int_gt", [a; b; e]) ->
@@ -594,11 +576,6 @@ let tr_rule f = function
             LL.Rextension("arith", "conflict", [f e;f e'], [f e;f e'], [[]])
     | Ext("arith", "FM", [x;e;e';e'']) ->
             LL.Rextension("arith", "FM", [f x;f e;f e';f e''], [f e;f e'], [[f e'']])
-    (*
-    | Ext("arith", s, l) ->
-            Format.printf "Unknow rule %s of arity %i@." s (List.length l);
-            raise Exit
-    *)
     | _ -> raise Exit
 
 (* TODO: add nodes for expr normalization ? *)
@@ -635,19 +612,19 @@ let add_formula e =
     fm_add_expr e;
     match e with
     | _ when ignore_expr e -> ()
-    | Enot (Eapp ("$eq_num", [a; b], _), _) ->
+    | Enot (Eapp (Evar("$eq_num",_), [a; b], _), _) ->
             add_todo e [mk_node_neq a b e]
-    | Enot (Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq") as s, [a; b], _), _) ->
+    | Enot (Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _), _) ->
             add_todo e [mk_node_neg2 s a b e]
-    | Enot (Eapp (("$is_int"|"$is_rat") as s, [a], _), _) ->
+    | Enot (Eapp (Evar(("$is_int"|"$is_rat") as s,_), [a], _), _) ->
             add_todo e [mk_node_neg s a e]
     | _ when is_const e ->
             const_node e
-    | Eapp ("$eq_num", [a; b], _) ->
+    | Eapp (Evar("$eq_num",_), [a; b], _) ->
             add_todo e [mk_node_eq a b e]
-    | Eapp ("$less", [a; b], _) when is_int a && is_int b ->
+    | Eapp (Evar("$less",_), [a; b], _) when is_int a && is_int b ->
             add_todo e [mk_node_int_lt a b e]
-    | Eapp ("$greater", [a; b], _) when is_int a && is_int b ->
+    | Eapp (Evar("$greater",_), [a; b], _) when is_int a && is_int b ->
             add_todo e [mk_node_int_gt a b e]
     | _ -> begin try
             begin match (of_bexpr e) with
@@ -683,8 +660,8 @@ let rec iter_open p =
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc
                     | Emeta(Eex(_) as e', _) ->
-                            (Typetptp.bnot e', mk_node_inst e' v) :: (enot e', mk_node_inst ~typ:true e' v) :: acc
-                    | _ -> Format.printf "%a@." Typetptp.print_expr e; assert false) [] s in
+                            (enot e', mk_node_inst ~typ:true e' v) :: acc
+                    | _ -> assert false) [] s in
                 set_global global
         end
 

@@ -1,28 +1,31 @@
 
 open Expr
+open Type
 open Mlproof
+open Typetptp
 
 let equal x y = Expr.compare x y = 0
 
 (* Types manipulation *)
-let get_type = function
-    | Etrue | Efalse -> "$o"
-    | Etau (_, t, _, _)
-    | Emeta(Eall(_, t, _, _), _)
-    | Emeta(Eex(_, t, _, _), _) -> t
-    | e -> begin match priv_type e with
-        | None -> Namespace.univ_name
-        | Some s -> s
+let get_type e = match get_type e with
+    | Some t -> t
+    | None -> assert false
+
+let is_int e = Type.equal type_int (get_type e)
+let is_rat e = Type.equal type_rat (get_type e)
+
+(* We assume t a t' are numeric types *)
+let mix_type t t' =
+    assert (is_num t && is_num t');
+    match (Type.equal type_real t), (Type.equal type_real t') with
+    | true, _
+    | _, true -> type_real
+    | false, false ->
+    begin match (Type.equal type_rat t), (Type.equal type_rat t') with
+    | true, _
+    | _, true -> type_rat
+    | false, false -> type_int
     end
-
-let is_int e = get_type e = "$int"
-let is_rat e = get_type e = "$rat"
-
-let ctype t t' = match t, t' with
-    | "$int", "$int" -> "$int"
-    | "$int", "$rat" | "$rat", "$int" | "$rat", "$rat" -> "$rat"
-    | _ -> "$real"
-let etype e e' = ctype (get_type e) (get_type e')
 
 (* Manipulation of expressions/formulas *)
 exception NotaFormula
@@ -45,26 +48,34 @@ let comp_neg = function
     | _ -> assert false
 
 (* Combine types *)
-let mk_app t s l = add_type t (eapp (s, l))
+let const s = if is_z (Q.of_string s) then mk_int s else mk_rat s
 
-let const s =
-    if is_z (Q.of_string s) then
-        mk_app "$int" s []
-    else
-        mk_app "$rat" s []
+let mk_op s a b =
+    let ta = get_type a in
+    let tb = get_type b in
+    eapp (tvar s (mk_arrow [ta; tb] (mix_type ta tb)), [a; b])
 
-let sum a b = mk_app (etype a b) "$sum" [a; b]
-let diff a b = mk_app (etype a b) "$difference" [a; b]
-let uminus a = mk_app (get_type a) "$uminus" [a]
-let mul a b = mk_app (etype a b) "$product" [a; b]
-let minus_one e = mk_app (get_type e) "$difference" [e; const "1"]
-let plus_one e = mk_app (get_type e) "$sum" [e; const "1"]
+let sum a b = mk_op "$sum" a b
+let diff a b = mk_op "$difference" a b
+let mul a b = mk_op "$product" a b
+let minus_one e = diff e (const "1")
+let plus_one e = sum e (const "1")
 
-let eeq a b = mk_app "$o" "$eq_num" [a; b]
-let less a b = mk_app "$o" "$less" [a; b]
-let lesseq a b = mk_app "$o" "$lesseq" [a; b]
-let greater a b = mk_app "$o" "$greater" [a; b]
-let greatereq a b = mk_app "$o" "$greatereq" [a; b]
+let mk_ubop s a =
+    let t = get_type a in
+    eapp (tvar s (mk_arrow [t] t), [a])
+
+let uminus a = mk_ubop "$uminus" a
+
+let mk_bop s a b =
+    let ta = get_type a in
+    let tb = get_type b in
+    eapp (tvar s (mk_arrow [ta; tb] type_bool), [a; b])
+
+let less a b = mk_bop "$less" a b
+let lesseq a b = mk_bop "$lesseq" a b
+let greater a b = mk_bop "$greater" a b
+let greatereq a b = mk_bop "$greatereq" a b
 
 let rec find_coef x = function
     | [] -> raise Not_found
@@ -125,7 +136,7 @@ let normalize a b =
     Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e)
 
 let of_cexpr e = match e with
-    | Eapp (s, [], _) when is_int e || is_rat e ->
+    | Evar(s, _) when is_int e || is_rat e ->
             begin try
                 Q.of_string s
             with Invalid_argument _ ->
@@ -133,18 +144,22 @@ let of_cexpr e = match e with
             end
     | _ -> raise NotaFormula
 
-let rec of_nexpr = function
-    | Eapp (v, [], _) as e ->
+let rec of_nexpr e = match e with
+    (*
+    | Eapp (v, [], _) ->
         begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
-    | Evar (v, _) as a when is_int a || is_rat a -> [Q.one, a]
-    | Emeta (Eall(_, ("$int"|"$rat"), _, _), _) as a -> [Q.one, a]
-    | Emeta (Eex(_, ("$int"|"$rat"), _, _), _) as a -> [Q.one, a]
-    | Etau (_, ("$int"|"$rat"), _, _) as a -> [Q.one, a]
-    | Eapp ("$uminus", [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
-    | Eapp ("$sum", [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
-    | Eapp ("$difference", [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
-    | Eapp ("$product", [Eapp (_, [], _) as e; a], _)
-    | Eapp ("$product", [a; Eapp (_, [], _) as e], _) ->
+        *)
+    | Evar (v, _) when is_int e || is_rat e ->
+            begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
+    | Etau (_, t, _, _)
+    | Emeta (Eall(_, t, _, _), _)
+    | Emeta (Eex(_, t, _, _), _)
+        when Type.equal type_int t || Type.equal type_rat t -> [Q.one, e]
+    | Eapp (Evar("$uminus",_), [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
+    | Eapp (Evar("$sum",_), [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
+    | Eapp (Evar("$difference",_), [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
+    | Eapp (Evar("$product",_), [Eapp (_, [], _) as e; a], _)
+    | Eapp (Evar("$product",_), [a; Eapp (_, [], _) as e], _) ->
             begin try
                 fmul (of_cexpr e) (of_nexpr a)
             with Exit ->
@@ -153,11 +168,11 @@ let rec of_nexpr = function
     | _ -> raise NotaFormula
 
 let of_bexpr = function
-    | Eapp (("$less"|"$lesseq"|"$greater"|"$greatereq"|"$eq_num") as s, [a; b], _ ) ->
+    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"|"$eq_num") as s,_), [a; b], _ ) ->
             let a', b' = of_nexpr a, of_nexpr b in
             let c, e = normalize a' b' in
             (e, s, c)
-    | Eapp (("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s, [a], _) ->
+    | Eapp (Evar(("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s,_), [a], _) ->
             let a' = of_nexpr a in
             let c, e = normalize [Q.zero, etrue] a' in
             (e, s, c)
@@ -171,7 +186,8 @@ let to_nexpr = function
         (fun e (c', x') -> if Q.sign c' < 0 then diff e (to_nexpr_aux (Q.neg c', x')) else sum e (to_nexpr_aux (c', x')))
                           (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
 
-let to_bexpr (e, s, c) = mk_app "$o" s [to_nexpr e; const (Q.to_string c)]
+(* Check that s is not is_int or something like that ? *)
+let to_bexpr (e, s, c) = mk_bop s (to_nexpr e) (const (Q.to_string c))
 
 let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 
@@ -280,7 +296,7 @@ let is_inst_node p = match p.mlrule with
         | _ -> true
         end
     | NotEx(e, e') -> begin match e' with
-        | Emeta(e'',_) when equal e (Typetptp.bnot e'') ||  equal e (enot e'') -> false
+        | Emeta(e'',_) when equal e (enot e'') -> false
         | _ -> true
         end
     | _ -> false
