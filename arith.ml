@@ -163,8 +163,8 @@ let rec of_nexpr e = match e with
     | Eapp (Evar("$uminus",_), [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
     | Eapp (Evar("$sum",_), [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
     | Eapp (Evar("$difference",_), [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
-    | Eapp (Evar("$product",_), [Eapp (_, [], _) as e; a], _)
-    | Eapp (Evar("$product",_), [a; Eapp (_, [], _) as e], _) ->
+    | Eapp (Evar("$product",_), [Evar (_, _) as e; a], _)
+    | Eapp (Evar("$product",_), [a; Evar (_, _) as e], _) ->
             begin try
                 fmul (of_cexpr e) (of_nexpr a)
             with Exit ->
