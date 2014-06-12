@@ -353,16 +353,59 @@ let simplex_solve s e =
     | Some S.Solution _ -> false, []
     | Some S.Unsatisfiable cert -> true, nodes_of_tree s e cert
 
+(* Instanciation ordering (and substituting) *)
+
+let subst_of_inst n = match (n 0) with
+    | Node n -> begin match n.nrule with
+        | Ext("arith", "All", [Eall(_) as e; v]) -> (e, v)
+        | Ext("arith", "NotEx", [Enot(Eex(_) as e, _); v]) -> (e, v)
+        | _ -> assert false
+        end
+    | Stop -> assert false
+
+let subst_inst_rule subst = function
+    | Ext("arith", "All", [e; v]) ->
+            Ext("arith", "All", [substitute_meta subst e; v])
+    | Ext("arith", "NotEx", [e; v]) ->
+            Ext("arith", "NotEx", [substitute_meta subst e; v])
+    | _ -> assert false
+
+let subst_inst_aux subst n i =
+    match n 0 with
+    | Node n -> Node { n with
+        nconc = List.map (substitute_meta subst) n.nconc;
+        nrule = subst_inst_rule subst n.nrule;
+        ngoal = i;
+        nbranches = Array.map (List.map (substitute_meta subst)) n.nbranches;
+        }
+    | Stop -> assert false
+
+let subst_inst (e, n) (e', n') =
+    let meta, v = subst_of_inst n in
+    let subst = meta, v in
+    let e''= substitute_meta subst e' in
+    (*
+    Format.printf "trying to substitute :@\n%a@\n%a@\n%a@\n----------------------------------------------@."
+    Type.print_expr meta
+    Type.print_expr e'
+    Type.print_expr e'';
+    *)
+    (e'', subst_inst_aux subst n')
+
+let order_inst l =
+    let l = List.sort (fun (e, _) (e', _) -> Pervasives.compare (Expr.size e) (Expr.size e')) l in
+    let l = List.fold_left (fun acc x -> x :: (List.map (subst_inst x) acc)) [] l in
+    l
 
 (* Internal state *)
 type state = {
-    mutable global : (expr * (int -> Node.node_item)) list;
+    mutable global : (int -> Node.node_item) M.t;
     mutable solved : bool;
     stack : (expr * simplex_state * ((expr * (int -> Node.node_item)) list)) Stack.t;
 }
 
 let empty_state = {
-    global = [];
+    global = M.empty;
     solved = false;
     stack = Stack.create ();
 }
@@ -436,17 +479,27 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
     and todo e g =
         let res = ref [] in
         let aux (e', n) = if equal e e' then res := (n g) :: !res in
-        Stack.iter (fun (_,_,l) -> List.iter aux l) st.stack;
-        List.iter aux st.global;
+        M.iter (fun x y -> aux (x, y)) st.global;
+        begin match !res with
+        | [] -> Stack.iter (fun (_,_,l) -> List.iter aux l) st.stack
+        | [x] -> ()
+        | _ -> assert false
+        end;
         List.filter (is_coherent e) !res
 
     and set_global l =
         let res = ref false in
         let f (e, n) =
-            if not (List.exists (fun (e', n') -> equal e e') st.global) then begin
+            try
+                let n' = M.find e st.global in
+                if n 0 <> n' 0 then begin
+                    res := true;
+                    st.global <- M.add e n st.global
+                end
+            with Not_found ->
                 res := true;
-                st.global <- (e, n) :: st.global
-            end in
+                st.global <- M.add e n st.global
+        in
         List.iter f l;
         !res
     in
@@ -668,7 +721,7 @@ let rec iter_open p =
                     | Emeta(Eex(_) as e', _) ->
                             (enot e', mk_node_inst e' v) :: acc
                     | _ -> assert false) [] s in
-                set_global global
+                set_global (order_inst global)
         end
 
 let newnodes e g _ =

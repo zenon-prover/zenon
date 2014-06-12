@@ -713,10 +713,12 @@ let dot_rule_name = function
 let default_color = "LIGHTBLUE"
 let color_of_rule = function
     | Ext("dummy", "open", _) -> "RED"
+    | Ext(_, "All", [e; e'])
     | All(e, e') -> begin match e' with
         | Emeta(e'', _) when (Expr.compare e e'' = 0) -> "GREEN"
         | _ -> "PURPLE"
         end
+    | Ext(_, "NotEx", [e; e'])
     | NotEx(e, e') -> begin match e' with
         | Emeta(e'', _) when Expr.compare e (enot e'') = 0 -> "GREEN"
         | _ -> "PURPLE"
