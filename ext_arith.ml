@@ -106,7 +106,7 @@ let mk_node_branch v e e' g =
         nbranches = [| [e]; [e']; |];
     }
 
-let mk_node_lin x e l g =
+let mk_node_lin e l g =
     Node {
         nconc = l;
         nrule = Ext ("arith", "simplex_lin", e :: l);
@@ -250,9 +250,10 @@ let translate_bound e r = match e with
 let pop_option = function | Some a -> a | None -> assert false
 
 let bound_of_expr is_high e bounds =
-    if (List.for_all (fun (c,_) -> Q.equal Q.zero c) e) then
+    if e <> [] && (List.for_all (fun (c,_) -> Q.equal Q.zero c) e) then
         [], Q.zero
-    else
+    else begin
+        assert (not (List.exists (fun (c,_) -> Q.equal Q.zero c) e));
         let xor a b = (a && not b) || (not a && b) in
         let rec aux = function
             | [] -> raise Exit
@@ -272,10 +273,10 @@ let bound_of_expr is_high e bounds =
                         (pop_option eupp) :: l, Q.add b (Q.mul c (translate_bound eupp (fun () -> raise Exit)))
         in
         try aux e with Exit -> [], if is_high then Q.inf else Q.minus_inf
+    end
 
 
 let bounds_of_clin v expr bounds =
-    let expr = sanitize expr in
     let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal y v) bounds in
     let inf = translate_bound einf (fun () -> Q.minus_inf) in
     let upp = translate_bound eupp (fun () -> Q.inf) in
@@ -329,7 +330,7 @@ let nodes_of_tree s f t =
                 (aux (add_binding s v under (of_bexpr under)) under c) @
                 (aux (add_binding s v above (of_bexpr above)) above c'))
     | Some S.Explanation (v, expr) ->
-            let is_zero = List.for_all (fun (c, _) -> Q.equal Q.zero c) expr in
+            let is_zero = expr <> [] && List.for_all (fun (c, _) -> Q.equal Q.zero c) expr in
             let expr = if is_zero then expr else sanitize expr in
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
@@ -339,7 +340,7 @@ let nodes_of_tree s f t =
             if bounds = [] && not is_zero then
                 [f, mk_node_conflict nb conflict]
             else
-                [f, mk_node_lin v clin relevant;
+                [f, mk_node_lin clin relevant;
                  clin, mk_node_sim clin bounds nb;
                  nb, mk_node_conflict nb conflict]
     in
