@@ -304,6 +304,7 @@ let simplex_add t f (e, s, c) =
     match e with
     | []  -> assert false
     | [(c', x)] ->
+            Format.printf "Adding : %s@." (Print.sexpr f);
             let b = Q.div c (Q.abs c') in
             let (inf, upp) = bounds_of_comp s b in
             let (inf, upp) = if Q.sign c' <= -1 then (Q.neg upp, Q.neg inf) else (inf, upp) in
@@ -312,6 +313,7 @@ let simplex_add t f (e, s, c) =
             let expr = to_nexpr e in
             let v = tvar (newname ()) (get_type expr) in
             let e1 = Typetptp.mk_equal v expr in
+            Format.printf "Adding : %s@." (Print.sexpr e1);
             let e2 = mk_bop s v (const (Q.to_string c)) in
             { core = S.add_eq t.core (v, e);
               ignore = e1 :: t.ignore;
@@ -323,6 +325,7 @@ let nodes_of_tree s f t =
     let rec aux s f t = match !t with
     | None -> raise Internal_error
     | Some S.Branch (v, k, c, c') ->
+            Format.printf "branching@.";
             let k = const (Z.to_string k) in
             let under = expr_norm (lesseq v k) in
             let above = expr_norm (greatereq v (plus_one k)) in
@@ -330,6 +333,7 @@ let nodes_of_tree s f t =
                 (aux (add_binding s v under (of_bexpr under)) under c) @
                 (aux (add_binding s v above (of_bexpr above)) above c'))
     | Some S.Explanation (v, expr) ->
+            Format.printf "%s = %a@." (Print.sexpr v) (fun _ -> List.iter (fun (c, x) -> Format.printf "%s * %s + " (Q.to_string c) (Print.sexpr x))) expr;
             let is_zero = expr <> [] && List.for_all (fun (c, _) -> Q.equal Q.zero c) expr in
             let expr = if is_zero then expr else sanitize expr in
             let l = v :: (List.map snd expr) in
@@ -351,7 +355,9 @@ let simplex_solve s e =
     match f () with
     | None -> false, [] (* TODO: rerun f, or try otehr method ? *)
     | Some S.Solution _ -> false, []
-    | Some S.Unsatisfiable cert -> true, nodes_of_tree s e cert
+    | Some S.Unsatisfiable cert ->
+            Format.printf "Found an explanation !@.";
+            true, nodes_of_tree s e cert
 
 (* Instanciation ordering (and substituting) *)
 
