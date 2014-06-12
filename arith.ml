@@ -410,7 +410,7 @@ let rec get_state l =
                         | Some Simplex.Solution _ -> Some(st, f)
                         | Some Simplex.Unsatisfiable _ -> None
                         end
-                    with Invalid_argument "Simplex is empty." -> None
+                    with Invalid_argument "Simplex is empty." -> Some(st, fun _ -> None)
                 in
                 ElH.add cache l res;
                 res
