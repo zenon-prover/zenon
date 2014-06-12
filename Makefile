@@ -8,7 +8,7 @@ include .config_var
 # Staging directory for package managers
 DESTDIR =
 
-CAMLFLAGS = -warn-error "$(WARN_ERROR)" -I `ocamlfind query zarith` -I simplex
+CAMLFLAGS = -warn-error "$(WARN_ERROR)" -I `ocamlfind query zarith`
 
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
@@ -25,7 +25,7 @@ SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
-          simplex/simplex.ml arith.ml \
+          simplex.ml arith.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
           ext_equiv.ml ext_induct.ml ext_arith.ml \
           prove.ml checksum.dummy versionnum.ml main.ml zenon.ml
