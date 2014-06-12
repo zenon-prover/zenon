@@ -496,7 +496,7 @@ let disj vars map =
 let rec substitute map e =
   match e with
   | _ when disj (get_fv e) map -> e
-  | Evar (v, _) -> (try List.assoc e map with Not_found -> e)
+  | Evar (v, _) -> (try List.assq e map with Not_found -> e)
   | Emeta _ -> e
   | Eapp (s, args, _) -> eapp (s, List.map (substitute map) args)
   | Enot (f, _) -> enot (substitute map f)
