@@ -12,11 +12,16 @@ case $1 in
         ;;
     int)
         echo "Testing interesting problems..."
-        FILES=`grep -L "real" /home/guigui/build/tptp/Problems/ARI/*.p | xargs grep -l "Theorem"`
+        FILES=`grep -L "^[^%]*real" /home/guigui/build/tptp/Problems/ARI/*.p | xargs grep -l "Theorem"`
         ;;
     cs)
         echo "Testing counter-satisfiable problems..."
-        FILES=`grep -L "Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
+        FILES=`grep -L "Status   : Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
+        ;;
+    clean)
+        rm /home/guigui/build/tptp/Problems/ARI/*.gv
+        rm /home/guigui/build/tptp/Problems/ARI/*.svg
+        exit 0
         ;;
     *)
         echo "Unknwon option."
