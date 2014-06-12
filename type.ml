@@ -149,7 +149,7 @@ let type_app (b, t) args =
 
 let type_app_opt (s, t) args =
     try
-        if s = "=" then
+        if s = "=" && t = None then
             Some (type_eq (List.map extract args))
         else
             Some (type_app (extract t) (List.map extract args))
@@ -198,4 +198,5 @@ let to_string_binders l =
         "!>[" ^ tvars ^ "]: "
 
 let to_string (b, t) = (to_string_binders b) ^ (to_string_base t)
+
 

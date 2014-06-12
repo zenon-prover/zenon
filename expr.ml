@@ -421,6 +421,11 @@ let compare x y =
   | x when x < 0 -> -1
   | _ -> 1
 ;;
+let compare_type x y = match (get_type x), (get_type y) with
+    | Some t, Some t' -> Type.compare t t'
+    | None, None -> 0
+    | None, _ -> -1
+    | _, None -> +1
 
 (************************)
 

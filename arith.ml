@@ -173,7 +173,7 @@ let rec of_nexpr e = match e with
     | _ -> raise NotaFormula
 
 let of_bexpr = function
-    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"|"$eq_num") as s,_), [a; b], _ ) ->
+    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"|"=") as s,_), [a; b], _ ) ->
             let a', b' = of_nexpr a, of_nexpr b in
             let c, e = normalize a' b' in
             (e, s, c)
@@ -313,7 +313,7 @@ let expr_of_inst p = match p.mlrule with
 let ct_from_ml p =
     let filter l = List.filter (fun e ->
         try begin match of_bexpr e with
-            | (_, "$eq_num", _) -> false
+            | (_, "=", _) -> false
             | (f, _, _) -> fis_meta f
         end with NotaFormula -> false
         ) l in
@@ -388,7 +388,7 @@ let add_expr e st =
     try match fneg (of_bexpr e) with
     | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
     | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
-    | (b, "$eq_num", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
+    | (b, "=", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
     | _ -> st
     with
     | NotaFormula -> assert false

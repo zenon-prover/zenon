@@ -250,25 +250,28 @@ let translate_bound e r = match e with
 let pop_option = function | Some a -> a | None -> assert false
 
 let bound_of_expr is_high e bounds =
-    let xor a b = (a && not b) || (not a && b) in
-    let rec aux = function
-        | [] -> raise Exit
-        | [c, x] ->
-                let v, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
-                if xor is_high (Q.sign c >= 0) then begin
-                    [pop_option einf], Q.mul c (translate_bound einf (fun () -> raise Exit))
-                end else begin
-                    [pop_option eupp], Q.mul c (translate_bound eupp (fun () -> raise Exit))
-                end
-        | (c, x) :: r ->
-                let l, b = aux r in
-                let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
-                if xor is_high (Q.sign c >= 0) then
-                    (pop_option einf) :: l, Q.add b (Q.mul c (translate_bound einf (fun () -> raise Exit)))
-                else
-                    (pop_option eupp) :: l, Q.add b (Q.mul c (translate_bound eupp (fun () -> raise Exit)))
-    in
-    try aux e with Exit -> [], if is_high then Q.inf else Q.minus_inf
+    if (List.for_all (fun (c,_) -> Q.equal Q.zero c) e) then
+        [], Q.zero
+    else
+        let xor a b = (a && not b) || (not a && b) in
+        let rec aux = function
+            | [] -> raise Exit
+            | [c, x] ->
+                    let v, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
+                    if xor is_high (Q.sign c >= 0) then begin
+                        [pop_option einf], Q.mul c (translate_bound einf (fun () -> raise Exit))
+                    end else begin
+                        [pop_option eupp], Q.mul c (translate_bound eupp (fun () -> raise Exit))
+                    end
+            | (c, x) :: r ->
+                    let l, b = aux r in
+                    let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
+                    if xor is_high (Q.sign c >= 0) then
+                        (pop_option einf) :: l, Q.add b (Q.mul c (translate_bound einf (fun () -> raise Exit)))
+                    else
+                        (pop_option eupp) :: l, Q.add b (Q.mul c (translate_bound eupp (fun () -> raise Exit)))
+        in
+        try aux e with Exit -> [], if is_high then Q.inf else Q.minus_inf
 
 
 let bounds_of_clin v expr bounds =
@@ -296,7 +299,8 @@ let add_binding t x f (e, s, c) =
     let low, high = new_bindings low high (Some f) (e, s, c) in
     { t with bindings = (x, def, low, high) :: l2 }
 
-let simplex_add t f (e, s, c) = match e with
+let simplex_add t f (e, s, c) =
+    match e with
     | []  -> assert false
     | [(c', x)] ->
             let b = Q.div c (Q.abs c') in
@@ -325,13 +329,14 @@ let nodes_of_tree s f t =
                 (aux (add_binding s v under (of_bexpr under)) under c) @
                 (aux (add_binding s v above (of_bexpr above)) above c'))
     | Some S.Explanation (v, expr) ->
-            let expr = sanitize expr in
+            let is_zero = List.for_all (fun (c, _) -> Q.equal Q.zero c) expr in
+            let expr = if is_zero then expr else sanitize expr in
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
                 (List.filter (fun (y, y', _, _) -> not (equal y y') && List.exists (fun x -> equal x y) l) s.bindings) in
             let clin = expr_norm (Typetptp.mk_equal (to_nexpr expr) v) in
             let bounds, nb, conflict = bounds_of_clin v expr s.bindings in
-            if bounds = [] then
+            if bounds = [] && not is_zero then
                 [f, mk_node_conflict nb conflict]
             else
                 [f, mk_node_lin v clin relevant;
@@ -598,7 +603,7 @@ let const_node e = (* comparison of constants *)
     | "$lesseq" when Q.gt Q.zero c -> add_todo e [mk_node_const c e]
     | "$greater" when Q.leq Q.zero c -> add_todo e [mk_node_const c e]
     | "$greatereq" when Q.lt Q.zero c -> add_todo e [mk_node_const c e]
-    | "$eq_num" when not (Q.equal Q.zero c) -> add_todo e [mk_node_const c e]
+    | "=" when not (Q.equal Q.zero c) -> add_todo e [mk_node_const c e]
     | "$is_int" when not (is_z c) -> add_todo e [mk_node_const c e]
     | "$not_is_int" when is_z c -> add_todo e [mk_node_const c e]
     | "$not_is_rat" -> add_todo e [mk_node_const c e]
@@ -612,7 +617,7 @@ let add_formula e =
     fm_add_expr e;
     match e with
     | _ when ignore_expr e -> ()
-    | Enot (Eapp (Evar("$eq_num",_), [a; b], _), _) ->
+    | Enot (Eapp (Evar("=",_), [a; b], _), _) ->
             add_todo e [mk_node_neq a b e]
     | Enot (Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _), _) ->
             add_todo e [mk_node_neg2 s a b e]
@@ -620,7 +625,7 @@ let add_formula e =
             add_todo e [mk_node_neg s a e]
     | _ when is_const e ->
             const_node e
-    | Eapp (Evar("$eq_num",_), [a; b], _) ->
+    | Eapp (Evar("=",_), [a; b], _) ->
             add_todo e [mk_node_eq a b e]
     | Eapp (Evar("$less",_), [a; b], _) when is_int a && is_int b ->
             add_todo e [mk_node_int_lt a b e]

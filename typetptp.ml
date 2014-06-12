@@ -131,7 +131,7 @@ let is_num t =
 
 let mk_equal e f = match get_type e, get_type f with
     | Some t, Some t' when is_num t && is_num t' ->
-            let eq = tvar "$eq_num" (mk_arrow [t; t'] type_bool) in
+            let eq = tvar "=" (mk_arrow [t; t'] type_bool) in
             eapp (eq, [e; f])
     | Some t, Some t' -> eapp (eeq, [e; f])
     | _ -> assert false

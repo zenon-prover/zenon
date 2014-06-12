@@ -593,7 +593,7 @@ let llproof o p =
 
 let is_infix_op s =
     (s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_' ) || (match s with
-    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "$eq_num"
+    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "="
     | "$sum" | "$product" | "$difference" -> true
     | s -> false)
 
@@ -602,7 +602,7 @@ let to_infix = function
     | "$lesseq" -> "&lt;="
     | "$greater" -> "&gt;"
     | "$greatereq" -> "&gt;="
-    | "$eq_num" -> "="
+    | "=" -> "="
     | "$sum" -> "+"
     | "$product" -> "*"
     | "$difference" -> "-"

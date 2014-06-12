@@ -190,9 +190,10 @@ let make_notequiv st sym (p, g) (np, ng) =
          && not (Expr.equal e1 e2)
     -> st
   | Eapp (Evar("Is_true",_), _, _), _ when Extension.is_active "focal" -> st
-  | Eapp (Evar(s1,_) as s1', args1, _), Enot (Eapp (Evar(s2,_), args2, _), _) ->
+  | Eapp (Evar(s1,_) as s1', args1, _), Enot (Eapp (Evar(s2,_) as s2', args2, _), _) ->
       assert (s1 =%= s2);
-      if sym && List.length args2 != 2
+      if compare_type s1' s2' <> 0 then st
+      else if sym && List.length args2 != 2
          || List.length args1 <> List.length args2
       then (arity_warning s1; st)
       else if Extension.is_active "induct"

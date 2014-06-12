@@ -36,6 +36,7 @@ type t = expr;;
 
 val equal : t -> t -> bool;;
 val compare : t -> t -> int;;
+val compare_type : t -> t -> int;;
 val hash : t -> int;;
 
 val get_type : expr -> etype option;;
