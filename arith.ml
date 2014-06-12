@@ -306,10 +306,6 @@ let is_inst_node p = match p.mlrule with
         end
     | _ -> false
 
-let expr_of_inst p = match p.mlrule with
-    | All (e, _) | NotEx(e, _) -> e
-    | _ -> assert false
-
 let ct_from_ml p =
     let filter l = List.filter (fun e ->
         try begin match of_bexpr e with
@@ -321,9 +317,13 @@ let ct_from_ml p =
         if is_inst_node p then
             { node = cl_from_list []; children = [| |]; }
         else
+            let l' = match p.mlrule with
+                | Ext("arith", "inst", x) -> x (* @ p.mlconc ? *)
+                | _ -> p.mlconc
+            in
             let hyps = Array.to_list p.mlhyps in
             let hyps = List.filter is_open_proof hyps in
-            let hyps = List.map (aux p.mlconc) hyps in
+            let hyps = List.map (aux l') hyps in
             let hyps = List.filter (fun t -> not (ct_is_empty t)) hyps in
             let hyps = Array.of_list hyps in
             {
@@ -344,17 +344,17 @@ let find_next_inst p =
         then raise (Found_inst p)
         else Array.iter aux p.mlhyps
     in
-    try aux p; raise EndReached with Found_inst p -> { p with mlrule =
-        Ext("arith", "inst", match p.mlrule with
-            | All(e, e') -> [e; e']
-            | NotEx(e, e') -> [e; e']
-            | _ -> assert false) }
+    try aux p; raise EndReached with Found_inst p ->
+        let e, l = match p.mlrule with
+            | All(e, _) | NotEx(e, _) -> e, p.mlconc
+            | _ -> assert false
+        in
+        e, { p with mlrule = Ext("arith", "inst", l) }
 
-let replace_inst p inst =
-    let e = expr_of_inst inst in
+let replace_inst p (e, inst) =
     let rec aux p = match p.mlrule with
-        | All(e', _) when equal e e' -> inst
-        | NotEx(e', _) when equal e e' -> inst
+        | All(e', _) | NotEx(e', _) when equal e e' ->
+                { inst with mlconc = p.mlconc }
         | _ -> { p with mlhyps = Array.map aux p.mlhyps }
     in
     aux p
