@@ -2,6 +2,10 @@
 
 # Arg option
 case $1 in
+    test)
+        echo "Testing ref tests"
+        FILES=`find test/arith-*.t`
+        ;;
     all)
         echo "Testing all..."
         FILES=`find /home/guigui/build/tptp/Problems/ARI/*.p`
@@ -19,8 +23,10 @@ case $1 in
         FILES=`grep -L "Status   : Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
         ;;
     clean)
-        rm /home/guigui/build/tptp/Problems/ARI/*.gv
-        rm /home/guigui/build/tptp/Problems/ARI/*.svg
+        rm -f temp.*
+        rm -f test/*.gv test/*.svg
+        rm -f /home/guigui/build/tptp/Problems/ARI/*.gv
+        rm -f /home/guigui/build/tptp/Problems/ARI/*.svg
         exit 0
         ;;
     *)
