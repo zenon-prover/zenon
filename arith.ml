@@ -317,22 +317,21 @@ let ct_from_ml p =
             | (f, _, _) -> fis_meta f
         end with NotaFormula -> false
         ) l in
-    let rec aux p =
+    let rec aux l p =
         if is_inst_node p then
             { node = cl_from_list []; children = [| |]; }
         else
-            let ehyps = Array.fold_left (fun acc p -> p.mlconc @ acc) [] p.mlhyps in
             let hyps = Array.to_list p.mlhyps in
             let hyps = List.filter is_open_proof hyps in
-            let hyps = List.map aux hyps in
+            let hyps = List.map (aux p.mlconc) hyps in
             let hyps = List.filter (fun t -> not (ct_is_empty t)) hyps in
             let hyps = Array.of_list hyps in
             {
-                node = cl_from_list (filter (Expr.diff p.mlconc ehyps));
+                node = cl_from_list (filter (Expr.diff p.mlconc l));
                 children = hyps;
             }
     in
-    let res = aux p in
+    let res = aux [] p in
     if ct_is_empty res then
         None
     else
