@@ -4,7 +4,7 @@ open Type
 open Mlproof
 open Typetptp
 
-let equal x y = Expr.compare x y = 0
+let equal = Expr.equal
 
 (* Types manipulation *)
 let get_type e = match get_type e with

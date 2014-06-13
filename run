@@ -50,7 +50,7 @@ do
     then
         echo -e "\e[32m[PROOF FOUND] $f \e[0m"
         SOLVED=$(($SOLVED + 1))
-        ./zenon -max-time 10s -q -odotd 20 -kall -x arith -itptp $f > $f.gv
+        ./zenon -max-time 10s -q -odotd 30 -kall -x arith -itptp $f > $f.gv
         dot -Tsvg $f.gv -o $f.svg
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ] || [ $RET -eq 13 ];
     then
