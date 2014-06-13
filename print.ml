@@ -96,19 +96,38 @@ let expr o e =
 ;;
 
 let is_infix_op s =
-  let s = get_name s in
-  s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_'
-;;
+    (s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_' ) || (match s with
+    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "="
+    | "$sum" | "$product" | "$difference" -> true
+    | s -> false)
+
+let to_infix = function
+    | "$less" -> "<"
+    | "$lesseq" -> "<="
+    | "$greater" -> ">"
+    | "$greatereq" -> ">="
+    | "=" -> "="
+    | "$sum" -> "+"
+    | "$product" -> "*"
+    | "$difference" -> "-"
+    | "$uminus" -> "-"
+    | s -> s
 
 let rec expr_soft o ex =
   let pr f = oprintf o f in
   match ex with
   | Evar (v, _) -> pr "%s" v;
   | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
-  | Eapp (s, [e1; e2], _) when is_infix_op s ->
-     pr "("; expr_soft o e1; pr " %s " (get_name s); expr_soft o e2; pr ")";
-  | Eapp (s, es, _) ->
-      pr "(%s" (get_name s);
+  | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
+     pr "("; expr_soft o e1; pr " %s " (to_infix s); expr_soft o e2; pr ")";
+  | Eapp(Evar(s, _), [], _) ->
+    pr "%s" s
+  | Eapp (Evar(s,_), es, _) ->
+      pr "(%s" (to_infix s);
+      List.iter (fun x -> pr " "; expr_soft o x) es;
+      pr ")";
+  | Eapp(e, es, _) ->
+      pr "("; expr_soft o e;
       List.iter (fun x -> pr " "; expr_soft o x) es;
       pr ")";
   | Enot (Eapp (Evar("=",_), [e1; e2], _), _) ->
@@ -437,8 +456,8 @@ let rec llproof_expr o e =
       pro "(lambda %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
   | Etau (v, t, p, _) ->
       pro "(tau %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
-  | Eapp (s, [e1; e2], _) when is_infix_op s ->
-     pro "("; llproof_expr o e1; pro " %s " (get_name s); llproof_expr o e2; pro ")";
+  | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
+     pro "("; llproof_expr o e1; pro " %s " s; llproof_expr o e2; pro ")";
   | Eapp (s, [], _) -> pro "%s" (get_name s);
   | Eapp (s, args, _) -> pro "%s(" (get_name s); llproof_expr_list o args; pro ")";
   | Evar (s, _) -> pro "%s" s;
@@ -662,15 +681,12 @@ let expr_esc o e =
   flush ();
 ;;
 
-let sexpr e =
-    let buf = Buffer.create 100 in
-    expr_esc (Buff buf) e;
-    Buffer.contents buf
+let sexpr_esc e = Log.on_buffer (fun b -> expr_esc (Buff b)) e
 
 let dot_rule_name = function
   | Close e -> "Axiom", [e]
-  | Close_refl (s, e) -> "Refl("^(sexpr s)^")", [e]
-  | Close_sym (s, e1, e2) -> "Sym("^(sexpr s)^")", [e1; e2]
+  | Close_refl (s, e) -> "Refl("^(sexpr_esc s)^")", [e]
+  | Close_sym (s, e1, e2) -> "Sym("^(sexpr_esc s)^")", [e1; e2]
   | False -> "False", []
   | NotTrue -> "NotTrue", []
   | NotNot (e) -> "NotNot", [e]
@@ -689,7 +705,7 @@ let dot_rule_name = function
   | Equiv (e1, e2) -> "Equiv", [e1; e2]
   | NotEquiv (e1, e2) -> "NotEquiv", [e1; e2]
   | P_NotP (e1, e2) -> "P-NotP", [e1; e2]
-  | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^(sexpr s)^")", [e1; e2]
+  | P_NotP_sym (s, e1, e2) -> "P-NotP-sym("^(sexpr_esc s)^")", [e1; e2]
   | Definition (DefReal (_, s, _, _, _), e, _) -> "Definition("^s^")", [e]
   | Definition (DefPseudo (_, s, _, _), e, _) -> "Definition-Pseudo("^s^")", [e]
   | Definition (DefRec (_, s, _, _), e, _) -> "Definition-Rec("^s^")", [e]
@@ -697,7 +713,7 @@ let dot_rule_name = function
   | DisjTree e -> "DisjTree", [e]
   | AllPartial (e1, s, n) -> "All-Partial", [e1]
   | NotExPartial (e1, s, n) -> "NotEx-Partial", [e1]
-  | Refl (s, e1, e2) -> "Refl("^(sexpr s)^")", [e1; e2]
+  | Refl (s, e1, e2) -> "Refl("^(sexpr_esc s)^")", [e1; e2]
   | Trans (e1, e2) -> "Trans", [e1; e2]
   | Trans_sym (e1, e2) -> "Trans-sym", [e1; e2]
   | TransEq (e1, e2, e3) -> "TransEq", [e1; e2; e3]
@@ -780,3 +796,14 @@ let dots o ?full_output:(b=true) ?max_depth:(d=(-1)) l =
     pr "}\n";
     flush ()
 ;;
+
+
+(* Functions for easy debug printing *)
+
+let pp_expr b e = expr_soft (Buff b) e
+
+let pp_mlrule b r =
+  let s, l = get_rule_name r in
+   Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr) l
+
+let sexpr e = Log.on_buffer pp_expr e

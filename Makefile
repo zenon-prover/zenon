@@ -16,7 +16,7 @@ CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 # SOURCES specifies both the list of source files and the set of
 # modules in linking order.
 
-SOURCES = version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
+SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           progress.ml namespace.ml type.ml expr.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
 	  print.ml step.ml node.ml extension.ml mltoll.ml \
@@ -71,10 +71,10 @@ byt: zenon.byt
 bin: zenon.bin
 
 zenon.bin: $(BINOBJS)
-	$(CAMLBIN) $(CAMLBINFLAGS) -o zenon.bin zarith.cmxa $(BINOBJS)
+	$(CAMLBIN) $(CAMLBINFLAGS) -o zenon.bin unix.cmxa zarith.cmxa $(BINOBJS)
 
 zenon.byt: $(BYTOBJS)
-	$(CAMLBYT) $(CAMLBYTFLAGS) -o zenon.byt zarith.cma $(BYTOBJS)
+	$(CAMLBYT) $(CAMLBYTFLAGS) -o zenon.byt unix.cma zarith.cma $(BYTOBJS)
 
 zenon: zenon.byt
 	if test -x zenon.bin; then \

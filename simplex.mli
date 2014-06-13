@@ -54,6 +54,9 @@ module type S = sig
     (** The empty system *)
     val empty       : t
 
+    (** Returns a copy of the given system *)
+    val copy        : t -> t
+
     (** [add_eq s (x, eq)] returns a system containing the same constraints as [s], plus the equation (x = eq). *)
     val add_eq      : t -> var * (Q.t * var) list -> t
 

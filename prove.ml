@@ -85,6 +85,7 @@ let rec pure_meta l =
 (****************)
 
 let add_node st n =
+  Log.debug 3 "--> %a" Print.pp_mlrule n.nrule;
   { (*st with*) queue = insert st.queue n }
 ;;
 
@@ -1013,7 +1014,10 @@ let newnodes_useless st fm g _ =
 
 let newnodes_extensions state fm g fms =
   let (newnodes, stop) = Node.relevant (Extension.newnodes fm g fms) in
-  let insert_node s n = {(*s with*) queue = insert s.queue n} in
+  let insert_node s n =
+      Log.debug 3 "--> %a" Print.pp_mlrule n.nrule;
+      {(*s with*) queue = insert s.queue n}
+  in
   let state2 = List.fold_left insert_node state newnodes in
   (state2, stop)
 ;;
@@ -1337,7 +1341,9 @@ let prove_fail () =
   raise NoProof
 ;;
 
-let open_fail () = Closed (make_open (List.map fst (Index.get_all ())))
+let open_fail () =
+    Log.debug 3 "--> OPEN";
+    Closed (make_open (List.map fst (Index.get_all ())))
 
 type rule =
   state -> expr -> int -> (expr * int) list -> state * bool
@@ -1355,7 +1361,9 @@ let rec refute_aux prm stk st forms =
   | [] ->
       if good_head st.queue then begin
         match Index.search_proof () with
-        | Some p -> p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p)
+        | Some p ->
+                Log.debug 3 "--> PROOF cached";
+                p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p)
         | None -> next_node prm stk st
       end else begin
         next_node prm stk st
@@ -1366,6 +1374,7 @@ let rec refute_aux prm stk st forms =
   | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 ->
       refute_aux prm stk st fms
   | (fm, g) :: fms ->
+      Log.debug 1 "+ %s" (Print.sexpr fm);
       Index.add fm g;
       Extension.add_formula fm;
       refute_aux prm stk (add_nodes prm.rules st fm g fms) fms
@@ -1421,6 +1430,7 @@ and unwind prm stk res =
       Step.rule "unwind" fr.node.nrule;
       let f x =
         if Index.member x then begin (* we can unwind before adding all forms *)
+          Log.debug 1 "- %s" (Print.sexpr x);
           Extension.remove_formula x;
           Index.remove x;
         end;
@@ -1460,6 +1470,7 @@ let ticker finished () =
 ;;
 
 let rec iter_refute prm rl acc =
+  Log.debug 1 "============ Begin search ===========";
   match refute prm [] {queue = empty} rl with
   | Backtrack ->
       max_depth := 2 * !max_depth;
@@ -1468,6 +1479,7 @@ let rec iter_refute prm rl acc =
       end '*';
       iter_refute prm rl acc;
   | Closed p when Mlproof.is_open_proof p ->
+      Log.debug 5 "=========== Extension iter ==========";
       if Extension.iter_open p then begin
         prm.iter (iter_refute prm rl) (p :: acc)
       end else

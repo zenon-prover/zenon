@@ -33,6 +33,7 @@ module type S = sig
 
     (* Simplex construction *)
     val empty       : t
+    val copy        : t -> t
     val add_eq      : t -> var * (Q.t * var) list -> t
     val add_bounds  : t -> var * Q.t * Q.t -> t
     (* Simplex solving *)
@@ -99,6 +100,14 @@ module Make(Var: OrderedType) = struct
         nbasic = [];
         assign = M.empty;
         bounds = M.empty;
+    }
+
+    let copy t = {
+        tab = t.tab;
+        basic = t.basic;
+        nbasic = t.nbasic;
+        assign = t.assign;
+        bounds = t.bounds;
     }
 
     let mem x l = List.exists (fun y -> Var.compare x y = 0) l

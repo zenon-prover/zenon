@@ -180,6 +180,22 @@ let simplex_empty = {
     bindings = [];
 }
 
+let simplex_copy s = {
+    core = S.copy s.core;
+    ignore = s.ignore;
+    bindings = s.bindings;
+}
+
+let simplex_print b s =
+    let fmt = Format.formatter_of_buffer b in
+    let print_var fmt e = Format.fprintf fmt "%s" (Print.sexpr e) in
+    Format.fprintf fmt "%a@." (S.print_debug print_var) s.core;
+    Log.pp_list ~sep:"\n" (fun b (e, def, inf, upp) ->
+        Printf.bprintf b "%a \t\t %a \t\t%a"
+        (Log.pp_opt Print.pp_expr) inf
+        (Log.pp_opt Print.pp_expr) upp
+        Print.pp_expr def) b s.bindings
+
 let bounds_of_comp s c = match s with
     | "$lesseq" -> (Q.minus_inf, c)
     | "$greatereq" -> (c, Q.inf)
@@ -304,17 +320,17 @@ let simplex_add t f (e, s, c) =
     match e with
     | []  -> assert false
     | [(c', x)] ->
-            Format.printf "Adding : %s@." (Print.sexpr f);
             let b = Q.div c (Q.abs c') in
             let (inf, upp) = bounds_of_comp s b in
             let (inf, upp) = if Q.sign c' <= -1 then (Q.neg upp, Q.neg inf) else (inf, upp) in
+            Log.debug 7 "arith -- new bounds : %s <= %a <= %s" (Q.to_string inf) Print.pp_expr x (Q.to_string upp);
             (add_binding {t with core = S.add_bounds t.core (x, inf, upp)} x f (e, s, c)), []
     | _ ->
             let expr = to_nexpr e in
             let v = tvar (newname ()) (get_type expr) in
             let e1 = Typetptp.mk_equal v expr in
-            Format.printf "Adding : %s@." (Print.sexpr e1);
             let e2 = mk_bop s v (const (Q.to_string c)) in
+            Log.debug 7 "arith -- new variable : %a == %a" Print.pp_expr v Print.pp_expr expr;
             { core = S.add_eq t.core (v, e);
               ignore = e1 :: t.ignore;
               bindings = (v, e1, None, None) :: t.bindings;
@@ -325,7 +341,7 @@ let nodes_of_tree s f t =
     let rec aux s f t = match !t with
     | None -> raise Internal_error
     | Some S.Branch (v, k, c, c') ->
-            Format.printf "branching@.";
+            Log.debug 7 "arith -- branching: %a <= %s" Print.pp_expr v (Z.to_string k);
             let k = const (Z.to_string k) in
             let under = expr_norm (lesseq v k) in
             let above = expr_norm (greatereq v (plus_one k)) in
@@ -333,9 +349,9 @@ let nodes_of_tree s f t =
                 (aux (add_binding s v under (of_bexpr under)) under c) @
                 (aux (add_binding s v above (of_bexpr above)) above c'))
     | Some S.Explanation (v, expr) ->
-            Format.printf "%s = %a@." (Print.sexpr v) (fun _ -> List.iter (fun (c, x) -> Format.printf "%s * %s + " (Q.to_string c) (Print.sexpr x))) expr;
             let is_zero = expr <> [] && List.for_all (fun (c, _) -> Q.equal Q.zero c) expr in
             let expr = if is_zero then expr else sanitize expr in
+            Log.debug 7 "arith -- simplex: %a = %a" Print.pp_expr v Print.pp_expr (to_nexpr expr);
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
                 (List.filter (fun (y, y', _, _) -> not (equal y y') && List.exists (fun x -> equal x y) l) s.bindings) in
@@ -353,10 +369,11 @@ let nodes_of_tree s f t =
 let simplex_solve s e =
     let f = S.nsolve_incr s.core is_int in
     match f () with
-    | None -> false, [] (* TODO: rerun f, or try otehr method ? *)
+    | None -> false, [] (* TODO: rerun f, or try other method ? *)
     | Some S.Solution _ -> false, []
     | Some S.Unsatisfiable cert ->
-            Format.printf "Found an explanation !@.";
+            Log.debug 5 "arith -- found unsat explanation.";
+            Log.debug 10 "arith -- Simplex state :\n%a" simplex_print s;
             true, nodes_of_tree s e cert
 
 (* Instanciation ordering (and substituting) *)
@@ -414,15 +431,18 @@ let st_solved st = st.solved <- true
 
 let st_pop st =
     ignore (Stack.pop st.stack);
+    Log.debug 7 "arith -- state stack pop (%i left)" (Stack.length st.stack);
     st.solved <- false
 
 let st_head st =
     try
         let _, r, _ = Stack.top st.stack in
-        r
+        simplex_copy r
     with Stack.Empty -> simplex_empty
 
-let st_push st x = Stack.push x st.stack
+let st_push st x =
+    Stack.push x st.stack;
+    Log.debug 7 "arith -- state stack push (%i left)" (Stack.length st.stack)
 
 let st_is_head st e =
     try
@@ -713,8 +733,13 @@ let rec iter_open p =
     | None -> false
     | Some t ->
         begin match solve_tree t with
-        | None -> begin try iter_open (next_inst p) with EndReached -> false end
+        | None -> begin try
+            Log.debug 5 "arith -- switching to next instanciation ";
+            iter_open (next_inst p)
+            with EndReached -> false end
         | Some s ->
+                Log.debug 5 "arith -- found solution.";
+                List.iter (fun (x, v) -> Log.debug 6 "arith -- %a <- %s" Print.pp_expr x (Q.to_string v)) s;
                 let global = List.fold_left (fun acc (e, v) -> match e with
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc
