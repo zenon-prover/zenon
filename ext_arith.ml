@@ -390,12 +390,6 @@ let subst_inst (e, n) (e', n') =
     let meta, v = subst_of_inst n in
     let subst = meta, v in
     let e''= substitute_meta subst e' in
-    (*
-    Format.printf "trying to substitute :@\n%a@\n%a@\n%a@\n----------------------------------------------@."
-    Type.print_expr meta
-    Type.print_expr e'
-    Type.print_expr e'';
-    *)
     (e'', subst_inst_aux subst n')
 
 let order_inst l =

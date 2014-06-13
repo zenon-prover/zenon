@@ -3,6 +3,5 @@
   - Fix the schmilblik with multiple/repeated solving with int variables
 
 * Meta-variable extension
-  - limit the number of instanciations
-  - correctly instantiate multiple variables
+  - limit the number of instanciations ?
 

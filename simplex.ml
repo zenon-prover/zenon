@@ -413,7 +413,7 @@ module Make(Var: OrderedType) = struct
         let g = global_bound t in
         g, nsolve (bound_all t int_vars g) int_vars
 
-    let base_depth t = 100 + 2 * (List.length t.nbasic)
+    let base_depth t = 10 + 2 * (List.length t.nbasic)
 
     let nsolve_incr t int_vars =
         if List.length t.nbasic = 0 then
@@ -432,6 +432,7 @@ module Make(Var: OrderedType) = struct
                         Some (res)
                     with Exit ->
                         max_depth := 2 * !max_depth;
+                        t.bounds <- init_bounds;
                         None
         in
         f
