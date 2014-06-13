@@ -167,6 +167,8 @@ let argspec = [
            "           output a proof that uses all the hypotheses";
   "-v", Arg.Unit short_version,
      "                 print version string and exit";
+  "-vv", Arg.Int Log.set_debug,
+      "                set the verbose level for debug output (default 0)";
   "-versions", Arg.Unit cvs_version,
             "          print CVS version strings and exit";
   "-w", Arg.Clear Error.warnings_flag,

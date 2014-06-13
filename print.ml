@@ -96,19 +96,38 @@ let expr o e =
 ;;
 
 let is_infix_op s =
-  let s = get_name s in
-  s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_'
-;;
+    (s <> "" && not (is_letter s.[0]) && s.[0] <> '$' && s.[0] <> '_' ) || (match s with
+    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "="
+    | "$sum" | "$product" | "$difference" -> true
+    | s -> false)
+
+let to_infix = function
+    | "$less" -> "<"
+    | "$lesseq" -> "<="
+    | "$greater" -> ">"
+    | "$greatereq" -> ">="
+    | "=" -> "="
+    | "$sum" -> "+"
+    | "$product" -> "*"
+    | "$difference" -> "-"
+    | "$uminus" -> "-"
+    | s -> s
 
 let rec expr_soft o ex =
   let pr f = oprintf o f in
   match ex with
   | Evar (v, _) -> pr "%s" v;
   | Emeta (e, _) -> pr "%s%d" meta_prefix (Index.get_number e);
-  | Eapp (s, [e1; e2], _) when is_infix_op s ->
-     pr "("; expr_soft o e1; pr " %s " (get_name s); expr_soft o e2; pr ")";
-  | Eapp (s, es, _) ->
-      pr "(%s" (get_name s);
+  | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
+     pr "("; expr_soft o e1; pr " %s " (to_infix s); expr_soft o e2; pr ")";
+  | Eapp(Evar(s, _), [], _) ->
+    pr "%s" s
+  | Eapp (Evar(s,_), es, _) ->
+      pr "(%s" (to_infix s);
+      List.iter (fun x -> pr " "; expr_soft o x) es;
+      pr ")";
+  | Eapp(e, es, _) ->
+      pr "("; expr_soft o e;
       List.iter (fun x -> pr " "; expr_soft o x) es;
       pr ")";
   | Enot (Eapp (Evar("=",_), [e1; e2], _), _) ->
@@ -437,8 +456,8 @@ let rec llproof_expr o e =
       pro "(lambda %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
   | Etau (v, t, p, _) ->
       pro "(tau %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
-  | Eapp (s, [e1; e2], _) when is_infix_op s ->
-     pro "("; llproof_expr o e1; pro " %s " (get_name s); llproof_expr o e2; pro ")";
+  | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
+     pro "("; llproof_expr o e1; pro " %s " s; llproof_expr o e2; pro ")";
   | Eapp (s, [], _) -> pro "%s" (get_name s);
   | Eapp (s, args, _) -> pro "%s(" (get_name s); llproof_expr_list o args; pro ")";
   | Evar (s, _) -> pro "%s" s;
@@ -590,3 +609,14 @@ let llproof o p =
   List.iter (llproof_lemma o) p;
   flush ();
 ;;
+
+(* Functions for easy debug printing *)
+
+let pp_expr b e = expr_soft (Buff b) e
+
+let pp_mlrule b r =
+  let s, l = get_rule_name r in
+   Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr) l
+
+let sexpr e = Log.on_buffer pp_expr e
+
