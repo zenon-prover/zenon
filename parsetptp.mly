@@ -179,14 +179,6 @@ tff_quant:
   | UIDENT COLON TTYPE COMMA tff_quant  { (evar $1) :: $5 }
   | UIDENT COLON TTYPE                  { [evar $1] }
 ;
-tff_type:
-  | LIDENT                              { [evar $1] }
-  | tuple_type RANGL LIDENT             { (evar $3) :: $1 }
-  | OPEN tuple_type CLOSE RANGL LIDENT  { (evar $5) :: $2 }
-;
-tuple_type:
-  | LIDENT                  { [evar $1] }
-  | LIDENT STAR tuple_type  { evar $1 :: $3 }
 name_list:
   | LIDENT COMMA name_list         { $1 :: $3 }
   | LIDENT                         { [$1] }
