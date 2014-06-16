@@ -77,6 +77,12 @@ let lesseq a b = mk_bop "$lesseq" a b
 let greater a b = mk_bop "$greater" a b
 let greatereq a b = mk_bop "$greatereq" a b
 
+let coerce t v =
+    if Type.equal type_rat t && is_int v then
+        sum v (mk_rat "0")
+    else
+        v
+
 let mk_ubop s a =
     let t = get_type a in
     eapp (tvar s (mk_arrow [t] type_bool), [a])
@@ -140,6 +146,7 @@ let normalize a b =
     let k = Q.abs (coef (List.map fst e)) in
     Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e)
 
+
 let of_cexpr e = match e with
     | Evar(s, _) when is_int e || is_rat e ->
             begin try
@@ -150,10 +157,6 @@ let of_cexpr e = match e with
     | _ -> raise NotaFormula
 
 let rec of_nexpr e = match e with
-    (*
-    | Eapp (v, [], _) ->
-        begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
-        *)
     | Evar (v, _) when is_int e || is_rat e ->
             begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
     | Etau (_, t, _, _)
@@ -170,7 +173,7 @@ let rec of_nexpr e = match e with
             with Exit ->
                 raise NotaFormula
             end
-    | _ -> raise NotaFormula
+    | _ -> [Q.one, e]
 
 let of_bexpr = function
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"|"=") as s,_), [a; b], _ ) ->
@@ -183,7 +186,9 @@ let of_bexpr = function
             (e, s, c)
     | _ -> raise NotaFormula
 
-let to_nexpr_aux (c, x) = if Q.equal Q.one c then x else mul (const (Q.to_string c)) x
+let to_nexpr_aux (c, x) =
+    if x == etrue then const (Q.to_string c) else
+    (if Q.equal Q.one c then x else mul (const (Q.to_string c)) x)
 
 let to_nexpr = function
     | [] -> const "0"
@@ -310,7 +315,12 @@ let ct_from_ml p =
     let filter l = List.filter (fun e ->
         try begin match of_bexpr e with
             | (_, "=", _) -> false
-            | (f, _, _) -> fis_meta f
+            | (f, _, _) -> List.for_all (fun (_, e) ->
+                (is_int e || is_rat e) && (match e with
+                | Emeta(_) -> true
+                | Eapp(Evar(s, _), [], _) -> true
+                | _ -> false
+                )) f
         end with NotaFormula -> false
         ) l in
     let rec aux l p =
@@ -369,19 +379,16 @@ let lequal l l' = try List.for_all2 equal l l' with Invalid_argument _ -> false
 module Simplex = Simplex.MakeHelp(struct type t = Expr.t let compare = Expr.compare end)
 module ElH = Hashtbl.Make(struct type t = Expr.t list let hash = lhash let equal = lequal end)
 
+let pp_simplex b s =
+    let fmt = Format.formatter_of_buffer b in
+    let print_var fmt = function Simplex.Extern e -> Format.fprintf fmt "%s" (Print.sexpr e) | Simplex.Intern i -> Format.fprintf fmt "v%d" i in
+    Format.fprintf fmt "%a" (Simplex.print_debug print_var) s
+
 let cache = ElH.create 97
 
 let simplex_is_int = function
     | Simplex.Extern v -> is_int v
     | Simplex.Intern _ -> false
-
-let simplex_is_var = function
-    | Simplex.Extern v -> true
-    | Simplex.Intern _ -> false
-
-let simplex_var = function
-    | Simplex.Extern v -> v
-    | Simplex.Intern _ -> assert false
 
 let add_expr e st =
     try match fneg (of_bexpr e) with
@@ -417,13 +424,32 @@ let rec get_state l =
         end
 
 let try_solve l =
+    Log.debug 8 "arith -- Trying to contradict :";
+    List.iter (fun e -> Log.debug 8 "arith --    %a" Print.pp_expr e) l;
     match get_state l with
     | None -> None
-    | Some (_, f) -> begin match f () with
+    | Some (st, f) -> begin match f () with
         | None -> None
         | Some Simplex.Unsatisfiable _ -> None
         | Some Simplex.Solution s ->
-                Some (List.map (fun (v, x) -> (simplex_var v, x)) (List.filter (fun (v, _) -> simplex_is_var v) s))
+                Log.debug 10 "arith -- simplex state :\n%a" pp_simplex st;
+                let s = Simplex.abstract_val st
+                    (function Emeta _ -> true | _ -> false)
+                    (function Emeta _ -> false | _ -> true)
+                in
+                Log.debug 8 "arith -- tentative solution :";
+                let aux (v, (e, k)) =
+                    let e' = to_nexpr (fadd e [k, etrue]) in
+                    Log.debug 8 "arith -- %a == %a" Print.pp_expr v Print.pp_expr e';
+                    if is_int v && not (is_int e') then
+                        (Log.debug 8 "arith -- absurd solution";
+                        raise Exit;);
+                    v, e'
+                in
+                try
+                    let res = (List.map aux s) in
+                    Some res
+                with Exit -> None
         end
 
 let solve_tree t =

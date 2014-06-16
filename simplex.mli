@@ -142,6 +142,9 @@ module type S = sig
         upper bound [Zarith.Q.inf]). *)
     val get_all_bounds : t -> (var * (Q.t * Q.t)) list
 
+    (** TODO *)
+    val abstract : t -> (var -> bool) -> (var -> bool) -> (var * (Q.t * var) list) list
+
     (** {3 Printing functions} *)
 
     (** [print_debug print_var] returns a suitable function for printing debug info on the current state of a system.
@@ -182,6 +185,9 @@ module type HELPER = sig
   type constraint_ = op * monome * Q.t
 
   val add_constraints : t -> constraint_ list -> t
+
+  val abstract_val : t -> (external_var -> bool) -> (external_var -> bool) ->
+      (external_var * ((Q.t * external_var) list * Q.t)) list
 end
 
 module MakeHelp(Var : OrderedType) : HELPER with type external_var = Var.t

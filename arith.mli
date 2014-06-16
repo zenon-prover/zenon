@@ -37,6 +37,8 @@ val lesseq : Expr.expr -> Expr.expr -> Expr.expr
 val greater : Expr.expr -> Expr.expr -> Expr.expr
 val greatereq : Expr.expr -> Expr.expr -> Expr.expr
 
+val coerce : Expr.etype -> Expr.expr -> Expr.expr
+
 (* Formula manipulation *)
 val find_coef : Expr.t -> ('a * Expr.t) list -> 'a
 
@@ -84,8 +86,8 @@ val ct_from_ml : Mlproof.proof -> Expr.t ctree option
 val next_inst : Mlproof.proof -> Mlproof.proof
 
 (* Simplex solver helper *)
-val try_solve : Expr.t list -> (Expr.t * Q.t) list option
+val try_solve : Expr.t list -> (Expr.t * Expr.t) list option
 
-val solve_tree : Expr.t ctree -> (Expr.t * Q.t) list option
+val solve_tree : Expr.t ctree -> (Expr.t * Expr.t) list option
 
 

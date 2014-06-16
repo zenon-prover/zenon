@@ -140,7 +140,7 @@ let mk_node_fm x e e' f g =
 
 let mk_node_inst e v g = match e with
   | Eall (e', t, p, _) ->
-          let term = tvar (Q.to_string v) t in
+          let term = coerce t v in
           let n = Expr.substitute [(e', term)] p in
           Node {
               nconc = [e];
@@ -150,7 +150,7 @@ let mk_node_inst e v g = match e with
               nbranches = [| [n] |];
           }
   | Eex (e', t, p, _) ->
-          let term = tvar (Q.to_string v) t in
+          let term = coerce t v in
           let n = Expr.substitute [(e', term)] (enot p) in
           let ne = enot e in
           Node {
@@ -726,7 +726,9 @@ let remove_formula e =
 
 let rec iter_open p =
     match ct_from_ml p with
-    | None -> false
+    | None ->
+            Log.debug 5 "arith -- no choice left";
+            false
     | Some t ->
         begin match solve_tree t with
         | None -> begin try
@@ -735,7 +737,7 @@ let rec iter_open p =
             with EndReached -> false end
         | Some s ->
                 Log.debug 5 "arith -- found solution.";
-                List.iter (fun (x, v) -> Log.debug 6 "arith -- %a <- %s" Print.pp_expr x (Q.to_string v)) s;
+                List.iter (fun (x, v) -> Log.debug 6 "arith -- %a <- %a" Print.pp_expr x Print.pp_expr v) s;
                 let global = List.fold_left (fun acc (e, v) -> match e with
                     | Emeta(Eall(_) as e', _) ->
                             (e', mk_node_inst e' v) :: acc

@@ -40,6 +40,7 @@ sleep 1
 TEMP=./temp42.gv
 TOTAL=0
 SOLVED=0
+ERRORS=0
 
 for f in $FILES
 do
@@ -56,11 +57,12 @@ do
     then
         echo -e "\e[31m[NOT FOUND] $f \e[0m"
     else
+        ERRORS=$(($ERRORS + 1))
         echo -e "\e[35m[ERROR $RET] $f \e[0m"
         ./zenon -max-time 5s -k -x arith -itptp $f
     fi
 done
-echo "$SOLVED solved / $TOTAL total"
+echo "$SOLVED solved / $TOTAL total ($ERRORS unknow errors)"
 
 # Clean temporary files
 rm -f $TEMP

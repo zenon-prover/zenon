@@ -121,7 +121,7 @@ let rec expr_soft o ex =
   | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
      pr "("; expr_soft o e1; pr " %s " (to_infix s); expr_soft o e2; pr ")";
   | Eapp(Evar(s, _), [], _) ->
-    pr "%s" s
+    pr "(%s)" s
   | Eapp (Evar(s,_), es, _) ->
       pr "(%s" (to_infix s);
       List.iter (fun x -> pr " "; expr_soft o x) es;
