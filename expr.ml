@@ -164,8 +164,13 @@ let extract_args t args =
     | None -> 0
     | Some t -> Type.nbind t
     in
+    let aux e = match get_type e with
+        | None -> None
+        | Some t when Type.equal type_type t -> Some (type_of_expr e)
+        | Some t -> raise (Type.Mismatch(type_type, t))
+    in
     let l1, l2 = Type.ksplit n args in
-    (List.map (fun e -> Some (type_of_expr e)) l1) @ (List.map get_type l2)
+    (List.map aux l1) @ (List.map get_type l2)
 
 let combine x y = x + y * 131 + 1;;
 
