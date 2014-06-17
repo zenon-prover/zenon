@@ -149,8 +149,7 @@ module type S = sig
 
     (** [print_debug print_var] returns a suitable function for printing debug info on the current state of a system.
         It can for instance be used as the debug function of [solve] to see the evolution of the simplex. *)
-    val print_debug : (Format.formatter -> var -> unit) -> Format.formatter -> t -> unit
-
+    val print_debug : (Format.formatter -> var -> unit) -> debug_printer
 
 end
 

@@ -437,6 +437,7 @@ let try_solve l =
                     (function Emeta _ -> true | _ -> false)
                     (function Emeta _ -> false | _ -> true)
                 in
+                Log.debug 10 "arith -- new state :\n%a" pp_simplex st;
                 Log.debug 8 "arith -- tentative solution :";
                 let aux (v, (e, k)) =
                     let e' = to_nexpr (fadd e [k, etrue]) in
