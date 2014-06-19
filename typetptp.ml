@@ -13,6 +13,8 @@ let map_fold f s l =
 
 let rec const_list n x = if n > 0 then x :: (const_list (n - 1) x) else []
 
+let opt_out = function Some x -> x | None -> assert false
+
 (* Environment for typing *)
 type env = {
     tff : Type.t list M.t;
@@ -48,10 +50,16 @@ let tff_add_type name t env =
     else
         { (* env with *) tff = M.add name [t] env.tff }
 
-let tff_app_aux args t =
+let tff_app_aux s args t =
     try
-        ignore (type_app t args);
-        raise (Type_found t)
+        begin
+        let targs = List.map (function Some t -> Some (tff t) | None -> None) (extract_args (Some t) args) in
+        Log.debug 8 "extracted types for type '%s' :" (Type.to_string t);
+        (List.iter2 (fun e t -> Log.debug 8 " - %a: %s" Print.pp_expr e (Type.to_string (opt_out t))) args targs);
+        match (type_app_opt (s, Some t) targs) with
+        | None -> ()
+        | Some t' -> raise (Type_found t)
+        end
     with
     | Not_enough_args
     | Function_expected
@@ -60,18 +68,27 @@ let tff_app_aux args t =
 
 let tff_app f args env =
     try
+        Log.debug 5 "finding type for '%s'" f;
+        List.iter (fun e -> Log.debug 7 "argument : (%a: %s)" Print.pp_expr e
+            (Type.to_string (opt_out (get_type e)))) args;
         begin match M.find f env.tff with
         | [] -> assert false
-        | [t] when args = [] -> t
-        | _ when args = [] -> raise (Type_error (Printf.sprintf "Overloaded function '%s' without arguments" f))
+        | [t] when args = [] ->
+                Log.debug 5 "found single type (%s: %s)" f (Type.to_string t);
+                t
+        | _ when args = [] ->
+                raise (Type_error (Printf.sprintf "Overloaded function '%s' without arguments" f))
         | l ->
+                Log.debug 5 "overloaded type found";
                 try
-                    List.iter (tff_app_aux args) l;
+                    List.iter (tff_app_aux f args) l;
                     raise (Type_error
                         (Printf.sprintf "No signature match found for '%s' with arguments : %s"
-                        f (String.concat "*" (List.map Type.to_string args))
+                        f (String.concat "*" (List.map Type.to_string
+                            (List.map (fun e -> match get_type e with Some t -> t | None -> assert false) args)))
                     ))
                 with Type_found t ->
+                    Log.debug 5 "found type (%s: %s)" f (Type.to_string t);
                     t
         end
     with Not_found ->
@@ -148,12 +165,10 @@ let type_tff_var env = function
         end
     | _ -> assert false
 
-let prep_args l = List.map
-    (fun e -> match get_type e with
-        | Some t -> t
-        | None -> Print.expr (Print.Chan stdout) e; raise (Type_error "")) l
-
 let rec type_tff_app env is_pred e = match e with
+    | Eapp(Evar("$int", _), [], _) -> tvar "Int" type_type, env
+    | Eapp(Evar("$rat", _), [], _) -> tvar "Rat" type_type, env
+    | Eapp(Evar("$real", _), [], _) -> tvar "Real" type_type, env
     | Eapp(Evar("$int", _), [Evar (v, _)], _) ->
             eapp (tvar "$int" (mk_arrow [type_int] type_int), [tvar v type_int]), env
     | Eapp(Evar("$rat", _), [Evar (v, _)], _) ->
@@ -166,16 +181,14 @@ let rec type_tff_app env is_pred e = match e with
             mk_equal a' b', env''
     | Eapp(Evar(s, _) as s', args, _) ->
             let args, env' = map_fold type_tff_term env args in
-            let targs = prep_args args in
             let f, env'' = match get_type s' with
                 | Some t -> s', env'
                 | None when tff_mem s env ->
-                        let t = tff_app s targs env in
+                        let t = tff_app s args env in
                         tvar s t, env'
                 | None ->
-                        Format.printf "Inferring type of '%s'@." s;
                         let ret = if is_pred then type_bool else type_tff_i in
-                        let t = mk_arrow (const_list (List.length targs) type_tff_i) ret in
+                        let t = mk_arrow (const_list (List.length args) type_tff_i) ret in
                         tvar s t, (tff_add_type s t env')
             in
             begin try
@@ -256,6 +269,7 @@ let type_tff_expr env e =
 let type_tff_def env e = match e with
     | Eapp (Evar("#", _), [Evar(v, _); e'], _) ->
             let t = tff (type_of_expr e') in
+            Log.debug 3 "Adding type (%s : %s) to env" v (Type.to_string t);
             tff_add_type v t env
     | _ -> raise (Type_error (Printf.sprintf "Ill-formed expression."))
 
@@ -275,16 +289,22 @@ let notype_kind = function
 
 let type_phrase env p = match p with
     | Phrase.Hyp (name, e, kind) when is_tff_def kind ->
+            Log.debug 1 "typechecking TFF definition '%s'" name;
             p, type_tff_def env e
     | Phrase.Hyp (name, e, kind) when is_tff_expr kind ->
+            Log.debug 1 "typechecking TFF expression '%s'" name;
             let e', env' = type_tff_expr env e in
             Phrase.Hyp (name, e', notype_kind kind), env'
     | Phrase.Hyp (name, e, kind) ->
+            Log.debug 1 "typechecking FOF formula '%s'" name;
             type_fof_expr e;
             p, env
-    | _ -> p, env
+    | _ ->
+            Log.debug 1 "typechecking unknown formula";
+            p, env
 
 let typecheck l =
+    Log.debug 1 "========== Typecheck ============";
     let p, _ = map_fold type_phrase default_env l in
     List.filter relevant p
 

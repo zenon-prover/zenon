@@ -39,6 +39,7 @@ val compare : t -> t -> int;;
 val hash : t -> int;;
 
 val get_type : expr -> etype option;;
+val extract_args : etype option -> expr list -> etype option list;;
 
 val evar : string -> expr;;
 val tvar : string -> etype -> expr;;
