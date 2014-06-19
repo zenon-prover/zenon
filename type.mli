@@ -22,6 +22,7 @@ val mk_arrow : t list -> t -> t
 val equal : t -> t -> bool
 val compare : t -> t -> int
 val nbind : t -> int
+val substitute : string * t -> t -> t
 
 val bool_app : t list -> t
 val bool_app_opt : t option list -> t option

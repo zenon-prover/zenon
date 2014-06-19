@@ -136,6 +136,9 @@ let get_name = function
 
 let rec type_of_expr = function
     | Evar(s, _) -> atomic s
+    | Etau(Evar(s, _), _, _, _) -> atomic ("tau_" ^ s)
+    | Emeta(Eall(Evar(s, _), _, _, _), _)
+    | Emeta(Eex(Evar(s, _), _, _, _), _) -> atomic ("meta_" ^ s)
     | Eapp(Evar("!>",_), t :: l, _) ->
             mk_poly (List.map get_name l) (type_of_expr t)
     | Eapp(Evar("->",_), ret :: args, _) ->

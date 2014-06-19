@@ -82,6 +82,12 @@ let rec subs map = function
     | Arrow (args, ret) -> Arrow (List.map (subs map) args, subs map ret)
     | Ttype -> Ttype
 
+let substitute (s, (b, t)) (b', t') =
+    if b' <> [] || b <> [] then raise Base_expected else begin
+        let map = [ s, t ] in
+        base (subs map t')
+    end
+
 let compare (b, t) (b', t') =
     let b'' = List.map (fun s -> App(s, [])) b' in
     match List.combine b b'' with
