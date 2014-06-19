@@ -21,3 +21,4 @@ val pp_expr : Buffer.t -> Expr.expr -> unit;;
 val pp_mlrule : Buffer.t -> Mlproof.rule -> unit;;
 
 val dots : output -> ?full_output:bool -> ?max_depth:int -> Mlproof.proof list -> unit;;
+
