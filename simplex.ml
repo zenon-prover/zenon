@@ -506,14 +506,14 @@ module Make(Var: OrderedType) = struct
                         if j = 0 then
                             "..."
                         else
-                            Format.sprintf " %s " (var_to_string (List.nth t.nbasic (j - 1)))
+                            var_to_string (List.nth t.nbasic (j - 1))
                     else
                         if j = 0 then
-                            Format.sprintf " %s " (var_to_string (List.nth t.basic (i - 1)))
+                            var_to_string (List.nth t.basic (i - 1))
                         else (* i > 0 && j > 0 *)
-                            Format.sprintf " %s " (Q.to_string (List.nth (List.nth t.tab (i - 1)) (j - 1)))
+                            Q.to_string (List.nth (List.nth t.tab (i - 1)) (j - 1))
                 )) in
-        Printbox.grid_text ~framed:true a
+        PrintBox.grid_text ~pad:(PrintBox.hpad 1) ~bars:true a
 
     let bounds_box var_to_string t =
         let a = Array.make_matrix (M.cardinal t.bounds) 5 "<=" in
@@ -524,7 +524,7 @@ module Make(Var: OrderedType) = struct
             a.(!i).(4) <- Q.to_string u;
             incr i;
         ) t.bounds;
-        Printbox.grid_text ~framed:false a
+        PrintBox.grid_text ~pad:(PrintBox.hpad 1) ~bars:false a
 
     let print_assign print_var fmt l =
         List.iter (fun (x, c) -> Format.fprintf fmt "%a -> %s;@ " print_var x (Q.to_string c)) l
@@ -532,8 +532,8 @@ module Make(Var: OrderedType) = struct
     let print_debug print_var fmt t =
         Format.fprintf fmt
             "@[*** System state ***@.%s@.%s@\n@[<hov 2>Current assign:@\n%a@]@\n******** END ********@."
-            (Printbox.to_string (tab_box (pp_to_str print_var) t))
-            (Printbox.to_string (bounds_box (pp_to_str print_var) t))
+            (PrintBox.to_string (tab_box (pp_to_str print_var) t))
+            (PrintBox.to_string (bounds_box (pp_to_str print_var) t))
             (print_assign print_var) (get_assign t)
 
 end

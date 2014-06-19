@@ -162,6 +162,21 @@ let mk_node_inst e v g = match e with
           }
   | _ -> assert false
 
+let mk_node_switch e a n =
+    let new_branch k =
+        let a' = eapp (tvar (newname ()) (get_type a), []) in
+        let b = to_nexpr [(Q.of_int n), a'; (Q.of_int k), etrue] in
+        [ Typetptp.mk_equal a b;
+          Expr.substitute_expr (a, b) e]
+    in
+    let n = {
+        nconc = [e];
+        nrule = Ext("arith", "switch", [e; a; const (Q.to_string (Q.of_int n))]);
+        nprio = Prop;
+        ngoal = 0;
+        nbranches = Array.init n new_branch;
+    }
+    in (fun g -> Node { n with ngoal = g})
 
 (* Helper around the simplex module *)
 type simplex_state = {
@@ -412,7 +427,7 @@ let order_inst l =
 
 (* Internal state *)
 type state = {
-    mutable global : (int -> Node.node_item) M.t;
+    mutable global : ((int -> Node.node_item) list) M.t;
     mutable solved : bool;
     stack : (expr * simplex_state * ((expr * (int -> Node.node_item)) list)) Stack.t;
 }
@@ -450,7 +465,7 @@ let st_is_head st e =
 exception Found of (int -> node_item)
 
 let is_coherent e = function
-    | Stop -> assert false
+    | Stop -> true
     | Node n -> List.for_all (fun e' -> equal e e' || Index.member e') n.nconc
 
 let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
@@ -495,26 +510,29 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
     and todo e g =
         let res = ref [] in
         let aux (e', n) = if equal e e' then res := (n g) :: !res in
-        M.iter (fun x y -> aux (x, y)) st.global;
+        M.iter (fun x l -> List.iter (fun n -> aux (x, n)) l) st.global;
         begin match !res with
         | [] -> Stack.iter (fun (_,_,l) -> List.iter aux l) st.stack
-        | [x] -> ()
-        | _ -> assert false
+        | l -> res := List.rev !res
         end;
         List.filter (is_coherent e) !res
 
     and set_global l =
         let res = ref false in
-        let f (e, n) =
+        let f (e, l) =
             try
-                let n' = M.find e st.global in
-                if n 0 <> n' 0 then begin
+                let l' = M.find e st.global in
+                if (List.map (fun n -> n 0) l) <> (List.map (fun n -> n 0) l') then begin
                     res := true;
-                    st.global <- M.add e n st.global
+                    Log.debug 9 "arith -- Got %i match for %a (previously : %i)"
+                    (List.length l) Print.pp_expr e (List.length l');
+                    st.global <- M.add e l st.global
                 end
             with Not_found ->
                 res := true;
-                st.global <- M.add e n st.global
+                Log.debug 9 "arith -- Got %i match for %a (previously : 0)"
+                (List.length l) Print.pp_expr e;
+                st.global <- M.add e l st.global
         in
         List.iter f l;
         !res
@@ -731,12 +749,12 @@ let rec iter_open p =
             false
     | Some t ->
         begin match solve_tree t with
-        | None -> begin try
+        | Unsat -> begin try
             Log.debug 5 "arith -- switching to next instanciation ";
             iter_open (next_inst p)
             with EndReached -> false end
-        | Some s ->
-                Log.debug 5 "arith -- found solution.";
+        | Abstract s ->
+                Log.debug 5 "arith -- found a solution.";
                 List.iter (fun (x, v) -> Log.debug 6 "arith -- %a <- %a" Print.pp_expr x Print.pp_expr v) s;
                 let global = List.fold_left (fun acc (e, v) -> match e with
                     | Emeta(Eall(_) as e', _) ->
@@ -744,7 +762,12 @@ let rec iter_open p =
                     | Emeta(Eex(_) as e', _) ->
                             (enot e', mk_node_inst e' v) :: acc
                     | _ -> assert false) [] s in
-                set_global (order_inst global)
+                set_global (List.map (fun (e, x) -> e, [x]) (order_inst global))
+        | Case (e, a, n) ->
+                try
+                    set_global [e, [mk_node_switch e a (Z.to_int n); (fun _ -> Stop)]]
+                with Z.Overflow ->
+                    assert false
         end
 
 let newnodes e g _ =

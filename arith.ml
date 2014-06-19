@@ -315,12 +315,15 @@ let ct_from_ml p =
     let filter l = List.filter (fun e ->
         try begin match of_bexpr e with
             | (_, "=", _) -> false
-            | (f, _, _) -> List.for_all (fun (_, e) ->
-                (is_int e || is_rat e) && (match e with
-                | Emeta(_) -> true
-                | Eapp(Evar(s, _), [], _) -> true
-                | _ -> false
-                )) f
+            | (f, _, _) ->
+                (List.for_all (fun (_, e) ->
+                    (is_int e || is_rat e) && (match e with
+                    | Emeta(_) -> true
+                    | Eapp(Evar(s, _), [], _) -> true
+                    | _ -> false)) f) &&
+                (List.exists (fun (_, e) -> match e with
+                    | Emeta(_) -> true
+                    | _ -> false) f)
         end with NotaFormula -> false
         ) l in
     let rec aux l p =
@@ -423,45 +426,64 @@ let rec get_state l =
                 res
         end
 
+type solution =
+    | Unsat
+    | Abstract of (expr * expr) list
+    | Case of expr * expr * Z.t
+
+exception Denom_found of expr * expr * Z.t
+
 let try_solve l =
     Log.debug 8 "arith -- Trying to contradict :";
     List.iter (fun e -> Log.debug 8 "arith --    %a" Print.pp_expr e) l;
     match get_state l with
-    | None -> None
+    | None -> Unsat
     | Some (st, f) -> begin match f () with
-        | None -> None
-        | Some Simplex.Unsatisfiable _ -> None
+        | None -> Unsat
+        | Some Simplex.Unsatisfiable _ -> Unsat
         | Some Simplex.Solution s ->
+                Log.debug 8 "arith -- simplex solution found";
                 Log.debug 10 "arith -- simplex state :\n%a" pp_simplex st;
                 let s = Simplex.abstract_val st
                     (function Emeta _ -> true | _ -> false)
                     (function Emeta _ -> false | _ -> true)
                 in
-                Log.debug 10 "arith -- new state :\n%a" pp_simplex st;
+                Log.debug 13 "arith -- new state :\n%a" pp_simplex st;
                 Log.debug 8 "arith -- tentative solution :";
                 let aux (v, (e, k)) =
                     let e' = to_nexpr (fadd e [k, etrue]) in
                     Log.debug 8 "arith -- %a == %a" Print.pp_expr v Print.pp_expr e';
-                    if is_int v && not (is_int e') then
-                        (Log.debug 8 "arith -- absurd solution";
-                        raise Exit;);
+                    if is_int v && not (is_int e') then begin
+                        try
+                            let c, a = List.find (fun (c, _) -> is_q c) e in
+                            Log.debug 8 "arith -- switching on %s * %a" (Z.to_string (Q.den c)) Print.pp_expr a;
+                            raise (Denom_found (v, a, Q.den c))
+                        with Not_found ->
+                            Log.debug 8 "arith -- absurd solution";
+                            raise Exit
+                    end;
                     v, e'
                 in
                 try
                     let res = (List.map aux s) in
-                    Some res
-                with Exit -> None
+                    Abstract res
+                with
+                | Exit -> Unsat
+                | Denom_found (Emeta(Eall(_) as e, _), a, n) ->
+                        Case(e, a, n)
+                | Denom_found (Emeta(Eex(_) as e, _), a, n) ->
+                        Case(enot e, a, n)
         end
 
 let solve_tree t =
     reset t;
     let rec aux () =
         match try_solve (current t) with
-        | Some s -> Some s
-        | None ->
-                try
+        | Unsat ->
+                begin try
                     next t;
                     aux ()
-                with EndReached -> None
+                with EndReached -> Unsat end
+        | x -> x
     in
     aux ()

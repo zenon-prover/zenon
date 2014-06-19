@@ -86,8 +86,13 @@ val ct_from_ml : Mlproof.proof -> Expr.t ctree option
 val next_inst : Mlproof.proof -> Mlproof.proof
 
 (* Simplex solver helper *)
-val try_solve : Expr.t list -> (Expr.t * Expr.t) list option
+type solution =
+    | Unsat
+    | Abstract of (Expr.t * Expr.t) list
+    | Case of Expr.t * Expr.t * Z.t
 
-val solve_tree : Expr.t ctree -> (Expr.t * Expr.t) list option
+val try_solve : Expr.t list -> solution
+
+val solve_tree : Expr.t ctree -> solution
 
 

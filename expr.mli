@@ -97,6 +97,7 @@ val occurs_as_meta : expr -> expr -> bool;;
 exception Higher_order;;
 val substitute : (expr * expr) list -> expr -> expr;;
 val substitute_meta : (expr * expr) -> expr -> expr;;
+val substitute_expr : (expr * expr) -> expr -> expr;;
 val substitute_2nd : (expr * expr) list -> expr -> expr;;
 val apply : expr -> expr -> expr;;
 val add_argument : expr -> expr -> expr;;

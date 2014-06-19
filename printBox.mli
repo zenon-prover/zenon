@@ -1,3 +1,4 @@
+
 (*
 copyright (c) 2013-2014, simon cruanes
 all rights reserved.
@@ -71,6 +72,12 @@ we go toward the bottom (same order as a printer) *)
 val origin : position
 (** Initial position *)
 
+val set_string_len : (string -> int) -> unit
+(** Set which function is used to compute string length. Typically
+    to be used with a unicode-sensitive length function *)
+
+(** {2 Output} *)
+
 module Output : sig
   type t = {
     put_char : position -> char -> unit;
@@ -94,12 +101,17 @@ module Output : sig
   (** Print the buffer on the given channel *)
 end
 
+(** {2 Box Combinators} *)
+
 module Box : sig
   type t
 
   val size : t -> position
   (** Size needed to print the box *)
 end
+
+val empty : Box.t
+(** Empty box, of size 0 *)
 
 val line : string -> Box.t
 (** Make a single-line box.
@@ -123,41 +135,57 @@ val frame : Box.t -> Box.t
 val pad : Box.t -> Box.t
 (** Pad the given box with some free space *)
 
-val pad' : int -> Box.t -> Box.t
-(** Pad with the given number of free cells *)
+val pad' : col:int -> lines:int -> Box.t -> Box.t
+(** Pad with the given number of free cells for lines and columns *)
 
-val grid : ?pad:bool -> ?framed:bool -> Box.t array array -> Box.t
+val vpad : int -> Box.t -> Box.t
+(** Pad vertically *)
+
+val hpad : int -> Box.t -> Box.t
+(** Pad horizontally *)
+
+val grid : ?pad:(Box.t -> Box.t) -> ?bars:bool ->
+           Box.t array array -> Box.t
 (** Grid of boxes (no frame between boxes). The matrix is indexed
     with lines first, then columns. The array must be a proper matrix,
     that is, all lines must have the same number of columns!
     @param framed if [true], each item of the grid will be framed.
       default value is [true] *)
 
-val grid_text : ?pad:bool -> ?framed:bool -> string array array -> Box.t
+val grid_text : ?pad:(Box.t -> Box.t) -> ?bars:bool ->
+                string array array -> Box.t
 (** Same as {!grid}, but wraps every cell into a {!text} box *)
 
 val transpose : 'a array array -> 'a array array
 (** Transpose a matrix *)
 
-val init_grid : ?pad:bool -> ?framed:bool ->
+val init_grid : ?bars:bool ->
                 line:int -> col:int -> (line:int -> col:int -> Box.t) -> Box.t
 (** Same as {!grid} but takes the matrix as a function *)
 
-val vlist : ?pad:bool -> ?framed:bool -> Box.t list -> Box.t
+val vlist : ?pad:(Box.t -> Box.t) -> ?bars:bool -> Box.t list -> Box.t
 (** Vertical list of boxes *)
 
-val hlist : ?pad:bool -> ?framed:bool -> Box.t list -> Box.t
+val hlist : ?pad:(Box.t -> Box.t) -> ?bars:bool -> Box.t list -> Box.t
 (** Horizontal list of boxes *)
 
-val grid_map : ?pad:bool -> ?framed:bool -> ('a -> Box.t) -> 'a array array -> Box.t
+val grid_map : ?bars:bool -> ('a -> Box.t) -> 'a array array -> Box.t
 
-val vlist_map : ?pad:bool -> ?framed:bool -> ('a -> Box.t) -> 'a list -> Box.t
+val vlist_map : ?bars:bool -> ('a -> Box.t) -> 'a list -> Box.t
 
-val hlist_map : ?pad:bool -> ?framed:bool -> ('a -> Box.t) -> 'a list -> Box.t
+val hlist_map : ?bars:bool -> ('a -> Box.t) -> 'a list -> Box.t
+
+val tree : ?indent:int -> Box.t -> Box.t list -> Box.t
+(** Tree structure, with a node label and a list of children nodes *)
+
+val mk_tree : ?indent:int -> ('a -> Box.t * 'a list) -> 'a -> Box.t
+(** Definition of a tree with a local function that maps nodes to
+    their content and children *)
+
+(** {2 Rendering} *)
 
 val render : Output.t -> Box.t -> unit
 
 val to_string : Box.t -> string
 
 val output : ?indent:int -> out_channel -> Box.t -> unit
-

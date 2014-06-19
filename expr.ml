@@ -557,6 +557,24 @@ let rec substitute_meta map e =
   | Elam (v, t, f, _) -> elam (v, t, substitute_meta map f)
 ;;
 
+let rec substitute_expr map e =
+  match e with
+  | _ when e == (fst map) -> snd map
+  | Evar (v, _) -> e
+  | Emeta (e', _) -> e
+  | Eapp (s, args, _) -> eapp (s, List.map (substitute_expr map) args)
+  | Enot (f, _) -> enot (substitute_expr map f)
+  | Eand (f, g, _) -> eand (substitute_expr map f, substitute_expr map g)
+  | Eor (f, g, _) -> eor (substitute_expr map f, substitute_expr map g)
+  | Eimply (f, g, _) -> eimply (substitute_expr map f, substitute_expr map g)
+  | Eequiv (f, g, _) -> eequiv (substitute_expr map f, substitute_expr map g)
+  | Etrue | Efalse -> e
+  | Eall (v, t, f, _) -> eall (v, t, substitute_expr map f)
+  | Eex (v, t, f, _) -> eex (v, t, substitute_expr map f)
+  | Etau (v, t, f, _) -> etau (v, t, substitute_expr map f)
+  | Elam (v, t, f, _) -> elam (v, t, substitute_expr map f)
+;;
+
 let rec substitute_2nd map e =
   match e with
   | Evar (v, _) -> (try List.assq e map with Not_found -> e)
