@@ -70,6 +70,23 @@ let p_binding oc (v, t) =
 
 let p_id_list oc l = p_list " " (fun oc x -> fprintf oc "%s" x) "" oc l;;
 
+let is_infix_op s = match s with
+    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "="
+    | "$sum" | "$product" | "$difference" -> true
+    | s -> false
+
+let to_infix = function
+    | "$less" -> "<"
+    | "$lesseq" -> "<="
+    | "$greater" -> ">"
+    | "$greatereq" -> ">="
+    | "=" -> "="
+    | "$sum" -> "+"
+    | "$product" -> "*"
+    | "$difference" -> "-"
+    | "$uminus" -> "-"
+    | s -> s
+
 let rec p_expr oc e =
   let poc fmt = fprintf oc fmt in
   match e with
@@ -95,8 +112,10 @@ let rec p_expr oc e =
       poc "%a*%a" p_expr e1 p_expr e2;
   | Eapp (Evar("%",_), [e1; e2], _) ->
       poc "%a%%%a" p_expr e1 p_expr e2;
+  | Eapp(Evar(op, _), [a; b], _) when is_infix_op op ->
+      poc "(%a %s %a)" p_expr a (to_infix op) p_expr b
   | Eapp (Evar(f,_), l, _) ->
-      poc "(%s%a)" f p_expr_list l;
+      poc "(%s%a)" (to_infix f) p_expr_list l;
   | Eapp (_) -> assert false
   | Enot (e, _) ->
       poc "(~%a)" p_expr e;

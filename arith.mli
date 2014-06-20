@@ -64,6 +64,7 @@ val to_bexpr : (Q.t * Expr.expr) list * string * Q.t -> Expr.expr
 
 val expr_norm : Expr.expr -> Expr.expr
 
+val coqify : Expr.expr -> Expr.expr
 
 (* Choice trees *)
 type 'a clist

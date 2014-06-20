@@ -457,7 +457,7 @@ let rec llproof_expr o e =
   | Etau (v, t, p, _) ->
       pro "(tau %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
   | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
-     pro "("; llproof_expr o e1; pro " %s " s; llproof_expr o e2; pro ")";
+     pro "("; llproof_expr o e1; pro " %s " (to_infix s); llproof_expr o e2; pro ")";
   | Eapp (s, [], _) -> pro "%s" (get_name s);
   | Eapp (s, args, _) -> pro "%s(" (get_name s); llproof_expr_list o args; pro ")";
   | Evar (s, _) -> pro "%s" s;

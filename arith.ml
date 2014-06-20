@@ -201,12 +201,41 @@ let to_nexpr = function
         (fun e (c', x') -> if Q.sign c' < 0 then diff e (to_nexpr_aux (Q.neg c', x')) else sum e (to_nexpr_aux (c', x')))
                           (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
 
-(* Check that s is not is_int or something like that ? *)
 let to_bexpr (e, s, c) = mk_bop s (to_nexpr e) (const (Q.to_string c))
 
 let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 
-(* Aanalog to circular lists with a 'stop' element, imperative style *)
+(* Coq translation *)
+let mk_coq_q p q =
+    let div = tvar "$coq_div" (mk_arrow [type_int; type_int] type_rat) in
+    eapp (div, [p; q])
+
+let coq_const c = mk_coq_q (const (Z.to_string (Q.num c))) (const (Z.to_string (Q.den c)))
+
+let coq_var x =
+    if is_int x then
+        mk_coq_q x (const "1")
+    else
+        x
+
+let to_coq_nexpr_aux (c, x) =
+    if x == etrue then coq_const c else
+    (if Q.equal Q.one c then coq_var x else mul (coq_const c) (coq_var x))
+
+let to_coq_nexpr = function
+    | [] -> coq_const Q.zero
+    | (c, x) :: r -> List.fold_left
+        (fun e (c', x') -> if Q.sign c' < 0 then diff e (to_nexpr_aux (Q.neg c', x')) else sum e (to_nexpr_aux (c', x')))
+                          (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
+
+let to_coq_bexpr (e, s, c) = match s with
+    | "$is_int" | "$is_rat" | "$not_is_int" | "$not_is_rat" ->
+            mk_ubop s (to_coq_nexpr e)
+    | _ -> mk_bop s (to_coq_nexpr e) (coq_const c)
+
+let coqify e = try to_coq_bexpr (of_bexpr e) with NotaFormula -> e
+
+(* Analog to circular lists with a 'stop' element, imperative style *)
 exception EndReached
 
 type 'a clist = {
