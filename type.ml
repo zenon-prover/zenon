@@ -82,12 +82,6 @@ let rec subs map = function
     | Arrow (args, ret) -> Arrow (List.map (subs map) args, subs map ret)
     | Ttype -> Ttype
 
-let substitute (s, (b, t)) (b', t') =
-    if b' <> [] || b <> [] then raise Base_expected else begin
-        let map = [ s, t ] in
-        base (subs map t')
-    end
-
 let compare (b, t) (b', t') =
     let b'' = List.map (fun s -> App(s, [])) b' in
     match List.combine b b'' with
@@ -99,8 +93,32 @@ let neq t t' = compare t t' <> 0
 
 let nbind (b, t) = List.length b
 
+
+(* Printing *)
+let rec to_string_base = function
+    | Bool -> "$o"
+    | App (s, []) -> s
+    | App (s, l) -> "(" ^ s ^ " " ^ (String.concat " " (List.map to_string_base l)) ^ ")"
+    | Arrow (args, ret) -> "(" ^ (String.concat " * " (List.map to_string_base args)) ^ " > " ^ (to_string_base ret) ^ ")"
+    | Ttype -> "$tType"
+
+let to_string_binders l =
+    if l = [] then "" else
+        let tvars = List.map (fun s -> s ^ " : $tType") l in
+        let tvars = String.concat ", " tvars in
+        "!>[" ^ tvars ^ "]: "
+
+let to_string (b, t) = (to_string_binders b) ^ (to_string_base t)
+
+
 (* Convenience functions *)
 let to_base (b, t) = if b = [] then t else raise Base_expected
+
+let substitute l (b, t) =
+    if b <> [] then raise Base_expected else begin
+        let map = List.map (fun (s, t) -> (s, to_base t)) l in
+        base (subs map t)
+    end
 
 let extract = function
     | None -> raise Some_expected
@@ -118,6 +136,7 @@ let rec find2 p l l' = match l, l' with
     | [], [] -> raise Not_found
     | x :: r, y :: r' -> if p x y then (x, y) else find2 p r r'
     | _ -> raise (Invalid_argument "Different lengths")
+
 
 (* Pseudo type-checking *)
 let bool_app l =
@@ -187,21 +206,4 @@ let rec _tff = function
     | Ttype -> Ttype
 
 let tff (b, t) = (b, _tff t)
-
-(* Printing *)
-
-let rec to_string_base = function
-    | Bool -> "$o"
-    | App (s, []) -> s
-    | App (s, l) -> "(" ^ s ^ " " ^ (String.concat " " (List.map to_string_base l)) ^ ")"
-    | Arrow (args, ret) -> "(" ^ (String.concat " * " (List.map to_string_base args)) ^ " > " ^ (to_string_base ret) ^ ")"
-    | Ttype -> "$tType"
-
-let to_string_binders l =
-    if l = [] then "" else
-        let tvars = List.map (fun s -> s ^ " : $tType") l in
-        let tvars = String.concat ", " tvars in
-        "!>[" ^ tvars ^ "]: "
-
-let to_string (b, t) = (to_string_binders b) ^ (to_string_base t)
 

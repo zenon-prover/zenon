@@ -1,6 +1,8 @@
 These are mostly suggestions
 
 General :
+  -> Prevent zenon from instanciating variables whose type contains
+     non-instanciated type variables
   -> when comparing type to Namespace.univ_name,
      instead of comparing strings, compare values of type Type.t ?
   -> Change llproof rules to include expr instead of string for functions ?

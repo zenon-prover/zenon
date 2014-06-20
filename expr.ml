@@ -501,6 +501,11 @@ let disj vars map =
   List.for_all irrelevant vars
 ;;
 
+let substitute_type map t =
+    let map = List.filter (function (Evar(_), e) -> get_type e =%= Some type_type | _ -> false) map in
+    let map = List.map (function (Evar(s,_), e) -> (s, type_of_expr e) | _ -> assert false) map in
+    Type.substitute map t
+
 let rec substitute map e =
   match e with
   | _ when disj (get_fv e) map -> e
@@ -514,30 +519,54 @@ let rec substitute map e =
   | Eequiv (f, g, _) -> eequiv (substitute map f, substitute map g)
   | Etrue | Efalse -> e
   | Eall (v, t, f, _) ->
+      let t = substitute_type map t in
       let map1 = rm_binding v map in
-      if conflict v map1 then
-        let nv = newvar () in
+      let nv =
+          if conflict v map1 then
+            tvar (newname ()) t
+          else
+              tvar (get_name v) t
+      in
+      if v <> nv then
         eall (nv, t, substitute ((v, nv) :: map1) f)
       else
         eall (v, t, substitute map1 f)
   | Eex (v, t, f, _) ->
+      let t = substitute_type map t in
       let map1 = rm_binding v map in
-      if conflict v map1 then
-        let nv = newvar () in
+      let nv =
+          if conflict v map1 then
+            tvar (newname ()) t
+          else
+              tvar (get_name v) t
+      in
+      if v <> nv then
         eex (nv, t, substitute ((v, nv) :: map1) f)
       else
         eex (v, t, substitute map1 f)
   | Etau (v, t, f, _) ->
+      let t = substitute_type map t in
       let map1 = rm_binding v map in
-      if conflict v map1 then
-        let nv = newvar () in
+      let nv =
+          if conflict v map1 then
+              tvar (newname ()) t
+          else
+              tvar (get_name v) t
+      in
+      if v <> nv then
         etau (nv, t, substitute ((v, nv) :: map1) f)
       else
         etau (v, t, substitute map1 f)
   | Elam (v, t, f, _) ->
+      let t = substitute_type map t in
       let map1 = rm_binding v map in
-      if conflict v map1 then
-        let nv = newvar () in
+      let nv =
+          if conflict v map1 then
+              tvar (newname ()) t
+          else
+              tvar (get_name v) t
+      in
+      if v <> nv then
         elam (nv, t, substitute ((v, nv) :: map1) f)
       else
         elam (v, t, substitute map1 f)
