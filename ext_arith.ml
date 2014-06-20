@@ -705,7 +705,7 @@ let add_formula e =
     fm_add_expr e;
     match e with
     | _ when ignore_expr e -> ()
-    | Enot (Eapp (Evar("=",_), [a; b], _), _) ->
+    | Enot (Eapp (Evar("=",_), [a; b], _), _) when is_num a && is_num b ->
             add_todo e [mk_node_neq a b e]
     | Enot (Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _), _) ->
             add_todo e [mk_node_neg2 s a b e]
@@ -713,7 +713,7 @@ let add_formula e =
             add_todo e [mk_node_neg s a e]
     | _ when is_const e ->
             const_node e
-    | Eapp (Evar("=",_), [a; b], _) ->
+    | Eapp (Evar("=",_), [a; b], _) when is_num a && is_num b ->
             add_todo e [mk_node_eq a b e]
     | Eapp (Evar("$less",_), [a; b], _) when is_int a && is_int b ->
             add_todo e [mk_node_int_lt a b e]

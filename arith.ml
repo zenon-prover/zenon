@@ -13,10 +13,11 @@ let get_type e = match get_type e with
 
 let is_int e = Type.equal type_int (get_type e)
 let is_rat e = Type.equal type_rat (get_type e)
+let is_num e = is_type_num (get_type e)
 
 (* We assume t a t' are numeric types *)
 let mix_type t t' =
-    assert (is_num t && is_num t');
+    assert (is_type_num t && is_type_num t');
     match (Type.equal type_real t), (Type.equal type_real t') with
     | true, _
     | _, true -> type_real
@@ -176,10 +177,14 @@ let rec of_nexpr e = match e with
     | _ -> [Q.one, e]
 
 let of_bexpr = function
-    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"|"=") as s,_), [a; b], _ ) ->
+    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ ) ->
             let a', b' = of_nexpr a, of_nexpr b in
             let c, e = normalize a' b' in
             (e, s, c)
+    | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
+            let a', b' = of_nexpr a, of_nexpr b in
+            let c, e = normalize a' b' in
+            (e, "=", c)
     | Eapp (Evar(("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s,_), [a], _) ->
             let a' = of_nexpr a in
             let c, e = normalize [Q.zero, etrue] a' in

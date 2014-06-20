@@ -141,13 +141,13 @@ let default_env =
     let tff_base = List.fold_left (fun acc (s, t) -> M.add s t acc) M.empty tff_builtin in
     { (* empty_env with *) tff = tff_base }
 
-let is_num t =
+let is_type_num t =
     Type.equal t type_int ||
     Type.equal t type_rat ||
     Type.equal t type_real
 
 let mk_equal e f = match get_type e, get_type f with
-    | Some t, Some t' when is_num t && is_num t' ->
+    | Some t, Some t' when is_type_num t && is_type_num t' ->
             let eq = tvar "=" (mk_arrow [t; t'] type_bool) in
             eapp (eq, [e; f])
     | Some t, Some t' -> eapp (eeq, [e; f])

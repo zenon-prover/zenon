@@ -4,7 +4,7 @@ exception Type_error of string
 type env
 val default_env : env
 
-val is_num : Type.t -> bool
+val is_type_num : Type.t -> bool
 val mk_equal : Expr.t -> Expr.t -> Expr.t
 val mk_int : string -> Expr.t
 val mk_rat : string -> Expr.t

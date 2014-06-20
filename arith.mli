@@ -9,6 +9,7 @@ exception EndReached
 val get_type : Expr.expr -> Expr.etype
 val is_int : Expr.expr -> bool
 val is_rat : Expr.expr -> bool
+val is_num : Expr.expr -> bool
 val mix_type : Expr.etype -> Expr.etype -> Expr.etype
 
 val is_z : Q.t -> bool
