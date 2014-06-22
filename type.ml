@@ -39,6 +39,7 @@ let type_int = atomic "Int"
 let type_rat = atomic "Rat"
 let type_real = atomic "Real"
 let type_tff_i = atomic "$i"
+let type_scope = atomic "Scope"
 
 let type_type = base Ttype
 (* Type comparison *)
@@ -95,9 +96,14 @@ let nbind (b, t) = List.length b
 
 
 (* Printing *)
+let to_string_atomic = function
+    | "Int" -> "Z"
+    | "Rat" -> "Q"
+    | s -> s
+
 let rec to_string_base = function
-    | Bool -> "$o"
-    | App (s, []) -> s
+    | Bool -> "Prop"
+    | App (s, []) -> to_string_atomic s
     | App (s, l) -> "(" ^ s ^ " " ^ (String.concat " " (List.map to_string_base l)) ^ ")"
     | Arrow (args, ret) -> "(" ^ (String.concat " * " (List.map to_string_base args)) ^ " > " ^ (to_string_base ret) ^ ")"
     | Ttype -> "$tType"

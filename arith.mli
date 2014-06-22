@@ -54,6 +54,8 @@ val sanitize : (Q.t * 'a) list -> (Q.t * 'a) list
 val normalize :
   (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> Q.t * (Q.t * Expr.t) list
 
+val coqify : Expr.t -> Expr.t
+
 (* Conversion functions *)
 val of_cexpr : Expr.expr -> Q.t
 val of_nexpr : Expr.t -> (Q.t * Expr.t) list

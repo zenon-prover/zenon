@@ -778,11 +778,18 @@ let make_inst term g = assert false
 
 let to_llproof = mltoll
 
-let declare_context_coq fmt = ()
+let declare_context_coq oc =
+    let pr fmt = Printf.fprintf oc fmt in
+    pr "Require Import ZArith.\n";
+    pr "Require Import QArith.\n";
+    ()
 
 let p_rule_coq fmt r = ()
 
-let predef () = []
+let predef () = [
+    "$less"; "$lesseq"; "$greater"; "$greatereq";
+    "$sum"; "$difference"; "$product"; "$uminus";
+    ]
 ;;
 
 Extension.register {

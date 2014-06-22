@@ -11,6 +11,7 @@ val type_int : t
 val type_rat : t
 val type_real : t
 val type_tff_i : t
+val type_scope : t
 
 val type_type : t
 

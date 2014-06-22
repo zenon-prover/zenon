@@ -71,6 +71,7 @@ let p_binding oc (v, t) =
 let p_id_list oc l = p_list " " (fun oc x -> fprintf oc "%s" x) "" oc l;;
 
 let is_infix_op s = match s with
+    | "$coq_div" | "=="
     | "$less" | "$lesseq" | "$greater" | "$greatereq" | "="
     | "$sum" | "$product" | "$difference" -> true
     | s -> false
@@ -85,6 +86,8 @@ let to_infix = function
     | "$product" -> "*"
     | "$difference" -> "-"
     | "$uminus" -> "-"
+    | "$coq_div" -> "#"
+    | "==" -> "=="
     | s -> s
 
 let rec p_expr oc e =
@@ -94,6 +97,8 @@ let rec p_expr oc e =
       poc "%s" (Coqterm.synthesize v);
   | Evar (v, _) ->
       poc "%s" v;
+  | Eapp (Evar("$coq_scope",_), [Evar(s,_); e], _) ->
+      poc "(%a)%%%s" p_expr e s;
   | Eapp (Evar("=",_), [e1; e2], _) ->
       poc "(%a = %a)" p_expr e1 p_expr e2;
   | Eapp (Evar("=",_), l, _) ->
@@ -154,6 +159,11 @@ and p_case accu oc e =
   | Elam (Evar (v, _), _, body, _) ->
      p_case (v :: accu) oc body
   | _ -> assert false
+;;
+
+(* Fix to correctly print arithemtic in Coq *)
+let p_expr oc e = p_expr oc (Arith.coqify e)
+let p_expr_list oc l = p_list " " p_expr "" oc l
 ;;
 
 let rec p_nand oc l =

@@ -23,9 +23,9 @@ SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           parsezen.mly lexzen.mll \
 	  parsetptp.mly lextptp.mll typetptp.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
+          printBox.ml simplex.ml arith.ml \
           coqterm.ml lltocoq.ml \
           enum.ml isar_case.ml lltoisar.ml \
-          printBox.ml simplex.ml arith.ml \
           ext_focal.ml ext_tla.ml ext_recfun.ml \
           ext_equiv.ml ext_induct.ml ext_arith.ml \
           prove.ml checksum.dummy versionnum.ml main.ml zenon.ml

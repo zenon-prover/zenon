@@ -218,22 +218,56 @@ let coq_var x =
     else
         x
 
-let to_coq_nexpr_aux (c, x) =
-    if x == etrue then coq_const c else
-    (if Q.equal Q.one c then coq_var x else mul (coq_const c) (coq_var x))
+let z_scope e =
+    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_int] type_int) in
+    eapp (scope, [tvar "Z" type_scope; e])
 
-let to_coq_nexpr = function
-    | [] -> coq_const Q.zero
-    | (c, x) :: r -> List.fold_left
-        (fun e (c', x') -> if Q.sign c' < 0 then diff e (to_nexpr_aux (Q.neg c', x')) else sum e (to_nexpr_aux (c', x')))
-                          (if Q.sign c < 0 then uminus (to_nexpr_aux (Q.neg c, x)) else to_nexpr_aux (c, x)) r
+let rec coqify_aux b e =
+    let aux = if b then coqify_to_q else coqify_term in
+    match e with
+    | Evar(v, _) when is_int e ->
+            if b then mk_coq_q e (const "1") else e
+    | Evar(v, _) when is_rat e ->
+            begin try coq_const (Q.of_string v) with Invalid_argument _ -> e end
+    | Eapp (Evar("$uminus",_), [a], _) -> uminus (aux a)
+    | Eapp (Evar("$sum",_), [a; b], _) -> sum (aux a) (aux b)
+    | Eapp (Evar("$difference",_), [a; b], _) -> diff (aux a) (aux b)
+    | Eapp (Evar("$product",_), [a; b], _) -> mul (aux a) (aux b)
+    | Eapp (f, l, _) -> eapp (f, List.map coqify_term l)
+    | _ -> e
 
-let to_coq_bexpr (e, s, c) = match s with
-    | "$is_int" | "$is_rat" | "$not_is_int" | "$not_is_rat" ->
-            mk_ubop s (to_coq_nexpr e)
-    | _ -> mk_bop s (to_coq_nexpr e) (coq_const c)
+and coqify_term e =
+    if is_int e then
+        z_scope (coqify_aux false e)
+    else
+        coqify_aux true e
 
-let coqify e = try to_coq_bexpr (of_bexpr e) with NotaFormula -> e
+and coqify_to_q e = if is_int e then mk_coq_q (coqify_term e) (const "1") else (coqify_term e)
+
+and coqify_prop e = match e with
+    | Evar(_) -> e
+    | Emeta(_) -> e
+    | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
+            mk_bop "==" (coqify_to_q a) (coqify_to_q b)
+    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
+        when is_num a && is_num b ->
+            mk_bop s (coqify_to_q a) (coqify_to_q b)
+    | Eapp (Evar(("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s,_), [a], _) ->
+            mk_ubop s (coqify_term a)
+    | Eapp(f, l, _) -> eapp (f, List.map coqify_term l)
+    | Enot(f, _) -> enot (coqify_prop f)
+    | Eand(f, g, _) -> eand (coqify_prop f, coqify_prop g)
+    | Eor(f, g, _) -> eor (coqify_prop f, coqify_prop g)
+    | Eimply(f, g, _) -> eimply (coqify_prop f, coqify_prop g)
+    | Eequiv(f, g, _) -> eequiv (coqify_prop f, coqify_prop g)
+    | Etrue
+    | Efalse -> e
+    | Eall(v, t, body, _) -> eall (v, t, coqify_prop body)
+    | Eex(v, t, body, _) -> eex (v, t, coqify_prop body)
+    | Etau(v, t, body, _) -> e
+    | Elam(v, t, body, _) -> elam (v, t, coqify_prop body)
+
+let coqify e = coqify_prop e
 
 (* Analog to circular lists with a 'stop' element, imperative style *)
 exception EndReached
