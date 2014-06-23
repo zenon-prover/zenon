@@ -54,8 +54,6 @@ val sanitize : (Q.t * 'a) list -> (Q.t * 'a) list
 val normalize :
   (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> Q.t * (Q.t * Expr.t) list
 
-val coqify : Expr.t -> Expr.t
-
 (* Conversion functions *)
 val of_cexpr : Expr.expr -> Q.t
 val of_nexpr : Expr.t -> (Q.t * Expr.t) list
@@ -67,6 +65,7 @@ val to_bexpr : (Q.t * Expr.expr) list * string * Q.t -> Expr.expr
 val expr_norm : Expr.expr -> Expr.expr
 
 val coqify : Expr.expr -> Expr.expr
+val coqify_to_q : Expr.expr -> Expr.expr
 
 (* Choice trees *)
 type 'a clist

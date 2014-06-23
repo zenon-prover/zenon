@@ -98,7 +98,7 @@ let rec p_expr oc e =
   | Evar (v, _) ->
       poc "%s" v;
   | Eapp (Evar("$coq_scope",_), [Evar(s,_); e], _) ->
-      poc "(%a)%%%s" p_expr e s;
+      poc "%a%%%s" p_expr e s;
   | Eapp (Evar("=",_), [e1; e2], _) ->
       poc "(%a = %a)" p_expr e1 p_expr e2;
   | Eapp (Evar("=",_), l, _) ->
@@ -162,6 +162,7 @@ and p_case accu oc e =
 ;;
 
 (* Fix to correctly print arithemtic in Coq *)
+let pp_expr oc e = p_expr oc e
 let p_expr oc e = p_expr oc (Arith.coqify e)
 let p_expr_list oc l = p_list " " p_expr "" oc l
 ;;
@@ -377,7 +378,7 @@ let p_rule oc r =
      poc "congruence.\n";
   | Rpnotp _ -> assert false
   | Rnoteq e ->
-      poc "apply %s. apply refl_equal.\n" (getname (enot (eapp (eeq, [e; e]))));
+      poc "apply %s. apply refl_equal.\n" (getname (enot (Typetptp.mk_equal e e)));
   | Reqsym (e, f) ->
       poc "apply %s. apply sym_equal. exact %s.\n"
           (getname (enot (eapp (eeq, [f; e]))))

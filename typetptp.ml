@@ -150,8 +150,7 @@ let mk_equal e f = match get_type e, get_type f with
     | Some t, Some t' when is_type_num t && is_type_num t' ->
             let eq = tvar "=" (mk_arrow [t; t'] type_bool) in
             eapp (eq, [e; f])
-    | Some t, Some t' -> eapp (eeq, [e; f])
-    | _ -> assert false
+    | _ -> eapp (eeq, [e; f])
 
 (* Typing *)
 let type_tff_var env = function

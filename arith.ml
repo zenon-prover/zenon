@@ -222,6 +222,10 @@ let z_scope e =
     let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_int] type_int) in
     eapp (scope, [tvar "Z" type_scope; e])
 
+let q_scope e =
+    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_rat] type_rat) in
+    eapp (scope, [tvar "Q" type_scope; e])
+
 let rec coqify_aux b e =
     let aux = if b then coqify_to_q else coqify_term in
     match e with
@@ -239,14 +243,18 @@ let rec coqify_aux b e =
 and coqify_term e =
     if is_int e then
         z_scope (coqify_aux false e)
+    else if is_rat e then
+        q_scope (coqify_aux true e)
     else
         coqify_aux true e
 
-and coqify_to_q e = if is_int e then mk_coq_q (coqify_term e) (const "1") else (coqify_term e)
+and coqify_to_q e =
+    if is_int e then
+        q_scope (mk_coq_q (coqify_term e) (const "1"))
+    else
+        coqify_term e
 
 and coqify_prop e = match e with
-    | Evar(_) -> e
-    | Emeta(_) -> e
     | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
             mk_bop "==" (coqify_to_q a) (coqify_to_q b)
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
@@ -266,6 +274,7 @@ and coqify_prop e = match e with
     | Eex(v, t, body, _) -> eex (v, t, coqify_prop body)
     | Etau(v, t, body, _) -> e
     | Elam(v, t, body, _) -> elam (v, t, coqify_prop body)
+    | _ -> coqify_term e
 
 let coqify e = coqify_prop e
 

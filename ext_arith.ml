@@ -22,6 +22,9 @@ let mk_node_const c e g = (* e is a trivially false comparison of constants *)
     }
 
 let mk_node_eq a b e g = (* e : a = b *)
+    let a, _, b = of_bexpr (lesseq a b) in
+    let a = to_nexpr a in
+    let b = const (Q.to_string b) in
     Node {
         nconc = [e];
         nrule = Ext ("arith", "eq", [a; b; e]);
@@ -31,6 +34,9 @@ let mk_node_eq a b e g = (* e : a = b *)
     }
 
 let mk_node_neq a b e g = (* e : a != b *)
+    let a, _, b = of_bexpr (lesseq a b) in
+    let a = to_nexpr a in
+    let b = const (Q.to_string b) in
     Node {
         nconc = [e];
         nrule = Ext ("arith", "neq", [a; b; e]);
@@ -682,6 +688,30 @@ let mltoll f p hyps =
     } in
     (nn, extras)
 
+
+(* LL -> Coq translation *)
+let lltocoq oc r =
+    let pr fmt = Printf.fprintf oc fmt in
+    match r with
+    | LL.Rextension("arith", "const", _, [e], _) ->
+            pr "arith_simpl %s.\n" (Coqterm.getname e);
+    | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
+            pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %s ].\n"
+            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
+    | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) ->
+            pr "apply (arith_refut _ _ (arith_neq %a %a)); [[ zenon_intro %s | zenon_intro %s] | arith_simpl %s ].\n"
+            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
+    | LL.Rextension("arith", "tighten_$lesseq", [x; c], [e], [[e']]) ->
+            pr "pose proof (arith_tight_leq _ _ %s) as %s; unfold Qfloor, Zdiv in %s; simpl in %s.\n"
+            (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
+    | LL.Rextension("arith", "tighten_$greatereq", [x; c], [e], [[e']]) ->
+            pr "pose proof (arith_tight_geq _ _ %s) as %s; unfold Qceiling, Zdiv in %s; simpl in %s.\n"
+            (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
+    | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
+            pr "pose proof (Qle_trans _ _ _ %s %s) as %s; arith_simpl %s.\n"
+            (Coqterm.getname e) (Coqterm.getname e') "Arith_tmp" "Arith_tmp"
+    | _ -> ()
+
 (* Constants *)
 let const_node e = (* comparison of constants *)
     let (f, s, c) = of_bexpr e in
@@ -781,10 +811,12 @@ let to_llproof = mltoll
 let declare_context_coq oc =
     let pr fmt = Printf.fprintf oc fmt in
     pr "Require Import ZArith.\n";
+    pr "Require Import Omega.\n";
     pr "Require Import QArith.\n";
+    pr "Require Import zenon_arith.\n";
     ()
 
-let p_rule_coq fmt r = ()
+let p_rule_coq = lltocoq
 
 let predef () = [
     "$less"; "$lesseq"; "$greater"; "$greatereq";
