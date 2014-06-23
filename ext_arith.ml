@@ -690,6 +690,10 @@ let mltoll f p hyps =
 
 
 (* LL -> Coq translation *)
+let get_bind = function
+    | Eapp(Evar("=", _), [Evar(s, _) as s'; e], _) -> s, is_int s', e
+    | _ -> assert false
+
 let lltocoq oc r =
     let pr fmt = Printf.fprintf oc fmt in
     match r with
@@ -707,6 +711,13 @@ let lltocoq oc r =
     | LL.Rextension("arith", "tighten_$greatereq", [x; c], [e], [[e']]) ->
             pr "pose proof (arith_tight_geq _ _ %s) as %s; unfold Qceiling, Zdiv in %s; simpl in %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
+    | LL.Rextension("arith", "var", [e1; e2], [e], _) ->
+            let v, b, expr = get_bind e2 in
+            pr "(* WORK HERE *)\n";
+            if b then
+                pr "pose (%s := %a).\n" v Lltocoq.pp_expr (coqify_term expr)
+            else
+                pr "pose (%s := %a).\n" v Lltocoq.pp_expr (coqify_term expr)
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
             pr "pose proof (Qle_trans _ _ _ %s %s) as %s; arith_simpl %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') "Arith_tmp" "Arith_tmp"
