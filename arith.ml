@@ -9,11 +9,11 @@ let equal = Expr.equal
 (* Types manipulation *)
 let get_type e = match get_type e with
     | Some t -> t
-    | None -> assert false
+    | None -> raise Exit
 
-let is_int e = Type.equal type_int (get_type e)
-let is_rat e = Type.equal type_rat (get_type e)
-let is_num e = is_type_num (get_type e)
+let is_int e = try Type.equal type_int (get_type e) with Exit -> false
+let is_rat e = try Type.equal type_rat (get_type e) with Exit -> false
+let is_num e = try is_type_num (get_type e) with Exit -> false
 
 (* We assume t a t' are numeric types *)
 let mix_type t t' =
@@ -276,7 +276,15 @@ and coqify_prop e = match e with
     | Elam(v, t, body, _) -> elam (v, t, coqify_prop body)
     | _ -> coqify_term e
 
-let coqify e = coqify_prop e
+let coqify e = match Expr.get_type e with
+    | None -> e
+    | _ ->
+            if is_int e then
+                z_scope (coqify_aux false e)
+            else if is_rat e then
+                q_scope (coqify_aux true e)
+            else
+                coqify_prop e
 
 (* Analog to circular lists with a 'stop' element, imperative style *)
 exception EndReached

@@ -36,7 +36,7 @@ Lemma arith_neg_leq : forall a b: Q, (~ a <= b) -> a > b.
 Proof. intros. arith_simpl H. Qed.
 Lemma arith_neg_lt : forall a b: Q, (~ a < b) -> a >= b.
 Proof. intros. arith_simpl H. Qed.
-Lemma arith_neg_qeq : forall a b: Q, (~ a >= b) -> a < b.
+Lemma arith_neg_geq : forall a b: Q, (~ a >= b) -> a < b.
 Proof. intros. arith_simpl H. Qed.
 Lemma arith_neg_gt : forall a b: Q, (~ a > b) -> a <= b.
 Proof. intros. arith_simpl H. Qed.

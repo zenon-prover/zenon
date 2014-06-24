@@ -152,6 +152,12 @@ let mk_equal e f = match get_type e, get_type f with
             eapp (eq, [e; f])
     | _ -> eapp (eeq, [e; f])
 
+let var_name s =
+    if s = to_string type_int || s = to_string type_rat then
+        s ^ "'"
+    else
+        s
+
 (* Typing *)
 let type_tff_var env = function
     | Evar(v, _) as e -> begin match get_type e with
@@ -239,6 +245,7 @@ and type_tff_prop env e = match e with
             e, env
     | Eall(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
+            let s = var_name s in
             let v' = tvar s t in
             Log.debug 5 "Introducting '%s' of type '%s'" s (Type.to_string t);
             let body' = substitute [v, v'] body in
@@ -247,6 +254,7 @@ and type_tff_prop env e = match e with
             eall (v', t, body''), env'
     | Eex(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
+            let s = var_name s in
             let v' = tvar s t in
             Log.debug 5 "Introducting '%s' of type '%s'" s (Type.to_string t);
             let body' = substitute [v, v'] body in

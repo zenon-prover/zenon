@@ -37,7 +37,7 @@ esac
 sleep 1
 
 # Testing all files in $FILES
-TEMP=./temp42.gv
+TEMP=./temp.v
 TOTAL=0
 SOLVED=0
 ERRORS=0
@@ -49,13 +49,20 @@ do
     RET=$?
     if [ $RET -eq 0 ];
     then
-        echo -e "\e[32m[PROOF FOUND] $f \e[0m"
         SOLVED=$(($SOLVED + 1))
         ./zenon -max-time 10s -q -odotd 30 -kall -x arith -itptp $f > $f.gv
         dot -Tsvg $f.gv -o $f.svg
+        ./zenon -max-time 10s -context -ocoq -k -x arith -itptp $f > $TEMP
+        if coqc -I ./ $TEMP; then \
+            echo -e "[PROOF FOUND] $f \e[32m[OK]\e[0m"; \
+        else \
+            echo -e "\e[31m[PROOF FOUND] $f [KO]\e[0m"; \
+            exit 1;
+        fi;
+        rm $TEMP;
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ] || [ $RET -eq 13 ];
     then
-        echo -e "\e[31m[NOT FOUND] $f \e[0m"
+        echo -e "\e[33m[NOT FOUND] $f \e[0m"
     else
         ERRORS=$(($ERRORS + 1))
         echo -e "\e[35m[ERROR $RET] $f \e[0m"
