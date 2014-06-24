@@ -724,11 +724,9 @@ let ll_p oc r =
     | LL.Rextension("arith", s, _, l, ll) ->
             pr "(* ARITH -- '%s'\n * -> " s;
             List.iter (fun e -> pr "%a, " Lltocoq.p_expr e) l;
-            pr "\n";
             List.iter (fun l ->
-                pr " * |- ";
+                pr "\n * |- ";
                 List.iter (fun e -> pr "%a, " Lltocoq.p_expr e) l;
-                pr "\n"
                 ) ll;
             pr "*)\n"
     | _ -> assert false
@@ -883,14 +881,17 @@ let declare_context_coq oc =
     pr "Require Import Omega.\n";
     pr "Require Import QArith.\n";
     pr "Require Import zenon_arith.\n";
+    List.iter (fun (s, t) ->
+        pr "Parameter %s : %s.\n" s (Type.to_string t))
+        (Typetptp.get_defined ());
     ()
 
 let p_rule_coq = lltocoq
 
-let predef () = [
-    "$less"; "$lesseq"; "$greater"; "$greatereq";
-    "$sum"; "$difference"; "$product"; "$uminus";
-    ]
+let predef () =
+    [ "$less"; "$lesseq"; "$greater"; "$greatereq";
+      "$sum"; "$difference"; "$product"; "$uminus";
+    ] @ (List.map fst (Typetptp.get_defined ()))
 ;;
 
 Extension.register {

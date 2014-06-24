@@ -339,5 +339,7 @@ let typecheck l =
     Log.debug 1 "========== Typecheck ============";
     let p, env = map_fold type_phrase default_env l in
     aux env;
+    Log.debug 3 "keeping in mind %i defined symbols" (List.length !defined);
+    List.iter (fun (s, t) -> Log.debug 5 "  %s : %s" s (Type.to_string t)) !defined;
     List.filter relevant p
 

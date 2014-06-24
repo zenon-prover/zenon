@@ -105,7 +105,7 @@ let rec to_string_base = function
     | Bool -> "Prop"
     | App (s, []) -> to_string_atomic s
     | App (s, l) -> "(" ^ s ^ " " ^ (String.concat " " (List.map to_string_base l)) ^ ")"
-    | Arrow (args, ret) -> "(" ^ (String.concat " * " (List.map to_string_base args)) ^ " > " ^ (to_string_base ret) ^ ")"
+    | Arrow (args, ret) -> "(" ^ (String.concat " -> " (List.map to_string_base args)) ^ " -> " ^ (to_string_base ret) ^ ")"
     | Ttype -> "$tType"
 
 let to_string_binders l =
