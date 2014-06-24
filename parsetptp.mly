@@ -153,9 +153,9 @@ atom:
 ;
 var_list:
   | UIDENT COMMA var_list             { (evar (ns_var $1), Type.atomic Namespace.univ_name) :: $3 }
-  | UIDENT COLON expr COMMA var_list  { (evar (ns_var $1), type_of_expr $3) :: $5 }
+  | UIDENT COLON expr COMMA var_list  { (evar (ns_var $1), Type.tff (type_of_expr $3)) :: $5 }
   | UIDENT                            { [evar (ns_var $1), Type.atomic Namespace.univ_name] }
-  | UIDENT COLON expr                 { [evar (ns_var $1), type_of_expr $3] }
+  | UIDENT COLON expr                 { [evar (ns_var $1), Type.tff (type_of_expr $3)] }
 ;
 tff_type_arrow:
   | expr RANGL expr                   { eapp(evar "->", [$3; $1]) }

@@ -240,13 +240,17 @@ and type_tff_prop env e = match e with
     | Eall(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
             let v' = tvar s t in
+            Log.debug 5 "Introducting '%s' of type '%s'" s (Type.to_string t);
             let body' = substitute [v, v'] body in
+            Log.debug 7 "Typing eall body";
             let body'', env' = type_tff_prop env body' in
             eall (v', t, body''), env'
     | Eex(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
             let v' = tvar s t in
+            Log.debug 5 "Introducting '%s' of type '%s'" s (Type.to_string t);
             let body' = substitute [v, v'] body in
+            Log.debug 7 "Typing eex body";
             let body'', env' = type_tff_prop env body' in
             eex (v', t, body''), env'
     | Etau(Evar(s, _), t, body, _) -> assert false

@@ -22,9 +22,12 @@ let mk_node_const c e g = (* e is a trivially false comparison of constants *)
     }
 
 let mk_node_eq a b e g = (* e : a = b *)
-    let a, _, b = of_bexpr (lesseq a b) in
-    let a = to_nexpr a in
-    let b = const (Q.to_string b) in
+    let a, b =
+        try
+            let expr, _, c = of_bexpr (lesseq a b) in
+            to_nexpr expr, const (Q.to_string c)
+        with NotaFormula -> a, b
+    in
     Node {
         nconc = [e];
         nrule = Ext ("arith", "eq", [a; b; e]);
@@ -34,9 +37,12 @@ let mk_node_eq a b e g = (* e : a = b *)
     }
 
 let mk_node_neq a b e g = (* e : a != b *)
-    let a, _, b = of_bexpr (lesseq a b) in
-    let a = to_nexpr a in
-    let b = const (Q.to_string b) in
+    let a, b =
+        try
+            let expr, _, c = of_bexpr (lesseq a b) in
+            to_nexpr expr, const (Q.to_string c)
+        with NotaFormula -> a, b
+    in
     Node {
         nconc = [e];
         nrule = Ext ("arith", "neq", [a; b; e]);
