@@ -1,4 +1,5 @@
 
+Require Import Classical.
 Require Import Omega.
 Require Export ZArith.
 Require Export ZArith.BinInt.
@@ -9,7 +10,7 @@ Ltac arith_unfold :=
   unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv;
   try repeat rewrite Qmult_1_l;
   try repeat rewrite Qmult_1_r;
-  simpl;
+  unfold Qnum, Qden;
   try repeat rewrite Z.mul_1_l;
   try repeat rewrite Z.mul_1_r.
 
@@ -17,7 +18,7 @@ Ltac arith_unfold_in H :=
   unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv in H;
   try repeat rewrite Qmult_1_l in H;
   try repeat rewrite Qmult_1_r in H;
-  simpl in H;
+  unfold Qnum, Qden in H;
   try repeat rewrite Z.mul_1_l in H;
   try repeat rewrite Z.mul_1_r in H.
 
@@ -27,15 +28,28 @@ Lemma arith_refut : forall P Q: Prop, (P -> Q) -> (Q -> False) -> (P -> False).
 Proof. intro P. intro Q. intro Hyp. intro notQ. intro p. exact (notQ (Hyp p)). Qed.
 
 Lemma arith_eq : forall a b: Q, a == b -> a <= b /\ a >= b.
-Proof.
-arith_unfold. intros. omega.
-Qed.
-
+Proof. intros. arith_simpl H. Qed.
 Lemma arith_neq : forall a b: Q, (~ a == b) -> a < b \/ a > b.
+Proof. intros. arith_simpl H. Qed.
+
+Lemma arith_neg_leq : forall a b: Q, (~ a <= b) -> a > b.
+Proof. intros. arith_simpl H. Qed.
+Lemma arith_neg_lt : forall a b: Q, (~ a < b) -> a >= b.
+Proof. intros. arith_simpl H. Qed.
+Lemma arith_neg_qeq : forall a b: Q, (~ a >= b) -> a < b.
+Proof. intros. arith_simpl H. Qed.
+Lemma arith_neg_gt : forall a b: Q, (~ a > b) -> a <= b.
+Proof. intros. arith_simpl H. Qed.
+
+Lemma arith_branch : forall a n: Z, (a # 1 <= n # 1) \/ (a # 1 >= (n + 1) # 1).
 Proof.
-arith_unfold. intros. omega.
+intros.
+pose proof (classic (a # 1 <= n # 1)) as C. destruct C.
+  left. exact H.
+  right. arith_simpl H.
 Qed.
 
+(* Lemma on floor&ceilling functions require a bit more *)
 Lemma floor_1 : forall a: Z, Qfloor (a # 1) = a.
 Proof. intros. unfold Qfloor. apply Zdiv_1_r. Qed.
 
