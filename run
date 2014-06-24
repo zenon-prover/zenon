@@ -52,7 +52,7 @@ do
         SOLVED=$(($SOLVED + 1))
         ./zenon -max-time 10s -q -odotd 30 -kall -x arith -itptp $f > $f.gv
         dot -Tsvg $f.gv -o $f.svg
-        ./zenon -max-time 10s -context -ocoq -k -x arith -itptp $f > $TEMP
+        ./zenon -max-time 10s -context -ocoq -opt0 -k -x arith -itptp $f > $TEMP
         if coqc -I ./ $TEMP; then \
             echo -e "[PROOF FOUND] $f \e[32m[OK]\e[0m"; \
         else \

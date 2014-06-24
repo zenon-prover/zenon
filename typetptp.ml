@@ -322,8 +322,22 @@ let type_phrase env p = match p with
             Log.debug 1 "typechecking unknown formula";
             p, env
 
+let defined = ref []
+
+let get_defined () = !defined
+
 let typecheck l =
+    let aux env =
+        let f s l =
+            if not (tff_mem s default_env) then begin
+                assert (List.length l = 1);
+                defined := (s, List.hd l) :: !defined
+            end
+        in
+        M.iter f env.tff
+    in
     Log.debug 1 "========== Typecheck ============";
-    let p, _ = map_fold type_phrase default_env l in
+    let p, env = map_fold type_phrase default_env l in
+    aux env;
     List.filter relevant p
 
