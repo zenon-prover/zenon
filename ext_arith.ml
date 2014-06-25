@@ -736,7 +736,7 @@ let lltocoq oc r =
     if Log.get_debug () >= 0 then ll_p oc r;
     match r with
     | LL.Rextension("arith", "const", _, [e], _) ->
-            pr "arith_simpl %s.\n" (Coqterm.getname e);
+            pr "arith_simpl %s.\n" (Coqterm.getname e)
     | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
             pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)

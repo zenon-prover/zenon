@@ -22,7 +22,9 @@ Ltac arith_unfold_in H :=
   try repeat rewrite Z.mul_1_l in H;
   try repeat rewrite Z.mul_1_r in H.
 
-Ltac arith_simpl H := arith_unfold; arith_unfold_in H; omega.
+Ltac arith_simpl H :=
+  arith_unfold; arith_unfold_in H;
+  first [ omega | simpl; simpl in H; omega ].
 
 Lemma arith_refut : forall P Q: Prop, (P -> Q) -> (Q -> False) -> (P -> False).
 Proof. intro P. intro Q. intro Hyp. intro notQ. intro p. exact (notQ (Hyp p)). Qed.
