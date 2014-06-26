@@ -721,8 +721,11 @@ let neg_comp_lemma = function
 let ll_p oc r =
     let pr fmt = Printf.fprintf oc fmt in
     match r with
-    | LL.Rextension("arith", s, _, l, ll) ->
-            pr "(* ARITH -- '%s'\n * -> " s;
+    | LL.Rextension("arith", s, args, l, ll) ->
+            pr "(* ARITH -- '%s' : " s;
+            List.iter (fun e -> pr "%a : '%s', " Lltocoq.p_expr e
+                (match Expr.get_type e with None -> "" | Some t -> Type.to_string t)) args;
+            pr "\n * ->";
             List.iter (fun e -> pr "%a, " Lltocoq.p_expr e) l;
             List.iter (fun l ->
                 pr "\n * |- ";
@@ -774,7 +777,10 @@ let lltocoq oc r =
             pr "cut %a; [ zenon_intro %s | %aarith_unfold; omega ].\n" Lltocoq.p_expr e (Coqterm.getname e)
             (fun oc -> List.iter (fun e -> Printf.fprintf oc "arith_unfold_in %s; " (Coqterm.getname e))) l
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
-            pr "arith_unfold_in %s; arith_unfold_in %s; omega.\n" (Coqterm.getname e) (Coqterm.getname e')
+            pr "arith_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
+    | LL.Rextension("arith", "FM", x :: _, [e; e'], [[f]]) ->
+            pr "cut %a; [ zenon_intro %s | arith_trans %s %s Arith_tmp; arith_simpl Arith_tmp ].\n"
+            Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e) (Coqterm.getname e')
     | LL.Rextension("arith", s, _, _, _) ->
             pr "(* TODO unknown rule %s *)\n" s
     | _ -> pr "(* Don't know what to do *)"
@@ -891,6 +897,7 @@ let p_rule_coq = lltocoq
 let predef () =
     [ "$less"; "$lesseq"; "$greater"; "$greatereq";
       "$sum"; "$difference"; "$product"; "$uminus";
+      "$is_int"; "$not_is_int"; "$is_rat"; "$not_is_rat";
     ] @ (List.map fst (Typetptp.get_defined ()))
 ;;
 

@@ -23,8 +23,40 @@ Ltac arith_unfold_in H :=
   try repeat rewrite Z.mul_1_r in H.
 
 Ltac arith_simpl H :=
+  try rewrite H; try rewrite <- H;
   arith_unfold; arith_unfold_in H;
   first [ omega | simpl; simpl in H; omega ].
+
+Lemma arith_opp_inv : forall (a: Z) (b: positive), - (- a # b) == a # b.
+Proof. intros. arith_unfold. simpl. rewrite Z.opp_involutive. trivial. Qed.
+
+Ltac arith_opp :=
+  repeat match goal with
+  | H : context[- (Zneg ?a # ?b)] |- _ => rewrite (arith_opp_inv (' a) b) in H
+  | |- context[- ((Zneg ?a) # ?b)] => rewrite (arith_opp_inv (' a) b)
+  end.
+
+Ltac arith_switch H H' :=
+  pose proof (Qopp_le_compat _ _ H) as H';
+  first [rewrite Qopp_involutive in H' | arith_opp ].
+
+Ltac arith_q_trans lower upper new := first [
+  pose proof (Qle_trans _ _ _ lower upper) as new |
+  pose proof (Qlt_trans _ _ _ lower upper) as new |
+  pose proof (Qle_lt_trans _ _ _ lower upper) as new |
+  pose proof (Qlt_le_trans _ _ _ lower upper) as new ].
+
+Ltac arith_trans_aux lower upper new :=
+  first [
+    arith_q_trans lower upper new |
+    let Arith_tmp_l := fresh in arith_switch lower Arith_tmp_l; arith_q_trans Arith_tmp_l upper new |
+    let Arith_tmp_u := fresh in arith_switch upper Arith_tmp_u; arith_q_trans lower Arith_tmp_u new |
+    let Arith_tmp_l := fresh in let Arith_tmp_u := fresh in
+    arith_switch lower Arith_tmp_l; arith_switch upper Arith_tmp_u; arith_q_trans Arith_tmp_l Arith_tmp_u new].
+
+Ltac arith_trans A B C := first [ arith_trans_aux A B C | arith_trans_aux B A C ].
+
+Ltac arith_trans_simpl A B := let C := fresh in arith_trans A B C; arith_simpl C.
 
 Lemma arith_refut : forall P Q: Prop, (P -> Q) -> (Q -> False) -> (P -> False).
 Proof. intro P. intro Q. intro Hyp. intro notQ. intro p. exact (notQ (Hyp p)). Qed.

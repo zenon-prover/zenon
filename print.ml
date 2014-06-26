@@ -801,10 +801,12 @@ let dots o ?full_output:(b=true) ?max_depth:(d=(-1)) l =
 (* Functions for easy debug printing *)
 
 let pp_expr b e = expr_soft (Buff b) e
+let pp_expr_t b e =
+    Printf.bprintf b "%a : '%s'" pp_expr e (match get_type e with None -> "" | Some t -> Type.to_string t)
 
 let pp_mlrule b r =
   let s, l = get_rule_name r in
-   Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr) l
+   Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr_t) l
 
 let sexpr e = Log.on_buffer pp_expr e
 

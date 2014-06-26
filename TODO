@@ -1,4 +1,9 @@
 
+* Coq proofs
+  - congruence does not work with equality on rationals
+  - write a proper tactic to do computation of constants + normalizing of formulas
+    (instead of relying on omega)
+
 * Simplex
   - Fix the schmilblik with multiple/repeated solving with int variables
 

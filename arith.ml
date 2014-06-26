@@ -255,6 +255,8 @@ and coqify_to_q e =
         coqify_term e
 
 and coqify_prop e = match e with
+    | Eapp (Evar("=",_), [a; b], _ ) when is_int a && is_int b ->
+            mk_bop "=" (coqify_term a) (coqify_term b)
     | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
             mk_bop "==" (coqify_to_q a) (coqify_to_q b)
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )

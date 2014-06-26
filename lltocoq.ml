@@ -98,7 +98,7 @@ let rec p_expr oc e =
   | Evar (v, _) ->
       poc "%s" v;
   | Eapp (Evar("$coq_scope",_), [Evar(s,_); e], _) ->
-      poc "%a%%%s" p_expr e s;
+      poc "(%a)%%%s" p_expr e s;
   | Eapp (Evar("=",_), [e1; e2], _) ->
       poc "(%a = %a)" p_expr e1 p_expr e2;
   | Eapp (Evar("=",_), l, _) ->
@@ -176,7 +176,7 @@ let rec p_nand oc l =
 let rec p_bound_vars oc l =
   match l with
   | (ty, arg) :: t ->
-     fprintf oc " (%a : %a)" p_expr arg p_type ty;
+     fprintf oc " (%a : %a)" pp_expr arg p_type ty;
      p_bound_vars oc t;
   | [] -> ()
 ;;

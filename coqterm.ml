@@ -106,7 +106,8 @@ let synthesize s =
   | t when t = univ_name -> any_name
   | "nat" -> "O"
   | "bool" -> "true"
-  | "Z" -> "Z0"
+  | "Z" -> "0%Z"
+  | "Q" -> "(0 # 1)%Q"
   | t when is_mapped (evar t) ->
       let result = getname (evar t) in
       constants_used := result :: !constants_used;
@@ -750,7 +751,7 @@ let get_signatures ps ext_decl =
   let rec get_sig r env e =
     match e with
     | Evar ("_", _) -> ()
-    | Evar (s, _) when is_nat s || Arith.is_int e || Arith.is_rat e -> ()
+    | Evar (s, _) when is_nat s || Arith.is_num e -> ()
     | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 r;
     | Emeta _ | Etrue | Efalse -> ()
     | Eapp (Evar(s,_), args, _) ->
