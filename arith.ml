@@ -2,18 +2,21 @@
 open Expr
 open Type
 open Mlproof
-open Typetptp
 
 let equal = Expr.equal
 
 (* Types manipulation *)
-let get_type e = match get_type e with
+let find_type e = match get_type e with
     | Some t -> t
     | None -> raise Exit
 
-let is_int e = try Type.equal type_int (get_type e) with Exit -> false
-let is_rat e = try Type.equal type_rat (get_type e) with Exit -> false
-let is_num e = try is_type_num (get_type e) with Exit -> false
+let mk_int v = tvar v type_int
+let mk_rat v = tvar v type_rat
+let mk_real v = tvar v type_real
+
+let is_int e = try Type.equal type_int (find_type e) with Exit -> false
+let is_rat e = try Type.equal type_rat (find_type e) with Exit -> false
+let is_num e = try is_type_num (find_type e) with Exit -> false
 
 (* We assume t a t' are numeric types *)
 let mix_type t t' =
@@ -52,8 +55,8 @@ let comp_neg = function
 let const s = if is_z (Q.of_string s) then mk_int s else mk_rat s
 
 let mk_op s a b =
-    let ta = get_type a in
-    let tb = get_type b in
+    let ta = find_type a in
+    let tb = find_type b in
     eapp (tvar s (mk_arrow [ta; tb] (mix_type ta tb)), [a; b])
 
 let sum a b = mk_op "$sum" a b
@@ -63,14 +66,14 @@ let minus_one e = diff e (const "1")
 let plus_one e = sum e (const "1")
 
 let mk_uop s a =
-    let t = get_type a in
+    let t = find_type a in
     eapp (tvar s (mk_arrow [t] t), [a])
 
 let uminus a = mk_uop "$uminus" a
 
 let mk_bop s a b =
-    let ta = get_type a in
-    let tb = get_type b in
+    let ta = find_type a in
+    let tb = find_type b in
     eapp (tvar s (mk_arrow [ta; tb] type_bool), [a; b])
 
 let less a b = mk_bop "$less" a b
@@ -85,7 +88,7 @@ let coerce t v =
         v
 
 let mk_ubop s a =
-    let t = get_type a in
+    let t = find_type a in
     eapp (tvar s (mk_arrow [t] type_bool), [a])
 
 
@@ -278,7 +281,7 @@ and coqify_prop e = match e with
     | Elam(v, t, body, _) -> elam (v, t, coqify_prop body)
     | _ -> coqify_term e
 
-let coqify e = match Expr.get_type e with
+let coqify e = match get_type e with
     | None -> e
     | _ ->
             if is_int e then

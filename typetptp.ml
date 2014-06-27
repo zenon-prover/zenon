@@ -1,5 +1,7 @@
+
 open Type
 open Expr
+open Arith
 
 exception Type_error of string
 exception Type_found of etype
@@ -141,17 +143,6 @@ let default_env =
     let tff_base = List.fold_left (fun acc (s, t) -> M.add s t acc) M.empty tff_builtin in
     { (* empty_env with *) tff = tff_base }
 
-let is_type_num t =
-    Type.equal t type_int ||
-    Type.equal t type_rat ||
-    Type.equal t type_real
-
-let mk_equal e f = match get_type e, get_type f with
-    | Some t, Some t' when is_type_num t && is_type_num t' ->
-            let eq = tvar "=" (mk_arrow [t; t'] type_bool) in
-            eapp (eq, [e; f])
-    | _ -> eapp (eeq, [e; f])
-
 let var_name s =
     if s = to_string type_int || s = to_string type_rat then
         s ^ "'"
@@ -170,10 +161,6 @@ let type_tff_var env = function
     | _ -> assert false
 
 
-let mk_int v = tvar v type_int
-let mk_rat v = tvar v type_rat
-let mk_real v = tvar v type_real
-
 let rec type_tff_app env is_pred e = match e with
     (* Type typechecking *)
     | Eapp(Evar("$i", _), [], _) -> tvar "$i" type_type, env
@@ -190,7 +177,7 @@ let rec type_tff_app env is_pred e = match e with
     | Eapp(Evar("=", _), [a; b], _) ->
             let a', env' = type_tff_term env a in
             let b', env'' = type_tff_term env' b in
-            mk_equal a' b', env''
+            eapp (eeq, [a'; b']), env''
     | Eapp(Evar(s, _) as s', args, _) ->
             let args, env' = map_fold type_tff_term env args in
             let f, env'' = match get_type s' with
@@ -247,20 +234,18 @@ and type_tff_prop env e = match e with
             let t = Type.tff t in
             let s = var_name s in
             let v' = tvar s t in
-            Log.debug 5 "Introducting '%s' of type '%s'" s (Type.to_string t);
-            let body' = substitute [v, v'] body in
-            Log.debug 7 "Typing eall body";
-            let body'', env' = type_tff_prop env body' in
-            eall (v', t, body''), env'
+            Log.debug 2 "Introducting '%s' of type '%s'" s (Type.to_string t);
+            let body = substitute [v, v'] body in
+            let body, env = type_tff_prop env body in
+            eall (v', t, body), env
     | Eex(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
             let s = var_name s in
             let v' = tvar s t in
-            Log.debug 5 "Introducting '%s' of type '%s'" s (Type.to_string t);
-            let body' = substitute [v, v'] body in
-            Log.debug 7 "Typing eex body";
-            let body'', env' = type_tff_prop env body' in
-            eex (v', t, body''), env'
+            Log.debug 2 "Introducting '%s' of type '%s'" s (Type.to_string t);
+            let body = substitute [v, v'] body in
+            let body, env = type_tff_prop env body in
+            eex (v', t, body), env
     | Etau(Evar(s, _), t, body, _) -> assert false
     | _ -> raise (Type_error ("Ill-formed expression"))
 
@@ -276,14 +261,16 @@ and type_tff_term env e = match e with
     | _ -> raise (Type_error ("Ill-formed expression"))
 
 let type_tff_expr env e =
-    let e, env = type_tff_prop env e in
-    match get_type e with
+    let e', env' = type_tff_prop env e in
+    match get_type e' with
     | Some t ->
             if Type.equal type_bool t then
-                e, env
+                e', env'
             else
                 raise (Type_error (Printf.sprintf "Expected a boolean expression at root."))
-    | None -> assert false
+    | None ->
+            Log.debug 0 "Found a non-typed expression in tff context :\n%a" Print.pp_expr_type e';
+            assert false
 
 let type_tff_def env e = match e with
     | Eapp (Evar("#", _), [Evar(v, _); e'], _) ->

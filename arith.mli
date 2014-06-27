@@ -6,12 +6,10 @@ exception NotaFormula
 exception EndReached
 
 (* Type manipulation *)
-val get_type : Expr.expr -> Expr.etype
-val is_int : Expr.expr -> bool
-val is_rat : Expr.expr -> bool
-val is_num : Expr.expr -> bool
+val find_type : Expr.expr -> Expr.etype
 val mix_type : Expr.etype -> Expr.etype -> Expr.etype
 
+(* Q manipulation *)
 val is_z : Q.t -> bool
 val is_q : Q.t -> bool
 val floor : Q.t -> Q.t
@@ -19,6 +17,14 @@ val ceil : Q.t -> Q.t
 
 (* Expression manipulation *)
 val comp_neg : string -> string
+
+val mk_int : string -> Expr.t
+val mk_rat : string -> Expr.t
+val mk_real : string -> Expr.t
+
+val is_int : Expr.expr -> bool
+val is_rat : Expr.expr -> bool
+val is_num : Expr.expr -> bool
 
 (* Expression construction *)
 val mk_op : string -> Expr.expr -> Expr.expr -> Expr.expr

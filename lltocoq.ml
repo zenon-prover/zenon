@@ -378,7 +378,7 @@ let p_rule oc r =
      poc "congruence.\n";
   | Rpnotp _ -> assert false
   | Rnoteq e ->
-      poc "apply %s. apply refl_equal.\n" (getname (enot (Typetptp.mk_equal e e)));
+      poc "apply %s. apply refl_equal.\n" (getname (enot (eapp (eeq, [e; e]))));
   | Reqsym (e, f) ->
       poc "apply %s. apply sym_equal. exact %s.\n"
           (getname (enot (eapp (eeq, [f; e]))))

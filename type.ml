@@ -94,6 +94,9 @@ let neq t t' = compare t t' <> 0
 
 let nbind (b, t) = List.length b
 
+(* Useful comparisons *)
+let _nums = [ type_int; type_rat; type_real ]
+let is_type_num t = List.exists (equal t) _nums
 
 (* Printing *)
 let to_string_atomic = function
@@ -115,7 +118,9 @@ let to_string_binders l =
         "!>[" ^ tvars ^ "]: "
 
 let to_string (b, t) = (to_string_binders b) ^ (to_string_base t)
-
+let opt_string = function
+    | None -> ""
+    | Some t -> to_string t
 
 (* Convenience functions *)
 let to_base (b, t) = if b = [] then t else raise Base_expected
@@ -165,6 +170,7 @@ let type_app_base t l = match t with
     | _ -> raise Function_expected
 
 let type_eq = function
+    | [a; b] when is_type_num a && is_type_num b -> type_bool
     | [a; b] -> if equal a b then type_bool else raise (Mismatch (a, b))
     | _ -> raise Not_enough_args
 

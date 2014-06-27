@@ -801,12 +801,38 @@ let dots o ?full_output:(b=true) ?max_depth:(d=(-1)) l =
 (* Functions for easy debug printing *)
 
 let pp_expr b e = expr_soft (Buff b) e
-let pp_expr_t b e =
-    Printf.bprintf b "%a : '%s'" pp_expr e (match get_type e with None -> "" | Some t -> Type.to_string t)
+let pp_expr_t b e = Printf.bprintf b "%a : '%s'" pp_expr e (Type.opt_string (get_type e))
 
 let pp_mlrule b r =
   let s, l = get_rule_name r in
    Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr_t) l
 
 let sexpr e = Log.on_buffer pp_expr e
+;;
+(* Full type debug printing for expr *)
 
+let rec expr_type o ex =
+  let pr f = oprintf o f in
+  expr_soft o ex;
+  pr " : '%s'\n" (Type.opt_string (get_type ex));
+  match ex with
+  | Evar (v, _) -> ()
+  | Emeta (e, _) -> ()
+  | Eapp(s, l, _) -> List.iter (expr_type o) (s :: l)
+  | Enot (e, _) -> expr_type o e
+  | Eand (e1, e2, _)
+  | Eor (e1, e2, _)
+  | Eimply (e1, e2, _)
+  | Eequiv (e1, e2, _) ->
+          expr_type o e1; expr_type o e2
+  | Etrue
+  | Efalse -> ()
+  | Eall (Evar (v, _), t, e, _)
+  | Eex (Evar (v, _), t, e, _)
+  | Elam (Evar (v, _), t, e, _) ->
+          expr_type o e
+  | Etau _  -> ()
+  | _ -> assert false
+
+let pp_expr_type b e = expr_type (Buff b) e
+;;
