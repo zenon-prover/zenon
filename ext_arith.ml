@@ -37,18 +37,13 @@ let mk_node_eq a b e g = (* e : a = b *)
     }
 
 let mk_node_neq a b e g = (* e : a != b *)
-    let a, b =
-        try
-            let expr, _, c = of_bexpr (lesseq a b) in
-            to_nexpr expr, const (Q.to_string c)
-        with NotaFormula -> a, b
-    in
     Node {
         nconc = [e];
         nrule = Ext ("arith", "neq", [a; b; e]);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [expr_norm (less a b)]; [expr_norm (greater a b)] |];
+        (* nbranches = [| [expr_norm (less a b)]; [expr_norm (greater a b)] |]; *)
+        nbranches = [| [less a b]; [greater a b] |];
     }
 
 let mk_node_tighten s x c e g =
@@ -658,7 +653,7 @@ let tr_rule f = function
     | Ext("arith", "eq", [a; b; e]) ->
             LL.Rextension("arith", "eq", [f a; f b], [f e], [[f (expr_norm (lesseq a b)); f (expr_norm (greatereq a b))]])
     | Ext("arith", "neq", [a; b; e]) ->
-            LL.Rextension("arith", "neq", [f a; f b], [f e], [[f (expr_norm (less a b))];[f (expr_norm (greater a b))]])
+            LL.Rextension("arith", "neq", [f a; f b], [f e], [[f (less a b)];[f (greater a b)]])
     | Ext("arith", s, [x; c; e]) when ssub s 8 = "tighten_" ->
             LL.Rextension("arith", s, [f x; f c], [f e], [[f (mk_bop (esub s 8) x c)]])
     | Ext("arith", "var", [e1;e2;e]) ->
@@ -739,12 +734,12 @@ let lltocoq oc r =
     if Log.get_debug () >= 0 then ll_p oc r;
     match r with
     | LL.Rextension("arith", "const", _, [e], _) ->
-            pr "arith_simpl %s.\n" (Coqterm.getname e)
+            pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
     | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
             pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
     | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) ->
-            pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | arith_simpl %s ].\n"
+            pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | exact %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
     | LL.Rextension("arith", "tighten_$lesseq", [x; c], [e], [[e']]) ->
             pr "pose proof (arith_tight_leq _ _ %s) as %s; unfold Qfloor, Zdiv in %s; simpl in %s.\n"

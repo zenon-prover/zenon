@@ -363,7 +363,7 @@ let p_rule oc r =
   | Rnotequal _ -> assert false
   | Rpnotp ((Eapp (Evar(f,_), args1, _) as ff), Enot ((Eapp (Evar(g,_), args2, _) as gg), _)) ->
      assert (f = g);
-     poc "cut (%a = %a).\n" p_expr ff p_expr gg;
+     poc "cut (%a <-> %a).\n" p_expr ff p_expr gg;
      poc "intro %s_pnotp.\n" Namespace.dummy_prefix;
      poc "apply %s.\n" (getname (enot gg));
      poc "rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
