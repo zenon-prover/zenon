@@ -185,7 +185,7 @@ let axiom_to_rwrt_term = [
 
 let is_commut_term body = 
   match body with 
-  | Eapp (Evar("B_equal_set", _), [t1; t2], _) -> 
+  | Eapp (Evar("b_equal_set", _), [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (Evar(sym1, _), [e11; e12], _), Eapp (Evar(sym2, _), [e21; e22], _) 
@@ -196,12 +196,50 @@ let is_commut_term body =
 	    -> true
       | _ -> false
     end 
+  | Eapp (Evar("=", _), [t1; t2], _) -> 
+     begin 
+      match t1, t2 with 
+      | Eapp (Evar(sym1, _), [e11; e12], _), Eapp (Evar(sym2, _), [e21; e22], _) 
+	  when 
+	    (sym1 = sym2) 
+	    && (Expr.equal e11 e22) 
+	    && (Expr.equal e12 e21)
+	    -> true
+      | _ -> false
+    end 
+  
   | _ -> false
 ;;
 
 let is_assoc_term body = 
   match body with 
-  | Eapp (Evar("B_equal_set", _), [t1; t2], _) -> 
+  | Eapp (Evar("b_equal_set", _), [t1; t2], _) -> 
+    begin 
+      match t1, t2 with 
+      | Eapp (Evar(sym11, _), [e11; Eapp (Evar(sym12, _), [e12; e13], _)], _),
+        Eapp (Evar(sym21, _), [Eapp (Evar(sym22, _), [e21; e22], _); e23], _)
+	  when 
+	    (sym11 = sym12)
+	    && (sym12 = sym21)
+	    && (sym21 = sym22)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e23)
+	    -> true
+      | Eapp (Evar(sym11, _), [Eapp (Evar(sym12, _), [e11; e12], _); e13], _),
+	Eapp (Evar(sym21, _), [e21; Eapp (Evar(sym22, _), [e22; e23], _)], _)
+	  when 
+	    (sym11 = sym12)
+	    && (sym12 = sym21)
+	    && (sym21 = sym22)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e23)
+	    -> true
+      | _ -> false
+    end
+
+  | Eapp (Evar("=", _), [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (Evar(sym11, _), [e11; Eapp (Evar(sym12, _), [e12; e13], _)], _),
@@ -231,7 +269,7 @@ let is_assoc_term body =
 
 let is_distrib_term body = 
   match body with 
-  | Eapp (Evar("B_equal_set", _), [t1; t2], _) -> 
+  | Eapp (Evar("b_equal_set", _), [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (Evar(sym11, _), [e11; Eapp (Evar(sym12, _), [e12; e13], _)], _),
@@ -260,6 +298,36 @@ let is_distrib_term body =
 	    -> true
       | _ -> false
     end
+| Eapp (Evar("=", _), [t1; t2], _) -> 
+    begin 
+      match t1, t2 with 
+      | Eapp (Evar(sym11, _), [e11; Eapp (Evar(sym12, _), [e12; e13], _)], _),
+        Eapp (Evar(sym21, _), [Eapp (Evar(sym22, _), [e21; e22], _); 
+			       Eapp (Evar(sym23, _), [e23; e24], _)], _)
+	  when
+	    (sym11 = sym22)
+	    && (sym22 = sym23)
+	    && (sym12 = sym21)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e21 e23)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e24)
+	    -> true
+      | Eapp (Evar(sym11, _), [Eapp (Evar(sym12, _), [e11; e12], _); e13], _),
+        Eapp (Evar(sym21, _), [Eapp (Evar(sym22, _), [e21; e22], _);
+			       Eapp (Evar(sym23, _), [e23; e24], _)], _)
+	  when
+	    (sym11 = sym22)
+	    && (sym22 = sym23)
+	    && (sym12 = sym21)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e23)
+	    && (Expr.equal e13 e22)
+	    && (Expr.equal e22 e24)
+	    -> true
+      | _ -> false
+    end
+  
   | _ -> false
 ;;
 
@@ -272,8 +340,10 @@ let rec test_fv l1 l2 =
 
 let is_literal_noteq body = 
   match body with 
-  | Eapp(Evar(sym, _), _, _) when sym <> "B_equal_set" -> true
-  | Enot(Eapp(Evar(sym, _), _, _), _) when sym <> "B_equal_set" -> true
+  | Eapp(Evar(sym, _), _, _) when (sym <> "b_equal_set"
+				   && sym <> "=") -> true
+  | Enot(Eapp(Evar(sym, _), _, _), _) when (sym <> "b_equal_set" 
+					    && sym <> "=")-> true
   | _ -> false
 ;;
 
@@ -294,7 +364,7 @@ let is_literal_eq body =
 
 let rec is_equal_term body = 
   match body with 
-  | Eapp (Evar("B_equal_set", _), [t1; t2], _) 
+  | Eapp (Evar("b_equal_set", _), [t1; t2], _) 
       when not (is_commut_term body) -> 
      begin 
        match t1, t2 with 
@@ -303,6 +373,16 @@ let rec is_equal_term body =
        | Evar (_, _) , _ -> test_fv (get_fv t2) (get_fv t1)
        | _, _ -> true
      end
+  | Eapp (Evar("=", _), [t1; t2], _) 
+       when not (is_commut_term body) -> 
+     begin 
+       match t1, t2 with 
+       | Evar (_, _), Evar(_, _) -> false
+       | _, Evar (_, _) -> test_fv (get_fv t1) (get_fv t2)
+       | Evar (_, _) , _ -> test_fv (get_fv t2) (get_fv t1)
+       | _, _ -> true
+     end
+  
   | _ -> false
 ;;
 

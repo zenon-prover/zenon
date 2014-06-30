@@ -208,6 +208,7 @@ let make_notequiv st sym (p, g) (np, ng) =
             if s1 =%= "=" then Arity_eq else Arity
           else Inst p
         in
+	print_endline "bug";
         add_node st {
           nconc = [p; np];
           nrule = myrule;
