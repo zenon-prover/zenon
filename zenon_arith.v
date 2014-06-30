@@ -28,14 +28,16 @@ unfold Qeq, Qnum, Qden in H; simpl in H. ring_simplify in H. exact H. Qed.
 
 Ltac z_to_q H := try (rewrite -> Zeq_qeq in H; repeat rewrite Qfrac_plus in H).
 
-Lemma qneg : forall a: Z, (-a # 1) == - (a # 1).
+Lemma qopp : forall a: Z, (-a # 1) == - (a # 1).
+Proof. intro. unfold Qopp, Qnum, Qden. apply eq_refl. Qed.
+Lemma qneg : forall a: positive, (Zneg a # 1) == - (Zpos a # 1).
 Proof. intro. unfold Qopp, Qnum, Qden. apply eq_refl. Qed.
 
 Ltac arith_norm :=
   try rewrite -> Zeq_qeq;
   repeat rewrite Qfrac_plus;
   repeat rewrite Qfrac_mult;
-  repeat rewrite (qneg 1);
+  repeat rewrite qopp;
   repeat rewrite qneg;
   match goal with    
   | |- ?a == ?b => rewrite <- (Qplus_inj_r _ _ (- b))
@@ -44,13 +46,13 @@ Ltac arith_norm :=
   end;
   ring_simplify;
   repeat rewrite Qzero;
-  repeat rewrite (qneg 1).
+  repeat rewrite qneg.
 
 Ltac arith_norm_in H :=
   try rewrite -> Zeq_qeq in H;
   repeat rewrite Qfrac_plus in H;
   repeat rewrite Qfrac_mult in H;
-  repeat rewrite (qneg 1) in H;
+  repeat rewrite qopp in H;
   repeat rewrite qneg in H;
   match type of H with
   | ?a == ?b => rewrite <- (Qplus_inj_r _ _ (- b)) in H
@@ -59,7 +61,7 @@ Ltac arith_norm_in H :=
   end;
   ring_simplify in H;
   repeat rewrite Qzero in H;
-  repeat rewrite (qneg 1) in H.
+  repeat rewrite qneg in H.
 
 Ltac arith_unfold :=
   unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv;
@@ -78,16 +80,17 @@ Ltac arith_unfold_in H :=
   try repeat rewrite Z.mul_1_r in H.
 
 Ltac arith_simpl k H :=
-  arith_norm_in H;
-  rewrite <- (Qmult_inj_r _ _ k) in H;
+  arith_norm; arith_norm_in H;
+  try (rewrite <- (Qmult_inj_r _ _ k) in H;
     [ idtac | arith_unfold; simpl; omega];
-  arith_norm; arith_norm_in H; match goal with
+    arith_norm_in H);
+  match goal with
   | H: ?e <= 0 |- ?f <= 0 =>
       let x := fresh in
       cut (e == f); [
         intro x; try rewrite <- x; exact H |
         repeat rewrite qneg; arith_norm; arith_unfold; omega ]
-  | H: ?e >= 0 |- ?f >= 0 =>
+  | H: ?e < 0 |- ?f < 0 =>
       let x := fresh in
       cut (e == f); [
         intro x; try rewrite <- x; exact H |
