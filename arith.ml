@@ -248,7 +248,7 @@ let rec coqify_aux b e =
     | Eapp (Evar("$product",_), [a; b], _) -> mul (aux a) (aux b)
     | Eapp (f, l, _) ->
             let e' = eapp (f, List.map coqify_term l) in
-            if b then mk_coq_q e' (const "1") else e'
+            if b && is_int e then mk_coq_q e' (const "1") else e'
     | _ -> e
 
 and coqify_term e =
@@ -261,11 +261,9 @@ and coqify_term e =
 
 and coqify_to_q e =
     if is_int e then
-        coqify_aux true e
-    else if is_rat e then
-        q_scope (coqify_aux true e)
+        mk_coq_q (coqify_term e) (const "1")
     else
-        assert false
+        coqify_term e
 
 
 and coqify_prop e = match e with

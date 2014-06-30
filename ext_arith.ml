@@ -740,9 +740,9 @@ let lltocoq oc r =
             (Coqterm.getname less) (Coqterm.getname greater)
             Lltocoq.pp_expr (coqify_to_q (norm_coef e)) (Coqterm.getname e)
     | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) ->
-            pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | z_to_q %s; exact %s ].\n"
+            pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | z_eq_q %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
-            (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e) (Coqterm.getname e)
+            (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
     | LL.Rextension("arith", "tighten_$lesseq", [x; c], [e], [[e']]) ->
             pr "pose proof (arith_tight_leq _ _ %s) as %s; unfold Qfloor, Zdiv in %s; simpl in %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
