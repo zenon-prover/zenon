@@ -10,6 +10,7 @@ Prerequisites:
   - Coq 8.0.x
   - ImageMagick (optional)
   - Ghostscript (optional)
+  - dedukti     (optional)
 
 
 Compile and install with:
@@ -24,4 +25,4 @@ If you specified an alternate libdir when configuring zenon, you will
 need to adjust this command accordingly.
 
 
-Contact: Damien Doligez <damien.doligez@inria.fr>
+Contact: Pierre Halmagrand <pierre.halmagrand@inria.fr>

@@ -65,6 +65,8 @@ type rule =
 
   | Ext of string * string * expr list
                                 (* ... [extension, rule, arguments]*)
+
+  | Root of expr
 ;;
 
 type proof = {

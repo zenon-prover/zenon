@@ -10,6 +10,7 @@ open Printf;;
 let ( =%= ) = ( = );;
 let ( = ) = Expr.equal;;
 
+
 type state = {
   queue : queue;
   (* forms : indexes of the current branch's formulas *)
@@ -1022,6 +1023,16 @@ let newnodes_extensions state fm g fms =
   (state2, stop)
 ;;
 
+let newnode_root st fm g _ = 
+    add_node st {
+      nconc = [fm];
+      nrule = Root fm;
+      nprio = Prop;
+      ngoal = g;
+      nbranches = [| [fm] |];
+    }, false
+;;
+
 let prove_rules = [
   newnodes_absurd;
   newnodes_closure;
@@ -1379,9 +1390,37 @@ let rec refute_aux prm stk st forms =
       Extension.add_formula fm;
       refute_aux prm stk (add_nodes prm.rules st fm g fms) fms
 
+and refute_aux_root prm stk st forms =
+  prm.progress ();
+  match forms with
+  | [] ->
+      if good_head st.queue then begin
+        match Index.search_proof () with
+        | Some p ->
+	  p.mlrefc <- p.mlrefc + 1; unwind prm stk (Closed p) 
+        | None -> 
+	  next_node prm stk st
+      end else begin
+        next_node prm stk st
+      end
+  | (Etrue, _) :: fms
+  | (Enot (Efalse, _), _) :: fms
+    -> refute_aux_root prm stk st fms
+  | (Eapp (s, [e1; e2], _), _) :: fms when Eqrel.refl s && Expr.equal e1 e2 -> refute_aux_root prm stk st fms
+  | (fm, g) :: fms ->
+
+      Index.add fm g;
+      Extension.add_formula fm;
+      let rules_root = newnode_root :: prm.rules in 
+      refute_aux_root prm stk (add_nodes rules_root st fm g fms) fms
+
 and refute prm stk st forms =
   Step.forms "refute" forms;
   refute_aux prm stk st forms
+
+and refute_root prm stk st forms =
+  Step.forms "refute_root" forms;
+  refute_aux_root prm stk st forms
 
 and next_node prm stk st =
   prm.progress ();
@@ -1389,16 +1428,30 @@ and next_node prm stk st =
   match remove st.queue with
   | None -> unwind prm stk (prm.fail ())
   | Some (n, q1) ->
+    begin
+      
+      (* begin of the rewrite on branches
+      *)
+      let size = Array.length n.nbranches in 
+      let new_branches = Array.make size [] in 
+      for i=0 to size-1
+      do
+	new_branches.(i) <- Rewrite.normalize_list n.nbranches.(i);
+      done;
+      let new_node = {nconc = n.nconc;
+		      nrule = n.nrule;
+		      nprio = n.nprio;
+		      ngoal = n.ngoal;
+		      nbranches = new_branches;} in 
+      (* end of rewrite
+      *)
       let st1 = {(*st with*) queue = q1} in
-      match reduce_branches n with
+      match reduce_branches new_node with
       | Some n1 ->
-(*
-          let (n2, brstate) = add_virtual_branch n1 in
-          next_branch stk n2 st1 brstate
-*)
-         let brstate = Array.make (Array.length n.nbranches) Open in
+         let brstate = Array.make (Array.length new_node.nbranches) Open in
          next_branch prm stk n1 st1 brstate
       | None -> next_node prm stk st1
+    end
 
 and next_branch prm stk n st brstate =
   Step.rule "next_branch" n.nrule;
@@ -1472,6 +1525,7 @@ let ticker finished () =
 let rec iter_refute prm rl acc =
   Log.debug 1 "============ Begin search ===========";
   match refute prm [] {queue = empty} rl with
+
   | Backtrack ->
       max_depth := 2 * !max_depth;
       Progress.do_progress begin fun () ->

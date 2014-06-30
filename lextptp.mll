@@ -76,6 +76,7 @@ rule token = parse
   | "$true"          { TRUE }
   | "$false"         { FALSE }
   | "$tType"         { TTYPE }
+  | "()"             { EMPTY }
   | "\'"             { single_quoted (Buffer.create 20) lexbuf }
   | "\""             { double_quoted (Buffer.create 20) lexbuf }
   | upperid idchar * { UIDENT (Lexing.lexeme lexbuf) }

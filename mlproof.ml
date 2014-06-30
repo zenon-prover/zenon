@@ -48,6 +48,8 @@ type rule =
   | Miniscope of expr * expr * expr list
 
   | Ext of string * string * expr list
+
+  | Root of expr
 ;;
 
 type proof = {

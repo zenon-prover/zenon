@@ -184,6 +184,8 @@ let tr_rule r =
      let h = enot (eapp (eeq, [e1; e2])) in
      LL.Rextension ("", "zenon_stringdiffrl", [e1; v1; e2; v2], [c1; c2], [[h]])
 
+  | Root (e) -> LL.Rroot (e)
+
   (* derived rules, handled by translate_derived: *)
   | ConjTree _
   | DisjTree _
@@ -305,6 +307,8 @@ let is_derived = function
   | Miniscope _ -> true
   | Ext ("", _, _) -> false
   | Ext _ -> true
+
+  | Root _ -> false
 ;;
 
 let remove f l = Expr.diff l [f];;
@@ -1051,6 +1055,7 @@ and translate_derived p =
   | Cut _
   | CongruenceLR _
   | CongruenceRL _
+  | Root _
     -> assert false
 
 and translate_pseudo_def p def_hyp s args folded unfolded =

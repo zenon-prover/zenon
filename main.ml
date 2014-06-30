@@ -5,6 +5,10 @@ open Printf;;
 
 open Globals;;
 open Namespace;;
+open Expr;;
+open Print;;
+open Mlproof;;
+open Phrase;;
 
 type proof_level =
   | Proof_none
@@ -16,7 +20,9 @@ type proof_level =
   | Proof_coqterm
   | Proof_isar
   | Proof_dot of bool * int
+  | Proof_dedukti
 ;;
+
 let proof_level = ref Proof_none;;
 let default_depth = 100;;
 
@@ -77,12 +83,12 @@ let parse_size_time s =
 ;;
 
 let short_version () =
-  printf "zenon version %s\n" Versionnum.full;
+  printf "zenon_modulo version %s\n" Versionnum.full;
   exit 0;
 ;;
 
 let cvs_version () =
-  printf "zenon version %s\n" Versionnum.full;
+  printf "zenon_modulo version %s\n" Versionnum.full;
   Version.print_cvs stdout;
   printf "source checksum: %s\n" Checksum.v;
   exit 0;
@@ -98,7 +104,7 @@ let set_random seed =
 
 let print_libdir () = Printf.printf "%s\n%!" Config.libdir; exit 0
 
-let usage_msg = "Usage: zenon [options] <file>";;
+let usage_msg = "Usage: zenon_modulo [options] <file>";;
 
 let argspec = [
   "-", Arg.Unit (fun () -> input_file "-"),
@@ -145,6 +151,8 @@ let argspec = [
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (5m)";
+  "-odedukti", Arg.Unit (fun () -> proof_level := Proof_dedukti; opt_level := 0),
+            "          print the proof in Dedukti script format";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "              print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
@@ -202,7 +210,13 @@ let argspec = [
   "-wout", Arg.Set_string Error.err_file,
         "<file>        output errors and warnings to <file> instead of stderr";
   "-x", Arg.String Extension.activate,
-     "<ext>            activate extension <ext>"
+     "<ext>            activate extension <ext>";
+  "-rwrt", Arg.Set build_rwrt_sys,
+     "             build automatically the rewrite system";
+  "-b-rwrt", Arg.Set build_rwrt_sys_B,
+     "             build automatically the rewrite system for B";
+  "-dbg-rwrt", Arg.Set debug_rwrt,
+     "             debug mode for rewriting"
 ];;
 
 let print_usage () =
@@ -342,6 +356,13 @@ let main () =
     let phrases = List.map fst phrases_dep in
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
+    Phrase.parse_rwrt ppphrases;
+    if !Globals.debug_rwrt
+    then 
+      begin 
+	Print.print_tbl_term (Print.Chan stdout) !tbl_term;
+	Print.print_tbl_prop (Print.Chan stdout) !tbl_prop;
+      end;
     let (defs, hyps) = Phrase.separate (Extension.predef ()) ppphrases in
     List.iter (fun (fm, _) -> Eqrel.analyse fm) hyps;
     let hyps = List.filter (fun (fm, _) -> not (Eqrel.subsumed fm)) hyps in
@@ -398,6 +419,10 @@ let main () =
         Watch.warn phrases_dep llp u;
     | Proof_dot (b, n) ->
         Print.dots ~full_output:b ~max_depth:n (Print.Chan stdout) (List.rev proofs);
+    | Proof_dedukti -> 
+      begin 
+	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp);
+      end
     end;
   with
   | Prove.NoProof ->

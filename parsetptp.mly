@@ -71,6 +71,7 @@ let cnf_to_formula l =
 %token NOR
 %token NAND
 %token <string> ANNOT
+%token EMPTY
 
 %nonassoc OPEN
 %nonassoc ALL EXISTS
@@ -115,7 +116,10 @@ expr:
   | RAT                                { eapp (evar "$rat", [evar $1]) }
   | REAL                               { eapp (evar "$real", [evar $1]) }
   | expr EQSYM expr                    { eapp (eeq, [$1; $3]) }
-  | expr NEQSYM expr                   { enot (eapp (eeq, [$1; $3])) }
+  | expr NEQSYM expr                   { enot (eapp (eeq, [$1; $3])) } 
+  | LIDENT EMPTY                       { eapp (evar @@ ns_fun $1, []) }
+ /* | expr EQSYM expr                    { eapp (evar "B_equal_set", [$1; $3]) }
+  | expr NEQSYM expr                   { enot (eapp (evar "B_equal_set", [$1; $3])) }*/
 ;
 arguments:
   | OPEN expr_list CLOSE         { $2 }

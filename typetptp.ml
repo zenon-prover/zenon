@@ -182,40 +182,44 @@ let rec type_tff_app env is_pred e = match e with
     | Eapp(Evar("$real", _), [], _) -> tvar "Real" type_type, env
     (* Term typechecking *)
     | Eapp(Evar("$int", _), [Evar (v, _)], _) ->
-            mk_int v, env
+       mk_int v, env
     | Eapp(Evar("$rat", _), [Evar (v, _)], _) ->
-            mk_rat v, env
+       mk_rat v, env
     | Eapp(Evar("$real", _), [Evar (v, _)], _) ->
-            mk_real v, env
+       mk_real v, env
     | Eapp(Evar("=", _), [a; b], _) ->
-            let a', env' = type_tff_term env a in
-            let b', env'' = type_tff_term env' b in
-            mk_equal a' b', env''
+       let a', env' = type_tff_term env a in
+       let b', env'' = type_tff_term env' b in
+       mk_equal a' b', env''
+    | Eapp(Evar("B_equal_set", _), [a; b], _) ->
+       let a', env' = type_tff_term env a in
+       let b', env'' = type_tff_term env' b in
+       mk_equal a' b', env''
     | Eapp(Evar(s, _) as s', args, _) ->
-            let args, env' = map_fold type_tff_term env args in
-            let f, env'' = match get_type s' with
-                | Some t -> s', env'
-                | None when tff_mem s env ->
-                        let t = tff_app s args env in
-                        tvar s t, env'
-                | None ->
-                        let ret = if is_pred then type_bool else type_tff_i in
-                        let t = mk_arrow (const_list (List.length args) type_tff_i) ret in
-                        tvar s t, (tff_add_type s t env')
-            in
-            begin try
-                eapp (f, args), env''
-            with
-            | Not_enough_args
-            | Mismatch _
-            | Function_expected ->
-                    raise (Type_error (Printf.sprintf "Inferred type for %s '%s' not valid."
-                        (if is_pred then "predicate" else "function") s))
-            end
+       let args, env' = map_fold type_tff_term env args in
+       let f, env'' = match get_type s' with
+         | Some t -> s', env'
+         | None when tff_mem s env ->
+            let t = tff_app s args env in
+            tvar s t, env'
+         | None ->
+            let ret = if is_pred then type_bool else type_tff_i in
+            let t = mk_arrow (const_list (List.length args) type_tff_i) ret in
+            tvar s t, (tff_add_type s t env')
+       in
+       begin try
+           eapp (f, args), env''
+         with
+         | Not_enough_args
+         | Mismatch _
+         | Function_expected ->
+            raise (Type_error (Printf.sprintf "Inferred type for %s '%s' not valid."
+					      (if is_pred then "predicate" else "function") s))
+       end
     | Eapp(_) ->
-            raise (Type_error (Printf.sprintf "Expected a symbol function, not an expression."))
+       raise (Type_error (Printf.sprintf "Expected a symbol function, not an expression."))
     | _ -> assert false
-
+		  
 and type_tff_prop env e = match e with
     (* Proposition typechecking *)
     | Evar(v, _) -> type_tff_var env e

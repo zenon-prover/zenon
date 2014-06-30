@@ -2,7 +2,7 @@
 
 #  Copyright 2004 INRIA
 
-# Configuration script for Zenon
+# Configuration script for Zenon Modulo
 
 # Default settings
 
@@ -139,5 +139,5 @@ ${MAKE:-make} depend
 
 # Show the configuration to the user
 
-echo "Configuration summary for zenon:"
+echo "Configuration summary for zenon_modulo:"
 cat .config_var

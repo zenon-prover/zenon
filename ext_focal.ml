@@ -685,6 +685,7 @@ let preprocess l =
     | Def (DefPseudo _) -> assert false
     | Sig _ -> x
     | Inductive _ -> x
+    | Rew _ -> x
   in
   built_in_defs @ List.map f l
 ;;
@@ -777,6 +778,7 @@ and process_rule r =
       Rextension (e, s, List.map process_expr el1, List.map process_expr el2,
                   List.map (List.map process_expr) ell)
   | Rlemma (_, _) -> r
+  | Rroot (e) -> Rroot (process_expr e)
 ;;
 
 let process_lemma l = { l with

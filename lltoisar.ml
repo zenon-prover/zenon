@@ -794,6 +794,7 @@ let rec p_tree hyps i dict oc proof =
      iprintf i oc "by (rule ssubst [where P=\"%a\", OF %s %s])\n"
              (p_expr dict2) p (hname hyps h0) (hname hyps h1);
      p_tree hyps i dict2 oc t;
+  | Rroot _ -> assert false;
 
 and p_alpha hyps i dict oc lem h0 hs sub =
   let t = match sub with [t] -> t | _ -> assert false in
@@ -1041,6 +1042,7 @@ let output oc phrases ppphrases llp =
       | Phrase.Sig _ -> failwith "signatures not implemented in isar output"
       | Phrase.Inductive _ ->
          failwith "inductives not implemented in isar output"
+      | Phrase.Rew _ -> assert false
     in
     List.iter f phrases;
     fprintf oc "theorem zenon_tmp_thm:\n";
