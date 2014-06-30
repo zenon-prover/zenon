@@ -6,60 +6,98 @@ Require Export ZArith.BinInt.
 Require Export QArith.
 Require Export QArith.Qround.
 
+Lemma Qzero : forall a: positive, 0 # a == 0.
+Proof. intros. unfold Qeq. simpl. apply eq_refl. Qed.
+
 Lemma Zplus_inj_r : forall a b c: Z, (a + c = b + c <-> a = b)%Z.
 Proof.
 intros. split; intros.
 rewrite (Z.add_comm a c) in H. rewrite (Z.add_comm b c) in H. apply (Z.add_reg_l c _ _). exact H.
 rewrite H. apply eq_refl.
 Qed. 
-(*
-Lemma Zplus_neg_inj_r : forall a b c: Z, (a + c <> b + c <-> a <> b)%Z.
-Proof. intros. rewrite Zplus_inj_r. split; intros; trivial. Qed.
 
-Lemma Qplus_neg_inj_r : forall a b c: Q, ~ (a + c == b + c) <-> ~ a == b.
-Proof. intros. rewrite Qplus_inj_r. split; intros; trivial. Qed.
-*)
-Lemma Qfrac_1 : forall a b: Z, (a + b)%Z # 1 == (a # 1) + (b # 1).
-Proof. intros. field_simplify. unfold Qeq, Qnum, Qden. simpl. ring. Qed.
+Lemma Qfrac_plus : forall a b: Z, (a + b)%Z # 1 == (a # 1) + (b # 1).
+Proof. intros. unfold Qeq, Qnum, Qden. simpl. ring. Qed.
+
+Lemma Qfrac_mult : forall a b: Z, (a * b)%Z # 1 == (a # 1) * (b # 1).
+Proof. intros. unfold Qeq, Qnum, Qden. simpl. ring. Qed.
 
 Lemma Zeq_qeq : forall a b: Z, a = b <-> a # 1 == b # 1.
 Proof. intros. split; intros. rewrite H; apply Qeq_refl.
 unfold Qeq, Qnum, Qden in H; simpl in H. ring_simplify in H. exact H. Qed.
 
+Ltac z_to_q H := try (rewrite -> Zeq_qeq in H; repeat rewrite Qfrac_plus in H).
+
+Lemma qneg : forall a: Z, (-a # 1) == - (a # 1).
+Proof. intro. unfold Qopp, Qnum, Qden. apply eq_refl. Qed.
+
 Ltac arith_norm :=
-  try (rewrite -> Zeq_qeq; repeat rewrite Qfrac_1);
+  try rewrite -> Zeq_qeq;
+  repeat rewrite Qfrac_plus;
+  repeat rewrite Qfrac_mult;
+  repeat rewrite (qneg 1);
+  repeat rewrite qneg;
   match goal with    
   | |- ?a == ?b => rewrite <- (Qplus_inj_r _ _ (- b))
   | |- ?a <= ?b => rewrite <- (Qplus_le_l _ _ (- b))
   | |- ?a <  ?b => rewrite <- (Qplus_lt_l _ _ (- b))
   end;
-  ring_simplify.
+  ring_simplify;
+  repeat rewrite Qzero;
+  repeat rewrite (qneg 1).
 
 Ltac arith_norm_in H :=
-  try (rewrite -> Zeq_qeq in H; repeat rewrite Qfrac_1 in H);
+  try rewrite -> Zeq_qeq in H;
+  repeat rewrite Qfrac_plus in H;
+  repeat rewrite Qfrac_mult in H;
+  repeat rewrite (qneg 1) in H;
+  repeat rewrite qneg in H;
   match type of H with
   | ?a == ?b => rewrite <- (Qplus_inj_r _ _ (- b)) in H
   | ?a <= ?b => rewrite <- (Qplus_le_l _ _ (- b)) in H
   | ?a <  ?b => rewrite <- (Qplus_lt_l _ _ (- b)) in H
   end;
-  ring_simplify in H.
+  ring_simplify in H;
+  repeat rewrite Qzero in H;
+  repeat rewrite (qneg 1) in H.
 
-Ltac arith_simpl H := arith_norm; arith_norm_in H; exact H.
+Ltac arith_unfold :=
+  unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv;
+  try repeat rewrite Qmult_1_l;
+  try repeat rewrite Qmult_1_r;
+  unfold Qnum, Qden;
+  try repeat rewrite Z.mul_1_l;
+  try repeat rewrite Z.mul_1_r.
 
-(*
-Parameter a : Z.
-Lemma test : (10 # 2) + (a # 1) == 0.
-Proof.
-arith_norm.
-rewrite <- (Qred_correct (a # 1)).
+Ltac arith_unfold_in H :=
+  unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv in H;
+  try repeat rewrite Qmult_1_l in H;
+  try repeat rewrite Qmult_1_r in H;
+  unfold Qnum, Qden in H;
+  try repeat rewrite Z.mul_1_l in H;
+  try repeat rewrite Z.mul_1_r in H.
 
-
-Ltac arith_red e :=
-  match e with
-  | (?a * ?b) + ?c => 
-  | ?a + ?b
-
-*)
+Ltac arith_simpl k H :=
+  arith_norm_in H;
+  rewrite <- (Qmult_inj_r _ _ k) in H;
+    [ idtac | arith_unfold; simpl; omega];
+  arith_norm; arith_norm_in H; match goal with
+  | H: ?e <= 0 |- ?f <= 0 =>
+      let x := fresh in
+      cut (e == f); [
+        intro x; try rewrite <- x; exact H |
+        repeat rewrite qneg; arith_norm; arith_unfold; omega ]
+  | H: ?e >= 0 |- ?f >= 0 =>
+      let x := fresh in
+      cut (e == f); [
+        intro x; try rewrite <- x; exact H |
+        repeat rewrite qneg; arith_norm; arith_unfold; omega ]
+  | H: ?e == 0 |- ?f == 0 =>
+      let x := fresh in
+      cut (e == f); [
+        intro x; try rewrite <- x; exact H |
+        repeat rewrite qneg; arith_norm; arith_unfold; omega ]
+  end.
 
 Lemma arith_opp_inv : forall (a: Z) (b: positive), - (- a # b) == a # b.
 Proof. intros. unfold Qeq, Qnum, Qden. simpl. rewrite Z.opp_involutive. trivial. Qed.
@@ -86,32 +124,17 @@ Ltac arith_trans_aux lower upper new :=
     let Arith_tmp_l := fresh in arith_switch lower Arith_tmp_l; arith_q_trans Arith_tmp_l upper new |
     let Arith_tmp_u := fresh in arith_switch upper Arith_tmp_u; arith_q_trans lower Arith_tmp_u new |
     let Arith_tmp_l := fresh in let Arith_tmp_u := fresh in
-    arith_switch lower Arith_tmp_l; arith_switch upper Arith_tmp_u; arith_q_trans Arith_tmp_l Arith_tmp_u new].
+    arith_switch lower Arith_tmp_l; arith_switch upper Arith_tmp_u;
+    arith_q_trans Arith_tmp_l Arith_tmp_u new].
 
 Ltac arith_trans A B C := first [ arith_trans_aux A B C | arith_trans_aux B A C ].
-
-Ltac arith_trans_simpl A B := let C := fresh in arith_trans A B C; arith_simpl C.
-
-Ltac arith_unfold :=
-  unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv;
-  try repeat rewrite Qmult_1_l;
-  try repeat rewrite Qmult_1_r;
-  unfold Qnum, Qden;
-  try repeat rewrite Z.mul_1_l;
-  try repeat rewrite Z.mul_1_r.
-
-Ltac arith_unfold_in H :=
-  unfold Qplus, Qminus, Qmult, Qeq, Qle, Qlt, Zdiv in H;
-  try repeat rewrite Qmult_1_l in H;
-  try repeat rewrite Qmult_1_r in H;
-  unfold Qnum, Qden in H;
-  try repeat rewrite Z.mul_1_l in H;
-  try repeat rewrite Z.mul_1_r in H.
 
 Ltac arith_omega H :=
   try rewrite H; try rewrite <- H;
   arith_unfold; arith_unfold_in H;
   first [ omega | simpl; simpl in H; omega ].
+
+Ltac arith_trans_simpl A B := let C := fresh in arith_trans A B C; arith_omega C.
 
 Lemma arith_refut : forall P Q: Prop, (P -> Q) -> (Q -> False) -> (P -> False).
 Proof. intro P. intro Q. intro Hyp. intro notQ. intro p. exact (notQ (Hyp p)). Qed.

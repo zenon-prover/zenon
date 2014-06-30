@@ -69,6 +69,7 @@ val to_nexpr : (Q.t * Expr.expr) list -> Expr.expr
 val to_bexpr : (Q.t * Expr.expr) list * string * Q.t -> Expr.expr
 
 val expr_norm : Expr.expr -> Expr.expr
+val norm_coef : Expr.expr -> Expr.expr
 
 val coqify : Expr.expr -> Expr.expr
 val coqify_term : Expr.expr -> Expr.expr
