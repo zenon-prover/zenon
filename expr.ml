@@ -138,19 +138,83 @@ let get_name = function
     | _ -> assert false
 ;;
 
-let rec type_of_expr = function
-    | Evar(s, _) -> atomic s
-    | Etau(Evar(s, _), _, _, _) -> atomic ("tau_" ^ s)
-    | Emeta(Eall(Evar(s, _), _, _, _), _)
-    | Emeta(Eex(Evar(s, _), _, _, _), _) -> atomic ("meta_" ^ s)
-    | Eapp(Evar("!>",_), t :: l, _) ->
-            mk_poly (List.map get_name l) (type_of_expr t)
-    | Eapp(Evar("->",_), ret :: args, _) ->
-            mk_arrow (List.map type_of_expr args) (type_of_expr ret)
-    | Eapp(Evar(constr, _), args, _) ->
-            mk_constr constr (List.map type_of_expr args)
-    | _ -> assert false
+let tcursym = ref type_prefix;;
 
+let rec incr_tsym n =
+  if n >= String.length !tcursym
+  then tcursym := !tcursym ^ "a"
+  else match !tcursym.[n] with
+  | 'z' -> !tcursym.[n] <- 'a'; incr_tsym (n+1)
+  | c -> !tcursym.[n] <- Char.chr (1 + Char.code c)
+;;
+
+let newtname () =
+  incr_tsym (String.length type_prefix);
+  String.copy !tcursym
+;;
+
+let texpr_str = Hashtbl.create 42;;
+let texpr_exp = Hashtbl.create 42;;
+
+let add_texpr s e = 
+  assert (not (Hashtbl.mem texpr_exp s)
+	  && not (Hashtbl.mem texpr_str e));
+  Hashtbl.add texpr_exp s e;
+  Hashtbl.add texpr_str e s;
+;;
+
+let get_texpr_exp s = 
+  Hashtbl.find texpr_exp s
+;;
+
+let get_texpr_str e = 
+  Hashtbl.find texpr_str e
+;;
+
+let is_texpr_key_exp s = 
+  Hashtbl.mem texpr_exp s
+;;
+
+let is_texpr_key_str e = 
+  Hashtbl.mem texpr_str e
+;;
+
+let is_texpr_key s e = 
+  (Hashtbl.mem texpr_exp s)
+  && (Hashtbl.mem texpr_str e)
+;;
+
+let rec type_of_expr e = 
+  match e with 
+  | Evar(s, _) -> 
+     if (is_texpr_key_str e) 
+     then atomic (get_texpr_str e)
+     else (let ns = newtname () in
+	   add_texpr ns e;
+	   atomic ns)
+  | Etau(Evar(s, _), _, _, _) -> 
+     if (is_texpr_key_str e) 
+     then atomic (get_texpr_str e)
+     else (let ns = newtname () in 
+	   let ns = "tau_" ^ ns in 
+	   add_texpr ns e;
+	   atomic ns)
+  | Emeta(Eall(Evar(s, _), _, _, _), _)
+  | Emeta(Eex(Evar(s, _), _, _, _), _) -> 
+     if (is_texpr_key_str e) 
+     then atomic (get_texpr_str e)
+     else (let ns = newtname () in 
+	   let ns = "meta_" ^ ns in 
+	   add_texpr ns e;
+	   atomic ns)
+  | Eapp(Evar("!>",_), t :: l, _) ->
+     mk_poly (List.map get_name l) (type_of_expr t)
+  | Eapp(Evar("->",_), ret :: args, _) ->
+     mk_arrow (List.map type_of_expr args) (type_of_expr ret)
+  | Eapp(Evar(constr, _), args, _) ->
+     mk_constr constr (List.map type_of_expr args)
+  | _ -> assert false
+		
 let rec str_union l1 l2 =
   match l1, l2 with
   | [], _ -> l2
@@ -485,6 +549,7 @@ let newname () =
 ;;
 
 let newvar () = evar (newname ());;
+let newtvar t = tvar (newname ()) t;;
 
 let rec rm_binding v map =
   match map with

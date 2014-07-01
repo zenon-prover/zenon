@@ -72,3 +72,7 @@ val get_formula : int -> expr (* raises Not_found *);;
 (* ==== numbering for tau-expressions ==== *)
 
 val make_tau_name : expr -> string;;
+
+val add_type_tbl : string -> expr -> unit;;
+val get_type_tbl : string -> expr;;
+val is_type_tbl_key : string -> bool;;

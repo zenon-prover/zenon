@@ -42,7 +42,9 @@ val ksplit : int -> 'a list -> 'a list * 'a list
 val find2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> 'a * 'b
 
 
-val unif_type : t -> t -> (t * t) list
+val unif_types : t -> t -> (t * t) list
 
-exception Unif_base_type_failed
+exception Unif_type_failed
 
+val extract_ttype_name : t -> string
+val extract_ttype : t -> t

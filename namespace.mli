@@ -19,3 +19,5 @@ val univ_name : string;;      (* the 1st-order universe *)
 val thm_default_name : string;; (* default name of the theorem *)
 
 val tuple_name : string;;     (* built-in constructor for tuples *)
+
+val type_prefix : string;;

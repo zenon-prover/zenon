@@ -228,26 +228,51 @@ let rec assoc x l =
   | (a, b) :: l -> if compare a x = 0 then b else assoc x l
 ;;
 
-exception Unif_base_type_failed;;
+exception Unif_type_failed;;
 
-let rec unif_base_type_aux l t1 t2 = 
+let rec unif_base_types_aux l t1 t2 = 
   match t1, t2 with 
   | Bool, Bool -> l
-  | Bool, _ -> raise Unif_base_type_failed
-  | Ttype, _ -> 
-     if not (mem_assoc (base t1) l) then (base t1, base t2) :: l
-     else if (equal (assoc (base t1) l) (base t2)) then l 
-     else raise Unif_base_type_failed
+  | Bool, _ -> raise Unif_type_failed
   | App (s1, args1), App (s2, args2) when s1 = s2 -> 
      (try 
-	 List.fold_left2 unif_base_type_aux l args1 args2
+	 List.fold_left2 unif_base_types_aux l args1 args2
        with 
-       | Invalid_argument _ -> raise Unif_base_type_failed)
+       | Invalid_argument _ -> raise Unif_type_failed)
+  | App (s1, []), _ -> 
+     if not (mem_assoc (base t1) l) then (base t1, base t2) :: l
+     else if (equal (assoc (base t1) l) (base t2)) then l 
+     else raise Unif_type_failed
+  | App (s1, args1), App (s2, args2) when s1 = s2 -> 
+     (try 
+	 List.fold_left2 unif_base_types_aux l args1 args2
+       with 
+       | Invalid_argument _ -> raise Unif_type_failed)
   | _, _ -> assert false
 ;;
 
-let unif_type t1 t2 = 
+let unif_types t1 t2 = 
   match t1, t2 with 
-  | ([], b1), ([], b2) -> unif_base_type_aux [] b1 b2
+  | ([], b1), ([], b2) -> unif_base_types_aux [] b1 b2
   | _, _ -> assert false
+;;
+
+let rec extract_ttype_aux b = 
+  match b with 
+  | App (s, []) -> base b
+  | App (s, h :: l) -> extract_ttype_aux h
+  | Ttype -> base Ttype 
+  | _ -> assert false
+;;
+  
+let extract_ttype_name t = 
+  match t with
+  | [], b -> to_string (extract_ttype_aux b)
+  | _ -> assert false
+;;
+
+let extract_ttype t = 
+  match t with
+  | [], b ->  extract_ttype_aux b
+  | _ -> assert false
 ;;

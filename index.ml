@@ -523,3 +523,18 @@ let make_tau_name p =
      Printf.sprintf "%s%s_%s" Namespace.tau_prefix v (base26 (get_number p))
   | _ -> assert false
 ;;
+
+let tbl_types = ref (Hashtbl.create 42);;
+
+let add_type_tbl s m =
+  Hashtbl.add !tbl_types s m
+;;
+
+let get_type_tbl s = 
+  Hashtbl.find !tbl_types s
+;;
+
+let is_type_tbl_key s = 
+  Hashtbl.mem !tbl_types s 
+;;
+

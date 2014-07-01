@@ -85,6 +85,128 @@ let rec pure_meta l =
 
 (****************)
 
+exception Not_typed;;
+
+let type_of e = 
+  match (get_type e) with 
+  | Some te -> te 
+  | None -> raise Not_typed
+;;
+
+let rec printer e = 
+  match e with 
+  | Emeta (f,  _) 
+    ->
+     print_endline "  >> META ";
+     Print.expr_soft (Print.Chan stdout) e;
+     print_endline " formula >>> ";
+     printer f;
+     print_endline " -- -- -- ";
+  | _ 
+    -> Print.expr_soft (Print.Chan stdout) e
+;;
+
+let rec print_type e = 
+  print_endline "";
+  match e with 
+  | Eapp (s, args, _) -> List.iter print_type args
+  | Enot (Eapp (s, args, _), _) -> List.iter print_type args
+  | Etau (v, t, f, _) -> 
+     print_string (" TAU : type of ");
+     printer e;
+     print_string (" is => ");
+     print_endline "";
+     print_string ("TYPE = " ^ (Type.to_string t));
+     print_endline "";
+  | Emeta (Eall (v, t, f, _), _) -> 
+     print_string (" META all : type of ");
+     printer e;
+     print_string (" is => ");
+     print_endline "";
+     print_string ("TYPE = " ^ (Type.to_string t));
+     print_endline "";
+  | Emeta (Eex (v, t, f, _), _) -> 
+     print_string (" META ex : type of ");
+     printer e;
+     print_string (" is => ");
+     print_endline "";
+     print_string ("TYPE = " ^ (Type.to_string t));
+     print_endline "";
+  | _ ->      
+     match (get_type e) with
+     | Some t -> print_string (" type of ");
+		 printer e;
+		 print_string (" is => ");
+		 print_endline "";
+		 print_string ("TYPE = " ^ (Type.to_string t));
+		 print_endline "";
+     | _ -> print_string " ~ no type ~ ";
+;;
+
+let same_types x y = 
+  match (get_type x), (get_type y) with 
+  | None, None -> raise Not_typed
+  | Some tx, Some ty -> 
+     (match x, y with 
+      | Eapp (Evar ("=", _), [a; b], _), 
+	Enot (Eapp (Evar (s, _), [c; d], _), _) ->
+	 ((Type.equal (type_of a) (type_of c)) 
+	  && (Type.equal (type_of b) (type_of d)))
+	 || ((Type.equal (type_of a) (type_of d)) 
+	     && (Type.equal (type_of b) (type_of c)))
+      | Enot (Eapp (Evar ("=", _), [a; b], _), _), 
+	Eapp (Evar (s, _), [c; d], _) ->
+	 ((Type.equal (type_of a) (type_of c)) 
+	  && (Type.equal (type_of b) (type_of d)))
+	 || ((Type.equal (type_of a) (type_of d)) 
+	     && (Type.equal (type_of b) (type_of c)))
+      | Eapp (s1, args1, _), 
+	Enot (Eapp (s2, args2, _), _) -> 
+	 (Type.equal (type_of s1) (type_of s2)) 
+	 && (List.for_all2 Type.equal 
+			   (List.map type_of args1) 
+			   (List.map type_of args2))
+      | Enot (Eapp (s1, args1, _), _), 
+	Eapp (s2, args2, _) -> 
+	 (Type.equal (type_of s1) (type_of s2)) 
+	 && (List.for_all2 Type.equal 
+			   (List.map type_of args1) 
+			   (List.map type_of args2))
+      | _, _ -> assert false)
+  | _, _ -> assert false
+;;
+
+let has_meta_type x = 
+  match x with 
+  | Eapp (Evar ("=", _), [a; b], _) -> 
+     let (ta, tb) = (type_of a, type_of b) in 
+     let (ka, kb) = (Type.extract_ttype_name ta, Type.extract_ttype_name tb) in 
+     if (Index.is_type_tbl_key ka)
+     then is_meta (Index.get_type_tbl ka)
+     else if (Index.is_type_tbl_key kb)
+     then is_meta (Index.get_type_tbl kb)
+     else false 
+  | Enot (Eapp (Evar ("=", _), [a; b], _), _) -> 
+     let (ta, tb) = (type_of a, type_of b) in 
+     let (ka, kb) = (Type.extract_ttype_name ta, Type.extract_ttype_name tb) in 
+     if (Index.is_type_tbl_key ka)
+     then is_meta (Index.get_type_tbl ka)
+     else if (Index.is_type_tbl_key kb)
+     then is_meta (Index.get_type_tbl kb)
+     else false 
+  | Eapp (s, args, _) -> 
+     let targs = fst (Type.ksplit (Type.nbind (type_of s)) args) in 
+     List.exists is_meta targs
+  | Enot (Eapp (s, args, _), _) -> 
+     let targs = fst (Type.ksplit (Type.nbind (type_of s)) args) in 
+     List.exists is_meta targs
+  | _ -> assert false
+;;
+  
+  
+
+(****************)
+
 let add_node st n =
   Log.debug 3 "--> %a" Print.pp_mlrule n.nrule;
   { (*st with*) queue = insert st.queue n }
@@ -193,33 +315,83 @@ let make_notequiv st sym (p, g) (np, ng) =
     -> st
   | Eapp (Evar("Is_true",_), _, _), _ when Extension.is_active "focal" -> st
   | Eapp (Evar(s1,_) as s1', args1, _), Enot (Eapp (Evar(s2,_) as s2', args2, _), _) ->
-      assert (s1 =%= s2);
-      if compare_type s1' s2' <> 0 then st
-      else if sym && List.length args2 != 2
-         || List.length args1 <> List.length args2
-      then (arity_warning s1; st)
-      else if Extension.is_active "induct"
-              && List.exists2 constructor_mismatch args1 args2 then st
-      else begin
-        let myrule = if sym then P_NotP_sym (s1', p, np) else P_NotP (p, np) in
-        let myargs1 = if sym then List.rev args1 else args1 in
-        let prio =
-          if good_match args1 args2 then
-            if s1 =%= "=" then Arity_eq else Arity
-          else Inst p
-        in
-	print_endline "bug";
-        add_node st {
-          nconc = [p; np];
-          nrule = myrule;
-          nprio = prio;
-          ngoal = min g ng;
-          nbranches = make_inequals myargs1 args2;
-        }
-      end
+     assert (s1 =%= s2);
+     if compare_type s1' s2' <> 0 then st
+     else if sym && List.length args2 != 2
+             || List.length args1 <> List.length args2
+     then (arity_warning s1; st)
+     else if Extension.is_active "induct"
+             && List.exists2 constructor_mismatch args1 args2 then st
+     else if (same_types p np)
+     then
+       begin
+	 let args1 = snd (Type.ksplit (Type.nbind (type_of s1')) args1) in 
+	 let args2 = snd (Type.ksplit (Type.nbind (type_of s2')) args2) in 
+	 assert ((List.length args1) =%= (List.length args2));
+         let myrule = if sym then P_NotP_sym (s1', p, np) else P_NotP (p, np) in
+         let myargs1 = if sym then List.rev args1 else args1 in
+         let prio =
+           if good_match args1 args2 then
+             if s1 =%= "=" then Arity_eq else Arity
+           else Inst p
+         in
+         add_node st {
+		    nconc = [p; np];
+		    nrule = myrule;
+		    nprio = prio;
+		    ngoal = min g ng;
+		    nbranches = make_inequals myargs1 args2;
+		  }
+       end
+     else if ((has_meta_type p) || (has_meta_type np))
+     then
+       begin	
+	 try
+	   let targs1 = 
+	     List.map type_of (fst (Type.ksplit 
+				      (Type.nbind (type_of s1')) args1))
+	   in
+	   let targs2 = 
+	     List.map type_of (fst (Type.ksplit 
+				      (Type.nbind (type_of s2')) args2))
+	   in
+	   assert ((List.length targs1) =%= (List.length targs2));
+	   let subst = List.map2 Type.unif_types targs1 targs2 in
+	   let rec merge_sub l accu = 
+	     match l with 
+	     | [] -> accu
+	     | h :: t -> merge_sub t (List.append h accu)
+	   in
+	   let subst = merge_sub subst [] in 
+	   if ((List.length subst) =%= 0) 
+	   then raise Type.Unif_type_failed
+	   else
+	     (let print_subst (a, b) = 
+		print_string (" ( " 
+			      ^ (Type.to_string a) 
+			      ^ " , " 
+			      ^ (Type.to_string b)
+			      ^ " ) ; ");
+	      in
+	      print_endline "";
+	      print_endline " P ";
+	      print_type p;
+	      print_endline "";
+	      print_endline " NP";
+	      print_type np;
+	      print_endline "";
+	      print_endline " SUBST ";
+	      print_endline "";
+	      List.iter print_subst subst;
+	      print_endline "";
+	      st)
+	 with 
+	 | Type.Unif_type_failed _ -> st
+       end
+     else st
   | _ -> assert false
 ;;
-
+		
 (* [is_conj f m]:
    f is a n-ary conjunctive formula
    return 0 if n >= m; return m-n otherwise
@@ -510,7 +682,7 @@ let interferes env vs =
 
 let has_free_var v e = List.mem v (get_fv e);;
 
-let newnodes_delta st fm g _ =
+(* let newnodes_delta st fm g _ =
   match fm with
   | Eex (v, t, p, _) ->
      let h = substitute [(v, etau (v, t, p))] p in
@@ -532,9 +704,76 @@ let newnodes_delta st fm g _ =
        nbranches = [| [h1; h2] |];
      }, true
   | _ -> st, false
+;; *)
+
+let newnodes_delta st fm g _ =
+  match fm with
+  | Eex (v, t, p, _) ->
+     if (Type.equal t Type.type_type)
+     then
+       begin
+	 let nv = Expr.newtvar t in
+	 let np = Expr.substitute [(v, nv)] p in
+	 let nfm = eex (nv, t, np) in
+	 let w = etau (nv, t, np) in
+	 let key = Type.to_string (Expr.type_of_expr w) in 
+	 if not(Index.is_type_tbl_key key)
+	 then Index.add_type_tbl key w
+	 else assert false;
+	 let h = substitute [(nv, w)] np in
+	 add_node st {
+		    nconc = [nfm];
+		    nrule = Ex (nfm);
+		    nprio = Prop;
+		    ngoal = g;
+		    nbranches = [| [h] |];
+		  }, true
+       end
+     else
+       let h = substitute [(v, etau (v, t, p))] p in
+       add_node st {
+		  nconc = [fm];
+		  nrule = Ex (fm);
+		  nprio = Prop;
+		  ngoal = g;
+		  nbranches = [| [h] |];
+		}, true
+  | Enot (Eall (v, t, p, _), _) ->
+     if (Type.equal t Type.type_type)
+     then
+       begin
+	 let nv = Expr.newtvar t in
+	 let np = Expr.substitute [(v, nv)] p in
+	 let nfm = enot (eall (nv, t, np)) in
+	 let w = etau (nv, t, enot (np)) in
+	 let key = Type.to_string (Expr.type_of_expr w) in 
+	 if not(Index.is_type_tbl_key key)
+	 then Index.add_type_tbl key w
+	 else assert false;
+	 let h1 = substitute [(nv, w)] (enot np) in
+	 let h2 = eex (nv, t, enot np) in
+	 add_node st {
+		    nconc = [nfm];
+		    nrule = NotAllEx (nfm);
+		    nprio = Prop;
+		    ngoal = g;
+		    nbranches = [| [h1; h2] |];
+		  }, true
+       end
+     else
+       let h1 = substitute [(v, etau (v, t, enot p))] (enot p) in
+       let h2 = eex (v, t, enot p) in
+       add_node st {
+		  nconc = [fm];
+		  nrule = NotAllEx (fm);
+		  nprio = Prop;
+		  ngoal = g;
+		  nbranches = [| [h1; h2] |];
+		}, true
+  | _ -> st, false
 ;;
 
-let newnodes_gamma st fm g _ =
+(* let newnodes_gamma st fm g _ =
   match fm with
   | Eall (v, t, p, _) ->
       let w = emeta (fm) in
@@ -556,6 +795,74 @@ let newnodes_gamma st fm g _ =
         ngoal = g;
         nbranches = branches;
       }, true
+  | _ -> st, false
+;; *)
+
+let newnodes_gamma st fm g _ =
+  match fm with
+  | Eall (v, t, p, _) ->
+     if (Type.equal t Type.type_type)
+     then
+       begin
+	 let nv = Expr.newtvar t in
+	 let np = Expr.substitute [(v, nv)] p in
+	 let nfm = eall (nv, t, np) in
+	 let w = emeta (nfm) in
+	 let key = Type.to_string (Expr.type_of_expr w) in
+	 if not(Index.is_type_tbl_key key)
+	 then Index.add_type_tbl key w
+	 else assert false;
+	 let branches = [| [Expr.substitute [(nv, w)] np] |] in
+	 add_node st {
+		    nconc = [nfm];
+		    nrule = All (nfm, w);
+		    nprio = Arity;
+		    ngoal = g;
+		    nbranches = branches;
+		  }, true
+       end
+     else
+       let w = emeta (fm) in
+       let branches = [| [Expr.substitute [(v, w)] p] |] in
+       add_node st {
+		  nconc = [fm];
+		  nrule = All (fm, w);
+		  nprio = Arity;
+		  ngoal = g;
+		  nbranches = branches;
+		}, true
+  | Enot (Eex (v, t, p, _) as fm1, _) ->
+     if (Type.equal t Type.type_type)
+     then
+       begin
+	 let nv = Expr.newtvar t in
+	 let np = Expr.substitute [(v, nv)] p in
+	 let nfm1 = eex (nv, t, np) in
+	 let nfm = enot (nfm1) in
+	 let w = emeta (nfm1) in
+	 let key = Type.to_string (Expr.type_of_expr w) in
+	 if not(Index.is_type_tbl_key key)
+	 then Index.add_type_tbl key w
+	 else assert false;
+	 let branches = [| [enot (Expr.substitute [(nv, w)] np)] |] in
+	 add_node st {
+		    nconc = [nfm];
+		    nrule = NotEx (nfm, w);
+		    nprio = Arity;
+		    ngoal = g;
+		    nbranches = branches;
+		  }, true
+       end
+     else
+       let w = emeta (fm1) in
+       let branches = [| [enot (Expr.substitute [(v, w)] p)] |] in
+	 add_node st {
+		    nconc = [fm];
+		    nrule = NotEx (fm, w);
+		    nprio = Arity;
+		    ngoal = g;
+		    nbranches = branches;
+		  }, true	       
   | _ -> st, false
 ;;
 
@@ -781,7 +1088,11 @@ let newnodes_match_trans st fm g _ =
     let fmg = (fm, g) in
     match fm with
     | Eapp (Evar("=",_), [Emeta (m1, _); Emeta (m2, _)], _) ->
-       let nodes = List.map (mknode_transeq false fmg) (Index.find_neg "=") in
+       let nfmg = Index.find_neg "=" in 
+       let select a (b, c) = same_types a b in
+       let nfmg = List.filter (select fm) nfmg in
+       let nodes = List.map (mknode_transeq false fmg) nfmg in
+       print_endline "bug transeq";
        add_node_list st nodes, false
     | Eapp (Evar("=",_), [e1; e2], _) ->
         Index.add_trans fm;

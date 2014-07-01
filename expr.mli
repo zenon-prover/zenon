@@ -109,6 +109,7 @@ val type_of_expr : expr -> Type.t;;
 (* gensym *)
 val newvar : unit -> expr;;
 val newname : unit -> string;;
+val newtvar : etype -> expr;;
 
 val size : expr -> int;;
 val get_taus : expr -> int;;   (* tau nesting level *)

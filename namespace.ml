@@ -19,3 +19,6 @@ let univ_name = prefix ^ "U";;
 let thm_default_name = prefix ^ "thm";;
 
 let tuple_name = builtin_prefix ^ "tuple";;
+
+
+let type_prefix = "type_";;
