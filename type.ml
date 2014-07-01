@@ -213,3 +213,41 @@ let rec _tff = function
 
 let tff (b, t) = (b, _tff t)
 
+
+(***********************************)
+
+let rec mem_assoc x l = 
+  match l with 
+  | [] -> false
+  | (a, b) :: l -> compare a x = 0 || mem_assoc x l
+;;
+  
+let rec assoc x l = 
+  match l with 
+  |  [] -> raise Not_found
+  | (a, b) :: l -> if compare a x = 0 then b else assoc x l
+;;
+
+exception Unif_base_type_failed;;
+
+let rec unif_base_type_aux l t1 t2 = 
+  match t1, t2 with 
+  | Bool, Bool -> l
+  | Bool, _ -> raise Unif_base_type_failed
+  | Ttype, _ -> 
+     if not (mem_assoc (base t1) l) then (base t1, base t2) :: l
+     else if (equal (assoc (base t1) l) (base t2)) then l 
+     else raise Unif_base_type_failed
+  | App (s1, args1), App (s2, args2) when s1 = s2 -> 
+     (try 
+	 List.fold_left2 unif_base_type_aux l args1 args2
+       with 
+       | Invalid_argument _ -> raise Unif_base_type_failed)
+  | _, _ -> assert false
+;;
+
+let unif_type t1 t2 = 
+  match t1, t2 with 
+  | ([], b1), ([], b2) -> unif_base_type_aux [] b1 b2
+  | _, _ -> assert false
+;;

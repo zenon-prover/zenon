@@ -227,10 +227,8 @@ let rec find_first_sym t =
 let is_literal_noteq body = 
   match body with 
   | Eapp(Evar(sym, _), _, _) when (sym <> "=")
-				  && (sym <> "b_equal_set")
     -> true
-  | Enot(Eapp(Evar(sym, _), _, _), _) when (sym <> "b_equal_set"
-					    && sym <> "=") -> true
+  | Enot(Eapp(Evar(sym, _), _, _), _) when (sym <> "=") -> true
   | _ -> false
 ;;
 
@@ -279,7 +277,7 @@ let rec parse_equal_term body =
 	   | _, _ -> assert false
 	 end
 	   
-      | Eapp (Evar("b_equal_set", _), [t1; t2], _) -> 
+      | Eapp (Evar("=", _), [t1; t2], _) -> 
 	 begin
 	   match t1, t2 with
 	   | Evar (_, _), Evar (_, _) -> assert false
@@ -317,11 +315,9 @@ let rec parse_equiv_prop body =
   then 
     begin
       match body with 
-      | Eapp(Evar(sym, _), _, _) as e1 when (sym <> "=" 
-					     && sym <> "b_equal_set") 
+      | Eapp(Evar(sym, _), _, _) as e1 when (sym <> "=") 
 	->  add_rule_prop e1 etrue
-      | Enot(Eapp(Evar(sym, _), _, _) as e1, _) when (sym <> "=" 
-						      && sym <> "b_equal_set") -> 
+      | Enot(Eapp(Evar(sym, _), _, _) as e1, _) when (sym <> "=") -> 
 	 add_rule_prop e1 efalse
       | _ -> assert false
     end

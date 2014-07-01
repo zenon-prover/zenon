@@ -41,3 +41,8 @@ val tff_check : t -> bool
 val ksplit : int -> 'a list -> 'a list * 'a list
 val find2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> 'a * 'b
 
+
+val unif_type : t -> t -> (t * t) list
+
+exception Unif_base_type_failed
+

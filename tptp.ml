@@ -120,7 +120,7 @@ let axiom_to_rwrt_prop = [
   "mem_singleton";
   "mem_times";
   "mem_power";
-  "extensionality";
+  (*"extensionality";*)
   "choice_exists";
   "infinite_big";
   "mem_union";
@@ -269,7 +269,7 @@ let is_assoc_term body =
 
 let is_distrib_term body = 
   match body with 
-  | Eapp (Evar("b_equal_set", _), [t1; t2], _) -> 
+  | Eapp (Evar("=", _), [t1; t2], _) -> 
     begin 
       match t1, t2 with 
       | Eapp (Evar(sym11, _), [e11; Eapp (Evar(sym12, _), [e12; e13], _)], _),
@@ -340,10 +340,8 @@ let rec test_fv l1 l2 =
 
 let is_literal_noteq body = 
   match body with 
-  | Eapp(Evar(sym, _), _, _) when (sym <> "b_equal_set"
-				   && sym <> "=") -> true
-  | Enot(Eapp(Evar(sym, _), _, _), _) when (sym <> "b_equal_set" 
-					    && sym <> "=")-> true
+  | Eapp(Evar(sym, _), _, _) when (sym <> "=") -> true
+  | Enot(Eapp(Evar(sym, _), _, _), _) when (sym <> "=")-> true
   | _ -> false
 ;;
 
@@ -364,7 +362,7 @@ let is_literal_eq body =
 
 let rec is_equal_term body = 
   match body with 
-  | Eapp (Evar("b_equal_set", _), [t1; t2], _) 
+  | Eapp (Evar("=", _), [t1; t2], _) 
       when not (is_commut_term body) -> 
      begin 
        match t1, t2 with 
