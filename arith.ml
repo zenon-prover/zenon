@@ -426,9 +426,11 @@ let ct_from_ml p =
         end with NotaFormula -> false
         ) l in
     let rec aux l p =
+        (*
         if is_inst_node p then
             { node = cl_from_list []; children = [| |]; }
         else
+            *)
             let l' = match p.mlrule with
                 | Ext("arith", "inst", x) -> x (* @ p.mlconc ? *)
                 | _ -> p.mlconc

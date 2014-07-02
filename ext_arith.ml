@@ -561,44 +561,46 @@ let fm_lower s c = match s with
 let fm_deduce_aux x e f =
     let (be, se, ce) = of_bexpr e in
     let (bf, sf, cf) = of_bexpr f in
-    let cex = find_coef x be in
-    let cfx = find_coef x bf in
-    match se, sf with
-    | "$less", "$less" | "$lesseq", "$less" | "$less", "$lesseq" ->
-            assert (Q.sign cex < 0 && Q.sign cfx > 0);
-            let t = fdiff
-                (fmul cfx (fdiff be [(cex, x);(ce, etrue)]))
-                (fmul cex (fdiff bf [(cfx, x);(cf, etrue)])) in
-            let b, a = normalize t [Q.zero, etrue] in
-            let g = expr_norm (to_bexpr (a, "$less", b)) in
-            [mk_node_fm x e f g]
-    | "$greater", "$greater" | "$greatereq", "$greater" | "$greater", "$greatereq" ->
-            assert (Q.sign cex > 0 && Q.sign cfx < 0);
-            let t = fdiff
-                (fmul cfx (fdiff be [cex, x; ce, etrue]))
-                (fmul cfx (fdiff be [cex, x; ce, etrue])) in
-            let b, a = normalize t [Q.zero, etrue] in
-            let g = expr_norm (to_bexpr (a, "$less", b)) in
-            [mk_node_fm x e f g]
-    | "less", "$greater" | "$lesseq", "$greater" | "$less", "$greatereq" ->
-            assert (Q.sign cex < 0 && Q.sign cfx < 0);
-            let t = fadd
-                (fmul cfx (fdiff [cex, x; ce, etrue] be))
-                (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
-            let b, a = normalize t [Q.zero, etrue] in
-            let g = expr_norm (to_bexpr (a, "$less", b)) in
-            [mk_node_fm x e f g]
-    | "$greater", "$less" | "$greatereq", "$less" | "$greater", "$lesseq" ->
-            assert (Q.sign cex > 0 && Q.sign cfx > 0);
-            let t = fdiff
-                (fmul cfx (fdiff [cex, x; ce, etrue] be))
-                (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
-            let b, a = normalize t [Q.zero, etrue] in
-            let g = expr_norm (to_bexpr (a, "$less", b)) in
-            [mk_node_fm x e f g]
-    | _ ->
-            []
-
+    let aux = fun (_, y) -> Expr.compare x y > 0 in
+    if List.exists aux be || List.exists aux bf then []
+    else
+        let cex = find_coef x be in
+        let cfx = find_coef x bf in
+        match se, sf with
+        | "$less", "$less" | "$lesseq", "$less" | "$less", "$lesseq" ->
+                assert (Q.sign cex < 0 && Q.sign cfx > 0);
+                let t = fdiff
+                    (fmul cfx (fdiff be [(cex, x);(ce, etrue)]))
+                    (fmul cex (fdiff bf [(cfx, x);(cf, etrue)])) in
+                let b, a = normalize t [Q.zero, etrue] in
+                let g = expr_norm (to_bexpr (a, "$less", b)) in
+                [mk_node_fm x e f g]
+        | "$greater", "$greater" | "$greatereq", "$greater" | "$greater", "$greatereq" ->
+                assert (Q.sign cex > 0 && Q.sign cfx < 0);
+                let t = fdiff
+                    (fmul cfx (fdiff be [cex, x; ce, etrue]))
+                    (fmul cfx (fdiff be [cex, x; ce, etrue])) in
+                let b, a = normalize t [Q.zero, etrue] in
+                let g = expr_norm (to_bexpr (a, "$less", b)) in
+                [mk_node_fm x e f g]
+        | "less", "$greater" | "$lesseq", "$greater" | "$less", "$greatereq" ->
+                assert (Q.sign cex < 0 && Q.sign cfx < 0);
+                let t = fadd
+                    (fmul cfx (fdiff [cex, x; ce, etrue] be))
+                    (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
+                let b, a = normalize t [Q.zero, etrue] in
+                let g = expr_norm (to_bexpr (a, "$less", b)) in
+                [mk_node_fm x e f g]
+        | "$greater", "$less" | "$greatereq", "$less" | "$greater", "$lesseq" ->
+                assert (Q.sign cex > 0 && Q.sign cfx > 0);
+                let t = fdiff
+                    (fmul cfx (fdiff [cex, x; ce, etrue] be))
+                    (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
+                let b, a = normalize t [Q.zero, etrue] in
+                let g = expr_norm (to_bexpr (a, "$less", b)) in
+                [mk_node_fm x e f g]
+        | _ ->
+                []
 
 let fm_deduce1 x e l = List.concat (List.map (fm_deduce_aux x e) l)
 let fm_deduce2 x e l = List.concat (List.map (fun e' -> fm_deduce_aux x e' e) l)
@@ -615,15 +617,19 @@ let fm_add_aux st (s, c, x) e =
     end
 
 let fm_add st e =
+    let res = ref None in
     let (b, s, _) = of_bexpr e in
-    let aux (acc, l) (c, x) =
+    let aux acc (c, x) =
         if is_rat x then
-            let st', l' = fm_add_aux st (s, c, x) e in
-            (st', (l @ l'))
+            let st', l = fm_add_aux st (s, c, x) e in
+            if !res = None then
+                res := Some l;
+            st'
         else
-            (acc, l)
+            acc
     in
-    List.fold_left aux (st, []) b
+    let st = List.fold_left aux st (List.sort (fun (_, x) (_, y) -> Expr.compare x y) b) in
+    st, (match !res with Some l -> l | None -> [])
 
 let fm_add_expr, fm_rm_expr =
     let st = ref fm_empty in
@@ -845,14 +851,19 @@ let remove_formula e =
 let rec iter_open p =
     match ct_from_ml p with
     | None ->
-            Log.debug 5 "arith -- no choice left";
+            Log.debug 5 "arith -- empty tree received";
             false
     | Some t ->
         begin match solve_tree t with
-        | Unsat -> begin try
-            Log.debug 5 "arith -- switching to next instanciation ";
-            iter_open (next_inst p)
-            with EndReached -> false end
+        | Unsat ->
+                Log.debug 5 "arith -- no solution found in choice tree";
+                false
+                (*
+                begin try
+                Log.debug 5 "arith -- switching to next instanciation ";
+                iter_open (next_inst p)
+                with EndReached -> false end
+                *)
         | Abstract s ->
                 Log.debug 5 "arith -- found a solution.";
                 List.iter (fun (x, v) -> Log.debug 6 "arith -- %a <- %a" Print.pp_expr x Print.pp_expr v) s;

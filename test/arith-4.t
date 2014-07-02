@@ -1,13 +1,13 @@
 % Comments :
 %------------------------------------------------------------------------------
-tff(pdef, type, (
-    p : $real > $o)).
+%tff(pdef, type, (
+%    p : $i > $o)).
 
 tff(pax, axiom, (
-    ~ p(4.2) )).
+    ~ p(a) )).
 
 tff(test,conjecture,(
-    ~ ! [Y: $real, X: $int] : (
+    ~ ! [Y: $i, X: $int] : (
     ( p(Y) & $lesseq(X, 0))
     |
     ($lesseq(0, X))
