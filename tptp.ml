@@ -167,6 +167,7 @@ let axiom_to_rwrt_term = [
 
 (*  "ran";*)
   "composition_back";
+  "composition_back1";
 (*  "dom_restriction";
   "ran_restriction";
   "dom_substraction";
@@ -471,25 +472,25 @@ let rec translate_one_rwrt_B dirs accu p =
   | Formula (name, "tff_axiom", body) -> 
      begin
        if List.mem name axiom_to_rwrt_term
-       then Rew (name, body, 0) :: accu
+       then Rew (name, body, 10) :: accu
        else if List.mem name axiom_to_rwrt_prop
-       then Rew (name, body, 1) :: accu
+       then Rew (name, body, 11) :: accu
        else Hyp (name, body, 12) :: accu
      end
   | Formula (name, "tff_definition", body) ->
      begin
        if List.mem name axiom_to_rwrt_term
-       then Rew (name, body, 0) :: accu
+       then Rew (name, body, 10) :: accu
        else if List.mem name axiom_to_rwrt_prop
-       then Rew (name, body, 1) :: accu
+       then Rew (name, body, 11) :: accu
        else Hyp (name, body, 12) :: accu
      end
   | Formula (name, "tff_hypothesis", body) ->
      begin
        if List.mem name axiom_to_rwrt_term
-       then Rew (name, body, 0) :: accu
+       then Rew (name, body, 10) :: accu
        else if List.mem name axiom_to_rwrt_prop
-       then Rew (name, body, 1) :: accu
+       then Rew (name, body, 11) :: accu
        else Hyp (name, body, 11) :: accu
      end
 (*  | Formula (name, ("tff_axiom" | "tff_definition"), body) ->

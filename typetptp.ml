@@ -293,27 +293,37 @@ let is_tff_expr s = (10 <= s && s <= 12)
 let notype_kind = function
     | s when is_tff_expr s -> s - 10
     | s -> s
+let is_tff_axiom_rwrt_term s = (s = 10)
+let is_tff_axiom_rwrt_prop s = (s = 11)
 
 let type_phrase env p = match p with
     | Phrase.Hyp (name, e, kind) when is_tff_def kind ->
-            Log.debug 1 "typechecking TFF definition '%s'" name;
-            p, type_tff_def env e
+       Log.debug 1 "typechecking TFF definition '%s'" name;
+       p, type_tff_def env e
     | Phrase.Hyp (name, e, kind) when is_tff_axiom kind ->
-            Log.debug 1 "typechecking TFF axiom '%s'" name;
-            let e', env' = type_tff_expr env e in
-            Phrase.Hyp (name, e', notype_kind kind), env'
+       Log.debug 1 "typechecking TFF axiom '%s'" name;
+       let e', env' = type_tff_expr env e in
+       Phrase.Hyp (name, e', notype_kind kind), env'
     | Phrase.Hyp (name, e, kind) when is_tff_expr kind ->
-            Log.debug 1 "typechecking TFF expression '%s'" name;
-            let e', env' = type_tff_expr env e in
-            Phrase.Hyp (name, e', notype_kind kind), env'
+       Log.debug 1 "typechecking TFF expression '%s'" name;
+       let e', env' = type_tff_expr env e in
+       Phrase.Hyp (name, e', notype_kind kind), env'
     | Phrase.Hyp (name, e, kind) ->
-            Log.debug 1 "typechecking FOF formula '%s'" name;
-            type_fof_expr e;
-            p, env
+       Log.debug 1 "typechecking FOF formula '%s'" name;
+       type_fof_expr e;
+       p, env
+    | Phrase.Rew (name, e, kind) when is_tff_axiom_rwrt_term kind -> 
+       Log.debug 1 "typechecking TFF axiom rwrt term '%s'" name;
+       let e', env' = type_tff_expr env e in
+       Phrase.Rew (name, e', notype_kind kind), env'
+    | Phrase.Rew (name, e, kind) when is_tff_axiom_rwrt_prop kind -> 
+       Log.debug 1 "typechecking TFF axiom rwrt prop '%s'" name;
+       let e', env' = type_tff_expr env e in
+       Phrase.Rew (name, e', notype_kind kind), env'
     | _ ->
-            Log.debug 1 "typechecking unknown formula";
-            p, env
-
+       Log.debug 1 "typechecking unknown formula";
+       p, env
+		 
 let defined = ref []
 
 let get_defined () = !defined

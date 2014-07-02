@@ -142,38 +142,25 @@ let rec print_type e =
 		 print_endline "";
      | _ -> print_string " ~ no type ~ ";
 ;;
-
+  
 let same_types x y = 
   match (get_type x), (get_type y) with 
-  | None, None -> raise Not_typed
+  | None, None -> raise Not_typed 
   | Some tx, Some ty -> 
      (match x, y with 
-      | Eapp (Evar ("=", _), [a; b], _), 
-	Enot (Eapp (Evar (s, _), [c; d], _), _) ->
-	 ((Type.equal (type_of a) (type_of c)) 
-	  && (Type.equal (type_of b) (type_of d)))
-	 || ((Type.equal (type_of a) (type_of d)) 
-	     && (Type.equal (type_of b) (type_of c)))
-      | Enot (Eapp (Evar ("=", _), [a; b], _), _), 
-	Eapp (Evar (s, _), [c; d], _) ->
-	 ((Type.equal (type_of a) (type_of c)) 
-	  && (Type.equal (type_of b) (type_of d)))
-	 || ((Type.equal (type_of a) (type_of d)) 
-	     && (Type.equal (type_of b) (type_of c)))
-      | Eapp (s1, args1, _), 
-	Enot (Eapp (s2, args2, _), _) -> 
-	 (Type.equal (type_of s1) (type_of s2)) 
-	 && (List.for_all2 Type.equal 
-			   (List.map type_of args1) 
-			   (List.map type_of args2))
-      | Enot (Eapp (s1, args1, _), _), 
-	Eapp (s2, args2, _) -> 
-	 (Type.equal (type_of s1) (type_of s2)) 
-	 && (List.for_all2 Type.equal 
-			   (List.map type_of args1) 
-			   (List.map type_of args2))
-      | _, _ -> assert false)
-  | _, _ -> assert false
+      | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _)
+      | Enot (Eapp (s1, args1, _), _), Eapp (s2, args2, _) -> 
+	 if not (Type.equal (type_of s1) (type_of s2))
+	 then false
+	 else let nbind = Type.nbind (type_of s1) in
+	      let (texpr1, vexpr1) = Type.ksplit nbind args1 in 
+	      let (texpr2, vexpr2) = Type.ksplit nbind args2 in 
+	      (List.for_all2 Type.equal 
+			     (List.map Expr.type_of_expr texpr1) 
+			     (List.map Expr.type_of_expr texpr2))
+	      && (List.for_all2 Type.equal 
+				(List.map type_of vexpr1)
+				(List.map type_of vexpr2)))
 ;;
 
 let has_meta_type x = 

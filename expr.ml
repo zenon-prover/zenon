@@ -192,7 +192,7 @@ let rec type_of_expr e =
      then atomic (get_texpr_str e)
      else if (is_texpr_key_exp s)
      then (let ns = newtname () in
-	   let ns = ns ^ s in
+	   let ns = ns ^ "_" ^ s in
 	   add_texpr ns e;
 	   atomic (get_texpr_str e))
      else (add_texpr s e;
@@ -202,7 +202,7 @@ let rec type_of_expr e =
      then atomic (get_texpr_str e)
      else if (is_texpr_key_exp s)
      then (let ns = newtname () in
-	   let ns = "tau_" ^ ns ^ s in
+	   let ns = "tau_" ^ ns ^ "_" ^ s in
 	   add_texpr ns e;
 	   atomic (get_texpr_str e))
      else (add_texpr s e;
@@ -213,7 +213,7 @@ let rec type_of_expr e =
      then atomic (get_texpr_str e)
      else if (is_texpr_key_exp s)
      then (let ns = newtname () in
-	   let ns = "meta_" ^ ns ^ s in
+	   let ns = "meta_" ^ ns ^ "_" ^ s in
 	   add_texpr ns e;
 	   atomic (get_texpr_str e))
      else (add_texpr s e;
