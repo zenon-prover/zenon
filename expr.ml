@@ -153,14 +153,15 @@ let newtname () =
   String.copy !tcursym
 ;;
 
-let texpr_str = Hashtbl.create 42;;
+module H = Hashtbl.Make(struct type t = expr let hash = get_hash let equal = (==) end);;
+let texpr_str = H.create 42;;
 let texpr_exp = Hashtbl.create 42;;
 
 let add_texpr s e = 
   assert (not (Hashtbl.mem texpr_exp s)
-	  && not (Hashtbl.mem texpr_str e));
+	  && not (H.mem texpr_str e));
   Hashtbl.add texpr_exp s e;
-  Hashtbl.add texpr_str e s;
+  H.add texpr_str e s;
 ;;
 
 let get_texpr_exp s = 
@@ -168,7 +169,7 @@ let get_texpr_exp s =
 ;;
 
 let get_texpr_str e = 
-  Hashtbl.find texpr_str e
+  H.find texpr_str e
 ;;
 
 let is_texpr_key_exp s = 
@@ -176,12 +177,12 @@ let is_texpr_key_exp s =
 ;;
 
 let is_texpr_key_str e = 
-  Hashtbl.mem texpr_str e
+  H.mem texpr_str e
 ;;
 
 let is_texpr_key s e = 
   (Hashtbl.mem texpr_exp s)
-  && (Hashtbl.mem texpr_str e)
+  && (H.mem texpr_str e)
 ;;
 
 let rec type_of_expr e = 
@@ -189,23 +190,33 @@ let rec type_of_expr e =
   | Evar(s, _) -> 
      if (is_texpr_key_str e) 
      then atomic (get_texpr_str e)
-     else (let ns = newtname () in
+     else if (is_texpr_key_exp s)
+     then (let ns = newtname () in
+	   let ns = ns ^ s in
 	   add_texpr ns e;
-	   atomic ns)
+	   atomic (get_texpr_str e))
+     else (add_texpr s e;
+	   atomic (get_texpr_str e))
   | Etau(Evar(s, _), _, _, _) -> 
      if (is_texpr_key_str e) 
      then atomic (get_texpr_str e)
-     else (let ns = newtname () in 
-	   let ns = "tau_" ^ ns in 
+     else if (is_texpr_key_exp s)
+     then (let ns = newtname () in
+	   let ns = "tau_" ^ ns ^ s in
 	   add_texpr ns e;
 	   atomic (get_texpr_str e))
+     else (add_texpr s e;
+	   atomic (get_texpr_str e))
   | Emeta(Eall(Evar(s, _), _, _, _), _)
-  | Emeta(Eex(Evar(s, _), _, _, _), _) -> 
+  | Emeta(Eex(Evar(s, _), _, _, _), _) ->
      if (is_texpr_key_str e) 
      then atomic (get_texpr_str e)
-     else (let ns = newtname () in 
-	   let ns = "meta_" ^ ns in 
+     else if (is_texpr_key_exp s)
+     then (let ns = newtname () in
+	   let ns = "meta_" ^ ns ^ s in
 	   add_texpr ns e;
+	   atomic (get_texpr_str e))
+     else (add_texpr s e;
 	   atomic (get_texpr_str e))
   | Eapp(Evar("!>",_), t :: l, _) ->
      mk_poly (List.map get_name l) (type_of_expr t)
@@ -581,7 +592,7 @@ let disj vars map =
 
 let substitute_type map t =
     let map = List.filter (function (Evar(_), e) -> get_type e =%= Some type_type | _ -> false) map in
-    let map = List.map (function (Evar(s,_), e) -> (s, type_of_expr e) | _ -> assert false) map in
+    let map = List.map (function (v, e) -> (get_texpr_str v, type_of_expr e) | _ -> assert false) map in
     Type.substitute map t
 
 let rec substitute map e =
