@@ -243,11 +243,6 @@ let rec unif_base_types_aux l t1 t2 =
      if not (mem_assoc (base t1) l) then (base t1, base t2) :: l
      else if (equal (assoc (base t1) l) (base t2)) then l 
      else raise Unif_type_failed
-  | App (s1, args1), App (s2, args2) when s1 = s2 -> 
-     (try 
-	 List.fold_left2 unif_base_types_aux l args1 args2
-       with 
-       | Invalid_argument _ -> raise Unif_type_failed)
   | _, _ -> assert false
 ;;
 

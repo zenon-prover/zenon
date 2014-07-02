@@ -198,7 +198,7 @@ let rec type_of_expr e =
      else (let ns = newtname () in 
 	   let ns = "tau_" ^ ns in 
 	   add_texpr ns e;
-	   atomic ns)
+	   atomic (get_texpr_str e))
   | Emeta(Eall(Evar(s, _), _, _, _), _)
   | Emeta(Eex(Evar(s, _), _, _, _), _) -> 
      if (is_texpr_key_str e) 
@@ -206,7 +206,7 @@ let rec type_of_expr e =
      else (let ns = newtname () in 
 	   let ns = "meta_" ^ ns in 
 	   add_texpr ns e;
-	   atomic ns)
+	   atomic (get_texpr_str e))
   | Eapp(Evar("!>",_), t :: l, _) ->
      mk_poly (List.map get_name l) (type_of_expr t)
   | Eapp(Evar("->",_), ret :: args, _) ->

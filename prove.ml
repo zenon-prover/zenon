@@ -343,7 +343,9 @@ let make_notequiv st sym (p, g) (np, ng) =
 		    nbranches = make_inequals myargs1 args2;
 		  }
        end
-     else if ((has_meta_type p) || (has_meta_type np))
+     else st
+
+(*     else if ((has_meta_type p) || (has_meta_type np))
      then
        begin	
 	 try
@@ -388,7 +390,7 @@ let make_notequiv st sym (p, g) (np, ng) =
 	 with 
 	 | Type.Unif_type_failed _ -> st
        end
-     else st
+     else st *)
   | _ -> assert false
 ;;
 		
@@ -682,7 +684,7 @@ let interferes env vs =
 
 let has_free_var v e = List.mem v (get_fv e);;
 
-(* let newnodes_delta st fm g _ =
+ let newnodes_delta st fm g _ =
   match fm with
   | Eex (v, t, p, _) ->
      let h = substitute [(v, etau (v, t, p))] p in
@@ -704,9 +706,9 @@ let has_free_var v e = List.mem v (get_fv e);;
        nbranches = [| [h1; h2] |];
      }, true
   | _ -> st, false
-;; *)
+;; 
 
-let newnodes_delta st fm g _ =
+(*let newnodes_delta st fm g _ =
   match fm with
   | Eex (v, t, p, _) ->
      if (Type.equal t Type.type_type)
@@ -771,9 +773,9 @@ let newnodes_delta st fm g _ =
 		  nbranches = [| [h1; h2] |];
 		}, true
   | _ -> st, false
-;;
+;;*)
 
-(* let newnodes_gamma st fm g _ =
+ let newnodes_gamma st fm g _ =
   match fm with
   | Eall (v, t, p, _) ->
       let w = emeta (fm) in
@@ -796,9 +798,9 @@ let newnodes_delta st fm g _ =
         nbranches = branches;
       }, true
   | _ -> st, false
-;; *)
+;; 
 
-let newnodes_gamma st fm g _ =
+(*let newnodes_gamma st fm g _ =
   match fm with
   | Eall (v, t, p, _) ->
      if (Type.equal t Type.type_type)
@@ -864,7 +866,7 @@ let newnodes_gamma st fm g _ =
 		    nbranches = branches;
 		  }, true	       
   | _ -> st, false
-;;
+;;*)
 
 let newnodes_unfold st fm g _ =
   let mk_unfold ctx p args =
@@ -1092,7 +1094,6 @@ let newnodes_match_trans st fm g _ =
        let select a (b, c) = same_types a b in
        let nfmg = List.filter (select fm) nfmg in
        let nodes = List.map (mknode_transeq false fmg) nfmg in
-       print_endline "bug transeq";
        add_node_list st nodes, false
     | Eapp (Evar("=",_), [e1; e2], _) ->
         Index.add_trans fm;
