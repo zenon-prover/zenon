@@ -142,55 +142,46 @@ let rec print_type e =
 		 print_endline "";
      | _ -> print_string " ~ no type ~ ";
 ;;
-  
+
 let same_types x y = 
-  match (get_type x), (get_type y) with 
-  | None, None -> raise Not_typed 
-  | Some tx, Some ty -> 
-     (match x, y with 
-      | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _)
-      | Enot (Eapp (s1, args1, _), _), Eapp (s2, args2, _) -> 
-	 if not (Type.equal (type_of s1) (type_of s2))
-	 then false
-	 else let nbind = Type.nbind (type_of s1) in
-	      let (texpr1, vexpr1) = Type.ksplit nbind args1 in 
-	      let (texpr2, vexpr2) = Type.ksplit nbind args2 in 
-	      (List.for_all2 Type.equal 
-			     (List.map Expr.type_of_expr texpr1) 
-			     (List.map Expr.type_of_expr texpr2))
-	      && (List.for_all2 Type.equal 
-				(List.map type_of vexpr1)
-				(List.map type_of vexpr2)))
+  match x, y with 
+  | Eapp (Evar ("=", _), [a; b], _), Enot (Eapp (Evar ("=", _), [c; d], _), _) 
+  | Enot (Eapp (Evar ("=", _), [a; b], _), _), Eapp (Evar ("=", _), [c; d], _) -> 
+     ((Type.equal (type_of a) (type_of c)) && (Type.equal (type_of b) (type_of d)))
+     || ((Type.equal (type_of a) (type_of d)) && (Type.equal (type_of b) (type_of c)))
+  | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _)
+  | Enot (Eapp (s1, args1, _), _), Eapp (s2, args2, _) -> 
+     (match (get_type x), (get_type y) with 
+     | None, None -> true 
+     | Some tx, Some ty -> 
+	if not (Type.equal (type_of s1) (type_of s2))
+	then false
+	else let nbind = Type.nbind (type_of s1) in
+	     let (texpr1, vexpr1) = Type.ksplit nbind args1 in 
+	     let (texpr2, vexpr2) = Type.ksplit nbind args2 in 
+	     (List.for_all2 Type.equal 
+			    (List.map Expr.type_of_expr texpr1) 
+			    (List.map Expr.type_of_expr texpr2))
+	     && (List.for_all2 Type.equal 
+			       (List.map type_of vexpr1)
+			       (List.map type_of vexpr2))
+     |_, _ -> assert false)
+  | _, _ -> assert false
 ;;
 
 let has_meta_type x = 
   match x with 
-  | Eapp (Evar ("=", _), [a; b], _) -> 
-     let (ta, tb) = (type_of a, type_of b) in 
-     let (ka, kb) = (Type.extract_ttype_name ta, Type.extract_ttype_name tb) in 
-     if (Index.is_type_tbl_key ka)
-     then is_meta (Index.get_type_tbl ka)
-     else if (Index.is_type_tbl_key kb)
-     then is_meta (Index.get_type_tbl kb)
-     else false 
+  | Eapp (Evar ("=", _), [a; b], _) 
   | Enot (Eapp (Evar ("=", _), [a; b], _), _) -> 
-     let (ta, tb) = (type_of a, type_of b) in 
-     let (ka, kb) = (Type.extract_ttype_name ta, Type.extract_ttype_name tb) in 
-     if (Index.is_type_tbl_key ka)
-     then is_meta (Index.get_type_tbl ka)
-     else if (Index.is_type_tbl_key kb)
-     then is_meta (Index.get_type_tbl kb)
-     else false 
-  | Eapp (s, args, _) -> 
-     let targs = fst (Type.ksplit (Type.nbind (type_of s)) args) in 
-     List.exists is_meta targs
+     (Misc.occurs "meta_" (Type.to_string (type_of a)))
+     || (Misc.occurs "meta_" (Type.to_string (type_of b)))
+  | Eapp (s, args, _)
   | Enot (Eapp (s, args, _), _) -> 
-     let targs = fst (Type.ksplit (Type.nbind (type_of s)) args) in 
-     List.exists is_meta targs
+     let nbind = Type.nbind (type_of s) in
+     let (texpr, vexpr) = Type.ksplit nbind args in 
+     List.exists (Misc.occurs "meta_") (List.map Type.to_string (List.map Expr.type_of_expr texpr))
   | _ -> assert false
 ;;
-  
-  
 
 (****************)
 
