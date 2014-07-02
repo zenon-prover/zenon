@@ -19,6 +19,9 @@ Qed.
 Lemma Qfrac_plus : forall a b: Z, (a + b)%Z # 1 == (a # 1) + (b # 1).
 Proof. intros. unfold Qeq, Qnum, Qden. simpl. ring. Qed.
 
+Lemma Qfrac_minus : forall a b: Z, (a - b)%Z # 1 == (a # 1) - (b # 1).
+Proof. intros. unfold Qeq, Qnum, Qden. simpl. ring. Qed.
+
 Lemma Qfrac_mult : forall a b: Z, (a * b)%Z # 1 == (a # 1) * (b # 1).
 Proof. intros. unfold Qeq, Qnum, Qden. simpl. ring. Qed.
 
@@ -26,7 +29,11 @@ Lemma Zeq_qeq : forall a b: Z, a = b <-> a # 1 == b # 1.
 Proof. intros. split; intros. rewrite H; apply Qeq_refl.
 unfold Qeq, Qnum, Qden in H; simpl in H. ring_simplify in H. exact H. Qed.
 
-Ltac z_to_q H := try (rewrite -> Zeq_qeq in H; repeat rewrite Qfrac_plus in H).
+Ltac z_eq_q H :=
+  try rewrite -> Zeq_qeq in H;
+  repeat rewrite Qfrac_plus in H;
+  repeat rewrite Qfrac_plus;
+  exact H.
 
 Lemma qopp : forall a: Z, (-a # 1) == - (a # 1).
 Proof. intro. unfold Qopp, Qnum, Qden. apply eq_refl. Qed.
@@ -36,6 +43,7 @@ Proof. intro. unfold Qopp, Qnum, Qden. apply eq_refl. Qed.
 Ltac arith_norm :=
   try rewrite -> Zeq_qeq;
   repeat rewrite Qfrac_plus;
+  repeat rewrite Qfrac_minus;
   repeat rewrite Qfrac_mult;
   repeat rewrite qopp;
   repeat rewrite qneg;
@@ -51,6 +59,7 @@ Ltac arith_norm :=
 Ltac arith_norm_in H :=
   try rewrite -> Zeq_qeq in H;
   repeat rewrite Qfrac_plus in H;
+  repeat rewrite Qfrac_minus in H;
   repeat rewrite Qfrac_mult in H;
   repeat rewrite qopp in H;
   repeat rewrite qneg in H;
