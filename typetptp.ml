@@ -288,6 +288,7 @@ let relevant = function
     | _ -> true
 
 let is_tff_def s = (s  = 13)
+let is_tff_axiom s = (s  = 12)
 let is_tff_expr s = (10 <= s && s <= 12)
 let notype_kind = function
     | s when is_tff_expr s -> s - 10
@@ -297,6 +298,10 @@ let type_phrase env p = match p with
     | Phrase.Hyp (name, e, kind) when is_tff_def kind ->
             Log.debug 1 "typechecking TFF definition '%s'" name;
             p, type_tff_def env e
+    | Phrase.Hyp (name, e, kind) when is_tff_axiom kind ->
+            Log.debug 1 "typechecking TFF axiom '%s'" name;
+            let e', env' = type_tff_expr env e in
+            Phrase.Hyp (name, e', notype_kind kind), env'
     | Phrase.Hyp (name, e, kind) when is_tff_expr kind ->
             Log.debug 1 "typechecking TFF expression '%s'" name;
             let e', env' = type_tff_expr env e in
