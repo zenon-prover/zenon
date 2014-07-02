@@ -37,18 +37,13 @@ let mk_node_eq a b e g = (* e : a = b *)
     }
 
 let mk_node_neq a b e g = (* e : a != b *)
-    let a, b =
-        try
-            let expr, _, c = of_bexpr (lesseq a b) in
-            to_nexpr expr, const (Q.to_string c)
-        with NotaFormula -> a, b
-    in
     Node {
         nconc = [e];
         nrule = Ext ("arith", "neq", [a; b; e]);
         nprio = Prop;
         ngoal = g;
-        nbranches = [| [expr_norm (less a b)]; [expr_norm (greater a b)] |];
+        (* nbranches = [| [expr_norm (less a b)]; [expr_norm (greater a b)] |]; *)
+        nbranches = [| [less a b]; [greater a b] |];
     }
 
 let mk_node_tighten s x c e g =
@@ -176,9 +171,9 @@ let mk_node_inst e v g = match e with
 
 let mk_node_switch e a n =
     let new_branch k =
-        let a' = eapp (tvar (newname ()) (get_type a), []) in
+        let a' = eapp (tvar (newname ()) (find_type a), []) in
         let b = to_nexpr [(Q.of_int n), a'; (Q.of_int k), etrue] in
-        [ Typetptp.mk_equal a b;
+        [ eapp (eeq, [a; b]);
           Expr.substitute_expr (a, b) e]
     in
     let n = {
@@ -350,8 +345,8 @@ let simplex_add t f (e, s, c) =
             (add_binding {t with core = S.add_bounds t.core (x, inf, upp)} x f (e, s, c)), []
     | _ ->
             let expr = to_nexpr e in
-            let v = tvar (newname ()) (get_type expr) in
-            let e1 = Typetptp.mk_equal v expr in
+            let v = tvar (newname ()) (find_type expr) in
+            let e1 = eapp (eeq, [v; expr]) in
             let e2 = mk_bop s v (const (Q.to_string c)) in
             Log.debug 7 "arith -- new variable : %a == %a" Print.pp_expr v Print.pp_expr expr;
             { core = S.add_eq t.core (v, e);
@@ -378,7 +373,7 @@ let nodes_of_tree s f t =
             let l = v :: (List.map snd expr) in
             let relevant = List.map (fun (_, z, _, _) -> z)
                 (List.filter (fun (y, y', _, _) -> not (equal y y') && List.exists (fun x -> equal x y) l) s.bindings) in
-            let clin = expr_norm (Typetptp.mk_equal (to_nexpr expr) v) in
+            let clin = expr_norm (eapp (eeq, [to_nexpr expr; v])) in
             let bounds, nb, conflict = bounds_of_clin v expr s.bindings in
             if bounds = [] && not is_zero then
                 [f, mk_node_conflict nb conflict]
@@ -658,7 +653,7 @@ let tr_rule f = function
     | Ext("arith", "eq", [a; b; e]) ->
             LL.Rextension("arith", "eq", [f a; f b], [f e], [[f (expr_norm (lesseq a b)); f (expr_norm (greatereq a b))]])
     | Ext("arith", "neq", [a; b; e]) ->
-            LL.Rextension("arith", "neq", [f a; f b], [f e], [[f (expr_norm (less a b))];[f (expr_norm (greater a b))]])
+            LL.Rextension("arith", "neq", [f a; f b], [f e], [[f (less a b)];[f (greater a b)]])
     | Ext("arith", s, [x; c; e]) when ssub s 8 = "tighten_" ->
             LL.Rextension("arith", s, [f x; f c], [f e], [[f (mk_bop (esub s 8) x c)]])
     | Ext("arith", "var", [e1;e2;e]) ->
@@ -721,8 +716,10 @@ let neg_comp_lemma = function
 let ll_p oc r =
     let pr fmt = Printf.fprintf oc fmt in
     match r with
-    | LL.Rextension("arith", s, _, l, ll) ->
-            pr "(* ARITH -- '%s'\n * -> " s;
+    | LL.Rextension("arith", s, args, l, ll) ->
+            pr "(* ARITH -- '%s' : " s;
+            List.iter (fun e -> pr "%a : '%s', " Lltocoq.p_expr e (Type.opt_string (get_type e))) args;
+            pr "\n * ->";
             List.iter (fun e -> pr "%a, " Lltocoq.p_expr e) l;
             List.iter (fun l ->
                 pr "\n * |- ";
@@ -736,13 +733,16 @@ let lltocoq oc r =
     if Log.get_debug () >= 0 then ll_p oc r;
     match r with
     | LL.Rextension("arith", "const", _, [e], _) ->
-            pr "arith_simpl %s.\n" (Coqterm.getname e);
+            pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
     | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
-            pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %s ].\n"
-            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
+            pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %a %s ].\n"
+            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
+            (Coqterm.getname less) (Coqterm.getname greater)
+            Lltocoq.pp_expr (coqify_to_q (norm_coef e)) (Coqterm.getname e)
     | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) ->
-            pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | arith_simpl %s ].\n"
-            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
+            pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | z_eq_q %s ].\n"
+            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
+            (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
     | LL.Rextension("arith", "tighten_$lesseq", [x; c], [e], [[e']]) ->
             pr "pose proof (arith_tight_leq _ _ %s) as %s; unfold Qfloor, Zdiv in %s; simpl in %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
@@ -750,22 +750,22 @@ let lltocoq oc r =
             pr "pose proof (arith_tight_geq _ _ %s) as %s; unfold Qceiling, Zdiv in %s; simpl in %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
     | LL.Rextension("arith", s, [a; b], [e], [[f]]) when ssub s 5 = "neg2_" ->
-            pr "apply (arith_refut _ _ (arith_neg_%s %a %a)); [zenon_intro %s | arith_simpl %s].\n"
+            pr "apply (arith_refut _ _ (arith_neg_%s %a %a)); [zenon_intro %s | exact %s].\n"
             (neg_comp_lemma (esub s 5)) Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname f) (Coqterm.getname e)
     | LL.Rextension("arith", "int_lt", [a; b], [e], [[f]]) ->
-            pr "cut %a; [ zenon_intro %s | arith_simpl %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
+            pr "cut %a; [ zenon_intro %s | arith_omega %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
     | LL.Rextension("arith", "int_gt", [a; b], [e], [[f]]) ->
-            pr "cut %a; [ zenon_intro %s | arith_simpl %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
+            pr "cut %a; [ zenon_intro %s | arith_omega %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
     | LL.Rextension("arith", "var", _, [e], [[e1; e2]]) ->
             let v, b, expr = get_bind e2 in
             pr "pose (%s := %a).\n" v Lltocoq.pp_expr (coqify_term expr);
             pr "  pose proof (%s %s) as %s; change %s with %a in %s at 2.\n"
                 (if b then "Z.eq_refl" else "Qeq_refl")
                 v (Coqterm.getname e2) v Lltocoq.pp_expr (coqify_term expr) (Coqterm.getname e2);
-            pr "  cut %a; [zenon_intro %s | subst %s; arith_simpl %s ].\n" Lltocoq.p_expr e1 (Coqterm.getname e1) v (Coqterm.getname e)
+            pr "  cut %a; [zenon_intro %s | subst %s; arith_omega %s ].\n" Lltocoq.p_expr e1 (Coqterm.getname e1) v (Coqterm.getname e)
     | LL.Rextension("arith", "simplex_branch", _, _, [[e]; [f]]) ->
             let expr, c = get_branch e in
-            pr "destruct (arith_branch %a %s) as [ %s | %s ]; [ | simpl in %s ].\n"
+            pr "destruct (arith_branch %a %s) as [ %s | %s ]; [ | ring_simplify in %s ].\n"
             Lltocoq.pp_expr (coqify_term expr) c (Coqterm.getname e) (Coqterm.getname f) (Coqterm.getname f)
     | LL.Rextension("arith", "simplex_lin", _, l, [[e]]) ->
             pr "cut %a; [ zenon_intro %s | %aarith_unfold; omega ].\n" Lltocoq.p_expr e (Coqterm.getname e)
@@ -774,7 +774,10 @@ let lltocoq oc r =
             pr "cut %a; [ zenon_intro %s | %aarith_unfold; omega ].\n" Lltocoq.p_expr e (Coqterm.getname e)
             (fun oc -> List.iter (fun e -> Printf.fprintf oc "arith_unfold_in %s; " (Coqterm.getname e))) l
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
-            pr "arith_unfold_in %s; arith_unfold_in %s; omega.\n" (Coqterm.getname e) (Coqterm.getname e')
+            pr "arith_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
+    | LL.Rextension("arith", "FM", x :: _, [e; e'], [[f]]) ->
+            pr "cut %a; [ zenon_intro %s | arith_trans %s %s Arith_tmp; arith_simpl 1 Arith_tmp ].\n"
+            Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e) (Coqterm.getname e')
     | LL.Rextension("arith", s, _, _, _) ->
             pr "(* TODO unknown rule %s *)\n" s
     | _ -> pr "(* Don't know what to do *)"
@@ -891,6 +894,7 @@ let p_rule_coq = lltocoq
 let predef () =
     [ "$less"; "$lesseq"; "$greater"; "$greatereq";
       "$sum"; "$difference"; "$product"; "$uminus";
+      "$is_int"; "$not_is_int"; "$is_rat"; "$not_is_rat";
     ] @ (List.map fst (Typetptp.get_defined ()))
 ;;
 

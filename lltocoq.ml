@@ -98,7 +98,7 @@ let rec p_expr oc e =
   | Evar (v, _) ->
       poc "%s" v;
   | Eapp (Evar("$coq_scope",_), [Evar(s,_); e], _) ->
-      poc "%a%%%s" p_expr e s;
+      poc "(%a)%%%s" p_expr e s;
   | Eapp (Evar("=",_), [e1; e2], _) ->
       poc "(%a = %a)" p_expr e1 p_expr e2;
   | Eapp (Evar("=",_), l, _) ->
@@ -176,7 +176,7 @@ let rec p_nand oc l =
 let rec p_bound_vars oc l =
   match l with
   | (ty, arg) :: t ->
-     fprintf oc " (%a : %a)" p_expr arg p_type ty;
+     fprintf oc " (%a : %a)" pp_expr arg p_type ty;
      p_bound_vars oc t;
   | [] -> ()
 ;;
@@ -363,7 +363,7 @@ let p_rule oc r =
   | Rnotequal _ -> assert false
   | Rpnotp ((Eapp (Evar(f,_), args1, _) as ff), Enot ((Eapp (Evar(g,_), args2, _) as gg), _)) ->
      assert (f = g);
-     poc "cut (%a = %a).\n" p_expr ff p_expr gg;
+     poc "cut (%a <-> %a).\n" p_expr ff p_expr gg;
      poc "intro %s_pnotp.\n" Namespace.dummy_prefix;
      poc "apply %s.\n" (getname (enot gg));
      poc "rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
@@ -378,7 +378,7 @@ let p_rule oc r =
      poc "congruence.\n";
   | Rpnotp _ -> assert false
   | Rnoteq e ->
-      poc "apply %s. apply refl_equal.\n" (getname (enot (Typetptp.mk_equal e e)));
+      poc "apply %s. apply refl_equal.\n" (getname (enot (eapp (eeq, [e; e]))));
   | Reqsym (e, f) ->
       poc "apply %s. apply sym_equal. exact %s.\n"
           (getname (enot (eapp (eeq, [f; e]))))

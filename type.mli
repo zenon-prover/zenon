@@ -32,6 +32,10 @@ val type_app : t -> t list -> t
 val type_app_opt : string * t option -> t option list -> t option
 
 val to_string : t -> string
+val opt_string : t option -> string
+
+(* Arith typing *)
+val is_type_num : t -> bool
 
 (* TPTP.TFF typing *)
 val tff : t -> t

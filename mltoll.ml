@@ -99,7 +99,10 @@ let expr_tbl = HE.create 9997;;
 let rec xtr_expr a =
   match a with
   | Evar (v, _) -> a
-  | Emeta (e, _) -> evar (make_meta_name e)
+  | Emeta (Eall(_, t, _, _) as e, _)
+  | Emeta (Eex(_, t, _, _) as e, _)
+    -> tvar (make_meta_name e) t
+  | Emeta(_) -> assert false
   | Eapp (Evar("$scope",_), lam :: tau :: vals, _) -> tr_expr (apply lam tau)
   | Eapp (s, args, _) -> eapp (s, List.map tr_expr args)
 

@@ -230,6 +230,10 @@ let rec remove x l =
   | _, h::t -> h :: (remove x t)
 ;;
 
+let t_eq a b = match a, b with
+    | Some t, Some t' -> Type.equal t t'
+    | None, None -> true | _ -> false
+
 let extract_args t args =
     let n = match t with
     | None -> 0
@@ -395,7 +399,7 @@ module HashedExpr = struct
   | Some t1, Some t2 -> Type.equal t1 t2
   | _ -> false
 
-  let equal e1 e2 =
+  let equal e1 e2 = (t_eq (get_type e1) (get_type e2)) &&
     match e1, e2 with
     | Evar (v1, _), Evar (v2, _) -> v1 =%= v2 && opt_equal (get_type e1) (get_type e2)
     | Emeta (f1, _), Emeta (f2, _) -> f1 == f2

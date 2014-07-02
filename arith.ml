@@ -2,18 +2,21 @@
 open Expr
 open Type
 open Mlproof
-open Typetptp
 
 let equal = Expr.equal
 
 (* Types manipulation *)
-let get_type e = match get_type e with
+let find_type e = match get_type e with
     | Some t -> t
     | None -> raise Exit
 
-let is_int e = try Type.equal type_int (get_type e) with Exit -> false
-let is_rat e = try Type.equal type_rat (get_type e) with Exit -> false
-let is_num e = try is_type_num (get_type e) with Exit -> false
+let mk_int v = tvar v type_int
+let mk_rat v = tvar v type_rat
+let mk_real v = tvar v type_real
+
+let is_int e = try Type.equal type_int (find_type e) with Exit -> false
+let is_rat e = try Type.equal type_rat (find_type e) with Exit -> false
+let is_num e = try is_type_num (find_type e) with Exit -> false
 
 (* We assume t a t' are numeric types *)
 let mix_type t t' =
@@ -52,8 +55,8 @@ let comp_neg = function
 let const s = if is_z (Q.of_string s) then mk_int s else mk_rat s
 
 let mk_op s a b =
-    let ta = get_type a in
-    let tb = get_type b in
+    let ta = find_type a in
+    let tb = find_type b in
     eapp (tvar s (mk_arrow [ta; tb] (mix_type ta tb)), [a; b])
 
 let sum a b = mk_op "$sum" a b
@@ -63,14 +66,14 @@ let minus_one e = diff e (const "1")
 let plus_one e = sum e (const "1")
 
 let mk_uop s a =
-    let t = get_type a in
+    let t = find_type a in
     eapp (tvar s (mk_arrow [t] t), [a])
 
 let uminus a = mk_uop "$uminus" a
 
 let mk_bop s a b =
-    let ta = get_type a in
-    let tb = get_type b in
+    let ta = find_type a in
+    let tb = find_type b in
     eapp (tvar s (mk_arrow [ta; tb] type_bool), [a; b])
 
 let less a b = mk_bop "$less" a b
@@ -85,7 +88,7 @@ let coerce t v =
         v
 
 let mk_ubop s a =
-    let t = get_type a in
+    let t = find_type a in
     eapp (tvar s (mk_arrow [t] type_bool), [a])
 
 
@@ -123,7 +126,7 @@ let rec sanitize = function
     | [] -> []
     | (c, _) as a :: r -> if Q.equal Q.zero c then (sanitize r) else a :: (sanitize r)
 
-let normalize a b =
+let normalize_aux a b =
     let rec pop_const = function
         | [] -> (Q.zero, [])
         | (c, x) :: r ->
@@ -145,8 +148,9 @@ let normalize a b =
     let c, e = pop_const f in
     let e = sanitize e in
     let k = Q.abs (coef (List.map fst e)) in
-    Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e)
+    k, (Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e))
 
+let normalize a b = snd (normalize_aux a b)
 
 let of_cexpr e = match e with
     | Evar(s, _) when is_int e || is_rat e ->
@@ -176,20 +180,23 @@ let rec of_nexpr e = match e with
             end
     | _ -> [Q.one, e]
 
-let of_bexpr = function
+let of_bexpr_aux = function
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ ) ->
             let a', b' = of_nexpr a, of_nexpr b in
-            let c, e = normalize a' b' in
-            (e, s, c)
+            let k, (c, e) = normalize_aux a' b' in
+            k, (e, s, c)
     | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
             let a', b' = of_nexpr a, of_nexpr b in
-            let c, e = normalize a' b' in
-            (e, "=", c)
+            let k, (c, e) = normalize_aux a' b' in
+            k, (e, "=", c)
     | Eapp (Evar(("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s,_), [a], _) ->
             let a' = of_nexpr a in
-            let c, e = normalize [Q.zero, etrue] a' in
-            (e, s, c)
+            let k, (c, e) = normalize_aux [Q.zero, etrue] a' in
+            k, (e, s, c)
     | _ -> raise NotaFormula
+
+let of_bexpr e = snd (of_bexpr_aux e)
+let norm_coef e = const (Q.to_string (fst (of_bexpr_aux e)))
 
 let to_nexpr_aux (c, x) =
     if x == etrue then const (Q.to_string c) else
@@ -229,7 +236,9 @@ let q_scope e =
 let rec coqify_aux b e =
     let aux = if b then coqify_to_q else coqify_term in
     match e with
-    | Evar(v, _) when is_int e ->
+    | Evar(_)
+    | Etau(_)
+    | Emeta(_) when is_int e ->
             if b then mk_coq_q e (const "1") else e
     | Evar(v, _) when is_rat e ->
             begin try coq_const (Q.of_string v) with Invalid_argument _ -> e end
@@ -237,7 +246,9 @@ let rec coqify_aux b e =
     | Eapp (Evar("$sum",_), [a; b], _) -> sum (aux a) (aux b)
     | Eapp (Evar("$difference",_), [a; b], _) -> diff (aux a) (aux b)
     | Eapp (Evar("$product",_), [a; b], _) -> mul (aux a) (aux b)
-    | Eapp (f, l, _) -> eapp (f, List.map coqify_term l)
+    | Eapp (f, l, _) ->
+            let e' = eapp (f, List.map coqify_term l) in
+            if b && is_int e then mk_coq_q e' (const "1") else e'
     | _ -> e
 
 and coqify_term e =
@@ -250,11 +261,14 @@ and coqify_term e =
 
 and coqify_to_q e =
     if is_int e then
-        q_scope (mk_coq_q (coqify_term e) (const "1"))
+        mk_coq_q (coqify_term e) (const "1")
     else
         coqify_term e
 
+
 and coqify_prop e = match e with
+    | Eapp (Evar("=",_), [a; b], _ ) when is_int a && is_int b ->
+            mk_bop "=" (coqify_term a) (coqify_term b)
     | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
             mk_bop "==" (coqify_to_q a) (coqify_to_q b)
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
@@ -276,7 +290,7 @@ and coqify_prop e = match e with
     | Elam(v, t, body, _) -> elam (v, t, coqify_prop body)
     | _ -> coqify_term e
 
-let coqify e = match Expr.get_type e with
+let coqify e = match get_type e with
     | None -> e
     | _ ->
             if is_int e then
