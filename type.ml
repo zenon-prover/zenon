@@ -260,6 +260,7 @@ let unif_types t1 t2 =
 
 let rec extract_ttype_aux b = 
   match b with 
+  | Bool -> base b
   | App (s, []) -> base b
   | App (s, h :: l) -> extract_ttype_aux h
   | Ttype -> base Ttype 

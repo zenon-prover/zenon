@@ -1042,78 +1042,114 @@ let newnodes_match_trans st fm g _ =
   try
     let fmg = (fm, g) in
     match fm with
-    | Eapp (Evar("=",_), [Emeta (m1, _); Emeta (m2, _)], _) ->
+    | Eapp (Evar("=",_), [Emeta (b1, _) as m1; Emeta (b2, _) as m2], _) ->
        let nfmg = Index.find_neg "=" in 
        let select a (b, c) = same_types a b in
-       let nfmg = List.filter (select fm) nfmg in
-       let nodes = List.map (mknode_transeq false fmg) nfmg in
-       add_node_list st nodes, false
+       let nfmg_s = List.filter (select fm) nfmg in
+       if (List.length nfmg_s != 0)
+       then
+	 let nodes = List.map (mknode_transeq false fmg) nfmg_s in
+	 add_node_list st nodes, false
+       else 
+	 begin
+	   try 
+	     let texpr = Expr.get_texpr_exp (Type.extract_ttype_name (type_of m1)) in
+	     let f (a, b) = 
+	       match a with 
+	       | Enot (Eapp (s, [x; y], _), _) -> 
+		  Expr.get_texpr_exp (Type.extract_ttype_name (type_of x))
+	       | _ -> assert false 
+	     in
+	     let texpr2 = List.map f nfmg in 
+	     let rec build_list e s accu = 
+	       match s with 
+	       | 0 -> accu 
+	       | _ -> build_list e (s - 1) (e :: accu)
+	     in
+	     let texpr1 = build_list texpr (List.length texpr2) [] in 
+	     let subst = Expr.preunify_list texpr1 texpr2 in 
+	     let two_meta_subst (m1, m2) = 
+	       if (is_meta m1) && (is_meta m2)
+		  && ((Expr.size (Expr.get_meta_expr m1)) > (Expr.size (Expr.get_meta_expr m2)))
+	       then (m2, m1) 
+	       else (m1, m2)
+	     in 
+	     let subst = List.map two_meta_subst subst in 
+	     let compare_size (m1, e1) (m2, e2) = 
+	       - Pervasives.compare (Expr.size (Expr.get_meta_expr m1)) (Expr.size (Expr.get_meta_expr m2))
+	     in
+	     let subst = List.sort compare_size subst in 
+	     let (m, term) = List.hd subst in 
+	     make_inst st m term g
+	   with
+	   | Expr.Non_unifiable | Failure "hd" | Non_meta -> st, false
+	 end
     | Eapp (Evar("=",_), [e1; e2], _) ->
-        Index.add_trans fm;
-        let h1 = Index.get_head e1 in
-        let h2 = Index.get_head e2 in
-        let matches_ll = Index.find_all_negtrans_left h1 in
-        let matches_rr = Index.find_all_negtrans_right h2 in
-        let matches_lr = Index.find_all_negtrans_left h2 in
-        let matches_rl = Index.find_all_negtrans_right h1 in
-        let nodes = List.flatten [
-          List.map (mknode_transeq false fmg) matches_ll;
-          List.map (mknode_transeq true fmg) matches_lr;
-          List.map (mknode_transeq true fmg) matches_rl;
-          List.map (mknode_transeq false fmg) matches_rr;
-        ] in
-        add_node_list st nodes, false
+       Index.add_trans fm;
+       let h1 = Index.get_head e1 in
+       let h2 = Index.get_head e2 in
+       let matches_ll = Index.find_all_negtrans_left h1 in
+       let matches_rr = Index.find_all_negtrans_right h2 in
+       let matches_lr = Index.find_all_negtrans_left h2 in
+       let matches_rl = Index.find_all_negtrans_right h1 in
+       let nodes = List.flatten [
+		       List.map (mknode_transeq false fmg) matches_ll;
+		       List.map (mknode_transeq true fmg) matches_lr;
+		       List.map (mknode_transeq true fmg) matches_rl;
+		       List.map (mknode_transeq false fmg) matches_rr;
+		     ] in
+       add_node_list st nodes, false
     | Eapp (s, [e1; e2], _) when Eqrel.trans s ->
-        Index.add_trans fm;
-        let h1 = Index.get_head e1 in
-        let h2 = Index.get_head e2 in
-        let matches_ll = Index.find_negtrans_left s h1 in
-        let matches_rr = Index.find_negtrans_right s h2 in
-        let matches_lr =
-          if Eqrel.sym s then Index.find_negtrans_left s h2 else []
-        in
-        let matches_rl =
-          if Eqrel.sym s then Index.find_negtrans_right s h1 else []
-        in
-        let nodes = List.flatten [
-          List.map (mknode_trans false fmg) matches_ll;
-          List.map (mknode_trans true fmg) matches_lr;
-          List.map (mknode_trans true fmg) matches_rl;
-          List.map (mknode_trans false fmg) matches_rr;
-        ] in
-        add_node_list st nodes, false
+       Index.add_trans fm;
+       let h1 = Index.get_head e1 in
+       let h2 = Index.get_head e2 in
+       let matches_ll = Index.find_negtrans_left s h1 in
+       let matches_rr = Index.find_negtrans_right s h2 in
+       let matches_lr =
+         if Eqrel.sym s then Index.find_negtrans_left s h2 else []
+       in
+       let matches_rl =
+         if Eqrel.sym s then Index.find_negtrans_right s h1 else []
+       in
+       let nodes = List.flatten [
+		       List.map (mknode_trans false fmg) matches_ll;
+		       List.map (mknode_trans true fmg) matches_lr;
+		       List.map (mknode_trans true fmg) matches_rl;
+		       List.map (mknode_trans false fmg) matches_rr;
+		     ] in
+       add_node_list st nodes, false
     | Enot (Eapp (Evar(s',_) as s, [e1; e2], _), _) when Eqrel.trans s ->
-        Index.add_negtrans fm;
-        let h1 = Index.get_head e1 in
-        let h2 = Index.get_head e2 in
-        let matches_ll = Index.find_trans_left s h1 in
-        let matches_rr = Index.find_trans_right s h2 in
-        let matches_lr =
-          if Eqrel.sym s then Index.find_trans_right s h1 else []
-        in
-        let matches_rl =
-          if Eqrel.sym s then Index.find_trans_left s h2 else []
-        in
-        let nodes = List.flatten [
-          List.map (mknode_negtrans false fmg) matches_ll;
-          List.map (mknode_negtrans true fmg) matches_lr;
-          List.map (mknode_negtrans true fmg) matches_rl;
-          List.map (mknode_negtrans false fmg) matches_rr;
-        ] in
-        let eqnodes =
-          if s' =%= "=" then [] else
-          let eqmatches_ll = Index.find_trans_left eeq h1 in
-          let eqmatches_rr = Index.find_trans_right eeq h2 in
-          let eqmatches_lr = Index.find_trans_right eeq h1 in
-          let eqmatches_rl = Index.find_trans_left eeq h2 in
-          List.flatten [
-            List.map (mknode_negtranseq false fmg) eqmatches_ll;
-            List.map (mknode_negtranseq true fmg) eqmatches_lr;
-            List.map (mknode_negtranseq true fmg) eqmatches_rl;
-            List.map (mknode_negtranseq false fmg) eqmatches_rr;
-          ]
-        in
-        add_node_list st (eqnodes @@ nodes), false
+       Index.add_negtrans fm;
+       let h1 = Index.get_head e1 in
+       let h2 = Index.get_head e2 in
+       let matches_ll = Index.find_trans_left s h1 in
+       let matches_rr = Index.find_trans_right s h2 in
+       let matches_lr =
+         if Eqrel.sym s then Index.find_trans_right s h1 else []
+       in
+       let matches_rl =
+         if Eqrel.sym s then Index.find_trans_left s h2 else []
+       in
+       let nodes = List.flatten [
+		       List.map (mknode_negtrans false fmg) matches_ll;
+		       List.map (mknode_negtrans true fmg) matches_lr;
+		       List.map (mknode_negtrans true fmg) matches_rl;
+		       List.map (mknode_negtrans false fmg) matches_rr;
+		     ] in
+       let eqnodes =
+         if s' =%= "=" then [] else
+           let eqmatches_ll = Index.find_trans_left eeq h1 in
+           let eqmatches_rr = Index.find_trans_right eeq h2 in
+           let eqmatches_lr = Index.find_trans_right eeq h1 in
+           let eqmatches_rl = Index.find_trans_left eeq h2 in
+           List.flatten [
+               List.map (mknode_negtranseq false fmg) eqmatches_ll;
+               List.map (mknode_negtranseq true fmg) eqmatches_lr;
+               List.map (mknode_negtranseq true fmg) eqmatches_rl;
+               List.map (mknode_negtranseq false fmg) eqmatches_rr;
+             ]
+       in
+       add_node_list st (eqnodes @@ nodes), false
     | _ -> st, false
   with Index.No_head -> st, false
 ;;

@@ -134,3 +134,13 @@ val tbl_prop : rwrt_tbl ref;;
 
 exception Non_meta;;
 val get_meta_expr : expr -> expr;;
+
+val get_texpr_exp : string -> expr;;
+
+val get_texpr_str : expr -> string;;
+
+val is_texpr_key_exp : string -> bool;;
+
+val is_texpr_key_str : expr -> bool;;
+
+val is_texpr_key : string -> expr -> bool;;
