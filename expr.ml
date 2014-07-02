@@ -521,6 +521,7 @@ let compare_type x y = match (get_type x), (get_type y) with
 (************************)
 
 exception Mismatch;;
+exception Non_unifiable;;
 
 let rec xpreunify accu e1 e2 =
   match e1, e2 with
@@ -535,6 +536,13 @@ let rec xpreunify accu e1 e2 =
 let preunify e1 e2 =
   try xpreunify [] e1 e2
   with Mismatch -> []
+;;
+
+let preunify_list l1 l2 = 
+  try List.fold_left2 xpreunify [] l1 l2
+  with 
+  | Mismatch
+  | Invalid_argument _ -> raise Non_unifiable
 ;;
 
 let preunifiable e1 e2 =
@@ -780,3 +788,11 @@ type goalness = int;;
 
 let tbl_term = ref (Hashtbl.create 42);;
 let tbl_prop = ref (Hashtbl.create 42);;
+
+exception Non_meta;;
+
+let get_meta_expr m = 
+  match m with 
+  | Emeta (b, _) -> b 
+  | _ -> raise Non_meta
+;;

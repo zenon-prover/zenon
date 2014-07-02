@@ -152,20 +152,20 @@ let same_types x y =
   | Eapp (s1, args1, _), Enot (Eapp (s2, args2, _), _)
   | Enot (Eapp (s1, args1, _), _), Eapp (s2, args2, _) -> 
      (match (get_type x), (get_type y) with 
-     | None, None -> true 
-     | Some tx, Some ty -> 
-	if not (Type.equal (type_of s1) (type_of s2))
-	then false
-	else let nbind = Type.nbind (type_of s1) in
-	     let (texpr1, vexpr1) = Type.ksplit nbind args1 in 
-	     let (texpr2, vexpr2) = Type.ksplit nbind args2 in 
-	     (List.for_all2 Type.equal 
-			    (List.map Expr.type_of_expr texpr1) 
-			    (List.map Expr.type_of_expr texpr2))
-	     && (List.for_all2 Type.equal 
+      | None, None -> true 
+      | Some tx, Some ty -> 
+	 if not (Type.equal (type_of s1) (type_of s2))
+	 then false
+	 else let nbind = Type.nbind (type_of s1) in
+	      let (texpr1, vexpr1) = Type.ksplit nbind args1 in 
+	      let (texpr2, vexpr2) = Type.ksplit nbind args2 in 
+	      (List.for_all2 Type.equal 
+			     (List.map Expr.type_of_expr texpr1) 
+			     (List.map Expr.type_of_expr texpr2))
+      (*  && (List.for_all2 Type.equal 
 			       (List.map type_of vexpr1)
-			       (List.map type_of vexpr2))
-     |_, _ -> assert false)
+			       (List.map type_of vexpr2))*)
+      |_, _ -> assert false)
   | _, _ -> assert false
 ;;
 
@@ -321,54 +321,29 @@ let make_notequiv st sym (p, g) (np, ng) =
 		    nbranches = make_inequals myargs1 args2;
 		  }
        end
-     else st
-
-(*     else if ((has_meta_type p) || (has_meta_type np))
-     then
-       begin	
+     else 
+       begin
 	 try
-	   let targs1 = 
-	     List.map type_of (fst (Type.ksplit 
-				      (Type.nbind (type_of s1')) args1))
+	   let nbind = Type.nbind (type_of s1') in 
+	   let (texpr1, vexpr1) = Type.ksplit nbind args1 in 
+	   let (texpr2, vexpr2) = Type.ksplit nbind args2 in 
+	   let subst = Expr.preunify_list texpr1 texpr2 in 
+	   let two_meta_subst (m1, m2) = 
+	     if (is_meta m1) && (is_meta m2)
+		&& ((Expr.size (Expr.get_meta_expr m1)) > (Expr.size (Expr.get_meta_expr m2)))
+	     then (m2, m1) 
+	     else (m1, m2)
+	   in 
+	   let subst = List.map two_meta_subst subst in 
+	   let compare_size (m1, e1) (m2, e2) = 
+	     - Pervasives.compare (Expr.size (Expr.get_meta_expr m1)) (Expr.size (Expr.get_meta_expr m2))
 	   in
-	   let targs2 = 
-	     List.map type_of (fst (Type.ksplit 
-				      (Type.nbind (type_of s2')) args2))
-	   in
-	   assert ((List.length targs1) =%= (List.length targs2));
-	   let subst = List.map2 Type.unif_types targs1 targs2 in
-	   let rec merge_sub l accu = 
-	     match l with 
-	     | [] -> accu
-	     | h :: t -> merge_sub t (List.append h accu)
-	   in
-	   let subst = merge_sub subst [] in 
-	   if ((List.length subst) =%= 0) 
-	   then raise Type.Unif_type_failed
-	   else
-	     (let print_subst (a, b) = 
-		print_string (" ( " 
-			      ^ (Type.to_string a) 
-			      ^ " , " 
-			      ^ (Type.to_string b)
-			      ^ " ) ; ");
-	      in
-	      print_endline "";
-	      print_endline " P ";
-	      print_type p;
-	      print_endline "";
-	      print_endline " NP";
-	      print_type np;
-	      print_endline "";
-	      print_endline " SUBST ";
-	      print_endline "";
-	      List.iter print_subst subst;
-	      print_endline "";
-	      st)
-	 with 
-	 | Type.Unif_type_failed _ -> st
+	   let subst = List.sort compare_size subst in 
+	   let (m, term) = List.hd subst in 
+	   fst (make_inst st m term (min g ng))
+	 with
+	 | Expr.Non_unifiable | Failure "hd" | Non_meta -> st
        end
-     else st *)
   | _ -> assert false
 ;;
 		

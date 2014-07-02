@@ -92,6 +92,10 @@ val preunify : expr -> expr -> (expr * expr) list;;
    A pre-unifier is: (metavariable, value)
 *)
 
+exception Non_unifiable;;
+
+val preunify_list : expr list -> expr list -> (expr * expr) list;;
+
 val occurs_as_meta : expr -> expr -> bool;;
 (* [occurs e1 e2] returns true if [Emeta (e1, _)] occurs in [e2] *)
 
@@ -127,3 +131,6 @@ type rwrt_tbls = rwrt_tbl * rwrt_tbl;;
 
 val tbl_term : rwrt_tbl ref;;
 val tbl_prop : rwrt_tbl ref;;
+
+exception Non_meta;;
+val get_meta_expr : expr -> expr;;
