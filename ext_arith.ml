@@ -774,7 +774,7 @@ let lltocoq oc r =
             pr "destruct (arith_branch %a %s) as [ %s | %s ]; [ | ring_simplify in %s ].\n"
             Lltocoq.pp_expr (coqify_term expr) c (Coqterm.getname e) (Coqterm.getname f) (Coqterm.getname f)
     | LL.Rextension("arith", "simplex_lin", _, l, [[e]]) ->
-            pr "cut %a; [ zenon_intro %s | %aarith_unfold; omega ].\n" Lltocoq.p_expr e (Coqterm.getname e)
+            pr "cut %a; [ zenon_intro %s | %aarith_norm; apply eq_refl ].\n" Lltocoq.p_expr e (Coqterm.getname e)
             (fun oc -> List.iter (fun e -> let s, _, _ = get_bind e in Printf.fprintf oc "subst %s; " s)) l
     | LL.Rextension("arith", "simplex_bound", _, l, [[e]]) ->
             pr "cut %a; [ zenon_intro %s | %aarith_unfold; omega ].\n" Lltocoq.p_expr e (Coqterm.getname e)
