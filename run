@@ -22,6 +22,10 @@ case $1 in
         echo "Testing counter-satisfiable problems..."
         FILES=`grep -L "Status   : Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
         ;;
+    simon)
+        echo "Testing simon's becnhes"
+        FILES=`cat benchs/arith_problems`
+        ;;
     clean)
         rm -f temp.*
         rm -f test/*.gv test/*.svg
@@ -59,7 +63,7 @@ do
         if [ $? -eq 0 ];
         then
             COQS=$(($COQS + 1));
-            # echo -e "[PROOF FOUND] $f \e[32m[OK]\e[0m"
+            echo -e "\r\033[K[PROOF FOUND] $f \e[32m[OK]\e[0m"
         else
             echo -e "\r\033[K\e[31m[PROOF FOUND] $f [KO]\e[0m"
             coqc -I ./ $TEMP
@@ -67,7 +71,7 @@ do
         rm -f $TEMP
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ] || [ $RET -eq 13 ];
     then
-        #echo -e "\e[33m[NOT FOUND] $f \e[0m"
+        echo -e "\r\033[K\e[33m[NOT FOUND] $f \e[0m"
         :
     else
         ERRORS=$(($ERRORS + 1))

@@ -104,6 +104,10 @@ phrase:
      { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
   | INPUT_TFF_FORMULA OPEN LIDENT COMMA LIDENT COMMA type_def CLOSE DOT
      { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
+  | INPUT_TFF_FORMULA OPEN INT COMMA LIDENT COMMA formula CLOSE DOT
+     { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
+  | INPUT_TFF_FORMULA OPEN INT COMMA LIDENT COMMA type_def CLOSE DOT
+     { Phrase.Formula (ns_hyp $3, "tff_" ^ $5, $7) }
   | ANNOT                          { Phrase.Annotation $1 }
 ;
 expr:
