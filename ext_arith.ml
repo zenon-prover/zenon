@@ -118,10 +118,10 @@ let mk_node_lin e l g =
         nbranches = [| [e] |];
     }
 
-let mk_node_sim e b res g =
+let mk_node_sim x e b res g =
     Node {
         nconc = e :: b;
-        nrule = Ext("arith", "simplex_bound", res :: e :: b);
+        nrule = Ext("arith", "simplex_bound", res :: x :: e :: b);
         nprio = Prop;
         ngoal = g;
         nbranches = [| [res] |];
@@ -379,7 +379,7 @@ let nodes_of_tree s f t =
                 [f, mk_node_conflict nb conflict]
             else
                 [f, mk_node_lin clin relevant;
-                 clin, mk_node_sim clin bounds nb;
+                 clin, mk_node_sim v clin bounds nb;
                  nb, mk_node_conflict nb conflict]
     in
     aux s f t
@@ -676,8 +676,8 @@ let tr_rule f = function
             LL.Rextension("arith", "simplex_branch", [f e;f e'], [], [[f e];[f e']])
     | Ext("arith", "simplex_lin", e :: l) ->
             LL.Rextension("arith", "simplex_lin", List.map f (e :: l), List.map f l, [[f e]])
-    | Ext("arith", "simplex_bound", res :: e :: b) ->
-            LL.Rextension("arith", "simplex_bound", List.map f (e :: b), List.map f (e :: b), [[f res]])
+    | Ext("arith", "simplex_bound", res :: x :: e :: b) ->
+            LL.Rextension("arith", "simplex_bound", List.map f (x :: e :: b), List.map f (e :: b), [[f res]])
     | Ext("arith", "conflict", [e;e']) ->
             LL.Rextension("arith", "conflict", [f e;f e'], [f e;f e'], [[]])
     | Ext("arith", "FM", [x;e;e';e'']) ->
@@ -776,9 +776,31 @@ let lltocoq oc r =
     | LL.Rextension("arith", "simplex_lin", _, l, [[e]]) ->
             pr "cut %a; [ zenon_intro %s | %aarith_norm; apply eq_refl ].\n" Lltocoq.p_expr e (Coqterm.getname e)
             (fun oc -> List.iter (fun e -> let s, _, _ = get_bind e in Printf.fprintf oc "subst %s; " s)) l
-    | LL.Rextension("arith", "simplex_bound", _, l, [[e]]) ->
-            pr "cut %a; [ zenon_intro %s | %aarith_unfold; omega ].\n" Lltocoq.p_expr e (Coqterm.getname e)
-            (fun oc -> List.iter (fun e -> Printf.fprintf oc "arith_unfold_in %s; " (Coqterm.getname e))) l
+    | LL.Rextension("arith", "simplex_bound", x :: _, e :: l, [[f]]) ->
+            let (b, _, _) = of_bexpr e in
+            let k, b = fsep b x in
+            let ee = eapp (eeq, [x; to_nexpr b]) in
+            pr "cut (%a); [ zenon_intro %s | arith_simpl %a %s ].\n" Lltocoq.p_expr ee (Coqterm.getname ee)
+            Lltocoq.pp_expr (coqify_to_q (const (Q.to_string (Q.inv k)))) (Coqterm.getname e);
+            let b = List.map (fun (c, y) -> (c, y,
+                List.find (fun e -> let b, _, _ = of_bexpr e in match b with
+                | [(_, z)] -> equal y z | _ -> false) l)) b
+            in
+            List.iter (fun (c, y, e') ->
+                pr "%s %a %s %s_%s.\n"
+                (if Q.sign c >= 0 then "Qle_mult" else "Qle_mult_opp")
+                Lltocoq.pp_expr (coqify_to_q @@ const @@ Q.to_string @@ Q.abs c)
+                (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e)) b;
+            let rec aux oc = function
+                | [_, _, e1] -> pr "%s_%s" (Coqterm.getname e1) (Coqterm.getname e)
+                | [_, _, e1; _, _, e2] -> Printf.fprintf oc "Qplus_le_compat _ _ _ _ %s_%s %s_%s"
+                    (Coqterm.getname e1) (Coqterm.getname e) (Coqterm.getname e2) (Coqterm.getname e)
+                | (_, _, e1) :: r -> pr "Qplus_le_compat _ _ _ _ (%a) %s_%s" aux r (Coqterm.getname e1) (Coqterm.getname e)
+                | _ -> assert false
+            in
+            pr "pose proof (%a) as %s_pre.\n" aux b (Coqterm.getname f);
+            pr "cut %a; [ zenon_intro %s | rewrite -> %s; arith_simpl 1 %s_pre ].\n"
+            Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname ee) (Coqterm.getname f)
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
             pr "arith_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
     | LL.Rextension("arith", "FM", x :: _, [e; e'], [[f]]) ->

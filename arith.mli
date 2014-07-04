@@ -53,6 +53,7 @@ val fadd : (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> (Q.t * Expr.t) list
 val fdiff : (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> (Q.t * Expr.t) list
 val fmul : Q.t -> (Q.t * 'a) list -> (Q.t * 'a) list
 
+val fsep : (Q.t * Expr.t) list -> Expr.t -> Q.t * (Q.t * Expr.t) list
 val fis_tau : (Q.t * Expr.t) list -> bool
 val fis_meta : (Q.t * Expr.t) list -> bool
 
