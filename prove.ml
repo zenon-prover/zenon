@@ -1048,8 +1048,8 @@ let newnodes_match_trans st fm g _ =
        let nfmg_s = List.filter (select fm) nfmg in
        if (List.length nfmg_s != 0)
        then
-	 let nodes = List.map (mknode_transeq false fmg) nfmg_s in
-	 add_node_list st nodes, false
+	  let nodes = List.map (mknode_transeq false fmg) nfmg_s in
+	  add_node_list st nodes, false
        else 
 	 begin
 	   try 
@@ -1079,10 +1079,10 @@ let newnodes_match_trans st fm g _ =
 	       - Pervasives.compare (Expr.size (Expr.get_meta_expr m1)) (Expr.size (Expr.get_meta_expr m2))
 	     in
 	     let subst = List.sort compare_size subst in 
-	     let (m, term) = List.hd subst in 
+	     let (m, term) = List.hd subst in
 	     make_inst st m term g
 	   with
-	   | Expr.Non_unifiable | Failure "hd" | Non_meta -> st, false
+	   | Expr.Non_unifiable | Failure "hd" | Non_meta | Not_found -> st, false
 	 end
     | Eapp (Evar("=",_), [e1; e2], _) ->
        Index.add_trans fm;
