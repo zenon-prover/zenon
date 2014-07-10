@@ -166,14 +166,19 @@ let declare_lemma oc name params concl =
 ;;
 
 let declare_theorem oc name params concl phrases =
-  let nconcl =
+  let nconcl, script_prefix =
     match get_goals concl with
-    | [ Enot (e, _) ] -> e
-    | [] -> efalse
+    | [ Enot (e, _) ] -> e, ""
+    | [] ->
+        begin match Coqterm.get_goal phrases with
+        | None -> efalse, ""
+        | Some (Enot (g, _)) -> g, "apply NNPP; intro.\n"
+        | _ -> assert false
+        end
     | _ -> assert false
   in
   fprintf oc "Theorem %s : %a%a.\n" name p_forall params p_expr nconcl;
-  fprintf oc "Proof.\n";
+  fprintf oc "Proof.\n%s" script_prefix;
   Coqterm.print_use_all oc phrases;
 ;;
 
