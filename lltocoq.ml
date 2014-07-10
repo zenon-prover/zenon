@@ -327,8 +327,13 @@ let p_rule oc r =
   | Rnotequal (Eapp (f, args1, _), Eapp (g, args2, _)) ->
      assert (f = g);
      let f a1 a2 =
-       let eq = eapp ("=", [a1; a2]) in
-       let neq = enot eq in
+       let eq =
+         match a1, a2 with
+         | Evar ("_", _), _ | _, Evar ("_", _) ->
+             eapp ("=", [evar "true"; evar "true"])
+         | _ -> eapp ("=", [a1; a2])
+       in
+       let neq = enot (eapp ("=", [a1; a2])) in
        poc "cut (%a); [idtac | apply NNPP; zenon_intro %s].\n"
            p_expr eq (getname neq);
      in
