@@ -1,3 +1,4 @@
+(*  Copyright 2014 INRIA  *)
 
 (* Base types *)
 type base =
