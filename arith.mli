@@ -89,6 +89,7 @@ type 'a ctree = {
     children : 'a ctree array;
 }
 
+val collapse : 'a ctree -> 'a ctree
 val reset : 'a ctree -> unit
 val next : 'a ctree -> unit
 val current : 'a ctree -> 'a list

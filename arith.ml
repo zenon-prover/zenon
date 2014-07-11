@@ -336,10 +336,13 @@ let cl_next l =
         l.acc <- x :: l.acc
     end
 
-let cl_reset l =
+let cl_to_list l = (List.rev l.acc) @ l.front
+
+let cl_reset cl =
     (* l.front *should* be empty, but just in case,.. *)
-    l.front <- (List.rev l.acc) @ l.front;
-    l.acc <- []
+    let l = cl_to_list cl in
+    cl.front <- l;
+    cl.acc <- []
 
 (* Combinatorial tree *)
 type 'a ctree = {
@@ -350,7 +353,17 @@ type 'a ctree = {
 let ct_is_empty t =
     Array.length t.children = 0 && cl_is_empty t.node
 
-let cl_to_list l = (List.rev l.acc) @ l.front
+let collapse t =
+    let rec aux l t =
+        if Array.length t.children = 1 then
+            aux (l @ cl_to_list t.node) t.children.(0)
+        else
+            {
+                node = cl_from_list (l @ cl_to_list t.node);
+                children = Array.map (aux []) t.children;
+            }
+    in
+    aux [] t
 
 let rec reset t =
     cl_reset t.node;
