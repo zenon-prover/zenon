@@ -876,6 +876,7 @@ let rec iter_open p =
             Log.debug 5 "arith -- empty tree received";
             false
     | Some t ->
+        Log.debug 9 "arith -- Trying to solve tree:\n%s" (sctree t);
         begin match solve_tree t with
         | Unsat ->
                 Log.debug 5 "arith -- no solution found in choice tree";

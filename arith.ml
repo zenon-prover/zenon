@@ -479,6 +479,15 @@ let replace_inst p (e, inst) =
 
 let next_inst p = replace_inst p (find_next_inst p)
 
+let rec treebox p =
+    let aux cl =
+        let l = cl_to_list cl in
+        let s = String.concat ", " (List.map Print.sexpr l) in
+        PrintBox.Simple.(`Text (Log.sprintf "[%s]" s))
+    in
+    PrintBox.Simple.(`Tree (aux p.node, Array.to_list @@ Array.map treebox p.children))
+
+let sctree t = PrintBox.Simple.to_string (treebox t)
 
 (* Simplex solver with a cache *)
 let lhash l = List.fold_left (+) 0 (List.map Expr.hash l)

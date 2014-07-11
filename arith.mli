@@ -94,8 +94,9 @@ val next : 'a ctree -> unit
 val current : 'a ctree -> 'a list
 val ct_all : 'a ctree -> 'a list list
 val ct_from_ml : Mlproof.proof -> Expr.t ctree option
-
 val next_inst : Mlproof.proof -> Mlproof.proof
+
+val sctree : Expr.t ctree -> string
 
 (* Simplex solver helper *)
 type solution =
