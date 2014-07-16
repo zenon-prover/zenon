@@ -476,11 +476,18 @@ type state = {
     stack : (expr * simplex_state * ((expr * Node.node_item) list)) Stack.t;
 }
 
-let empty_state = {
+let empty_state =
+    let st = Stack.create () in
+    Stack.push (etrue, simplex_empty, []) st;
+    {
     global = M.empty;
     solved = false;
-    stack = Stack.create ();
+    stack = st;
 }
+
+let st_reset st =
+    assert (Stack.length st.stack = 0);
+    Stack.push (etrue, simplex_empty, []) st.stack
 
 let st_solved st = st.solved <- true
 
@@ -492,12 +499,21 @@ let st_pop st =
 let st_head st =
     try
         let _, r, _ = Stack.top st.stack in
-        simplex_copy r
-    with Stack.Empty -> simplex_empty
+        r
+    with Stack.Empty -> assert false
 
-let st_push st x =
-    Stack.push x st.stack;
+let st_push st (e, t, l) =
+    let _, _, l' = Stack.pop st.stack in
+    Stack.push (e, t, l @ l') st.stack;
     Log.debug 7 "arith -- state stack push (%i left)" (Stack.length st.stack)
+
+let st_branch st =
+    try
+        let e, t, _ = Stack.top st.stack in
+        Stack.push (e, t, []) st.stack;
+        Log.debug 7 "arith -- toping top stack state (%i left)" (Stack.length st.stack)
+    with Stack.Empty ->
+        assert false
 
 let st_is_head st e =
     try
@@ -512,8 +528,11 @@ let is_coherent e = function
     | Stop -> true
     | Node n -> List.for_all (fun e' -> equal e e' || Index.member e') n.nconc
 
-let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
+let ignore_expr, add_expr, add_branch, remove_expr, todo, add_todo, set_global, reset =
     let st = empty_state in
+
+    let reset () = st_reset st in
+
     let is_new e =
         try Stack.iter (fun (e', _, l) ->
             if (List.exists (fun (e', _) -> equal e e') l) then raise Exit) st.stack;
@@ -534,7 +553,7 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
         if is_new e && not st.solved && not (ignore_expr e) then begin
             try
                 let (f, s, c) = of_bexpr e in
-                if not (fis_tau f) then raise NotaFormula;
+                (* if not (fis_tau f) then raise NotaFormula; *)
                 let t = st_head st in
                 if f <> [] then begin
                     let t', res = simplex_add t e (f, s, c) in
@@ -546,6 +565,8 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
             with NotaFormula -> ()
         end
     in
+
+    let add_branch () = st_branch st in
 
     let rec remove e = if st_is_head st e then begin st_pop st; remove e end in
 
@@ -570,18 +591,24 @@ let ignore_expr, add_expr, remove_expr, todo, add_todo, set_global =
                     res := true;
                     Log.debug 9 "arith -- Got %i match for %a (previously : %i)"
                     (List.length l) Print.pp_expr e (List.length l');
+                    List.iter (function
+                        | Node n -> Log.debug 10 "arith -- match -> %a" Print.pp_mlrule n.nrule;
+                        | Stop -> Log.debug 10 "arith -- match -> stop") l;
                     st.global <- M.add e l st.global
                 end
             with Not_found ->
                 res := true;
                 Log.debug 9 "arith -- Got %i match for %a (previously : 0)"
                 (List.length l) Print.pp_expr e;
+                List.iter (function
+                    | Node n -> Log.debug 10 "arith -- match -> %a" Print.pp_mlrule n.nrule
+                    | Stop -> Log.debug 10 "arith -- match -> stop") l;
                 st.global <- M.add e l st.global
         in
         List.iter f l;
         !res
     in
-    ignore_expr, add, remove, todo, add_todo, set_global
+    ignore_expr, add, add_branch, remove, todo, add_todo, set_global, reset
 
 (* Fourier-Motzkin *)
 type fm_state = (Expr.t list * Expr.t list) M.t
@@ -728,7 +755,6 @@ let tr_rule f = function
             raise Exit
     | _ -> assert false
 
-(* TODO: add nodes for expr normalization ? *)
 let mltoll f p hyps =
     let subproofs, subextras = List.split (Array.to_list hyps) in
     let extras = Expr.diff (List.concat subextras) p.mlconc in
@@ -869,6 +895,7 @@ let is_const e = try let (f, _, _) = of_bexpr e in f = [] with NotaFormula -> fa
 let add_formula e =
     fm_add_expr e;
     match e with
+    | Evar ("#branch", _) -> add_branch ()
     | _ when ignore_expr e -> ()
     | Enot (Eapp (Evar("=",_), [a; b], _), _) when is_num a && is_num b ->
             add_todo e [mk_node_neq a b e]
@@ -937,10 +964,14 @@ let rec iter_open p =
                     | _ -> assert false) [] s in
                 let b = set_global (List.map (fun (e, x) -> e, [x]) (order_inst global)) in
                 Log.debug 5 "arith -- global todo set (iter : %s)" (if b then "yes" else "no");
+                reset ();
                 b
         | Case (e, a, n) ->
                 try
-                    set_global [e, [mk_node_switch e a (Z.to_int n); Stop]]
+                    let b = set_global [e, [mk_node_switch e a (Z.to_int n); Stop]] in
+                    Log.debug 5 "arith -- global switch set (iter : %s)" (if b then "yes" else "no");
+                    reset ();
+                    b
                 with Z.Overflow ->
                     assert false
         end
