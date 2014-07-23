@@ -1,8 +1,7 @@
 
 * Coq proofs
   - congruence does not work with equality on rationals
-  - write a proper tactic to do computation of constants + normalizing of formulas
-    (instead of relying on omega)
+  - set constants to be variables instead of 0-ary functions (Type difference for context).
 
 * Simplex
   - Fix the schmilblik with multiple/repeated solving with int variables

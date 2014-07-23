@@ -1,3 +1,4 @@
+(*  Copyright 2014 INRIA  *)
 
 open Type
 open Expr
@@ -150,13 +151,15 @@ let var_name s =
         s
 
 (* Typing *)
-let type_tff_var env = function
+let type_tff_var t env = function
     | Evar(v, _) as e -> begin match get_type e with
         | Some t -> e, env
         | None when tff_mem v env ->
                 let t = tff_app v [] env in
                 (tvar v t, env)
-        | None -> (tvar v type_tff_i, env)
+        | None ->
+                Log.debug 5 "Inferring type of of var '%s' : '%s'" v (Type.to_string t);
+                (tvar v t, env)
         end
     | _ -> assert false
 
@@ -188,6 +191,7 @@ let rec type_tff_app env is_pred e = match e with
          | None ->
             let ret = if is_pred then type_bool else type_tff_i in
             let t = mk_arrow (const_list (List.length args) type_tff_i) ret in
+            Log.debug 5 "Inferring type of fun '%s' : '%s'" s (Type.to_string t);
             tvar s t, (tff_add_type s t env')
        in
        begin try
@@ -199,13 +203,14 @@ let rec type_tff_app env is_pred e = match e with
             raise (Type_error (Printf.sprintf "Inferred type for %s '%s' not valid."
 					      (if is_pred then "predicate" else "function") s))
        end
+	 
     | Eapp(_) ->
        raise (Type_error (Printf.sprintf "Expected a symbol function, not an expression."))
     | _ -> assert false
 		  
 and type_tff_prop env e = match e with
     (* Proposition typechecking *)
-    | Evar(v, _) -> type_tff_var env e
+    | Evar(v, _) -> type_tff_var type_bool env e
     | Emeta(_) -> assert false
     | Eapp(_) -> type_tff_app env true e
     | Enot(f, _) ->
@@ -250,7 +255,7 @@ and type_tff_prop env e = match e with
     | _ -> raise (Type_error ("Ill-formed expression"))
 
 and type_tff_term env e = match e with
-    | Evar(v, _) -> type_tff_var env e
+    | Evar(v, _) -> type_tff_var type_tff_i env e
     | Eapp(_) -> type_tff_app env false e
     | Elam(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in

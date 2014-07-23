@@ -6,6 +6,9 @@ Require Export ZArith.BinInt.
 Require Export QArith.
 Require Export QArith.Qround.
 
+Lemma Qplus_inv : forall a b: Q, a == (a + b) - b.
+Proof. intros. ring. Qed.
+
 Lemma Qzero : forall a: positive, 0 # a == 0.
 Proof. intros. unfold Qeq. simpl. apply eq_refl. Qed.
 
@@ -42,11 +45,12 @@ Proof. intro. unfold Qopp, Qnum, Qden. apply eq_refl. Qed.
 
 Ltac arith_norm :=
   try rewrite -> Zeq_qeq;
-  repeat rewrite Qfrac_plus;
-  repeat rewrite Qfrac_minus;
-  repeat rewrite Qfrac_mult;
-  repeat rewrite qopp;
-  repeat rewrite qneg;
+  repeat (progress (
+    try rewrite Qfrac_plus;
+    try rewrite Qfrac_minus;
+    try repeat rewrite Qfrac_mult;
+    try repeat rewrite qopp;
+    try repeat rewrite qneg));
   match goal with    
   | |- ?a == ?b => rewrite <- (Qplus_inj_r _ _ (- b))
   | |- ?a <= ?b => rewrite <- (Qplus_le_l _ _ (- b))
@@ -58,11 +62,12 @@ Ltac arith_norm :=
 
 Ltac arith_norm_in H :=
   try rewrite -> Zeq_qeq in H;
-  repeat rewrite Qfrac_plus in H;
-  repeat rewrite Qfrac_minus in H;
-  repeat rewrite Qfrac_mult in H;
-  repeat rewrite qopp in H;
-  repeat rewrite qneg in H;
+  repeat (progress (
+    try rewrite Qfrac_plus in H;
+    try rewrite Qfrac_minus in H;
+    try repeat rewrite Qfrac_mult in H;
+    try repeat rewrite qopp in H;
+    try repeat rewrite qneg in H));
   match type of H with
   | ?a == ?b => rewrite <- (Qplus_inj_r _ _ (- b)) in H
   | ?a <= ?b => rewrite <- (Qplus_le_l _ _ (- b)) in H
@@ -110,6 +115,18 @@ Ltac arith_simpl k H :=
         intro x; try rewrite <- x; exact H |
         repeat rewrite qneg; arith_norm; arith_unfold; omega ]
   end.
+
+Ltac Qle_mult k Hyp H :=
+let x := fresh in
+cut (k >= 0); [
+  intro x;
+  pose proof (Qmult_le_compat_r _ _ k Hyp x) as H
+| arith_unfold; omega ].
+
+Ltac Qle_mult_opp k Hyp H :=
+let y := fresh in
+pose proof (Qopp_le_compat _ _ Hyp) as y;
+Qle_mult k y H.
 
 Lemma arith_opp_inv : forall (a: Z) (b: positive), - (- a # b) == a # b.
 Proof. intros. unfold Qeq, Qnum, Qden. simpl. rewrite Z.opp_involutive. trivial. Qed.

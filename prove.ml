@@ -1765,6 +1765,10 @@ and next_branch prm stk n st brstate =
       if !cur_depth > !max_depth then begin
         unwind prm stk Backtrack
       end else begin
+        let c = Array.fold_left (fun x b -> if b =%= Open then x + 1 else x) 0 brstate in
+        if c > 1 then
+          Extension.add_formula (evar "#branch");
+        Log.debug 3 "~ (%i/%i--%i) %a" (Array.length brstate - i) (Array.length brstate) c Print.pp_mlrule n.nrule;
         refute prm (fr :: stk) st
                (List.map (fun x -> (x, n.ngoal)) n.nbranches.(i))
       end

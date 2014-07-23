@@ -1,3 +1,4 @@
+(*  Copyright 2014 INRIA  *)
 
 open Expr
 open Type
@@ -126,16 +127,20 @@ let rec sanitize = function
     | [] -> []
     | (c, _) as a :: r -> if Q.equal Q.zero c then (sanitize r) else a :: (sanitize r)
 
+let rec fpop x = function
+    | [] -> (Q.zero, [])
+    | (c, y) :: r ->
+            if equal x y then
+                (Q.neg c), r
+            else
+                let c', r' = fpop x r in
+                c', (c, y) :: r'
+
+let fsep l x =
+    let c, r = fpop x l in
+    Q.neg c, fmul (Q.inv c) r
+
 let normalize_aux a b =
-    let rec pop_const = function
-        | [] -> (Q.zero, [])
-        | (c, x) :: r ->
-                if equal etrue x then
-                    (Q.neg c), r
-                else
-                    let c', r' = pop_const r in
-                    c', (c, x) :: r'
-    in
     let coef e =
         if e = [] then
             Q.one
@@ -145,7 +150,7 @@ let normalize_aux a b =
             Q.div k (Q.of_bigint (List.fold_left aux (Q.to_bigint (Q.mul (List.hd e) k)) (List.tl e)))
     in
     let f = fdiff a b in
-    let c, e = pop_const f in
+    let c, e = fpop etrue f in
     let e = sanitize e in
     let k = Q.abs (coef (List.map fst e)) in
     k, (Q.mul c k, (List.map (fun (c, x) -> (Q.mul c k, x)) e))
@@ -332,10 +337,13 @@ let cl_next l =
         l.acc <- x :: l.acc
     end
 
-let cl_reset l =
+let cl_to_list l = (List.rev l.acc) @ l.front
+
+let cl_reset cl =
     (* l.front *should* be empty, but just in case,.. *)
-    l.front <- (List.rev l.acc) @ l.front;
-    l.acc <- []
+    let l = cl_to_list cl in
+    cl.front <- l;
+    cl.acc <- []
 
 (* Combinatorial tree *)
 type 'a ctree = {
@@ -346,7 +354,17 @@ type 'a ctree = {
 let ct_is_empty t =
     Array.length t.children = 0 && cl_is_empty t.node
 
-let cl_to_list l = (List.rev l.acc) @ l.front
+let collapse t =
+    let rec aux l t =
+        if Array.length t.children = 1 then
+            aux (l @ cl_to_list t.node) t.children.(0)
+        else
+            {
+                node = cl_from_list (l @ cl_to_list t.node);
+                children = Array.map (aux []) t.children;
+            }
+    in
+    aux [] t
 
 let rec reset t =
     cl_reset t.node;
@@ -426,9 +444,11 @@ let ct_from_ml p =
         end with NotaFormula -> false
         ) l in
     let rec aux l p =
+        (*
         if is_inst_node p then
             { node = cl_from_list []; children = [| |]; }
         else
+            *)
             let l' = match p.mlrule with
                 | Ext("arith", "inst", x) -> x (* @ p.mlconc ? *)
                 | _ -> p.mlconc
@@ -473,6 +493,15 @@ let replace_inst p (e, inst) =
 
 let next_inst p = replace_inst p (find_next_inst p)
 
+let rec treebox p =
+    let aux cl =
+        let l = cl_to_list cl in
+        let s = String.concat ", " (List.map Print.sexpr l) in
+        PrintBox.Simple.(`Text (Log.sprintf "[%s]" s))
+    in
+    PrintBox.Simple.(`Tree (aux p.node, Array.to_list @@ Array.map treebox p.children))
+
+let sctree t = PrintBox.Simple.to_string (treebox t)
 
 (* Simplex solver with a cache *)
 let lhash l = List.fold_left (+) 0 (List.map Expr.hash l)

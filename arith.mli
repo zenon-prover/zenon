@@ -1,3 +1,4 @@
+(*  Copyright 2014 INRIA  *)
 
 (* Module for arithemtic functions *)
 
@@ -53,6 +54,7 @@ val fadd : (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> (Q.t * Expr.t) list
 val fdiff : (Q.t * Expr.t) list -> (Q.t * Expr.t) list -> (Q.t * Expr.t) list
 val fmul : Q.t -> (Q.t * 'a) list -> (Q.t * 'a) list
 
+val fsep : (Q.t * Expr.t) list -> Expr.t -> Q.t * (Q.t * Expr.t) list
 val fis_tau : (Q.t * Expr.t) list -> bool
 val fis_meta : (Q.t * Expr.t) list -> bool
 
@@ -88,13 +90,15 @@ type 'a ctree = {
     children : 'a ctree array;
 }
 
+val collapse : 'a ctree -> 'a ctree
 val reset : 'a ctree -> unit
 val next : 'a ctree -> unit
 val current : 'a ctree -> 'a list
 val ct_all : 'a ctree -> 'a list list
 val ct_from_ml : Mlproof.proof -> Expr.t ctree option
-
 val next_inst : Mlproof.proof -> Mlproof.proof
+
+val sctree : Expr.t ctree -> string
 
 (* Simplex solver helper *)
 type solution =

@@ -814,13 +814,13 @@ let pp_expr_t b e = Printf.bprintf b "%a : '%s'" pp_expr e (Type.opt_string (get
 
 let pp_mlrule b r =
   let s, l = get_rule_name r in
-   Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr_t) l
-;;
-
+  Printf.bprintf b "%s : %a" s (Log.pp_list ~sep:", " pp_expr) l
+		 
+		 
 let sexpr e = Log.on_buffer pp_expr e
 ;;
 (* Full type debug printing for expr *)
-
+  
 let rec expr_type o ex =
   let pr f = oprintf o f in
   expr_soft o ex;

@@ -22,6 +22,10 @@ case $1 in
         echo "Testing counter-satisfiable problems..."
         FILES=`grep -L "Status   : Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
         ;;
+    simon)
+        echo "Testing simon's becnhes"
+        FILES=`cat benchs/arith_problems`
+        ;;
     clean)
         rm -f temp.*
         rm -f test/*.gv test/*.svg
@@ -47,19 +51,19 @@ for f in $FILES
 do
     echo -ne "\r\033[K\e[32m$COQS proved\e[0m /\e[38m $SOLVED solved \e[0m / \e[35m$TOTAL total\e[0m"
     TOTAL=$(($TOTAL + 1))
-    ./zenon -p0 -max-time 5s -q -k -x arith -itptp $f > /dev/null 2> /dev/null
+    ./zenon -p0 -max-time 5s -q -kf 5 -x arith -itptp $f > /dev/null 2> /dev/null
     RET=$?
     if [ $RET -eq 0 ];
     then
         SOLVED=$(($SOLVED + 1))
-        ./zenon -p0 -max-time 10s -q -odotd 30 -kall -x arith -itptp $f > $f.gv
+        ./zenon -p0 -max-time 10s -q -odotd 50 -kall -x arith -itptp $f > $f.gv
         dot -Tsvg $f.gv -o $f.svg
         ./zenon -p0 -max-time 10s -q -context -ocoq -opt0 -k -x arith -itptp $f > $TEMP 2> /dev/null
         coqc -I ./ $TEMP > /dev/null 2> /dev/null
         if [ $? -eq 0 ];
         then
             COQS=$(($COQS + 1));
-            # echo -e "[PROOF FOUND] $f \e[32m[OK]\e[0m"
+            echo -e "\r\033[K[PROOF FOUND] $f \e[32m[OK]\e[0m"
         else
             echo -e "\r\033[K\e[31m[PROOF FOUND] $f [KO]\e[0m"
             coqc -I ./ $TEMP
@@ -67,7 +71,7 @@ do
         rm -f $TEMP
     elif [ $RET -eq 12 ] || [ $RET -eq 1 ] || [ $RET -eq 13 ];
     then
-        #echo -e "\e[33m[NOT FOUND] $f \e[0m"
+        echo -e "\r\033[K\e[33m[NOT FOUND] $f \e[0m"
         :
     else
         ERRORS=$(($ERRORS + 1))

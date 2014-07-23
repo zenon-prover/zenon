@@ -1,3 +1,4 @@
+(*  Copyright 2014 INRIA  *)
 
 exception Type_error of string
 
