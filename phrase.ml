@@ -260,6 +260,7 @@ let add_rule_prop t1 t2 =
       | _ -> assert false
 ;; *)
 
+
 let rec parse_equal_term body = 
       match body with 
       | Eapp (Evar("=", _), [t1; t2], _) -> 
@@ -277,20 +278,6 @@ let rec parse_equal_term body =
 	   | _, _ -> assert false
 	 end
 	   
-      | Eapp (Evar("=", _), [t1; t2], _) -> 
-	 begin
-	   match t1, t2 with
-	   | Evar (_, _), Evar (_, _) -> assert false
-	   | _, Evar (_, _) when test_fv (get_fv t1) (get_fv t2) 
-	     -> add_rule_term t1 t2
-	   | Evar (_, _), _ when test_fv (get_fv t2) (get_fv t1)
-	     -> add_rule_term t2 t1
-	   | _, _ when test_fv (get_fv t1) (get_fv t2) 
-	     -> add_rule_term t1 t2
-	   | _, _ when test_fv (get_fv t2) (get_fv t1)
-	     -> add_rule_term t2 t1
-	   | _, _ -> assert false
-	 end
       | _ -> assert false
 ;;
 

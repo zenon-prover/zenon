@@ -124,14 +124,15 @@ let axiom_to_rwrt_prop = [
   "choice_exists";
   "infinite_big";
   "mem_union";
-  "mem_intersection";
-  "mem_difference";
+  "mem_inter";
+  "mem_diff";
+  "empty1";
   "empty_set1";
   "empty_set";
-  "mem_relation_set";
+  "mem_relation";
   "mem_inverse";
   "mem_dom";
-  "mem_composition";
+  "mem_semicolon";
   "mem_id";
   "mem_direct_product";
   "mem_parallel_product";
@@ -148,14 +149,25 @@ let axiom_to_rwrt_prop = [
   "equal_set_tuple_2";
 (*  "equal_set_tuple_3";*)
   "mem_ran";
-  "mem_dom_restriction";
-  "mem_ran_restriction";
-  "mem_dom_substraction";
-  "mem_ran_substraction";
+  "mem_domain_restriction";
+  "mem_range_restriction";
+  "mem_domain_substraction";
+  "mem_range_substraction";
   "mem_image";
   "mem_overriding";
   "mem_proj_op_1";
   "mem_proj_op_2";
+
+  "abs_le";
+  "abs_pos";
+  "infix_eqeq_def";
+(*  "mem_nat";
+  "mem_nat1";*)
+(*  "mem_bounded_int";*)
+(*  "mem_natural";
+  "mem_natural1";*)
+  "mem_integer";
+  
   
 ];;
 
@@ -166,6 +178,7 @@ let axiom_to_rwrt_term = [
   "tuple2_inversion";
 
 (*  "ran";*)
+  "semicolon_back1";
   "composition_back";
   "composition_back1";
 (*  "dom_restriction";
@@ -181,6 +194,20 @@ let axiom_to_rwrt_term = [
   "total_surjection_set";
   "partial_bijection_set";
   "total_bijection_set";*)
+
+  "match_bool_True";
+  "match_bool_False";
+  "andb_def";
+  "orb_def";
+  "xorb_def";
+  "notb_def";
+  "implb_def";
+(*  "power_0";*)
+  "power_1";
+  "div_1";
+ (* "mod_1";*)
+  
+  
 ];;
 
 
