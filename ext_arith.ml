@@ -932,14 +932,6 @@ let rec iter_open p =
                 Log.debug 5 "arith -- global todo set (iter : %s)" (if b then "yes" else "no");
                 reset ();
                 b
-        | Case (e, a, n) ->
-                try
-                    let b = set_global [e, [mk_node_switch e a (Z.to_int n); Stop]] in
-                    Log.debug 5 "arith -- global switch set (iter : %s)" (if b then "yes" else "no");
-                    reset ();
-                    b
-                with Z.Overflow ->
-                    assert false
         end
 
 let newnodes e g _ =

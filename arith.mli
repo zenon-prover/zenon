@@ -104,7 +104,6 @@ val sctree : Expr.t ctree -> string
 type solution =
     | Unsat
     | Abstract of (Expr.t * Expr.t) list
-    | Case of Expr.t * Expr.t * Z.t
 
 val try_solve : Expr.t list -> solution
 

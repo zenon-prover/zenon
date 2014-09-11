@@ -1,4 +1,29 @@
 
+(*
+copyright (c) 2014, guillaume bury
+all rights reserved.
+
+redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+redistributions of source code must retain the above copyright notice, this
+list of conditions and the following disclaimer.  redistributions in binary
+form must reproduce the above copyright notice, this list of conditions and the
+following disclaimer in the documentation and/or other materials provided with
+the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*)
+
 (* TODO: Re-order the definitions *)
 
 (** Modular and incremental implementation of the simplex. *)
@@ -63,8 +88,9 @@ module type S = sig
     (** [add_bounds (x, lower, upper)] returns a system containing the same contraints as [s], plus
         the bounds [lower] and [upper] for the given variable [x]. If the bound is loose on one side (no upper bounds for instance),
         the values [Zarith.Q.inf] and [Zarith.Q.minus_inf] can be used. By default, in a system, all variables have no bounds,
-        i.e have lower bound [Zarith.Q.minus_inf] and upper bound [Zarith.Q.inf]. *)
-    val add_bounds  : t -> var * Q.t * Q.t -> t
+        i.e have lower bound [Zarith.Q.minus_inf] and upper bound [Zarith.Q.inf].
+        Optional parameters allow to make the the bounds strict. Defaults to false, so that bounds are large by default. *)
+    val add_bounds  : t -> ?strict_lower:bool -> ?strict_upper:bool -> var * Q.t * Q.t -> t
 
     (** {3 Simplex solving} *)
 
@@ -142,9 +168,6 @@ module type S = sig
         upper bound [Zarith.Q.inf]). *)
     val get_all_bounds : t -> (var * (Q.t * Q.t)) list
 
-    (** TODO *)
-    val abstract : t -> (var -> bool) -> (var -> bool) -> (var * (Q.t * var) list) list
-
     (** {3 Printing functions} *)
 
     (** [print_debug print_var] returns a suitable function for printing debug info on the current state of a system.
@@ -179,14 +202,11 @@ module type HELPER = sig
 
   type monome = (Q.t * external_var) list
 
-  type op = LessEq | Eq | GreaterEq
+  type op = Less | LessEq | Eq | Greater | GreaterEq
 
   type constraint_ = op * monome * Q.t
 
   val add_constraints : t -> constraint_ list -> t
-
-  val abstract_val : t -> (external_var -> bool) -> (external_var -> bool) ->
-      (external_var * ((Q.t * external_var) list * Q.t)) list
 end
 
 module MakeHelp(Var : OrderedType) : HELPER with type external_var = Var.t
