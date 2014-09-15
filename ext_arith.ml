@@ -434,7 +434,7 @@ let simplex_add t f (e, s, c) =
             Log.debug 7 "arith -- new bounds : %s %s %a %s %s"
             (Q.to_string inf) (if strict_low then "<" else "<=")
             Print.pp_expr x
-            (Q.to_string upp) (if strict_upp then "<" else "<=");
+            (if strict_upp then "<" else "<=") (Q.to_string upp);
             (add_binding {t with core =
                 S.add_bounds t.core ~strict_lower:strict_low ~strict_upper:strict_upp (x, inf, upp)} x f (e, s, c)), []
     | _ ->
@@ -1025,7 +1025,7 @@ let newnodes e g _ =
             | NotaFormula -> []
         end
     in
-    List.map (gnode g) (res @ todo e @ fm_add_expr e)
+    List.map (gnode g) (res @ todo e (* @ fm_add_expr e *) )
 
 let make_inst term g = assert false
 

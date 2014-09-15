@@ -320,9 +320,10 @@ module Make(Var: OrderedType) = struct
             else if Q.(e - e2 < zero) then
                 emin := Q.max !emin Q.((upp - v) / (e - e2));
         ) t.bounds;
+        (*
         if Q.equal Q.minus_inf !emin && Q.equal Q.inf !emax then
             Q.zero
-        else if Q.gt !emin Q.zero then
+        else *) if Q.gt !emin Q.zero then
             !emin
         else if Q.geq !emax Q.one then
             Q.one

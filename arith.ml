@@ -523,7 +523,9 @@ let simplex_is_int = function
 
 let add_expr e st =
     try match fneg (of_bexpr e) with
+    | (b, "$less", c) -> Simplex.add_constraints st [Simplex.Less, b, c]
     | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
+    | (b, "$greater", c) -> Simplex.add_constraints st [Simplex.Greater, b, c]
     | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
     | (b, "=", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
     | _ -> st

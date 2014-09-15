@@ -34,8 +34,8 @@ case $1 in
         exit 0
         ;;
     *)
-        echo "Unknwon option."
-        exit 1
+        FILES=$1
+        ;;
 esac
 
 sleep 1
