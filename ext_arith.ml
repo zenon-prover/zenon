@@ -253,40 +253,82 @@ let simplex_print b s =
         Print.pp_expr def) b s.bindings
 
 let bounds_of_comp s c = match s with
-    | "$lesseq" -> (Q.minus_inf, c)
-    | "$greatereq" -> (c, Q.inf)
-    | _ -> (Q.minus_inf, Q.inf)
+    | "$less" -> ((Q.minus_inf,false),(c,true))
+    | "$lesseq" -> ((Q.minus_inf,false), (c,false))
+    | "$greater" -> ((c,true), (Q.inf,false))
+    | "$greatereq" -> ((c,false), (Q.inf,false))
+    | _ -> ((Q.minus_inf,false), (Q.inf,false))
 
-let low_binding c' c d' d f low high =
-    if Q.gt (Q.div c' c) (Q.div d' d) then
+let low_binding test c d f low high =
+    if test c d then
         f, high
     else
         low, high
 
-let high_binding c' c d' d f low high =
-    if Q.lt (Q.div c' c) (Q.div d' d) then
+let high_binding test c d f low high =
+    if test c d then
         low, f
     else
         low, high
 
 let new_bindings low high f = function
-    | [c, x], "$lesseq", c' ->
+    | [c, x], "$less", c' ->
             if Q.sign c <= -1 then begin match low with
                 | None -> f, high
                 | Some expr -> begin match (of_bexpr expr) with
-                        | [d, y], "$greatereq", d' when Q.sign d >= 0 ->
-                                low_binding c' c d' d f low high
-                        | [d, y], "$lesseq", d' when Q.sign d <= -1 ->
-                                low_binding c' c d' d f low high
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d >= 0 ->
+                                low_binding Q.geq Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d <= -1 ->
+                                low_binding Q.geq Q.(c' / c) Q.(d' / d) f low high
                         | _ -> assert false
                         end
             end else begin match high with
                 | None -> low, f
                 | Some expr -> begin match (of_bexpr expr) with
-                        | [d, y], "$lesseq", d' when Q.sign d >= 0 ->
-                                high_binding c' c d' d f low high
-                        | [d, y], "$greatereq", d' when Q.sign d <= -1 ->
-                                high_binding c' c d' d f low high
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d >= 0 ->
+                                high_binding Q.leq Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d <= -1 ->
+                                high_binding Q.leq Q.(c' / c) Q.(d' / d) f low high
+                        | _ -> assert false
+                        end
+            end
+    | [c, x], "$lesseq", c' ->
+            if Q.sign c <= -1 then begin match low with
+                | None -> f, high
+                | Some expr -> begin match (of_bexpr expr) with
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d >= 0 ->
+                                low_binding Q.gt Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d <= -1 ->
+                                low_binding Q.gt Q.(c' / c) Q.(d' / d) f low high
+                        | _ -> assert false
+                        end
+            end else begin match high with
+                | None -> low, f
+                | Some expr -> begin match (of_bexpr expr) with
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d >= 0 ->
+                                high_binding Q.lt Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d <= -1 ->
+                                high_binding Q.lt Q.(c' / c) Q.(d' / d) f low high
+                        | _ -> assert false
+                        end
+            end
+    | [c, x], "$greater", c' ->
+            if Q.sign c >= 0 then begin match low with
+                | None -> f, high
+                | Some expr -> begin match (of_bexpr expr) with
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d >= 0 ->
+                                low_binding Q.geq Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d <= -1 ->
+                                low_binding Q.geq Q.(c' / c) Q.(d' / d) f low high
+                        | _ -> assert false
+                        end
+            end else begin match high with
+                | None -> low, f
+                | Some expr -> begin match (of_bexpr expr) with
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d >= 0 ->
+                                high_binding Q.leq Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d <= -1 ->
+                                high_binding Q.leq Q.(c' / c) Q.(d' / d) f low high
                         | _ -> assert false
                         end
             end
@@ -294,19 +336,19 @@ let new_bindings low high f = function
             if Q.sign c >= 0 then begin match low with
                 | None -> f, high
                 | Some expr -> begin match (of_bexpr expr) with
-                        | [d, y], "$greatereq", d' when Q.sign d >= 0 ->
-                                low_binding c' c d' d f low high
-                        | [d, y], "$lesseq", d' when Q.sign d <= -1 ->
-                                low_binding c' c d' d f low high
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d >= 0 ->
+                                low_binding Q.gt Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d <= -1 ->
+                                low_binding Q.gt Q.(c' / c) Q.(d' / d) f low high
                         | _ -> assert false
                         end
             end else begin match high with
                 | None -> low, f
                 | Some expr -> begin match (of_bexpr expr) with
-                        | [d, y], "$lesseq", d' when Q.sign d >= 0 ->
-                                high_binding c' c d' d f low high
-                        | [d, y], "$greatereq", d' when Q.sign d <= -1 ->
-                                high_binding c' c d' d f low high
+                        | [d, y], ("$less"|"$lesseq"), d' when Q.sign d >= 0 ->
+                                high_binding Q.lt Q.(c' / c) Q.(d' / d) f low high
+                        | [d, y], ("$greater"|"$greatereq"), d' when Q.sign d <= -1 ->
+                                high_binding Q.lt Q.(c' / c) Q.(d' / d) f low high
                         | _ -> assert false
                         end
             end
@@ -315,7 +357,8 @@ let new_bindings low high f = function
 let translate_bound e r = match e with
     | None -> r ()
     | Some e -> begin match (of_bexpr e) with
-        | [c, x], _, c' -> Q.div c' c
+        | [c, x], ("$less"|"$greater"), c' -> Q.div c' c, true
+        | [c, x], ("$lesseq"|"$greatereq"), c' -> Q.div c' c, false
         | _ -> assert false
     end
 
@@ -323,7 +366,7 @@ let pop_option = function | Some a -> a | None -> assert false
 
 let bound_of_expr is_high e bounds =
     if e <> [] && (List.for_all (fun (c,_) -> Q.equal Q.zero c) e) then
-        [], Q.zero
+        [], Q.zero, false
     else begin
         assert (not (List.exists (fun (c,_) -> Q.equal Q.zero c) e));
         let xor a b = (a && not b) || (not a && b) in
@@ -332,33 +375,41 @@ let bound_of_expr is_high e bounds =
             | [c, x] ->
                     let v, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
                     if xor is_high (Q.sign c >= 0) then begin
-                        [pop_option einf], Q.mul c (translate_bound einf (fun () -> raise Exit))
+                        let b,t = translate_bound einf (fun () -> raise Exit) in
+                        [pop_option einf], Q.mul c b, t
                     end else begin
-                        [pop_option eupp], Q.mul c (translate_bound eupp (fun () -> raise Exit))
+                        let b, t = translate_bound eupp (fun () -> raise Exit) in
+                        [pop_option eupp], Q.mul c b, t
                     end
             | (c, x) :: r ->
-                    let l, b = aux r in
+                    let l, b, t = aux r in
                     let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal x y) bounds in
                     if xor is_high (Q.sign c >= 0) then
-                        (pop_option einf) :: l, Q.add b (Q.mul c (translate_bound einf (fun () -> raise Exit)))
+                        let b', t' = translate_bound einf (fun () -> raise Exit) in
+                        (pop_option einf) :: l, Q.add b (Q.mul c b'), t || t'
                     else
-                        (pop_option eupp) :: l, Q.add b (Q.mul c (translate_bound eupp (fun () -> raise Exit)))
+                        let b', t' = translate_bound eupp (fun () -> raise Exit) in
+                        (pop_option eupp) :: l, Q.add b (Q.mul c b'), t || t'
         in
-        try aux e with Exit -> [], if is_high then Q.inf else Q.minus_inf
+        try aux e with Exit -> [], (if is_high then Q.inf else Q.minus_inf), false
     end
 
 
 let bounds_of_clin v expr bounds =
     let _, _, einf, eupp = List.find (fun (y, _, _, _) -> equal y v) bounds in
-    let inf = translate_bound einf (fun () -> Q.minus_inf) in
-    let upp = translate_bound eupp (fun () -> Q.inf) in
-    let l_bounds, low = bound_of_expr false expr bounds in
-    let h_bounds, high = bound_of_expr true expr bounds in
-    if Q.gt low upp then
+    let inf, strict_inf = translate_bound einf (fun () -> Q.minus_inf, false) in
+    let upp, strict_upp = translate_bound eupp (fun () -> Q.inf, false) in
+    let l_bounds, low, strict_low = bound_of_expr false expr bounds in
+    let h_bounds, high, strict_high = bound_of_expr true expr bounds in
+    if not strict_low && not strict_upp && Q.gt low upp then
         l_bounds, greatereq v (const (Q.to_string low)), pop_option eupp
-    else if Q.lt high inf then
+    else if (strict_low || strict_inf) && Q.geq low upp then
+        l_bounds, (if strict_low then greater else greatereq) v (const (Q.to_string low)), pop_option eupp
+    else if not strict_high && not strict_inf && Q.lt high inf then
         h_bounds, lesseq v (const (Q.to_string high)), pop_option einf
-    else if Q.gt inf upp then
+    else if (strict_high || strict_inf) && Q.leq high inf then
+        h_bounds, (if strict_high then less else lesseq) v (const (Q.to_string high)), pop_option einf
+    else if (Q.gt inf upp) || ((strict_inf || strict_upp) && Q.geq inf upp) then
         [], pop_option einf, pop_option eupp
     else
         assert false
@@ -377,10 +428,15 @@ let simplex_add t f (e, s, c) =
     | []  -> assert false
     | [(c', x)] ->
             let b = Q.div c (Q.abs c') in
-            let (inf, upp) = bounds_of_comp s b in
-            let (inf, upp) = if Q.sign c' <= -1 then (Q.neg upp, Q.neg inf) else (inf, upp) in
-            Log.debug 7 "arith -- new bounds : %s <= %a <= %s" (Q.to_string inf) Print.pp_expr x (Q.to_string upp);
-            (add_binding {t with core = S.add_bounds t.core (x, inf, upp)} x f (e, s, c)), []
+            let ((inf,strict_inf), (upp,strict_upp)) = bounds_of_comp s b in
+            let ((inf,strict_low), (upp,strict_upp)) =
+                if Q.sign c' <= -1 then ((Q.neg upp, false), (Q.neg inf,false)) else ((inf,strict_inf), (upp,strict_upp)) in
+            Log.debug 7 "arith -- new bounds : %s %s %a %s %s"
+            (Q.to_string inf) (if strict_low then "<" else "<=")
+            Print.pp_expr x
+            (Q.to_string upp) (if strict_upp then "<" else "<=");
+            (add_binding {t with core =
+                S.add_bounds t.core ~strict_lower:strict_low ~strict_upper:strict_upp (x, inf, upp)} x f (e, s, c)), []
     | _ ->
             let expr = to_nexpr e in
             let v = tvar (newname ()) (find_type expr) in
