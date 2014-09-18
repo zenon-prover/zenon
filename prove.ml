@@ -944,10 +944,13 @@ let newnodes_match_congruence st fm g _ =
                               Eapp (Evar("$string",_), [s2], _)], _), _)
     when not (Expr.equal s1 s2) ->
      (st, false)
-  | Enot (Eapp (Evar("=",_), [(Eapp (Evar(f1,_), a1, _) as e1);
-                              (Eapp (Evar(f2,_), a2, _) as e2)], _), _)
+  | Enot (Eapp (Evar("=",_), [(Eapp (Evar(f1,_) as f1', a1, _) as e1);
+                              (Eapp (Evar(f2,_) as f2', a2, _) as e2)], _), _)
     when f1 =%= f2 ->
-      if List.length a1 == List.length a2 then begin
+     if (compare_type f1' f2') <> 0 then (st, false)
+     else if (List.length a1 == List.length a2)
+	     && (same_types e1 e2) 
+     then begin
         add_node st {
           nconc = [fm];
           nrule = NotEqual (e1, e2);
@@ -1088,10 +1091,11 @@ let newnodes_match_trans st fm g _ =
        Index.add_trans fm;
        let h1 = Index.get_head e1 in
        let h2 = Index.get_head e2 in
-       let matches_ll = Index.find_all_negtrans_left h1 in
-       let matches_rr = Index.find_all_negtrans_right h2 in
-       let matches_lr = Index.find_all_negtrans_left h2 in
-       let matches_rl = Index.find_all_negtrans_right h1 in
+       let f x (z, t) = Type.equal (type_of x) (type_of z) in 
+       let matches_ll = List.filter (f e1) (Index.find_all_negtrans_left h1) in
+       let matches_rr = List.filter (f e2) (Index.find_all_negtrans_right h2) in
+       let matches_lr = List.filter (f e2) (Index.find_all_negtrans_left h2) in
+       let matches_rl = List.filter (f e1) (Index.find_all_negtrans_right h1) in
        let nodes = List.flatten [
 		       List.map (mknode_transeq false fmg) matches_ll;
 		       List.map (mknode_transeq true fmg) matches_lr;
@@ -1103,13 +1107,14 @@ let newnodes_match_trans st fm g _ =
        Index.add_trans fm;
        let h1 = Index.get_head e1 in
        let h2 = Index.get_head e2 in
-       let matches_ll = Index.find_negtrans_left s h1 in
-       let matches_rr = Index.find_negtrans_right s h2 in
+       let f x (z, t) = Type.equal (type_of x) (type_of z) in
+       let matches_ll = List.filter (f e1) (Index.find_negtrans_left s h1) in
+       let matches_rr = List.filter (f e2) (Index.find_negtrans_right s h2) in
        let matches_lr =
-         if Eqrel.sym s then Index.find_negtrans_left s h2 else []
+         if Eqrel.sym s then List.filter (f e2) (Index.find_negtrans_left s h2) else []
        in
        let matches_rl =
-         if Eqrel.sym s then Index.find_negtrans_right s h1 else []
+         if Eqrel.sym s then List.filter (f e1) (Index.find_negtrans_right s h1) else []
        in
        let nodes = List.flatten [
 		       List.map (mknode_trans false fmg) matches_ll;
@@ -1122,13 +1127,14 @@ let newnodes_match_trans st fm g _ =
        Index.add_negtrans fm;
        let h1 = Index.get_head e1 in
        let h2 = Index.get_head e2 in
-       let matches_ll = Index.find_trans_left s h1 in
-       let matches_rr = Index.find_trans_right s h2 in
+       let f x (z, t) = Type.equal (type_of x) (type_of z) in
+       let matches_ll = List.filter (f e1) (Index.find_trans_left s h1) in
+       let matches_rr = List.filter (f e2) (Index.find_trans_right s h2) in
        let matches_lr =
-         if Eqrel.sym s then Index.find_trans_right s h1 else []
+         if Eqrel.sym s then List.filter (f e2) (Index.find_trans_right s h1) else []
        in
        let matches_rl =
-         if Eqrel.sym s then Index.find_trans_left s h2 else []
+         if Eqrel.sym s then List.filter (f e1) (Index.find_trans_left s h2) else []
        in
        let nodes = List.flatten [
 		       List.map (mknode_negtrans false fmg) matches_ll;
@@ -1138,10 +1144,11 @@ let newnodes_match_trans st fm g _ =
 		     ] in
        let eqnodes =
          if s' =%= "=" then [] else
-           let eqmatches_ll = Index.find_trans_left eeq h1 in
-           let eqmatches_rr = Index.find_trans_right eeq h2 in
-           let eqmatches_lr = Index.find_trans_right eeq h1 in
-           let eqmatches_rl = Index.find_trans_left eeq h2 in
+	   let f x (z, t) = Type.equal (type_of x) (type_of z) in
+           let eqmatches_ll = List.filter (f e1) (Index.find_trans_left eeq h1) in
+           let eqmatches_rr = List.filter (f e2) (Index.find_trans_right eeq h2) in
+           let eqmatches_lr = List.filter (f e2) (Index.find_trans_right eeq h1) in
+           let eqmatches_rl = List.filter (f e1) (Index.find_trans_left eeq h2) in
            List.flatten [
                List.map (mknode_negtranseq false fmg) eqmatches_ll;
                List.map (mknode_negtranseq true fmg) eqmatches_lr;

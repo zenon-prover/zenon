@@ -114,27 +114,36 @@ let process_annotations forms =
    names are "hard-coded" / coming from file SimpleBwhy.why
  *)
 
+
 let axiom_to_rwrt_prop = [
-  "subseteq_def"; 
+  "infix_eqeq_def";
+  "subset_def"; 
   "subsetnoteq_def";
+  "empty1";
   "mem_singleton";
-  "mem_times";
-  "mem_power";
-  (*"extensionality";*)
-  "choice_exists";
-  "infinite_big";
+  "all_def";
   "mem_union";
   "mem_inter";
   "mem_diff";
-  "empty1";
-  "empty_set1";
-  "empty_set";
+  "mem_b_bool";
+  "mem_times";
+  "mem_power";
+  (*"extensionality";*)
   "mem_relation";
   "mem_inverse";
   "mem_dom";
+  "mem_ran";
   "mem_semicolon";
   "mem_id";
+  "mem_domain_restriction";
+  "mem_range_restriction";
+  "mem_domain_substraction";
+  "mem_range_substraction";
+  "mem_image";
+  "mem_overriding";
   "mem_direct_product";
+  "mem_proj_op_1";
+  "mem_proj_op_2";
   "mem_parallel_product";
   "mem_partial_function_set";
   "mem_total_function_set";
@@ -144,31 +153,26 @@ let axiom_to_rwrt_prop = [
   "mem_total_surjection_set";
   "mem_partial_bijection_set";
   "mem_total_bijection_set";
-(*  "mem_apply_1";*)
-  "equal_set_tuple_1";
-  "equal_set_tuple_2";
-(*  "equal_set_tuple_3";*)
-  "mem_ran";
-  "mem_domain_restriction";
-  "mem_range_restriction";
-  "mem_domain_substraction";
-  "mem_range_substraction";
-  "mem_image";
-  "mem_overriding";
-  "mem_proj_op_1";
-  "mem_proj_op_2";
-
+  
   "abs_le";
   "abs_pos";
-  "infix_eqeq_def";
-(*  "mem_nat";
-  "mem_nat1";*)
-(*  "mem_bounded_int";*)
-(*  "mem_natural";
-  "mem_natural1";*)
-  "mem_integer";
-  
-  
+  "is_empty_def";
+  "empty_def1";
+  "add_def1";
+  "remove_def1";
+  "mem_natural";
+  "mem_natural1";
+  "mem_nat";
+  "mem_bounded_int";
+  "mem_interval";
+  "mem_non_empty_power";
+  "is_finite_subset";
+  "is_finite_subset_def";
+  "non_empty_finite_subsets";
+  "closure_def";
+  "closure1_def";
+  "generalized_union_def";
+  "seq_def";
 ];;
 
 
@@ -176,38 +180,10 @@ let axiom_to_rwrt_term = [
   "tuple2_proj_1_def";
   "tuple2_proj_2_def";
   "tuple2_inversion";
-
-(*  "ran";*)
   "semicolon_back1";
-  "composition_back";
-  "composition_back1";
-(*  "dom_restriction";
-  "ran_restriction";
-  "dom_substraction";
-  "ran_substraction";
-  "image";
-  "overriding";
-  "proj_op_1";
-  "proj_op_2";
-  "parallel_product"; *)
-(*  "total_injection_set";
-  "total_surjection_set";
-  "partial_bijection_set";
-  "total_bijection_set";*)
-
-  "match_bool_True";
-  "match_bool_False";
-  "andb_def";
-  "orb_def";
-  "xorb_def";
-  "notb_def";
-  "implb_def";
 (*  "power_0";*)
   "power_1";
-  "div_1";
- (* "mod_1";*)
-  
-  
+  "seq_length_def"; 
 ];;
 
 
