@@ -182,7 +182,7 @@ let declare_theorem oc name params concl phrases =
   Coqterm.print_use_all oc phrases;
 ;;
 
-let getname = Coqterm.getname;;
+let getname e = Coqterm.getname e ;;
 
 let p_name_list oc l =
   p_list " " (fun oc e -> fprintf oc "%s" (getname e)) "" oc l;
@@ -242,7 +242,7 @@ let p_rule oc r =
   let poc fmt = fprintf oc fmt in
   match r with
   | Rconnect (And, e1, e2) ->
-      apply_alpha oc "and" (eand (e1, e2)) e1 e2
+      apply_alpha oc "and " (eand (e1, e2)) e1 e2
   | Rconnect (Or, e1, e2) ->
       apply_beta oc "or" (eor (e1, e2)) e1 e2
   | Rconnect (Imply, e1, e2) ->
@@ -321,9 +321,11 @@ let p_rule oc r =
       let recarg = find_recarg a args in
       poc "assert (%s: %a). " (getname h) p_expr h;
       (* Fix bug 37: do not destruct a constructor value. *)
-      if not (Coqterm.is_constr recarg) then
-        poc "destruct %a; " p_expr (find_recarg a args);
-      poc "simpl; auto.\n"
+      if not (Coqterm.is_constr recarg) then begin
+        poc "destruct %a; " p_expr (find_recarg a args) ;
+        poc "simpl; auto.\n"
+      end else (* Fix bug 59. *)
+        poc "exact %s.\n" (getname c)
   | Rnotequal (Eapp (f, args1, _), Eapp (g, args2, _)) ->
      assert (f = g);
      let f a1 a2 =
