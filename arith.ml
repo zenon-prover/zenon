@@ -201,6 +201,9 @@ let of_bexpr_aux = function
     | _ -> raise NotaFormula
 
 let of_bexpr e = snd (of_bexpr_aux e)
+
+let is_bexpr e = try ignore (of_bexpr e); true with NotaFormula -> false
+
 let norm_coef e = const (Q.to_string (fst (of_bexpr_aux e)))
 
 let to_nexpr_aux (c, x) =

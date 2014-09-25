@@ -665,110 +665,6 @@ let ignore_expr, add_expr, add_branch, remove_expr, todo, set_global, reset =
     in
     ignore_expr, add, add_branch, remove, todo, set_global, reset
 
-(* Fourier-Motzkin *)
-type fm_state = (Expr.t list * Expr.t list) M.t
-
-let fm_empty = M.empty
-
-let fm_get st x = try M.find x st with Not_found -> [], []
-
-let fm_lower s c = match s with
-    | "$less" | "$lesseq" -> Q.sign c < 0
-    | "$greater" | "$greatereq" -> Q.sign c > 0
-    | _ -> assert false
-
-let fm_deduce_aux x e f =
-    let (be, se, ce) = of_bexpr e in
-    let (bf, sf, cf) = of_bexpr f in
-    let aux = fun (_, y) -> Expr.compare x y > 0 in
-    if List.exists aux be || List.exists aux bf then []
-    else
-        let cex = find_coef x be in
-        let cfx = find_coef x bf in
-        match se, sf with
-        | "$less", "$less" | "$lesseq", "$less" | "$less", "$lesseq" ->
-                assert (Q.sign cex < 0 && Q.sign cfx > 0);
-                let t = fdiff
-                    (fmul cfx (fdiff be [(cex, x);(ce, etrue)]))
-                    (fmul cex (fdiff bf [(cfx, x);(cf, etrue)])) in
-                let b, a = normalize t [Q.zero, etrue] in
-                let g = expr_norm (to_bexpr (a, "$less", b)) in
-                [mk_node_fm x e f g]
-        | "$greater", "$greater" | "$greatereq", "$greater" | "$greater", "$greatereq" ->
-                assert (Q.sign cex > 0 && Q.sign cfx < 0);
-                let t = fdiff
-                    (fmul cfx (fdiff be [cex, x; ce, etrue]))
-                    (fmul cfx (fdiff be [cex, x; ce, etrue])) in
-                let b, a = normalize t [Q.zero, etrue] in
-                let g = expr_norm (to_bexpr (a, "$less", b)) in
-                [mk_node_fm x e f g]
-        | "less", "$greater" | "$lesseq", "$greater" | "$less", "$greatereq" ->
-                assert (Q.sign cex < 0 && Q.sign cfx < 0);
-                let t = fadd
-                    (fmul cfx (fdiff [cex, x; ce, etrue] be))
-                    (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
-                let b, a = normalize t [Q.zero, etrue] in
-                let g = expr_norm (to_bexpr (a, "$less", b)) in
-                [mk_node_fm x e f g]
-        | "$greater", "$less" | "$greatereq", "$less" | "$greater", "$lesseq" ->
-                assert (Q.sign cex > 0 && Q.sign cfx > 0);
-                let t = fdiff
-                    (fmul cfx (fdiff [cex, x; ce, etrue] be))
-                    (fmul cex (fdiff [cfx, x; cf, etrue] bf)) in
-                let b, a = normalize t [Q.zero, etrue] in
-                let g = expr_norm (to_bexpr (a, "$less", b)) in
-                [mk_node_fm x e f g]
-        | _ ->
-                []
-
-let fm_deduce1 x e l = List.concat (List.map (fm_deduce_aux x e) l)
-let fm_deduce2 x e l = List.concat (List.map (fun e' -> fm_deduce_aux x e' e) l)
-
-let fm_add_aux st (s, c, x) e =
-    if fm_lower s c then begin
-        let low, high = fm_get st x in
-        let res = fm_deduce1 x e high in
-        M.add x (e :: low, high) st, res
-    end else begin
-        let low, high = fm_get st x in
-        let res = fm_deduce2 x e low in
-        M.add x (low, e :: high) st, res
-    end
-
-let fm_add st e =
-    let res = ref None in
-    let (b, s, _) = of_bexpr e in
-    let aux acc (c, x) =
-        if is_rat x then
-            let st', l = fm_add_aux st (s, c, x) e in
-            if !res = None then
-                res := Some l;
-            st'
-        else
-            acc
-    in
-    let st = List.fold_left aux st (List.sort (fun (_, x) (_, y) -> Expr.compare x y) b) in
-    st, (match !res with Some l -> l | None -> [])
-
-let fm_add_expr, fm_rm_expr =
-    let st = ref fm_empty in
-    let add e = match e with
-        | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq"),_), [a; b], _) when is_rat a || is_rat b ->
-                begin try
-                    let st', res = fm_add !st e in
-                    st := st';
-                    res
-                with NotaFormula -> []
-                end
-        | _ -> []
-    in
-    let rm e =
-        st := M.map (fun (l, l') ->
-            List.filter (fun e'' -> not (equal e e'')) l,
-            List.filter (fun e'' -> not (equal e e'')) l') !st
-    in
-    add, rm
-
 (* ML -> LL translation *)
 let ssub s j = try String.sub s 0 j with Invalid_argument _ -> ""
 let esub s j = try String.sub s j (String.length s - j) with Invalid_argument _ -> ""
@@ -952,9 +848,7 @@ let add_formula e = match e with
     | Evar ("#branch", _) -> add_branch ()
     | _ -> ()
 
-let remove_formula e =
-    remove_expr e;
-    fm_rm_expr e
+let remove_formula e = remove_expr e
 
 let rec iter_open p =
     match ct_from_ml p with
@@ -1025,7 +919,8 @@ let newnodes e g _ =
             | NotaFormula -> []
         end
     in
-    List.map (gnode g) (res @ todo e (* @ fm_add_expr e *) )
+    List.map (gnode g) (res @ todo e) @ (
+        if is_bexpr e then [Stop] else [])
 
 let make_inst term g = assert false
 
