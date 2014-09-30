@@ -32,6 +32,7 @@ type input_format =
   | I_zenon
   | I_focal
   | I_tptp
+  | I_smtlib
 ;;
 let input_format = ref I_zenon;;
 
@@ -276,6 +277,9 @@ let parse_file f =
     let (lexbuf, closer) = make_lexbuf true f in
     try
       match !input_format with
+      | I_smtlib ->
+          let _ = Parsesmtlib.main Lexsmtlib.token lexbuf in
+          ("dummy", [])
       | I_tptp ->
           let tpphrases = Parsetptp.file Lextptp.token lexbuf in
           closer ();
