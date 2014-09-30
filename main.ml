@@ -121,6 +121,8 @@ let argspec = [
           "            read input file in Focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
          "             read input file in TPTP format";
+  "-ismt", Arg.Unit (fun () -> input_format := I_smtlib),
+         "             read input file in SMTLIB format";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
   "-k", Arg.Unit (fun () -> keep_open := Open_last 0),
