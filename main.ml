@@ -280,8 +280,10 @@ let parse_file f =
     try
       match !input_format with
       | I_smtlib ->
-          let _ = Parsesmtlib.main Lexsmtlib.token lexbuf in
-          ("dummy", [])
+          let commands = Parsesmtlib.main Lexsmtlib.token lexbuf in
+          closer ();
+          let phrases = Smtlib.translate commands in
+          ("dummy", List.map (fun x -> (x, false)) phrases)
       | I_tptp ->
           let tpphrases = Parsetptp.file Lextptp.token lexbuf in
           closer ();

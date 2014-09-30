@@ -23,7 +23,7 @@ SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           printBox.ml simplex.ml arith.ml \
           parsezen.mly lexzen.mll \
 	  smtlib_util.ml smtlib_syntax.ml \
-	  parsesmtlib.mly lexsmtlib.mll \
+	  parsesmtlib.mly lexsmtlib.mll smtlib.ml \
 	  parsetptp.mly lextptp.mll typetptp.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \

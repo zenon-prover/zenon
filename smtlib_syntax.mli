@@ -1,3 +1,5 @@
+(* Copyright 2014 INRIA *)
+
 type dummy = Dummy
 and an_option = AnOptionAttribute of Smtlib_util.pd * attribute
 and attribute =
