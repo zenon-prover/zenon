@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: 12f24f92d057f55face3b5a5993d410a265f42cb $";;
+Version.add "$Id: 0d2f93a609978187340ccdc540d8b4709e3e3626 $";;
 
 open Printf;;
 
@@ -973,7 +973,7 @@ let rec get_nary_rules accu prf =
 let add_nary_rules oc lemmas =
   let f lem = get_nary_rules [] lem.proof in
   let rules = List.flatten (List.map f lemmas) in
-  let rules1 = Misc.list_unique (List.sort Pervasives.compare rules) in
+  let rules1 = Misc.list_sort_unique Pervasives.compare rules in
   let f r =
     match r with
     | Nary_case (n, oth) -> Isar_case.print_case "have" n oth oc

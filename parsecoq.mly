@@ -197,7 +197,8 @@ let mk_string s = evar ("\"" ^ s ^ "\"") ;;
 %nonassoc IDENT FQN
 %right COMMA_
 %nonassoc FORALL EXISTS FUN EQ_GT_ IF THEN ELSE IN
-%right DASH_GT_ LT_DASH_GT_
+%left LT_DASH_GT_
+%right DASH_GT_
 %right BACKSL_SLASH_
 %right SLASH_BACKSL_
 %nonassoc EQ_ LT_GT_
@@ -212,6 +213,8 @@ let mk_string s = evar ("\"" ^ s ^ "\"") ;;
 file:
   | hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ EOF
       { ($3, (Hyp (goal_name, enot $5, 0), false) :: $1) }
+  | proof_head hyp_def_list THEOREM IDENT COLON_ expr PERIOD_ ENDPROOF EOF
+      { ($4, (Hyp (goal_name, enot $6, 0), false) :: $2) }
   | expr hyp_def_list EOF
       { (* Error.warn "deprecated input format"; *)
         (thm_default_name, (Hyp (goal_name, enot $1, 0), false) :: $2) }

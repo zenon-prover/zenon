@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: 2b62bc4527aac00a57d2ae49ca8a0300b8744337 $";;
+Version.add "$Id: 239c76ade6485f65b50499d4af616ed6394f9892 $";;
 
 (* Extension for TLA+ : set theory. *)
 
@@ -149,7 +149,7 @@ let rec check_record_labels l =
 ;;
 
 let get_record_labels l =
-  list_uniq (List.sort Expr.compare (List.map fst (mk_pairs l)))
+  list_sort_unique Expr.compare (List.map fst (mk_pairs l))
 ;;
 
 let field_trivially_notin rtype (lbl, e) =

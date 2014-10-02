@@ -1,10 +1,10 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: 4b5a15ddd9e231963a758c70d3ad975691f4bd44 $";;
+Version.add "$Id: ab585d9a410f688ff4dca562e70d1f2f67af9723 $";;
 
 open Printf;;
 
-let number = 253;;      (* strictly increasing *)
-let date = "2013-03-04";;
+let number = 262;;      (* strictly increasing *)
+let date = "2014-09-19";;
 
 let major = 0;;
 let minor = 7;;

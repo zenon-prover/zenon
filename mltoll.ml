@@ -158,7 +158,7 @@ let tr_rule r =
   | Ext ("", "notallex", [Elam (v, t, p, _) as lam]) ->
      let c = enot (eall (v, t, p)) in
      let h = eex (v, t, enot p) in
-     LL.Rextension ("", "zenon_notallex", [tr_expr lam], [tr_expr c], [[tr_expr h]])
+     LL.Rextension ("", "zenon_notallex", [lam], [c], [[h]])
   | Ext ("", "stringequal", [v1; v2]) ->
      let c = eapp ("=", [eapp ("$string", [v1]); eapp ("$string", [v2])]) in
      LL.Rextension ("", "zenon_stringequal", [v1; v2], [c], [])
