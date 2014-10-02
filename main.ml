@@ -38,6 +38,7 @@ type input_format =
   | I_zenon
   | I_focal
   | I_tptp
+  | I_smtlib
 ;;
 let input_format = ref I_zenon;;
 
@@ -126,6 +127,8 @@ let argspec = [
           "            read input file in Focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
          "             read input file in TPTP format";
+  "-ismt", Arg.Unit (fun () -> input_format := I_smtlib),
+         "             read input file in SMTLIB format";
   "-iz", Arg.Unit (fun () -> input_format := I_zenon),
       "                read input file in Zenon format (default)";
   "-k", Arg.Unit (fun () -> keep_open := Open_last 0),
@@ -290,6 +293,11 @@ let parse_file f =
     let (lexbuf, closer) = make_lexbuf true f in
     try
       match !input_format with
+      | I_smtlib ->
+          let commands = Parsesmtlib.main Lexsmtlib.token lexbuf in
+          closer ();
+          let phrases = Smtlib.translate commands in
+          ("dummy", List.map (fun x -> (x, false)) phrases)
       | I_tptp ->
           let tpphrases = Parsetptp.file Lextptp.token lexbuf in
           closer ();

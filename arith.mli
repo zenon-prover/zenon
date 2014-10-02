@@ -66,6 +66,7 @@ val normalize :
 val of_cexpr : Expr.expr -> Q.t
 val of_nexpr : Expr.t -> (Q.t * Expr.t) list
 val of_bexpr : Expr.expr -> (Q.t * Expr.t) list * string * Q.t
+val is_bexpr : Expr.expr -> bool
 
 val to_nexpr : (Q.t * Expr.expr) list -> Expr.expr
 val to_bexpr : (Q.t * Expr.expr) list * string * Q.t -> Expr.expr
@@ -104,7 +105,6 @@ val sctree : Expr.t ctree -> string
 type solution =
     | Unsat
     | Abstract of (Expr.t * Expr.t) list
-    | Case of Expr.t * Expr.t * Z.t
 
 val try_solve : Expr.t list -> solution
 

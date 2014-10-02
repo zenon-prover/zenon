@@ -201,6 +201,9 @@ let of_bexpr_aux = function
     | _ -> raise NotaFormula
 
 let of_bexpr e = snd (of_bexpr_aux e)
+
+let is_bexpr e = try ignore (of_bexpr e); true with NotaFormula -> false
+
 let norm_coef e = const (Q.to_string (fst (of_bexpr_aux e)))
 
 let to_nexpr_aux (c, x) =
@@ -436,7 +439,7 @@ let ct_from_ml p =
                 (List.for_all (fun (_, e) ->
                     (is_int e || is_rat e) && (match e with
                     | Emeta(_) -> true
-                    | Eapp(Evar(s, _), [], _) -> true
+                    | Eapp(Evar(s, _), [], _) -> false
                     | _ -> false)) f) &&
                 (List.exists (fun (_, e) -> match e with
                     | Emeta(_) -> true
@@ -523,7 +526,9 @@ let simplex_is_int = function
 
 let add_expr e st =
     try match fneg (of_bexpr e) with
+    | (b, "$less", c) -> Simplex.add_constraints st [Simplex.Less, b, c]
     | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
+    | (b, "$greater", c) -> Simplex.add_constraints st [Simplex.Greater, b, c]
     | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
     | (b, "=", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
     | _ -> st
@@ -557,9 +562,6 @@ let rec get_state l =
 type solution =
     | Unsat
     | Abstract of (expr * expr) list
-    | Case of expr * expr * Z.t
-
-exception Denom_found of expr * expr * Z.t
 
 let try_solve l =
     Log.debug 8 "arith -- Trying to contradict :";
@@ -572,35 +574,16 @@ let try_solve l =
         | Some Simplex.Solution s ->
                 Log.debug 8 "arith -- simplex solution found";
                 Log.debug 10 "arith -- simplex state :\n%a" pp_simplex st;
-                let s = Simplex.abstract_val st
-                    (function Emeta _ -> true | _ -> false)
-                    (function Emeta _ -> false | _ -> true)
-                in
-                Log.debug 13 "arith -- new state :\n%a" pp_simplex st;
                 Log.debug 8 "arith -- tentative solution :";
-                let aux (v, (e, k)) =
-                    let e' = to_nexpr (fadd e [k, etrue]) in
-                    Log.debug 8 "arith -- %a == %a" Print.pp_expr v Print.pp_expr e';
-                    if is_int v && not (is_int e') then begin
-                        try
-                            let c, a = List.find (fun (c, _) -> is_q c) e in
-                            Log.debug 8 "arith -- switching on %s * %a" (Z.to_string (Q.den c)) Print.pp_expr a;
-                            raise (Denom_found (v, a, Q.den c))
-                        with Not_found ->
-                            Log.debug 8 "arith -- absurd solution";
-                            raise Exit
-                    end;
-                    v, e'
+                let rec aux = function
+                    | [] -> []
+                    | (Simplex.Extern v, k) :: r ->
+                        let e' = to_nexpr [k, etrue] in
+                        Log.debug 8 "arith -- %a == %a" Print.pp_expr v Print.pp_expr e';
+                        (v, e') :: (aux r)
+                    | (Simplex.Intern _, _) :: r -> aux r
                 in
-                try
-                    let res = (List.map aux s) in
-                    Abstract res
-                with
-                | Exit -> Unsat
-                | Denom_found (Emeta(Eall(_) as e, _), a, n) ->
-                        Case(e, a, n)
-                | Denom_found (Emeta(Eex(_) as e, _), a, n) ->
-                        Case(enot e, a, n)
+                Abstract (aux s)
         end
 
 let solve_tree t =

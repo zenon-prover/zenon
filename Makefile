@@ -19,9 +19,12 @@ CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           progress.ml namespace.ml type.ml expr.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
-          print.ml step.ml node.ml extension.ml \
-	  rewrite.ml mltoll.ml printBox.ml simplex.ml arith.ml \
-          parsezen.mly lexzen.mll parsetptp.mly lextptp.mll typetptp.ml \
+	  print.ml step.ml node.ml extension.ml mltoll.ml \
+          printBox.ml simplex.ml arith.ml \
+          parsezen.mly lexzen.mll \
+	  smtlib_util.ml smtlib_syntax.ml \
+	  parsesmtlib.mly lexsmtlib.mll smtlib.ml \
+	  parsetptp.mly lextptp.mll typetptp.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \
 	  lltolj.ml lltodedukti.ml \
@@ -128,6 +131,15 @@ parsetptp.ml: parsetptp.mly
 parsetptp.mli: parsetptp.ml
 	:
 
+lexsmtlib.ml: lexsmtlib.mll
+	$(CAMLLEX) lexsmtlib.mll
+
+parsesmtlib.ml: parsesmtlib.mly
+	$(CAMLYACC) -v parsesmtlib.mly
+
+parsesmtlib.mli: parsesmtlib.ml
+	:
+
 lexcoq.ml: lexcoq.mll
 	$(CAMLLEX) lexcoq.mll
 
@@ -168,6 +180,7 @@ clean:
 	rm -f *.cm* *.o *.vo *.annot *.output *.glob
 	rm -f parsezen.ml parsezen.mli lexzen.ml
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml
+	rm -f parsesmtlib.ml parsesmtlib.mli lexsmtlib.ml
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml
 	rm -f checksum.ml
 	rm -f zenon_modulo *.bin *.byt
