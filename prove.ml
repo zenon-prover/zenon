@@ -949,7 +949,7 @@ let newnodes_match_congruence st fm g _ =
     when f1 =%= f2 ->
      if (compare_type f1' f2') <> 0 then (st, false)
      else if (List.length a1 == List.length a2)
-	     && (same_types e1 e2) 
+	     && (Type.equal (type_of e1) (type_of e2)) 
      then begin
         add_node st {
           nconc = [fm];

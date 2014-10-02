@@ -160,19 +160,19 @@ let axiom_to_rwrt_prop = [
   "empty_def1";
   "add_def1";
   "remove_def1";
-  "mem_natural";
+ (* "mem_natural";
   "mem_natural1";
   "mem_nat";
-  "mem_bounded_int";
+  "mem_bounded_int";*)
   "mem_interval";
   "mem_non_empty_power";
   "is_finite_subset";
   "is_finite_subset_def";
   "non_empty_finite_subsets";
-  "closure_def";
-  "closure1_def";
+(*  "closure_def";
+  "closure1_def";*)
   "generalized_union_def";
-  "seq_def";
+(*  "seq_def";*)
 ];;
 
 
