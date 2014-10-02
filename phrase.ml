@@ -319,6 +319,11 @@ let rec parse_equiv_prop body =
 	   when is_literal_eq e2
 		&& test_fv (get_fv e2) (get_fv e1)
 	-> add_rule_prop e2 e1
+ (*     | Eequiv (e1, e2, _) -> 
+	 List.iter print_endline (get_fv e1);
+	 print_endline " ______";
+	 List.iter print_endline (get_fv e2);
+	 assert false*)
       | _ -> assert false
     end
 ;;
