@@ -23,6 +23,8 @@ val mk_int : string -> Expr.t
 val mk_rat : string -> Expr.t
 val mk_real : string -> Expr.t
 
+val is_num_string : string -> bool
+
 val is_int : Expr.expr -> bool
 val is_rat : Expr.expr -> bool
 val is_num : Expr.expr -> bool
