@@ -166,10 +166,10 @@ let type_tff_var t env = function
 
 let rec type_tff_app env is_pred e = match e with
     (* Type typechecking *)
-    | Eapp(Evar("$i", _), [], _) -> tvar "$i" type_type, env
-    | Eapp(Evar("$int", _), [], _) -> tvar "Int" type_type, env
-    | Eapp(Evar("$rat", _), [], _) -> tvar "Rat" type_type, env
-    | Eapp(Evar("$real", _), [], _) -> tvar "Real" type_type, env
+    | Eapp(Evar("$i", _), [], _) -> eapp (tvar "$i" type_type, []), env
+    | Eapp(Evar("$int", _), [], _) -> eapp (tvar "Int" type_type, []), env
+    | Eapp(Evar("$rat", _), [], _) -> eapp (tvar "Rat" type_type, []), env
+    | Eapp(Evar("$real", _), [], _) -> eapp (tvar "Real" type_type, []), env
     (* Term typechecking *)
     | Eapp(Evar("$int", _), [Evar (v, _)], _) ->
        mk_int v, env
