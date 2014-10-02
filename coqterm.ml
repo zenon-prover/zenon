@@ -753,6 +753,7 @@ let get_signatures ps ext_decl =
   let rec get_sig r env e =
     match e with
     | Evar ("_", _) -> ()
+    | Eapp (Evar(s, _), [], _) when Arith.is_num_string s -> ()
     | Evar (s, _) when is_nat s || Arith.is_num e -> ()
     | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 r;
     | Emeta _ | Etrue | Efalse -> ()

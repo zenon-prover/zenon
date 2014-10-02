@@ -6,14 +6,18 @@ open Mlproof
 
 let equal = Expr.equal
 
+let of_string s = if not (String.contains s 'a') then Q.of_string s else raise (Invalid_argument s)
+
 (* Types manipulation *)
 let find_type e = match get_type e with
     | Some t -> t
     | None -> raise Exit
 
-let mk_int v = tvar v type_int
-let mk_rat v = tvar v type_rat
-let mk_real v = tvar v type_real
+let mk_int v = eapp (tvar v type_int,[])
+let mk_rat v = eapp (tvar v type_rat, [])
+let mk_real v = eapp (tvar v type_real, [])
+
+let is_num_string s = try ignore (of_string s); true with Invalid_argument _ -> false
 
 let is_int e = try Type.equal type_int (find_type e) with Exit -> false
 let is_rat e = try Type.equal type_rat (find_type e) with Exit -> false
@@ -53,7 +57,7 @@ let comp_neg = function
     | _ -> assert false
 
 (* Combine types *)
-let const s = if is_z (Q.of_string s) then mk_int s else mk_rat s
+let const s = if is_z (of_string s) then mk_int s else mk_rat s
 
 let mk_op s a b =
     let ta = find_type a in
@@ -158,26 +162,21 @@ let normalize_aux a b =
 let normalize a b = snd (normalize_aux a b)
 
 let of_cexpr e = match e with
-    | Evar(s, _) when is_int e || is_rat e ->
+    | Eapp(Evar(s, _), [], _) when is_int e || is_rat e ->
             begin try
-                Q.of_string s
+                of_string s
             with Invalid_argument _ ->
                 raise Exit
             end
     | _ -> raise NotaFormula
 
 let rec of_nexpr e = match e with
-    | Evar (v, _) when is_int e || is_rat e ->
-            begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
-    | Etau (_, t, _, _)
-    | Emeta (Eall(_, t, _, _), _)
-    | Emeta (Eex(_, t, _, _), _)
-        when Type.equal type_int t || Type.equal type_rat t -> [Q.one, e]
+    | Eapp (Evar(s, _), [], _) -> begin try [of_cexpr e, etrue] with Exit -> [Q.one, e] end
     | Eapp (Evar("$uminus",_), [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
     | Eapp (Evar("$sum",_), [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
     | Eapp (Evar("$difference",_), [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
-    | Eapp (Evar("$product",_), [Evar (_, _) as e; a], _)
-    | Eapp (Evar("$product",_), [a; Evar (_, _) as e], _) ->
+    | Eapp (Evar("$product",_), [Eapp (Evar (_, _), [], _) as e; a], _)
+    | Eapp (Evar("$product",_), [a; Eapp (Evar (_, _), [], _) as e], _) ->
             begin try
                 fmul (of_cexpr e) (of_nexpr a)
             with Exit ->
@@ -249,7 +248,8 @@ let rec coqify_aux b e =
     | Emeta(_) when is_int e ->
             if b then mk_coq_q e (const "1") else e
     | Evar(v, _) when is_rat e ->
-            begin try coq_const (Q.of_string v) with Invalid_argument _ -> e end
+            begin try coq_const (of_string v) with Invalid_argument _ -> e end
+    | Eapp (Evar(_,_) as e', [], _) -> coqify_aux b e'
     | Eapp (Evar("$uminus",_), [a], _) -> uminus (aux a)
     | Eapp (Evar("$sum",_), [a; b], _) -> sum (aux a) (aux b)
     | Eapp (Evar("$difference",_), [a; b], _) -> diff (aux a) (aux b)

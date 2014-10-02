@@ -724,7 +724,7 @@ let get_bind = function
     | _ -> assert false
 
 let get_branch = function
-    | Eapp(Evar("$lesseq", _), [e; Evar(c, _)], _) -> e, c
+    | Eapp(Evar("$lesseq", _), [e; Eapp(Evar(c, _), [], _)], _) -> e, c
     | _ -> assert false
 
 let neg_comp_lemma = function
