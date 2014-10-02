@@ -163,6 +163,7 @@ let axiom_to_rwrt_prop = [
  (* "mem_natural";
   "mem_natural1";
   "mem_nat";
+  "mem_nat1";
   "mem_bounded_int";*)
   "mem_interval";
   "mem_non_empty_power";
