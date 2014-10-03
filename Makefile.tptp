@@ -48,7 +48,7 @@ fofcounter: $(TPTP)/.dummy
         for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
         cp $$file $(FOFCOUNTERDIR) ; done; echo "Done"
 
-stats: $(TPTP) result
+stats: $(TPTP)/.dummy result
 	@echo "Proofs found (total): `grep FOUND $(RESULT) | wc -l`"; \
         echo "Files tested (total): `grep File $(RESULT) | wc -l`"; \
         for i in $(DOM); do tmp=`ls $(FOFDIR)/$$i*.z 2> /dev/null`; \
