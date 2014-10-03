@@ -33,3 +33,4 @@ parsezen.mli
 test_dedukti/
 Axioms/
 tptp/
+TPTP*.tgz

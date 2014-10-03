@@ -187,4 +187,8 @@ depend: $(IMPL) $(INTF) $(COQSRC)
 	$(CAMLDEP) $(IMPL) $(INTF) >.depend
 	$(COQDEP) -I . $(COQSRC) >>.depend
 
+# This target downloads the TPTP archive and extract FOF problems from it in tptp/FOF/
+fof:
+	make -f Makefile.tptp fof
+
 include .depend

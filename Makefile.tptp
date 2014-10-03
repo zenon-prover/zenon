@@ -1,6 +1,8 @@
 # Makefile.tptp
 
 TPTP=./tptp
+TPTPVERSION = v6.1.0
+TPTPARCHIVE = TPTP-$(TPTPVERSION).tgz
 TPTP2T=$(TPTP)/Scripts/tptp2T
 FOFDIR=$(TPTP)/FOF
 FOFCOUNTERDIR=$(TPTP)/FOFCOUNTER
@@ -12,13 +14,22 @@ DOM=$(shell ls $(TPTP)/Problems)
 
 all: bench result
 
+tptparchive : $(TPTPARCHIVE)
+
+$(TPTPARCHIVE):
+	wget "http://www.cs.miami.edu/~tptp/TPTP/Distribution/$(TPTPARCHIVE)"
+
+$(TPTP): $(TPTPARCHIVE)
+	tar zxvf $(TPTPARCHIVE)
+	mv TPTP-$(TPTPVERSION) $(TPTP)
+
 bench: $(FOFZ)
 
 result:
 	@rm $(RESULT); touch $(RESULT); \
         for i in `ls $(FOFDIR)/*.z`; do cat $$i >> $(RESULT); done
 
-fof:
+fof: $(TPTP)
 	@echo "Looking for FOF problems...\c"; \
         mkdir $(FOFDIR); \
         tmp=`TPTP=$(TPTP) $(TPTP2T) -q3 -pp Form FOF Status Theorem | \
@@ -27,7 +38,7 @@ fof:
         for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
         cp $$file $(FOFDIR) ; done; echo "Done"
 
-fofcounter:
+fofcounter: $(TPTP)
 	@echo "Looking for FOF countersat problems...\c"; \
         mkdir $(FOFCOUNTERDIR); \
         tmp=`TPTP=$(TPTP) $(TPTP2T) -q3 -pp Form FOF Status CounterSatisfiable | \
@@ -36,7 +47,7 @@ fofcounter:
         for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
         cp $$file $(FOFCOUNTERDIR) ; done; echo "Done"
 
-stats: result
+stats: $(TPTP) result
 	@echo "Proofs found (total): `grep FOUND $(RESULT) | wc -l`"; \
         echo "Files tested (total): `grep File $(RESULT) | wc -l`"; \
         for i in $(DOM); do tmp=`ls $(FOFDIR)/$$i*.z 2> /dev/null`; \
@@ -51,6 +62,7 @@ clean:
 
 cleanall:
 	rm -rf $(FOFDIR)
+	rm -f $(TPTPARCHIVE)
 
 .SUFFIXES: .p .z
 
