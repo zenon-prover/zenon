@@ -9,6 +9,8 @@
 *.spec
 *.bin
 *.byt
+*.vo
+*.glob
 test.p
 test.dk
 test.lua
