@@ -17,10 +17,13 @@ zenon
 .config_var
 checksum.ml
 lexcoq.ml
+lexdk.ml
 lextptp.ml
 lexzen.ml
 parsecoq.ml
 parsecoq.mli
+parsedk.ml
+parsedk.mli
 parsetptp.ml
 parsetptp.mli
 parsezen.ml

@@ -22,6 +22,7 @@ let proof_level = ref Proof_none;;
 type input_format =
   | I_zenon
   | I_focal
+  | I_dk
   | I_tptp
 ;;
 let input_format = ref I_zenon;;
@@ -107,6 +108,8 @@ let argspec = [
       "                clear the include path";
   "-icoq", Arg.Unit (fun () -> input_format := I_focal),
         "              read input file in Coq format";
+  "-idedukti", Arg.Unit (fun () -> input_format := I_dk),
+        "              read input file in Dedukti format";
   "-ifocal", Arg.Unit (fun () -> input_format := I_focal),
           "            read input file in Focal format";
   "-itptp", Arg.Unit (fun () -> input_format := I_tptp),
@@ -264,6 +267,10 @@ let parse_file f =
           (name, List.map (fun x -> (x, false)) forms)
       | I_focal ->
           let (name, result) = Parsecoq.file Lexcoq.token lexbuf in
+          closer ();
+          (name, result)
+      | I_dk ->
+          let (name, result) = Parsedk.file Lexdk.token lexbuf in
           closer ();
           (name, result)
       | I_zenon ->
