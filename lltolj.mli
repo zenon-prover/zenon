@@ -40,14 +40,14 @@ val scrweak : Expr.expr * lkproof -> lkproof;;
 val sclcontr : Expr.expr * lkproof -> lkproof;;
 val sccut : Expr.expr * lkproof * lkproof -> lkproof;;
 val scland : Expr.expr * Expr.expr * lkproof -> lkproof;;
-val sclor : 
+val sclor :
   Expr.expr * Expr.expr * lkproof * lkproof -> lkproof;;
 val sclimply :
   Expr.expr * Expr.expr * lkproof * lkproof -> lkproof;;
 val sclnot : Expr.expr * lkproof -> lkproof;;
 val sclall : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val sclex : Expr.expr * Expr.expr * lkproof -> lkproof;;
-val scrand : 
+val scrand :
   Expr.expr * Expr.expr * lkproof * lkproof -> lkproof;;
 val scrorl : Expr.expr * Expr.expr * lkproof -> lkproof;;
 val scrorr : Expr.expr * Expr.expr * lkproof -> lkproof;;
@@ -62,7 +62,7 @@ val scconc : lkproof -> Expr.expr;;
 val distinct_terms : (Expr.expr * int) list ref;;
 val lemma_env : (string, Llproof.prooftree) Hashtbl.t;;
 val hypothesis_env : Expr.expr list ref;;
-val definition_env : 
+val definition_env :
   (string, Expr.expr list * Expr.expr) Hashtbl.t;;
 
 val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;

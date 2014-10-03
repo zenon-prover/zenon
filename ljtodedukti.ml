@@ -51,7 +51,7 @@ let rec p_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
+  | a :: args ->
     fprintf oc "%a %a"
       printer a (p_list printer) args;
 ;;
@@ -60,8 +60,8 @@ let rec p_comma_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
-    fprintf oc "%a, %a" 
+  | a :: args ->
+    fprintf oc "%a, %a"
       printer a (p_comma_list printer) args;
 ;;
 
@@ -69,8 +69,8 @@ let rec p_single_arrow_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
-    fprintf oc "%a -> %a" 
+  | a :: args ->
+    fprintf oc "%a -> %a"
       printer a (p_single_arrow_list printer) args;
 ;;
 
@@ -78,8 +78,8 @@ let rec p_double_arrow_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
-    fprintf oc "%a => %a" 
+  | a :: args ->
+    fprintf oc "%a => %a"
       printer a (p_double_arrow_list printer) args;
 ;;
 
@@ -89,7 +89,7 @@ match e with
 | _ -> assert false
 ;;
 
-let rec p_expr oc e = 
+let rec p_expr oc e =
   match e with
   | Evar (v, _) -> fprintf oc "%s" v
   | Emeta (e, _) -> assert false
@@ -113,14 +113,14 @@ let rec p_expr oc e =
     fprintf oc "(forall (%s:Term => %a))" x p_expr e
   | Eex (Evar (x, _), s, e, _) ->
     fprintf oc "(exists (%s:Term => %a))" x p_expr e
-  | Etau (e1, s, e2, _) -> 
+  | Etau (e1, s, e2, _) ->
     fprintf oc "%s" (Index.make_tau_name e)
   | Elam (Evar (x, _), s, e2, _) ->
     fprintf oc "(lambda (%s:Term => %a))" x p_expr e
   | Eall _ | Eex _ | Elam _ -> assert false
 ;;
 
-let p_prf oc e = 
+let p_prf oc e =
   fprintf oc "prf %a" p_expr e
 ;;
 
@@ -167,9 +167,9 @@ let rec p_prove_false oc (proof,l) =
     poc "notequal missing"
   | Rnotconnect (And, e1, e2), [proof1; proof2], [hypo] ->
     let prop = new_prop () in
-    let var = new_hypo () in   
-    poc "%s (%s:Prop => 
-(%s: prf %a -> prf %a -> prf %s) => 
+    let var = new_hypo () in
+    poc "%s (%s:Prop =>
+(%s: prf %a -> prf %a -> prf %s) =>
 %s %a %a)"
       hypo prop var p_expr e1 p_expr e2 prop
       var p_proof proof1 p_proof proof2
@@ -191,7 +191,7 @@ let rec p_prove_false oc (proof,l) =
     poc "notequal missing"
   | Rnotequal (e1, e2), proofs, _ ->
     poc "notequal missing"
-  | RcongruenceLR (e1, e2, e3), [proof], _ -> 
+  | RcongruenceLR (e1, e2, e3), [proof], _ ->
     poc "congruence missing"
   | RcongruenceRL (e1, e2, e3), [proof], _ ->
     poc "congruence missing"
@@ -199,13 +199,13 @@ let rec p_prove_false oc (proof,l) =
     poc "definition missing"
   | Rextension (ext, name, args, concs, hyps), proofs, _ ->
     poc "extension missing"
-  | Rlemma (name, args), [], _ -> 
+  | Rlemma (name, args), [], _ ->
     poc "lemma missing"
   | _, _, _ -> assert false
-  
+
 and p_proof oc proof =
   let rule_concls = concls_of_rule proof.rule in
-  let l = List.fold_left 
+  let l = List.fold_left
     (fun l e -> (new_hypo (),e) :: l) [] (List.rev rule_concls) in
   fprintf oc "(%a => %a)"
     (p_double_arrow_list p_declare_prf) l
@@ -213,7 +213,7 @@ and p_proof oc proof =
 ;;
 
 let rec p_tree oc proof =
-  fprintf oc "conjecture_proof : %a -> prf False :=\n" 
+  fprintf oc "conjecture_proof : %a -> prf False :=\n"
     (p_single_arrow_list p_prf) proof.conc;
   fprintf oc "%a." p_proof (translate proof);
 ;;
@@ -221,7 +221,7 @@ let rec p_tree oc proof =
 let rec p_theorem oc l =
   match l with
   | [] -> assert false
-  | thm :: lemmas -> 
+  | thm :: lemmas ->
     p_tree oc thm.proof;
 ;;
 
@@ -263,7 +263,7 @@ let rec get_signatures ps =
         add_sig s (List.length args) r;
 	List.iter (get_sig Term env) args;
     | Eand (e1, e2, _) | Eor (e1, e2, _)
-    | Eimply (e1, e2, _) | Eequiv (e1, e2, _) 
+    | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
       -> get_sig Prop env e1;
 	 get_sig Prop env e1;
     | Enot (e1, _) -> get_sig Prop env e1;
@@ -274,8 +274,8 @@ let rec get_signatures ps =
   let set_type sym typ =
     Hashtbl.remove symtbl sym;
     Hashtbl.add symtbl sym typ;
-  in 
-  let do_phrase p = 
+  in
+  let do_phrase p =
     match p with
       | Phrase.Hyp (name, e, _) ->
 	get_sig Prop [] e;

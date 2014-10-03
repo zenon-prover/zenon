@@ -45,16 +45,16 @@ implyc: Prop -> Prop -> Prop :=
   A:Prop => B:Prop => not (not (imply (not (not A)) (not (not B)))).
 forall: (Term -> Prop) -> Prop.
 forallc: (Term -> Prop) -> Prop :=
-  P:(Term -> Prop) => 
+  P:(Term -> Prop) =>
   not (not (forall (x:Term => not (not (P x))))).
 exists: (Term -> Prop) -> Prop.
 existsc: (Term -> Prop) -> Prop :=
-  P:(Term -> Prop) => 
+  P:(Term -> Prop) =>
   not (not (exists (x:Term => not (not (P x))))).
 equal: Term -> Term -> Prop.
 equalc: Term -> Term -> Prop :=
   a:Term => b:Term => not (not (equal a b)).
-equiv: Prop -> Prop -> Prop := 
+equiv: Prop -> Prop -> Prop :=
   A:Prop => B:Prop => and (imply A B) (imply B A).
 
 
@@ -65,7 +65,7 @@ equiv: Prop -> Prop -> Prop :=
 [A: Prop, B: Prop] prf (imply A B) --> prf A -> prf B
 [A: Prop] prf (not A) --> prf A -> prf False
 [A: Term -> Prop] prf (forall A) --> x:Term -> prf (A x)
-[A: Term -> Prop] prf (exists A) --> 
+[A: Term -> Prop] prf (exists A) -->
 P:Prop -> (x:Term -> prf (A x) -> prf P) -> prf P
 [x: Term, y: Term] prf (equal x y) --> P:(Term -> Prop) -> prf (imply (P x) (P y)).\n\n"
 ;;
@@ -74,7 +74,7 @@ let rec p_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
+  | a :: args ->
     fprintf oc "%a %a"
       printer a (p_list printer) args;
 ;;
@@ -83,8 +83,8 @@ let rec p_comma_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
-    fprintf oc "%a, %a" 
+  | a :: args ->
+    fprintf oc "%a, %a"
       printer a (p_comma_list printer) args;
 ;;
 
@@ -92,8 +92,8 @@ let rec p_single_arrow_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
-    fprintf oc "%a -> %a" 
+  | a :: args ->
+    fprintf oc "%a -> %a"
       printer a (p_single_arrow_list printer) args;
 ;;
 
@@ -101,8 +101,8 @@ let rec p_double_arrow_list printer oc l =
   match l with
   | [] -> ()
   | [a] -> fprintf oc "%a" printer a
-  | a :: args -> 
-    fprintf oc "%a => %a" 
+  | a :: args ->
+    fprintf oc "%a => %a"
       printer a (p_double_arrow_list printer) args;
 ;;
 
@@ -130,9 +130,9 @@ and p_char oc c =
   else fprintf oc "%d" n
 ;;
 
-let rec p_expr oc e = 
+let rec p_expr oc e =
   match e with
-  | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _) 
+  | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
     when (equal e3 e2 && equal e4 e1) ->
     fprintf oc "(equiv %a %a)" p_expr e1 p_expr e2
   | Enot (Enot (Enot (Enot (Enot (e, _), _), _), _), _) ->
@@ -156,11 +156,11 @@ let rec p_expr oc e =
     fprintf oc "(existsc (%s:Term => %a))" x p_expr e
   | Enot (Enot (Eapp ("=", [e1;e2], _), _), _) ->
     fprintf oc "(equalc %a %a)" p_expr e1 p_expr e2
-  | Evar (v, _) when Mltoll.is_meta v -> 
+  | Evar (v, _) when Mltoll.is_meta v ->
     fprintf oc "%t" p_anyterm
-  | Evar (v, _) -> 
+  | Evar (v, _) ->
     fprintf oc "%a" p_chars v
-  | Eapp ("$string", [v], _) -> 
+  | Eapp ("$string", [v], _) ->
     fprintf oc "S%a" p_expr v
   | Eapp ("=", [e1;e2], _) ->
     fprintf oc "(equal %a %a)" p_expr e1 p_expr e2
@@ -190,19 +190,19 @@ let rec p_expr oc e =
   | Etau _ -> assert false
 ;;
 
-let p_prf oc e = 
+let p_prf oc e =
   fprintf oc "prf %a" p_expr e
 ;;
 
 let p_declare oc (e, printer) =
   fprintf oc "%t : %a" printer p_expr e;
-;; 
+;;
 
 let p_declare_prf oc (e, printer) =
   fprintf oc "%t : %a" printer p_prf e;
 ;;
 
-let p_str s oc = 
+let p_str s oc =
   fprintf oc "%s" s;
 ;;
 
@@ -216,22 +216,22 @@ let rec p_proof oc (lkproof, goal, gamma) =
     try (List.assoc e gamma) oc
     with Not_found -> fprintf oc "axiom error" in
   match lkrule with
-  | SCaxiom (e) -> 
+  | SCaxiom (e) ->
     poc "%a" p_hyp e
-  | SCfalse -> 
+  | SCfalse ->
     poc "(%a %a)" p_hyp efalse p_expr goal
-  | SCtrue -> 
+  | SCtrue ->
     let prop = new_prop () in
     let var = new_hypo () in
     poc "(%s : Prop => %s : prf %s => %s)"
       prop var prop var
-  | SCeqref (a) -> 
+  | SCeqref (a) ->
     let prop = new_prop () in
     poc "(%s : (Term -> Prop) => %a)"
       prop p_proof (
 	scrimply (
-	  eapp (prop, [a]), 
-	  eapp (prop, [a]), 
+	  eapp (prop, [a]),
+	  eapp (prop, [a]),
 	  scaxiom (eapp (prop, [a]), [])),
 	eimply (eapp (prop, [a]), eapp (prop, [a])), gamma)
       (*p_proof (
@@ -239,17 +239,17 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
 	  scrimply (
-	    eapp (prop, [a]), 
-	    eapp (prop, [a]), 
+	    eapp (prop, [a]),
+	    eapp (prop, [a]),
 	    scaxiom (eapp (prop, [a]), [])),
 	  scrimply (
-	    eapp (prop, [a]), 
-	    eapp (prop, [a]), 
+	    eapp (prop, [a]),
+	    eapp (prop, [a]),
 	    scaxiom (eapp (prop, [a]), []))),
 	eand (
 	  eimply (eapp (prop, [a]), eapp (prop, [a])),
 	  eimply (eapp (prop, [a]), eapp (prop, [a]))), gamma)*)
-  | SCeqsym (a, b) -> 
+  | SCeqsym (a, b) ->
 (*    let prop = new_prop () in
     let imp1 = eimply (eapp (prop, [a]), eapp (prop, [b])) in
     let imp2 = eimply (eapp (prop, [b]), eapp (prop, [a])) in
@@ -266,9 +266,9 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	  imp2, imp1,
 	  scaxiom ( eimply (
 	    eapp (prop, [b]), eapp (prop, [a])), [imp1]),
-	  scaxiom ( eimply ( 
+	  scaxiom ( eimply (
 	    eapp (prop, [a]), eapp (prop, [b])), [imp2]))),
-	eand (imp2, imp1), 
+	eand (imp2, imp1),
 	(imp1, fun oc ->
 	  fprintf oc "(%a %s %a (%a => %a => %s))"
 	    p_hyp (eapp ("=", [a; b])) prop p_expr imp1
@@ -279,19 +279,19 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	      p_hyp (eapp ("=", [a; b])) prop p_expr imp2
 	      p_declare_prf (imp1, p_str var1)
 	      p_declare_prf (imp2, p_str var2) var2) ::
-	  (eq, fun oc -> 
+	  (eq, fun oc ->
 	    fprintf oc "(%a %s)"
 	      p_hyp (eapp ("=",[a; b])) prop) ::
 	  gamma)*)
   | SCcut (e, lkrule1, lkrule2) ->
-    poc "%a" p_proof 
+    poc "%a" p_proof
       (lkrule2, goal,
        (e, fun oc -> p_proof oc (lkrule1, e, gamma)) :: gamma)
   | SCland (e1, e2, lkrule) ->
     let var1 = new_hypo () in
     let var2 = new_hypo () in
     poc "(%a %a (%a => %a => %a))"
-      p_hyp (eand (e1, e2)) 
+      p_hyp (eand (e1, e2))
       p_expr goal
       p_declare_prf (e1, p_str var1) p_declare_prf (e2, p_str var2)
       p_proof (lkrule, goal, (e1, p_str var1) :: (e2, p_str var2) :: gamma)
@@ -301,12 +301,12 @@ let rec p_proof oc (lkproof, goal, gamma) =
     poc "(%a %a (%a => %a) (%a => %a))"
       p_hyp (eor (e1, e2))
       p_expr goal
-      p_declare_prf (e1, p_str var1) 
+      p_declare_prf (e1, p_str var1)
       p_proof (lkrule1, goal, (e1, p_str var1) :: gamma)
-      p_declare_prf (e2, p_str var2) 
-      p_proof (lkrule2, goal, (e2, p_str var2) :: gamma)      
+      p_declare_prf (e2, p_str var2)
+      p_proof (lkrule2, goal, (e2, p_str var2) :: gamma)
   | SClimply (e1, e2, lkrule1, lkrule2) ->
-    let p_aux oc = 
+    let p_aux oc =
       fprintf oc "(%a %a)"
 	p_hyp (eimply (e1, e2))
 	p_proof (lkrule1, e1, gamma) in
@@ -319,14 +319,14 @@ let rec p_proof oc (lkproof, goal, gamma) =
       fprintf oc "(%a %a)"
 	p_hyp ap p_expr t in
     poc "%a"
-      p_proof 
+      p_proof
       (lkrule, goal, (substitute [(x, t)] p, p_aux) :: gamma)
   | SClex (Eex (x, ty, p, _) as ep, v, lkrule) ->
-    let q = substitute [(x, v)] p in    
+    let q = substitute [(x, v)] p in
     let var = new_hypo () in
     poc "(%a %a (%a:Term => %s:prf %a => %a))"
       p_hyp ep p_expr goal
-      p_expr v var p_expr q 
+      p_expr v var p_expr q
       p_proof
       (lkrule, goal, (q, p_str var) :: gamma)
   | SCrand (e1, e2, lkrule1, lkrule2) ->
@@ -356,7 +356,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
       var p_prf e1 p_proof (lkrule, e2, (e1, p_str var) :: gamma)
   | SCrnot (e, lkrule) ->
     let var = new_hypo () in
-    poc "(%a => %a)" p_declare_prf (e, p_str var) 
+    poc "(%a => %a)" p_declare_prf (e, p_str var)
       p_proof (lkrule, efalse, (e, p_str var) :: gamma)
   | SCrall (Eall (x, ty, p, _), v, lkrule) ->
     let q = substitute [(x, v)] p in
@@ -367,20 +367,20 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let prop = new_prop () in
     let var = new_hypo () in
     poc "(%s:Prop => %s: (%a:Term -> prf %a -> prf %s) => %s %a %a)"
-      prop var 
+      prop var
       p_expr x p_expr p prop
-      var p_expr t 
+      var p_expr t
       p_proof (lkrule, substitute [(x, t)] p, gamma)
-  | SCcnot (e, lkrule) -> 
+  | SCcnot (e, lkrule) ->
     poc "proof must be constructive"
   | SClcontr (e, lkrule) ->
     poc "%a"
       p_proof (lkrule, goal, gamma)
-  | SCrweak (e, lkrule) -> 
+  | SCrweak (e, lkrule) ->
     poc "(%a %a)"
       p_proof (lkrule, efalse, gamma)
       p_expr e
-  | SCeqfunc (Eapp (p, ts, _), Eapp (_, us, _)) -> 
+  | SCeqfunc (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let pred = new_prop () in
     let var = new_hypo () in
     let rec itereq oc (xts, ts, us) =
@@ -390,17 +390,17 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	(*let var1 = new_hypo () in
 	  let var2 = new_hypo () in*)
 	let term = new_term () in
-	poc "(%a (%s:Term => %a) %a)" 
+	poc "(%a (%s:Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
-	  term p_expr 
+	  term p_expr
 	  (eapp (pred, [eapp (p, xts @ ((evar term) :: us))]))
 	  itereq ((xts@[t]), ts, us)
       | _ -> assert false;
     in
     poc "(%s:(Term -> Prop) => %s:prf %a => %a)"
       pred var p_expr (eapp (pred, [eapp (p, ts)]))
-      itereq ([], ts, us)      
-  | SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) -> 
+      itereq ([], ts, us)
+  | SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let rec itereq oc (xts, ts, us) =
       match ts, us with
       | [], [] -> fprintf oc "%a" p_hyp (eapp (p, xts))
@@ -408,12 +408,12 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	(*let var1 = new_hypo () in
 	let var2 = new_hypo () in*)
 	let term = new_term () in
-	poc "(%a (%s:Term => %a) %a)" 
+	poc "(%a (%s:Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
 	  term p_expr (eapp (p, xts @ ((evar term) :: us)))
 	  itereq ((xts@[t]), ts, us)
       | _ -> assert false;
-    in 
+    in
     poc "%a" itereq ([], ts, us)
   (*    let rec itereq oc (xts, ts, us) =
       match ts, us with
@@ -422,36 +422,36 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	let var1 = new_hypo () in
 	let var2 = new_hypo () in
 	let term = new_term () in
-	poc "(%a (%s:Term => %a) %a (%a => %a => %s %a))" 
+	poc "(%a (%s:Term => %a) %a (%a => %a => %s %a))"
 	  p_hyp (eapp ("=", [t; u]))
 	  term p_expr (eapp (p, xts @ ((evar term) :: us)))
 	  p_expr (eapp (p, xts @ (u :: us)))
 	  p_declare_prf (
 	    eimply (
-	      eapp (p, xts @ (t :: us)), 
-	      eapp (p, xts @ (u :: us))), 
+	      eapp (p, xts @ (t :: us)),
+	      eapp (p, xts @ (u :: us))),
 	    p_str var1)
 	  p_declare_prf (
 	    eimply (
-	      eapp (p, xts @ (u :: us)), 
-	      eapp (p, xts @ (t :: us))), 
+	      eapp (p, xts @ (u :: us)),
+	      eapp (p, xts @ (t :: us))),
 	    p_str var2)
 	  var1 itereq ((xts@[t]), ts, us)
       | _ -> assert false;
-    in 
+    in
     poc "%a" itereq ([], ts, us)*)
   | _ -> assert false;
 ;;
 
 let rec p_tree oc proof goal =
   let ljproof = lltolj proof goal in
-  (*List.iter 
+  (*List.iter
     (fprintf oc "%a : Term.\n" p_expr) new_terms;*)
   let conc = scconc ljproof in
   fprintf oc "conjecture_proof : %a :=\n"
     p_prf conc;
   fprintf oc "%a."
-    p_proof (ljproof, conc, []) 
+    p_proof (ljproof, conc, [])
 ;;
 
 let rec get_goal phrases =
@@ -465,8 +465,8 @@ let p_theorem oc phrases l =
   match l with
   | [] -> assert false
   | thm :: lemmas ->
-    List.iter 
-      (fun lemma -> 
+    List.iter
+      (fun lemma ->
 	Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
       lemmas;
     let goal = get_goal phrases in
@@ -497,15 +497,15 @@ let rec get_signatures ps =
     | Emeta  _ | Etrue | Efalse -> ()
     | Eapp ("$string", [Evar (s, _)], _) ->
       (if not (List.mem_assoc e !Lltolj.distinct_terms)
-       then 
-	  Lltolj.distinct_terms := 
-	    (e, (List.length !Lltolj.distinct_terms) + 1) 
+       then
+	  Lltolj.distinct_terms :=
+	    (e, (List.length !Lltolj.distinct_terms) + 1)
 	  :: !Lltolj.distinct_terms; add_sig ("S"^s) 0 Term)
     | Eapp (s, args, _) ->
         add_sig s (List.length args) r;
 	List.iter (get_sig Term env) args;
     | Eand (e1, e2, _) | Eor (e1, e2, _)
-    | Eimply (e1, e2, _) | Eequiv (e1, e2, _) 
+    | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
       -> get_sig Prop env e1;
 	 get_sig Prop env e2;
     | Enot (e1, _) -> get_sig Prop env e1;
@@ -513,7 +513,7 @@ let rec get_signatures ps =
       -> get_sig Prop (v::env) e1;
     | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
   in
-  let do_phrase p = 
+  let do_phrase p =
     match p with
       | Phrase.Hyp (name, e, _) ->
 	get_sig Prop [] e;
@@ -566,7 +566,7 @@ let declare_hyp oc h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
-    Lltolj.hypothesis_env := 
+    Lltolj.hypothesis_env :=
       stmt :: !Lltolj.hypothesis_env;
   | Phrase.Def (DefReal ("", sym, params, body, None)) ->
     Hashtbl.add Lltolj.definition_env
@@ -579,8 +579,8 @@ let declare_hyp oc h =
 
 let rec add_distinct_terms_axioms l =
   match l with
-  | (x, n) :: (y, m) :: l -> 
-    Lltolj.hypothesis_env := 
+  | (x, n) :: (y, m) :: l ->
+    Lltolj.hypothesis_env :=
       enot (eapp ("=", [y; x])) :: !Lltolj.hypothesis_env;
     add_distinct_terms_axioms ((x, n) :: l);
     add_distinct_terms_axioms ((y, m) :: l);
@@ -590,7 +590,7 @@ let rec add_distinct_terms_axioms l =
 let timeout = ref 10;;
 
 let output oc phrases ppphrases llp =
-(*  eprintf "%a" 
+(*  eprintf "%a"
     (fun oc x -> Print.llproof (Print.Chan oc) x)
     llp;*)
   Lltolj.hypothesis_env := [];

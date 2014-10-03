@@ -366,8 +366,8 @@ let main () =
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
-    | Proof_dedukti -> 
-      begin 
+    | Proof_dedukti ->
+      begin
 	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp);
       end
     end;
