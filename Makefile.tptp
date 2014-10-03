@@ -1,0 +1,60 @@
+# Makefile.tptp
+
+TPTP=./tptp
+TPTP2T=$(TPTP)/Scripts/tptp2T
+FOFDIR=$(TPTP)/FOF
+FOFCOUNTERDIR=$(TPTP)/FOFCOUNTER
+FOF=$(shell if test -d $(FOFDIR); then ls $(FOFDIR)/*; fi)
+FOFZ=$(FOF:%.p=%.z)
+ZENON=./zenon -I $(TPTP) -itptp -onone -max-time 30s
+RESULT=$(TPTP)/results.tptp
+DOM=$(shell ls $(TPTP)/Problems)
+
+all: bench result
+
+bench: $(FOFZ)
+
+result:
+	@rm $(RESULT); touch $(RESULT); \
+        for i in `ls $(FOFDIR)/*.z`; do cat $$i >> $(RESULT); done
+
+fof:
+	@echo "Looking for FOF problems...\c"; \
+        mkdir $(FOFDIR); \
+        tmp=`TPTP=$(TPTP) $(TPTP2T) -q3 -pp Form FOF Status Theorem | \
+        cut -d " " -f1`; echo "Done"; \
+        echo "Copying files...\c"; \
+        for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
+        cp $$file $(FOFDIR) ; done; echo "Done"
+
+fofcounter:
+	@echo "Looking for FOF countersat problems...\c"; \
+        mkdir $(FOFCOUNTERDIR); \
+        tmp=`TPTP=$(TPTP) $(TPTP2T) -q3 -pp Form FOF Status CounterSatisfiable | \
+        cut -d " " -f1`; echo "Done"; \
+        echo "Copying files...\c"; \
+        for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
+        cp $$file $(FOFCOUNTERDIR) ; done; echo "Done"
+
+stats: result
+	@echo "Proofs found (total): `grep FOUND $(RESULT) | wc -l`"; \
+        echo "Files tested (total): `grep File $(RESULT) | wc -l`"; \
+        for i in $(DOM); do tmp=`ls $(FOFDIR)/$$i*.z 2> /dev/null`; \
+        if [ "$$tmp" != "" ]; then file=$(TPTP)/results-$$i.tptp; \
+        touch $$file; for j in $$tmp; do cat $$j >> $$file; done; \
+        echo "Proofs found ($$i): `grep FOUND $$file | wc -l`"; \
+        echo "Files tested ($$i): `grep File $$file | wc -l`"; \
+        rm $$file; fi; done
+
+clean:
+	rm -f $(FOFDIR)/*.z
+
+cleanall:
+	rm -rf $(FOFDIR)
+
+.SUFFIXES: .p .z
+
+.p.z:
+	@echo "**** Testing file $<:"; \
+        $(ZENON) $< | tee $*.tmp; \
+        echo "File $<: \c" > $@; cat $*.tmp >> $@

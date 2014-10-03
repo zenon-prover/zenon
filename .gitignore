@@ -32,3 +32,4 @@ parsezen.ml
 parsezen.mli
 test_dedukti/
 Axioms/
+tptp/
