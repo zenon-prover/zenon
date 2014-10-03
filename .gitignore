@@ -17,6 +17,7 @@ test.lua
 zenon
 .depend
 .config_var
+config.ml
 checksum.ml
 lexcoq.ml
 lexdk.ml
