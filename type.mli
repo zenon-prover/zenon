@@ -42,6 +42,9 @@ val is_type_num : t -> bool
 val tff : t -> t
 val tff_check : t -> bool
 
+(* SMTLIB typing *)
+val smtlib : t -> t
+
 (* Auxiliary function *)
 val ksplit : int -> 'a list -> 'a list * 'a list
 val find2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> 'a * 'b

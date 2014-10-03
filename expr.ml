@@ -409,6 +409,8 @@ let eex (v, t, e) = he_merge (Eex (v, t, e, priv_ex v t e));;
 let etau (v, t, e) = he_merge (Etau (v, t, e, priv_tau v t e));;
 let elam (v, t, e) = he_merge (Elam (v, t, e, priv_lam v t e));;
 
+let exor (e1,e2) = eor (eand (e1, enot e2), eand (enot e1, e2));;
+
 let eeq = evar "=";;
 let estring = evar "$string";;
 
