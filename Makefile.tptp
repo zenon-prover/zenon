@@ -19,9 +19,10 @@ tptparchive : $(TPTPARCHIVE)
 $(TPTPARCHIVE):
 	wget "http://www.cs.miami.edu/~tptp/TPTP/Distribution/$(TPTPARCHIVE)"
 
-$(TPTP): $(TPTPARCHIVE)
+$(TPTP)/.dummy: $(TPTPARCHIVE)
 	tar zxvf $(TPTPARCHIVE)
 	mv TPTP-$(TPTPVERSION) $(TPTP)
+	touch $(TPTP)/.dummy
 
 bench: $(FOFZ)
 
@@ -29,7 +30,7 @@ result:
 	@rm $(RESULT); touch $(RESULT); \
         for i in `ls $(FOFDIR)/*.z`; do cat $$i >> $(RESULT); done
 
-fof: $(TPTP)
+fof: $(TPTP)/.dummy
 	@echo "Looking for FOF problems...\c"; \
         mkdir $(FOFDIR); \
         tmp=`TPTP=$(TPTP) $(TPTP2T) -q3 -pp Form FOF Status Theorem | \
@@ -38,7 +39,7 @@ fof: $(TPTP)
         for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
         cp $$file $(FOFDIR) ; done; echo "Done"
 
-fofcounter: $(TPTP)
+fofcounter: $(TPTP)/.dummy
 	@echo "Looking for FOF countersat problems...\c"; \
         mkdir $(FOFCOUNTERDIR); \
         tmp=`TPTP=$(TPTP) $(TPTP2T) -q3 -pp Form FOF Status CounterSatisfiable | \
