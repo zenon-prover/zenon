@@ -1,0 +1,13 @@
+#+TODO: FREDERIC RAPHAEL TODO | DONE
+
+* FREDERIC split zenonide between an heuristic for finding intuitionnistic proofs and a Dedukti output
+
+* TODO make the heuristic usable in Coq too
+
+* RAPHAEL make zenonide a branch of zenon
+
+* FREDERIC create dkterm.ml similar to coqterm.ml
+* TODO rewrite the Dedukti output from the Coq one
+** FREDERIC get a -odeduktiterm from it
+
+* FREDERIC put dedukti header in a separate file
