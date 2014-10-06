@@ -133,6 +133,8 @@ let argspec = [
             ^ " (5m)";
   "-odedukti", Arg.Unit (fun () -> proof_level := Proof_dedukti),
             "          print the proof in Dedukti script format";
+  "-odeduktiterm", Arg.Unit (fun () -> proof_level := Proof_dedukti),
+            "          print the proof in Dedukti term format";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "              print the proof in Coq script format";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
