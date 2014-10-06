@@ -70,24 +70,43 @@ let rec translate_sort env = function
                 Type.mk_constr f' l'
 
 let translate_sortedvar env = function
+    | SortedVarSymSort(_, s, t) -> evar (translate_symbol s), (translate_sort env t)
+
+let translate_sortedvar2 env = function
     | SortedVarSymSort(_, s, t) -> tvar (translate_symbol s) (translate_sort env t)
 
 let translate_qualid = function
     | QualIdentifierId(_, id) -> translate_id id
     | QualIdentifierAs(_, id, s) -> raise Incomplete_translation
 
+let left_assoc s f = function
+    | x :: r -> List.fold_left f x r
+    | _ -> raise (Bad_arity s)
+
+let right_assoc s f = function
+    | x :: r -> List.fold_right f r x
+    | _ -> raise (Bad_arity s)
+
+let chain s f l =
+    let rec aux = function
+        | [] | [_] -> raise (Bad_arity s)
+        | [a; b] -> f a b
+        | a :: b :: r -> eand ((f a b), (aux (b :: r)))
+    in
+    aux l
+
 let rec translate_term env = function
     | TermSpecConst(_, const) -> translate_const const
-    | TermForAllTerm(_, (_, l), t) ->
-            let t' = translate_term env t in
-            List.fold_right (fun v t ->
-                let v' = translate_sortedvar env v in
-                eall (v', opt @@ get_type v', t)) l t'
-    | TermExistsTerm(_, (_, l), t) ->
-            let t' = translate_term env t in
-            List.fold_right (fun v t ->
-                let v' = translate_sortedvar env v in
-                eex (v', opt @@ get_type v', t)) l t'
+    | TermForAllTerm(_, (_, l), e) ->
+            let e' = translate_term env e in
+            List.fold_right (fun v e ->
+                let v', t' = translate_sortedvar env v in
+                eall (v', t', e)) l e'
+    | TermExistsTerm(_, (_, l), e) ->
+            let e' = translate_term env e in
+            List.fold_right (fun v e ->
+                let v', t' = translate_sortedvar env v in
+                eex (v', t', e)) l e'
     | TermQualIdentifier(_, id) ->
             begin match translate_qualid id with
             | "true" -> etrue
@@ -96,23 +115,24 @@ let rec translate_term env = function
             end
     | TermQualIdTerm(_, f, (_, l)) ->
             begin match (translate_qualid f), (List.map (translate_term env) l) with
+            (* CORE theory translation - 'distinct','ite' not yet implemented *)
             | "not", [e] -> enot e
             | "not", _ -> raise (Bad_arity "not")
-            | "and", x :: r -> List.fold_left (fun a b -> eand (a,b)) x r
-            | "and", _ -> raise (Bad_arity "and")
-            | "or", x :: r -> List.fold_left (fun a b -> eor (a,b)) x r
-            | "or", _ -> raise (Bad_arity "or")
-            | "xor", x :: r -> List.fold_left (fun a b -> exor (a,b)) x r
-            | "xor", _ -> raise (Bad_arity "xor")
-            | "=>", x :: r -> List.fold_right (fun a b -> eimply (a,b)) r x
-            | "=>", _ -> raise (Bad_arity "=>")
-            | "=", l ->
-                    let rec aux = function
-                        | [] | [_] -> raise (Bad_arity "=")
-                        | [a; b] -> eapp (eeq, [a; b])
-                        | a :: b :: r -> eand ((eapp (eeq, [a; b])), (aux (b :: r)))
-                    in aux l
-            (* distinct and ite not yet implemented *)
+            | "and" as s, l -> left_assoc s (fun a b -> eand (a,b)) l
+            | "or" as s, l -> left_assoc s (fun a b -> eor (a,b)) l
+            | "xor" as s, l -> left_assoc s (fun a b -> exor (a,b)) l
+            | "=>" as s, l -> right_assoc s (fun a b -> eimply (a,b)) l
+            | "=" as s, l -> chain s (fun a b -> eapp (eeq, [a; b])) l
+            (* INT/REAL theory translation - 'mod','div','abs','divisible' missing *)
+            | "+" as s, l -> left_assoc s (fun a b -> eapp (evar "$sum", [a; b])) l
+            | "-", [x] -> eapp (evar "$uminus", [x])
+            | "-" as s, l -> left_assoc s (fun a b -> eapp (evar "$difference", [a; b])) l
+            | "*" as s, l -> left_assoc s (fun a b -> eapp (evar "$product", [a; b])) l
+            | "<" as s, l -> chain s (fun a b -> eapp (evar "$less", [a; b])) l
+            | "<=" as s, l -> chain s (fun a b -> eapp (evar "$lesseq", [a; b])) l
+            | ">" as s, l -> chain s (fun a b -> eapp (evar "$greater", [a; b])) l
+            | ">=" as s, l -> chain s (fun a b -> eapp (evar "$greatereq", [a; b])) l
+            (* Generic translation *)
             | s, args ->
                     let f' = evar s in
                     begin try
@@ -128,7 +148,7 @@ let translate_command env = function
     | CommandDeclareSort(_, s, n) ->
             let n = int_of_string n in
             let t = Type.mk_arrow  (nlist Type.type_type n) Type.type_type in
-            env, [Hyp (new_hyp_name (), eapp (evar "#", [tvar (translate_symbol s) t]), 13)]
+            env, [Hyp (new_hyp_name (), eapp (evar "#", [tvar (translate_symbol s) t]), 2)]
     | CommandDefineSort(_, s, (_, l), t) ->
             let s' = translate_symbol s in
             let l' = List.map translate_symbol l in
@@ -138,15 +158,15 @@ let translate_command env = function
             let ret' = translate_sort env ret in
             let arg' = List.map (translate_sort env) args in
             let t = Type.mk_arrow arg' ret' in
-            env, [Hyp (new_hyp_name (), eapp (evar "#", [tvar (translate_symbol s) t]), 13)]
+            env, [Hyp (new_hyp_name (), eapp (evar "#", [tvar (translate_symbol s) t]), 2)]
     | CommandDefineFun(_, s, (_, args), ret, t) ->
             (* abbreviations with arguments l, ret type and expression t *)
             let ret' = translate_sort env ret in
-            let args' = List.map (translate_sortedvar env) args in
+            let args' = List.map (translate_sortedvar2 env) args in
             let args'' = List.map (fun x -> opt @@ get_type x) args' in
             let t' = translate_term env t in
             env, [Hyp (new_hyp_name (), eapp (evar "#",
-                [tvar (translate_symbol s) (Type.mk_arrow args'' ret'); t'] @ args'), 14)]
+                [tvar (translate_symbol s) (Type.mk_arrow args'' ret'); t'] @ args'), 3)]
     | CommandAssert(_, t) ->
             env, [Hyp (new_hyp_name (), translate_term env t, 1)]
     | _ -> env, []
