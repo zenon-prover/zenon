@@ -75,7 +75,7 @@ do
     else
         ERRORS=$(($ERRORS + 1))
         echo -e "\r\033[K\e[35m[ERROR $RET] $f \e[0m"
-        ./zenon -max-time 5s -k -x arith -itptp $f
+        ./zenon -max-time 5s -k -x arith $ZINPUT $f
     fi
 done
 echo -e "\r\033[K-----------------------------------"

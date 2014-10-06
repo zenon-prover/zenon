@@ -18,6 +18,11 @@ let rec const_list n x = if n > 0 then x :: (const_list (n - 1) x) else []
 
 let opt_out = function Some x -> x | None -> assert false
 
+let is_bool e =
+    match get_type e with
+    | Some t -> Type.equal type_bool t
+    | None -> false
+
 (* Environment for typing *)
 type env = {
     tff : Type.t list M.t;
@@ -161,7 +166,10 @@ let rec type_tff_app env e = match e with
     | Eapp(Evar("=", _), [a; b], _) ->
             let a', env' = type_tff_term env a in
             let b', env'' = type_tff_term env' b in
-            eapp (eeq, [a'; b']), env''
+            if is_bool a' && is_bool b' then
+                eequiv (a',b'), env''
+            else
+                eapp (eeq, [a'; b']), env''
     | Eapp(Evar(s, _) as s', args, _) ->
             let args, env' = map_fold type_tff_term env args in
             let f, env'' = match get_type s' with
@@ -174,7 +182,9 @@ let rec type_tff_app env e = match e with
                         raise (Type_error "Missing type")
             in
             begin try
-                eapp (f, args), env''
+                let e' = eapp (f, args) in
+                Log.debug 10 "Got : %a" Print.pp_expr_type e';
+                e', env''
             with
             | Not_enough_args
             | Mismatch _
@@ -185,29 +195,28 @@ let rec type_tff_app env e = match e with
             raise (Type_error (Printf.sprintf "Expected a symbol function, not an expression."))
     | _ -> assert false
 
-and type_tff_prop env e = match e with
-    (* Proposition typechecking *)
+and type_tff_term env e = match e with
     | Evar(v, _) -> type_tff_var env e
     | Emeta(_) -> assert false
     | Eapp(_) -> type_tff_app env e
     | Enot(f, _) ->
-            let f', env' = type_tff_prop env f in
+            let f', env' = type_tff_term env f in
             enot f', env'
     | Eand(f, g, _) ->
-            let f', env' = type_tff_prop env f in
-            let g', env'' = type_tff_prop env' g in
+            let f', env' = type_tff_term env f in
+            let g', env'' = type_tff_term env' g in
             eand (f', g'), env''
     | Eor(f, g, _) ->
-            let f', env' = type_tff_prop env f in
-            let g', env'' = type_tff_prop env' g in
+            let f', env' = type_tff_term env f in
+            let g', env'' = type_tff_term env' g in
             eor (f', g'), env''
     | Eimply(f, g, _) ->
-            let f', env' = type_tff_prop env f in
-            let g', env'' = type_tff_prop env' g in
+            let f', env' = type_tff_term env f in
+            let g', env'' = type_tff_term env' g in
             eimply (f', g'), env''
     | Eequiv(f, g, _) ->
-            let f', env' = type_tff_prop env f in
-            let g', env'' = type_tff_prop env' g in
+            let f', env' = type_tff_term env f in
+            let g', env'' = type_tff_term env' g in
             eequiv (f', g'), env''
     | Etrue
     | Efalse ->
@@ -218,7 +227,7 @@ and type_tff_prop env e = match e with
             let v' = tvar s t in
             Log.debug 2 "Introducting '%s' of type '%s'" s (Type.to_string t);
             let body = substitute [v, v'] body in
-            let body, env = type_tff_prop env body in
+            let body, env = type_tff_term env body in
             eall (v', t, body), env
     | Eex(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
@@ -226,24 +235,21 @@ and type_tff_prop env e = match e with
             let v' = tvar s t in
             Log.debug 2 "Introducting '%s' of type '%s'" s (Type.to_string t);
             let body = substitute [v, v'] body in
-            let body, env = type_tff_prop env body in
+            let body, env = type_tff_term env body in
             eex (v', t, body), env
     | Etau(Evar(s, _), t, body, _) -> assert false
-    | _ -> raise (Type_error ("Ill-formed expression"))
-
-and type_tff_term env e = match e with
-    | Evar(v, _) -> type_tff_var env e
-    | Eapp(_) -> type_tff_app env e
     | Elam(Evar(s, _) as v, t, body, _) ->
             let t = Type.tff t in
             let v' = tvar s t in
             let body' = substitute [v, v'] body in
             let body'', env' = type_tff_term env body' in
             elam (v', t, body''), env'
-    | _ -> raise (Type_error ("Ill-formed expression"))
+    | _ ->
+            Log.debug 1 "This expression is not a term : %a" Print.pp_expr e;
+            raise (Type_error ("Ill-formed expression (Term expected)"))
 
 let type_tff_expr env e =
-    let e', env' = type_tff_prop env e in
+    let e', env' = type_tff_term env e in
     match get_type e' with
     | Some t ->
             if Type.equal type_bool t then
@@ -259,7 +265,7 @@ let type_tff_def env e = match e with
             let t = smtlib (opt_out @@ get_type v) in
             Log.debug 3 "Adding type (%s : %s) to env" s (Type.to_string t);
             tff_add_type s t env
-    | _ -> raise (Type_error (Printf.sprintf "Ill-formed expression."))
+    | _ -> raise (Type_error (Printf.sprintf "Ill-formed expression (Definition expected)"))
 
 (* Check the quantifiers so that no type except Namespace.univ_name is present ? *)
 let type_fof_expr e = ()

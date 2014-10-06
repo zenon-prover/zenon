@@ -27,14 +27,19 @@ module Emap = Map.Make(Expr)
 module Smap = Map.Make(String)
 
 type env = {
+    defined_vars : expr Smap.t;
     defined_sorts : (string list * etype) Smap.t;
     defined_funs : (expr list * expr) Emap.t;
 }
 
 let default_env = {
+    defined_vars = Smap.empty;
     defined_sorts = Smap.empty;
     defined_funs = Emap.empty;
 }
+
+let add_var env (s, e) =
+    { env with defined_vars = Smap.add s e env.defined_vars }
 
 let check_and_replace f (sym_args, e) args =
     try
@@ -44,6 +49,13 @@ let check_and_replace f (sym_args, e) args =
         raise Argument_mismatch
 
 (* Term translation *)
+let sanitize s =
+    let aux = function
+        | '?' -> '_'
+        | c -> c
+    in
+    String.map aux s
+
 let translate_const = function
     | SpecConstsDec(_, s) -> Arith.mk_rat s
     | SpecConstNum(_, s) -> Arith.mk_int s
@@ -52,8 +64,8 @@ let translate_const = function
     | SpecConstsBinary(_, s) -> Arith.mk_int ("0" ^ (String.sub s 1 (String.length s - 1)))
 
 let translate_symbol = function
-    | Symbol(_, s) -> s
-    | SymbolWithOr(_, s) -> s
+    | Symbol(_, s) -> sanitize s
+    | SymbolWithOr(_, s) -> sanitize s
 
 let translate_id = function
     | IdSymbol(_, s) -> translate_symbol s
@@ -97,6 +109,10 @@ let chain s f l =
 
 let rec translate_term env = function
     | TermSpecConst(_, const) -> translate_const const
+    | TermLetTerm(_, (_, l), e) ->
+            let l' = List.map (translate_varbinding env) l in
+            let env' = List.fold_left add_var env l' in
+            translate_term env' e
     | TermForAllTerm(_, (_, l), e) ->
             let e' = translate_term env e in
             List.fold_right (fun v e ->
@@ -111,6 +127,7 @@ let rec translate_term env = function
             begin match translate_qualid id with
             | "true" -> etrue
             | "false" -> efalse
+            | s when Smap.mem s env.defined_vars -> Smap.find s env.defined_vars
             | s -> evar s
             end
     | TermQualIdTerm(_, f, (_, l)) ->
@@ -142,6 +159,9 @@ let rec translate_term env = function
                     end
             end
     | _ -> raise Incomplete_translation
+
+and translate_varbinding env = function
+    | VarBindingSymTerm(_, s, e) -> translate_symbol s, translate_term env e
 
 (* Command Translation *)
 let translate_command env = function
