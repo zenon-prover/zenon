@@ -6,7 +6,34 @@ open Mlproof
 
 let equal = Expr.equal
 
-let of_string s = if not (String.contains s 'a') then Q.of_string s else raise (Invalid_argument s)
+let of_string s =
+    let rec aux s decimal pos acc =
+        if pos >= 0 && pos < String.length s then begin
+            match s.[pos] with
+            | '0' .. '9' as c ->
+                    let n = Q.of_string (String.make 1 c) in
+                    if decimal <= 0 then
+                        aux s decimal (pos + 1) Q.(acc * (of_int 10) + n)
+                    else
+                        aux s (decimal + 1) (pos + 1)
+                            Q.(acc + n / of_bigint Z.(pow (of_int 10) decimal))
+            | '/' ->
+                    if decimal <= 0 then
+                        Q.div acc (aux s 0 (pos + 1) Q.zero)
+                    else
+                        raise (Invalid_argument s)
+            | '.' -> aux s 1 (pos + 1) acc
+            | _ -> raise (Invalid_argument s)
+        end else
+            acc
+    in
+    match String.length s with
+    | 0 -> raise (Invalid_argument s)
+    | 1 -> aux s 0 0 Q.zero
+    | _ -> begin match s.[0] with
+        | '-' -> Q.neg (aux s 0 1 Q.zero)
+        | _ -> aux s 0 0 Q.zero
+    end
 
 (* Types manipulation *)
 let find_type e = match get_type e with
