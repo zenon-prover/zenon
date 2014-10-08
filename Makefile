@@ -210,7 +210,7 @@ $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 	touch $(DKTESTDIR)/.dummy
 
 %.dk: %.p zenon
-	./limit.py ./zenon -q -odedukti -itptp $< > $@
+	timeout 1 ./zenon -q -odedukti -itptp $< > $@
 	dkcheck $@
 
 # Call another make in order to take into account the generated files
