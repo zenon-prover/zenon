@@ -66,7 +66,7 @@ FOFDIR = $(TPTP)/FOF
 DKTESTDIR = ./dktest
 DKAXIOMDIR = $(DKTESTDIR)/Axioms
 PROPS = $(wildcard $(DKTESTDIR)/*.p)
-DKS = $(PROPS:.p=.dk)
+DKCS = $(PROPS:.p=.dkc)
 
 .PHONY: all byt bin coq
 
@@ -90,7 +90,6 @@ zenon: zenon.byt
         else \
 	  cp zenon.byt zenon; \
 	fi
-
 
 .PHONY: install
 install:
@@ -200,22 +199,31 @@ depend: $(IMPL) $(INTF) $(COQSRC)
 $(FOFDIR)/.dummy: 
 	make -f $(MAKETPTP) fof
 
-.PHONY: fof
-fof: $(FOFDIR)/.dummy
-
+# This target initializes the dktest directory
 $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 	mkdir $(DKTESTDIR)
 	cp $(FOFDIR)/*001+1.p $(DKTESTDIR)
 	eval `grep -r 'Axioms/' $(DKTESTDIR) | cut -d\' -f2 | awk -F'/[^/]*$$' '{printf "mkdir -p $(DKTESTDIR)/%s && cp $(TPTP)/%s $(DKAXIOMDIR);\n", $$1, $$0}'`
 	touch $(DKTESTDIR)/.dummy
 
+.PHONY: $(wildcard $(DKTESTDIR)/*.dkc)
+.SECONDARY: $(wildcard $(DKTESTDIR)/*.dk)
+%.dkc: %.dk
+	@timeout 1 dkcheck $< || true
+
 %.dk: %.p zenon
-	timeout 1 ./zenon -q -odedukti -itptp $< > $@
-	dkcheck $@
+	@timeout 1 ./zenon -q -p0 -odedukti -itptp $< > $@ || true
 
 # Call another make in order to take into account the generated files
 .PHONY: dktest
 dktest: zenon $(DKTESTDIR)/.dummy
-	make -k $(DKS)
+	@make dodktest
+
+.PHONY: dodktest
+dodktest: zenon $(DKTESTDIR)/.dummy $(DKCS)
+
+.PHONY: cleandk
+cleandk:
+	rm -r $(DKTESTDIR)
 
 include .depend
