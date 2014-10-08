@@ -30,6 +30,7 @@ let mk_eapp : string * expr list -> expr =
   | "dk_logic.not", [e1] -> enot (e1)
   | "dk_logic.forall", [_; Elam (x, ty, e, _)] -> eall (x, ty, e)
   | "dk_logic.exists", [_; Elam (x, ty, e, _)] -> eex (x, ty, e)
+  | "dk_logic.ebP", [e1] -> eapp ("Is_true", [e1]) (* dk_logic.ebP is the equivalent of Coq's coq_builtins.Is_true *)
   | s, args -> eapp (s, args)
 ;;
 
