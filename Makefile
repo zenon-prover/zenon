@@ -63,8 +63,8 @@ COQOBJ = $(COQSRC:%.v=%.vo)
 MAKETPTP = Makefile.tptp
 TPTP = ./tptp
 FOFDIR = $(TPTP)/FOF
-AXIOMDIR = $(TPTP)/Axioms
 DKTESTDIR = ./dktest
+DKAXIOMDIR = $(DKTESTDIR)/Axioms
 PROPS = $(wildcard $(DKTESTDIR)/*.p)
 DKS = $(PROPS:.p=.dk)
 
@@ -206,7 +206,7 @@ fof: $(FOFDIR)/.dummy
 $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 	mkdir $(DKTESTDIR)
 	cp $(FOFDIR)/*001+1.p $(DKTESTDIR)
-	cp -r $(AXIOMDIR) $(DKTESTDIR)
+	eval `grep -r 'Axioms/' $(DKTESTDIR) | cut -d\' -f2 | awk -F'/[^/]*$$' '{printf "mkdir -p $(DKTESTDIR)/%s && cp $(TPTP)/%s $(DKAXIOMDIR);\n", $$1, $$0}'`
 	touch $(DKTESTDIR)/.dummy
 
 %.dk: %.p zenon
