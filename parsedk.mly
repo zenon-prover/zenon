@@ -86,7 +86,7 @@ file:
 | proof_head body ENDPROOF EOF   { $2 }
 
 body:
-| ID COLON term DOT EOF
+| ID COLON term DOT
      { ($1,
         [Phrase.Hyp (Namespace.goal_name, Expr.enot $3, 0),
          false]) }
