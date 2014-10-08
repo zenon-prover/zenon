@@ -22,7 +22,8 @@ let new_term () = sprintf "X%d" (new_name ())
 ;;
 
 let declare_header oc =
-  fprintf oc "Term : Type.
+  fprintf oc "#NAME logic.
+Term : Type.
 Prop: Type.
 prf: Prop -> Type.
 anyterm: Term.

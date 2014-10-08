@@ -40,7 +40,7 @@ $(FOFDIR)/.dummy: $(TPTP)/.dummy
         echo "Copying files...\c"; \
         for i in $$tmp; do file=`find $(TPTP)/Problems -name $$i.p`; \
         cp $$file $(FOFDIR) ; done; echo "Done"
-	touch $(FOF)/.dummy
+	touch $(FOFDIR)/.dummy
 
 fofcounter: $(TPTP)/.dummy
 	@echo "Looking for FOF countersat problems...\c"; \
