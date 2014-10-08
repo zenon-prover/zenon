@@ -26,6 +26,7 @@ let mk_eapp : string * expr list -> expr =
   function
   | "dk_logic.and", [e1; e2] -> eand (e1, e2)
   | "dk_logic.or", [e1; e2] -> eor (e1, e2)
+  | "dk_logic.eqv", [e1; e2] -> eequiv (e1, e2)
   | "dk_logic.not", [e1] -> enot (e1)
   | "dk_logic.forall", [_; Elam (x, ty, e, _)] -> eall (x, ty, e)
   | "dk_logic.exists", [_; Elam (x, ty, e, _)] -> eex (x, ty, e)
