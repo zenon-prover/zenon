@@ -59,6 +59,15 @@ BINOBJS = $(MODULES:%=%.cmx)
 
 COQOBJ = $(COQSRC:%.v=%.vo)
 
+# For Dedukti tests
+MAKETPTP = Makefile.tptp
+TPTP = ./tptp
+FOFDIR = $(TPTP)/FOF
+AXIOMDIR = $(TPTP)/Axioms
+DKTESTDIR = ./dktest
+PROPS = $(wildcard $(DKTESTDIR)/*.p)
+DKS = $(PROPS:.p=.dk)
+
 .PHONY: all byt bin coq
 
 all: byt bin zenon coq
@@ -188,7 +197,25 @@ depend: $(IMPL) $(INTF) $(COQSRC)
 	$(COQDEP) -I . $(COQSRC) >>.depend
 
 # This target downloads the TPTP archive and extract FOF problems from it in tptp/FOF/
-fof:
-	make -f Makefile.tptp fof
+$(FOFDIR)/.dummy: 
+	make -f $(MAKETPTP) fof
+
+.PHONY: fof
+fof: $(FOFDIR)/.dummy
+
+$(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
+	mkdir $(DKTESTDIR)
+	cp $(FOFDIR)/*001+1.p $(DKTESTDIR)
+	cp -r $(AXIOMDIR) $(DKTESTDIR)
+	touch $(DKTESTDIR)/.dummy
+
+%.dk: %.p zenon
+	./limit.py ./zenon -q -odedukti -itptp $< > $@
+	dkcheck $@
+
+# Call another make in order to take into account the generated files
+.PHONY: dktest
+dktest: zenon $(DKTESTDIR)/.dummy
+	make -k $(DKS)
 
 include .depend
