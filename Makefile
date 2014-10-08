@@ -63,10 +63,12 @@ COQOBJ = $(COQSRC:%.v=%.vo)
 MAKETPTP = Makefile.tptp
 TPTP = ./tptp
 FOFDIR = $(TPTP)/FOF
+ALLDKPROPS = $(wildcard $(FOFDIR)/*.p)
+ALLDKTS = $(ALLDKPROPS:.p=.dkt)
 DKTESTDIR = ./dktest
 DKAXIOMDIR = $(DKTESTDIR)/Axioms
-PROPS = $(wildcard $(DKTESTDIR)/*.p)
-DKCS = $(PROPS:.p=.dkc)
+DKPROPS = $(wildcard $(DKTESTDIR)/*.p)
+DKCS = $(DKPROPS:.p=.dkc)
 
 .PHONY: all byt bin coq
 
@@ -214,16 +216,31 @@ $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 %.dk: %.p zenon
 	@timeout 1 ./zenon -q -p0 -odedukti -itptp $< > $@ || true
 
-# Call another make in order to take into account the generated files
+# Calls another make in order to take into account the generated files
 .PHONY: dktest
-dktest: zenon $(DKTESTDIR)/.dummy
+dktest: $(DKTESTDIR)/.dummy
 	@make dodktest
 
 .PHONY: dodktest
-dodktest: zenon $(DKTESTDIR)/.dummy $(DKCS)
+dodktest: $(DKTESTDIR)/.dummy $(DKCS)
 
 .PHONY: cleandk
 cleandk:
-	rm -r $(DKTESTDIR)
+	[ ! -d $(DKTESTDIR) ] || rm -r $(DKTESTDIR)
+
+.PHONY: dktestall
+dktestall: $(FOFDIR)/.dummy
+	make dodktestall
+
+.PHONY: dodktestall
+dodktestall: $(FOFDIR)/.dummy $(ALLDKTS)
+
+.PHONY: $(wildcard $(FOFDIR)/*.dkt)
+%.dkt: %.p zenon
+	echo "file: $<; zenon timeout: 1; dkcheck timeout: 1" >> statistics
+	(timeout 1 time -f "zenon: OK; real zenon time: %E" -a -o statistics \
+	./zenon -q -p0 -odedukti -itptp $< || echo "zenon: KO" >> statistics) | \
+	(timeout 1 time -f "dkcheck: OK; real dkcheck time: %E" -a -o statistics \
+	dkcheck -stdin || echo "dkcheck: KO" >> statistics)
 
 include .depend

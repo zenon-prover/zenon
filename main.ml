@@ -263,8 +263,9 @@ let parse_file f =
           closer ();
           let d = Filename.dirname f in
           let pp = Filename.parent_dir_name in
+	  let up = Filename.concat d pp in
           let upup = Filename.concat (Filename.concat d pp) pp in
-          let incpath = List.rev (upup :: d :: !include_path) in
+          let incpath = List.rev (upup :: up :: d :: !include_path) in
           let (forms, name) = Tptp.translate incpath tpphrases in
           (name, List.map (fun x -> (x, false)) forms)
       | I_focal ->
