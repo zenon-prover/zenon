@@ -240,13 +240,18 @@ dodktestall: $(FOFDIR)/.dummy $(ALLDKCS)
 
 .PHONY: $(wildcard dkresults/*.dkc)
 %.dkc: %.dk
-	@{ /usr/bin/time --quiet -f "file $< ; dkcheck_timeout 1 ; dkcheck_result OK ; dkcheck_real_time %E ;" -a -o statistics \
-	timeout 1 dkcheck -q $<; }&& echo "dkcheck_result OK" >> statistics || echo "dkcheck_result KO" >> statistics
+	@echo -n " ; dkcheck_timeout 1 ; " >> statistics
+	@/usr/bin/time --quiet -f "dkcheck_real_time %E" \
+	-a -o >(xargs echo >> statistics) \
+	timeout 1 dkcheck -q $< && echo -n "dkcheck_result OK ; " >> statistics || echo -n "dkcheck_result KO ; " >> statistics
 
 
 .SECONDARY: $(wildcard dkresults/*.dk)
 dkresults/%.dk: $(FOFDIR)/%.p zenon
-	@/usr/bin/time --quiet -f "file $< ; zenon_timeout 1 ; zenon_real_time %E ;" -a -o statistics \
-	timeout 1 ./zenon -q -p0 -odedukti -itptp $< > $@ && echo "zenon_result OK" >> statistics || echo "zenon_result KO" >> statistics
+	@echo -n -e "file $< ; zenon_timeout 1 ; " >> statistics
+	@/usr/bin/time --quiet -f "zenon_real_time %E" \
+	-a -o >(xargs echo -n >> statistics) \
+	timeout 1 ./zenon -q -p0 -odedukti -itptp $< > $@ && echo -n "zenon_result OK ; " >> statistics \
+	|| echo -n "zenon_result KO ; " >> statistics
 
 include .depend
