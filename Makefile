@@ -32,7 +32,7 @@ SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           ext_equiv.ml ext_induct.ml ext_arith.ml \
           prove.ml checksum.dummy versionnum.ml main.ml zenon.ml
 
-COQSRC = zenon.v zenon_arith.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
+COQSRC = zenon.v zenon_arith.v zenon_arith_reals.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
 
 DOCSRC =
 

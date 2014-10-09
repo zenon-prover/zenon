@@ -7,6 +7,11 @@ case $1 in
         FILES=`find test/arith-*.t`
         ZINPUT=-itptp
         ;;
+    real)
+        echo "Testing tptp theorems..."
+        FILES=`grep -l "Theorem" /home/guigui/build/tptp/Problems/ARI/*.p | xargs grep -l "real"`
+        ZINPUT=-itptp
+        ;;
     tptp)
         echo "Testing tptp theorems..."
         FILES=`grep -l "Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`

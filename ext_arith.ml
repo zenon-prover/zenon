@@ -746,33 +746,46 @@ let lltocoq oc r =
     let pr fmt = Printf.fprintf oc fmt in
     if Log.get_debug () >= 0 then ll_p oc r;
     match r with
+    (* Constant comparison *)
+    | LL.Rextension("arith", "const", _, [e], _) when is_rexpr e ->
+            pr "real_const.\n"
     | LL.Rextension("arith", "const", _, [e], _) ->
-            if is_rexpr e then
-                pr "fourier.\n"
-            else
-                pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
+            pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
+    (* Equality rule *)
     | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
             pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %a %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
             (Coqterm.getname less) (Coqterm.getname greater)
             Lltocoq.pp_expr (coqify_to_q (norm_coef e)) (Coqterm.getname e)
+    (* Nequality rule *)
+    | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) when is_rexpr a || is_rexpr b ->
+            pr "apply (arith_refut _ _ (arith_real_neq %a %a)); [ intros [ %s | %s ] | z_eq_q %s ].\n"
+            Lltocoq.pp_expr (coqify_to_r a) Lltocoq.pp_expr (coqify_to_r b)
+            (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
     | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) ->
             pr "apply (arith_refut _ _ (arith_neq %a %a)); [ intros [ %s | %s ] | z_eq_q %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
             (Coqterm.getname less) (Coqterm.getname greater) (Coqterm.getname e)
+    (* Comparison tightening (on integers) *)
     | LL.Rextension("arith", "tighten_$lesseq", [x; c], [e], [[e']]) ->
             pr "pose proof (arith_tight_leq _ _ %s) as %s; unfold Qfloor, Zdiv in %s; simpl in %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
     | LL.Rextension("arith", "tighten_$greatereq", [x; c], [e], [[e']]) ->
             pr "pose proof (arith_tight_geq _ _ %s) as %s; unfold Qceiling, Zdiv in %s; simpl in %s.\n"
             (Coqterm.getname e) (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e')
+    (* Comparison Negation *)
+    | LL.Rextension("arith", s, [a; b], [e], [[f]]) when ssub s 5 = "neg2_" && (is_rexpr a || is_rexpr b) ->
+            pr "apply (arith_refut _ _ (arith_real_neg_%s %a %a)); [zenon_intro %s | exact %s].\n" (neg_comp_lemma (esub s 5))
+            Lltocoq.pp_expr (coqify_to_r a) Lltocoq.pp_expr (coqify_to_r b) (Coqterm.getname f) (Coqterm.getname e)
     | LL.Rextension("arith", s, [a; b], [e], [[f]]) when ssub s 5 = "neg2_" ->
-            pr "apply (arith_refut _ _ (arith_neg_%s %a %a)); [zenon_intro %s | exact %s].\n"
-            (neg_comp_lemma (esub s 5)) Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname f) (Coqterm.getname e)
+            pr "apply (arith_refut _ _ (arith_neg_%s %a %a)); [zenon_intro %s | exact %s].\n" (neg_comp_lemma (esub s 5))
+            Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b) (Coqterm.getname f) (Coqterm.getname e)
+    (* Strict integer inequalities *)
     | LL.Rextension("arith", "int_lt", [a; b], [e], [[f]]) ->
             pr "cut %a; [ zenon_intro %s | arith_omega %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
     | LL.Rextension("arith", "int_gt", [a; b], [e], [[f]]) ->
             pr "cut %a; [ zenon_intro %s | arith_omega %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
+    (* Variable introduction by the simplex *)
     | LL.Rextension("arith", "var", _, [e], [[e1; e2]]) ->
             let v, b, expr = get_bind e2 in
             pr "pose (%s := %a).\n" v Lltocoq.pp_expr (coqify_term expr);
@@ -780,13 +793,16 @@ let lltocoq oc r =
                 (if b then "Z.eq_refl" else "Qeq_refl")
                 v (Coqterm.getname e2) v Lltocoq.pp_expr (coqify_term expr) (Coqterm.getname e2);
             pr "  cut %a; [zenon_intro %s | subst %s; arith_omega %s ].\n" Lltocoq.p_expr e1 (Coqterm.getname e1) v (Coqterm.getname e)
+    (* Branching on integer variable value *)
     | LL.Rextension("arith", "simplex_branch", _, _, [[e]; [f]]) ->
             let expr, c = get_branch e in
             pr "destruct (arith_branch %a %s) as [ %s | %s ]; [ | ring_simplify in %s ].\n"
             Lltocoq.pp_expr (coqify_term expr) c (Coqterm.getname e) (Coqterm.getname f) (Coqterm.getname f)
+    (* Cimplex Linear combination *)
     | LL.Rextension("arith", "simplex_lin", _, l, [[e]]) ->
             pr "cut %a; [ zenon_intro %s | %aarith_norm; apply eq_refl ].\n" Lltocoq.p_expr e (Coqterm.getname e)
             (fun oc -> List.iter (fun e -> let s, _, _ = get_bind e in Printf.fprintf oc "subst %s; " s)) l
+    (* New bound rule *)
     | LL.Rextension("arith", "simplex_bound", x :: _, e :: l, [[f]]) ->
             let (b, _, _) = of_bexpr e in
             let k, b = fsep b x in
@@ -812,11 +828,13 @@ let lltocoq oc r =
             pr "pose proof (%a) as %s_pre.\n" aux b (Coqterm.getname f);
             pr "cut %a; [ zenon_intro %s | rewrite -> %s; arith_simpl 1 %s_pre ].\n"
             Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname ee) (Coqterm.getname f)
+    (* Conflict rule *)
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
             pr "arith_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
+    (* Unknown rules *)
     | LL.Rextension("arith", s, _, _, _) ->
             pr "(* TODO unknown rule %s *)\n" s
-    | _ -> pr "(* Don't know what to do *)"
+    | _ -> pr "(* Don't know what to do *)\n"
 
 (* Constants *)
 let const_node e = (* comparison of constants *)
@@ -921,11 +939,8 @@ let to_llproof = mltoll
 
 let declare_context_coq oc =
     let pr fmt = Printf.fprintf oc fmt in
-    pr "Require Import ZArith.\n";
-    pr "Require Import QArith.\n";
-    pr "Require Import Reals.\n";
-    pr "Require Import Fourier.\n";
     pr "Require Import zenon_arith.\n";
+    pr "Require Import zenon_arith_reals.\n";
     List.iter (fun (s, t) ->
         pr "Parameter %s : %s.\n" s (Type.to_string t))
         (Typetptp.get_defined ());

@@ -103,6 +103,7 @@ let is_type_num t = List.exists (equal t) _nums
 let to_string_atomic = function
     | "Int" -> "Z"
     | "Rat" -> "Q"
+    | "Real" -> "R"
     | s -> s
 
 let rec to_string_base = function

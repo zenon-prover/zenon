@@ -82,6 +82,7 @@ val norm_coef : Expr.expr -> Expr.expr
 val coqify : Expr.expr -> Expr.expr
 val coqify_term : Expr.expr -> Expr.expr
 val coqify_to_q : Expr.expr -> Expr.expr
+val coqify_to_r : Expr.expr -> Expr.expr
 
 (* Choice trees *)
 type 'a clist

@@ -115,11 +115,25 @@ let lesseq a b = mk_bop "$lesseq" a b
 let greater a b = mk_bop "$greater" a b
 let greatereq a b = mk_bop "$greatereq" a b
 
-let coerce t v =
-    if Type.equal type_rat t && is_int v then
-        sum v (mk_rat "0")
-    else
-        v
+(* Possibly unsafe... *)
+let rec coerce t = function
+    | Evar(_, _) as v -> v
+    | Eapp(Evar(s, _), [], _) as c ->
+            let aux =
+                if Type.equal type_int t then mk_int
+                else if Type.equal type_rat t then mk_rat
+                else if Type.equal type_real t then mk_real
+                else (fun s -> assert false)
+            in
+            begin try
+                aux (Q.to_string (of_string s))
+            with Invalid_argument _ -> c
+            end
+    | Eapp (Evar("$uminus",_), [a], _) -> uminus (coerce t a)
+    | Eapp (Evar("$sum",_), [a; b], _) -> sum (coerce t a) (coerce t b)
+    | Eapp (Evar("$difference",_), [a; b], _) -> diff (coerce t a) (coerce t b)
+    | Eapp (Evar("$product",_), [a; b], _) -> mul (coerce t a) (coerce t b)
+    | e -> e
 
 let mk_ubop s a =
     let t = find_type a in
@@ -249,8 +263,9 @@ let to_bexpr (e, s, c) = mk_bop s (to_nexpr e) (const (Q.to_string c))
 let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 
 let is_rexpr = function
+    | e when is_real e -> true
     | Eapp (_, l, _) -> List.exists is_real l
-    | e -> is_real e
+    | _ -> false
 
 (* Coq translation *)
 let mk_coq_q p q =
@@ -265,17 +280,14 @@ let coq_var x =
     else
         x
 
-let z_scope e =
-    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_int] type_int) in
-    eapp (scope, [tvar "Z" type_scope; e])
+let coq_scope s e =
+    let t = find_type e in
+    let scope = tvar "$coq_scope" (mk_arrow [type_scope; t] t) in
+    eapp (scope, [tvar s type_scope; e])
 
-let q_scope e =
-    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_rat] type_rat) in
-    eapp (scope, [tvar "Q" type_scope; e])
-
-let r_scope e =
-    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_real] type_real) in
-    eapp (scope, [tvar "R" type_scope; e])
+let z_scope = coq_scope "Z"
+let q_scope = coq_scope "Q"
+let r_scope = coq_scope "R"
 
 let rec coqify_real e = match e with
     | Evar(s, _) ->
@@ -331,15 +343,20 @@ and coqify_to_q e =
     else
         coqify_term e
 
+and coqify_to_r e =
+    r_scope (coqify_real e)
 
 and coqify_prop e = match e with
-    | Eapp (Evar("=",_), [a; b], _ ) when is_int a && is_int b ->
-            mk_bop "=" (coqify_term a) (coqify_term b)
-    | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
+    | Eapp (Evar("=",_), [a; b], _ ) when is_rat a && is_rat b ->
             mk_bop "==" (coqify_to_q a) (coqify_to_q b)
+    | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
+            mk_bop "=" (coqify_term a) (coqify_term b)
+    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
+        when is_real a && is_real b ->
+            r_scope (mk_bop s (coqify_to_q a) (coqify_to_q b))
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
         when is_num a && is_num b ->
-            mk_bop s (coqify_to_q a) (coqify_to_q b)
+            q_scope (mk_bop s (coqify_to_q a) (coqify_to_q b))
     | Eapp (Evar(("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s,_), [a], _) ->
             mk_ubop s (coqify_term a)
     | Eapp(f, l, _) -> eapp (f, List.map coqify_term l)
@@ -495,7 +512,7 @@ let ct_from_ml p =
             | (_, "=", _) -> false
             | (f, _, _) ->
                 (List.for_all (fun (_, e) ->
-                    (is_int e || is_rat e) && (match e with
+                    (is_num e) && (match e with
                     | Emeta(_) -> true
                     | Eapp(Evar(s, _), [], _) -> false
                     | _ -> false)) f) &&
