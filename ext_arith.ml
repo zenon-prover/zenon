@@ -752,6 +752,11 @@ let lltocoq oc r =
     | LL.Rextension("arith", "const", _, [e], _) ->
             pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
     (* Equality rule *)
+    | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) when is_rexpr a || is_rexpr b ->
+            pr "apply (arith_refut _ _ (arith_real_eq %a %a)); [ intros (%s, %s) | real_simpl %a %s ].\n"
+            Lltocoq.pp_expr (coqify_to_r a) Lltocoq.pp_expr (coqify_to_r b)
+            (Coqterm.getname less) (Coqterm.getname greater)
+            Lltocoq.pp_expr (coqify_to_r (norm_coef e)) (Coqterm.getname e)
     | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
             pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %a %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
