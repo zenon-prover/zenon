@@ -5,6 +5,8 @@ include .config_var
 # Variables CAMLBYT, CAMLBIN, CAMLLEX, CAMLYACC CAMLDEP, COQC, etc. are
 # defined at configuration time, and their value is recorded in .config_var
 
+SHELL=/bin/bash
+
 # Staging directory for package managers
 DESTDIR =
 
@@ -64,11 +66,11 @@ MAKETPTP = Makefile.tptp
 TPTP = ./tptp
 FOFDIR = $(TPTP)/FOF
 ALLDKPROPS = $(wildcard $(FOFDIR)/*.p)
-ALLDKTS = $(ALLDKPROPS:.p=.dkt)
+ALLDKCS = $(subst $(FOFDIR),dkresults,$(ALLDKPROPS:.p=.dkc))
 DKTESTDIR = ./dktest
 DKAXIOMDIR = $(DKTESTDIR)/Axioms
 DKPROPS = $(wildcard $(DKTESTDIR)/*.p)
-DKCS = $(DKPROPS:.p=.dkc)
+DKTS = $(DKPROPS:.p=.dkt)
 
 .PHONY: all byt bin coq
 
@@ -205,16 +207,14 @@ $(FOFDIR)/.dummy:
 $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 	mkdir $(DKTESTDIR)
 	cp $(FOFDIR)/*001+1.p $(DKTESTDIR)
-	eval `grep -r 'Axioms/' $(DKTESTDIR) | cut -d\' -f2 | awk -F'/[^/]*$$' '{printf "mkdir -p $(DKTESTDIR)/%s && cp $(TPTP)/%s $(DKAXIOMDIR);\n", $$1, $$0}'`
+	grep -r 'Axioms/' $(DKTESTDIR) | cut -d\' -f2 | \
+	awk -F'/[^/]*$$' '{printf "mkdir -p $(DKTESTDIR)/%s && cp $(TPTP)/%s $(DKAXIOMDIR);\n", $$1, $$0}' | \
+	bash
 	touch $(DKTESTDIR)/.dummy
 
-.PHONY: $(wildcard $(DKTESTDIR)/*.dkc)
-.SECONDARY: $(wildcard $(DKTESTDIR)/*.dk)
-%.dkc: %.dk
-	@timeout 1 dkcheck $< || true
-
-%.dk: %.p zenon
-	@timeout 1 ./zenon -q -p0 -odedukti -itptp $< > $@ || true
+.PHONY: $(wildcard $(DKTESTDIR)/*.dkt)
+%.dkt: %.p
+	@{ timeout 1 ./zenon -q -p0 -odedukti -itptp $<; } | { timeout 1 dkcheck -stdin || echo -e "\e[31mError $<\e[39m"; }
 
 # Calls another make in order to take into account the generated files
 .PHONY: dktest
@@ -222,25 +222,31 @@ dktest: $(DKTESTDIR)/.dummy
 	@make dodktest
 
 .PHONY: dodktest
-dodktest: $(DKTESTDIR)/.dummy $(DKCS)
+dodktest: $(DKTESTDIR)/.dummy $(DKTS)
 
 .PHONY: cleandk
 cleandk:
-	[ ! -d $(DKTESTDIR) ] || rm -r $(DKTESTDIR)
+	rm -rf $(DKTESTDIR)
 
 .PHONY: dktestall
 dktestall: $(FOFDIR)/.dummy
+	rm -f statistics
+	rm -rf dkresults
+	mkdir dkresults
 	make dodktestall
 
 .PHONY: dodktestall
-dodktestall: $(FOFDIR)/.dummy $(ALLDKTS)
+dodktestall: $(FOFDIR)/.dummy $(ALLDKCS)
 
-.PHONY: $(wildcard $(FOFDIR)/*.dkt)
-%.dkt: %.p zenon
-	echo "file: $<; zenon timeout: 1; dkcheck timeout: 1" >> statistics
-	(timeout 1 time -f "zenon: OK; real zenon time: %E" -a -o statistics \
-	./zenon -q -p0 -odedukti -itptp $< || echo "zenon: KO" >> statistics) | \
-	(timeout 1 time -f "dkcheck: OK; real dkcheck time: %E" -a -o statistics \
-	dkcheck -stdin || echo "dkcheck: KO" >> statistics)
+.PHONY: $(wildcard dkresults/*.dkc)
+%.dkc: %.dk
+	@{ /usr/bin/time --quiet -f "file $< ; dkcheck_timeout 1 ; dkcheck_result OK ; dkcheck_real_time %E ;" -a -o statistics \
+	timeout 1 dkcheck -q $<; }&& echo "dkcheck_result OK" >> statistics || echo "dkcheck_result KO" >> statistics
+
+
+.SECONDARY: $(wildcard dkresults/*.dk)
+dkresults/%.dk: $(FOFDIR)/%.p zenon
+	@/usr/bin/time --quiet -f "file $< ; zenon_timeout 1 ; zenon_real_time %E ;" -a -o statistics \
+	timeout 1 ./zenon -q -p0 -odedukti -itptp $< > $@ && echo "zenon_result OK" >> statistics || echo "zenon_result KO" >> statistics
 
 include .depend
