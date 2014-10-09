@@ -6,6 +6,7 @@ open Mlproof
 
 let equal = Expr.equal
 
+(* String to rational conversion *)
 let of_string s =
     let rec aux s decimal pos acc =
         if pos >= 0 && pos < String.length s then begin
@@ -48,6 +49,7 @@ let is_num_string s = try ignore (of_string s); true with Invalid_argument _ -> 
 
 let is_int e = try Type.equal type_int (find_type e) with Exit -> false
 let is_rat e = try Type.equal type_rat (find_type e) with Exit -> false
+let is_real e = try Type.equal type_real (find_type e) with Exit -> false
 let is_num e = try is_type_num (find_type e) with Exit -> false
 
 (* We assume t a t' are numeric types *)
@@ -189,7 +191,7 @@ let normalize_aux a b =
 let normalize a b = snd (normalize_aux a b)
 
 let of_cexpr e = match e with
-    | Eapp(Evar(s, _), [], _) when is_int e || is_rat e ->
+    | Eapp(Evar(s, _), [], _) when is_num e ->
             begin try
                 of_string s
             with Invalid_argument _ ->
@@ -246,6 +248,10 @@ let to_bexpr (e, s, c) = mk_bop s (to_nexpr e) (const (Q.to_string c))
 
 let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 
+let is_rexpr = function
+    | Eapp (_, l, _) -> List.exists is_real l
+    | e -> is_real e
+
 (* Coq translation *)
 let mk_coq_q p q =
     let div = tvar "$coq_div" (mk_arrow [type_int; type_int] type_rat) in
@@ -266,6 +272,29 @@ let z_scope e =
 let q_scope e =
     let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_rat] type_rat) in
     eapp (scope, [tvar "Q" type_scope; e])
+
+let r_scope e =
+    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_real] type_real) in
+    eapp (scope, [tvar "R" type_scope; e])
+
+let rec coqify_real e = match e with
+    | Evar(s, _) ->
+            begin try
+                tvar (Q.to_string (of_string s)) (find_type e)
+            with Exit | Invalid_argument _ ->
+                e
+            end
+    | Eapp (f, l, _) ->
+            eapp (coqify_real f, List.map coqify_real l)
+    | Enot (e', _) -> enot (coqify_real e')
+    | Eand (e1, e2, _) -> eand (coqify_real e1, coqify_real e2)
+    | Eor (e1, e2, _) -> eor (coqify_real e1, coqify_real e2)
+    | Eimply (e1, e2, _) -> eimply (coqify_real e1, coqify_real e2)
+    | Eequiv (e1, e2, _) -> eequiv (coqify_real e1, coqify_real e2)
+    | Eall (v, t, e', _) -> eall (v, t, coqify_real e')
+    | Eex (v, t, e', _) -> eex (v, t, coqify_real e')
+    | Elam (v, t, e', _) -> elam (v, t, coqify_real e')
+    | _ -> e
 
 let rec coqify_aux b e =
     let aux = if b then coqify_to_q else coqify_term in
@@ -291,6 +320,8 @@ and coqify_term e =
         z_scope (coqify_aux false e)
     else if is_rat e then
         q_scope (coqify_aux true e)
+    else if is_real e then
+        r_scope (coqify_real e)
     else
         coqify_aux true e
 

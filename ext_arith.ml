@@ -9,6 +9,8 @@ module S = Simplex.Make(struct type t = Expr.t let compare = Expr.compare end)
 
 open Arith
 
+exception Incoherent_typing
+
 (* Expression/Types manipulation *)
 let equal = Expr.equal
 
@@ -172,15 +174,6 @@ let mk_node_conflict e e' =
         nprio = Prop;
         ngoal = 0;
         nbranches = [| |];
-    }
-
-let mk_node_fm x e e' f =
-    Node {
-        nconc = [e; e'];
-        nrule = Ext("arith", "FM", [x; e; e'; f]);
-        nprio = Prop;
-        ngoal = 0;
-        nbranches = [| [f] |];
     }
 
 let mk_node_inst e v = match e with
@@ -754,7 +747,10 @@ let lltocoq oc r =
     if Log.get_debug () >= 0 then ll_p oc r;
     match r with
     | LL.Rextension("arith", "const", _, [e], _) ->
-            pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
+            if is_rexpr e then
+                pr "fourier.\n"
+            else
+                pr "arith_norm_in %s; arith_omega %s.\n" (Coqterm.getname e) (Coqterm.getname e)
     | LL.Rextension("arith", "eq", [a; b], [e], [[less; greater]]) ->
             pr "apply (arith_refut _ _ (arith_eq %a %a)); [ intros (%s, %s) | arith_simpl %a %s ].\n"
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
@@ -818,9 +814,6 @@ let lltocoq oc r =
             Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname ee) (Coqterm.getname f)
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
             pr "arith_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
-    | LL.Rextension("arith", "FM", x :: _, [e; e'], [[f]]) ->
-            pr "cut %a; [ zenon_intro %s | arith_trans %s %s Arith_tmp; arith_simpl 1 Arith_tmp ].\n"
-            Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e) (Coqterm.getname e')
     | LL.Rextension("arith", s, _, _, _) ->
             pr "(* TODO unknown rule %s *)\n" s
     | _ -> pr "(* Don't know what to do *)"
@@ -929,8 +922,9 @@ let to_llproof = mltoll
 let declare_context_coq oc =
     let pr fmt = Printf.fprintf oc fmt in
     pr "Require Import ZArith.\n";
-    pr "Require Import Omega.\n";
     pr "Require Import QArith.\n";
+    pr "Require Import Reals.\n";
+    pr "Require Import Fourier.\n";
     pr "Require Import zenon_arith.\n";
     List.iter (fun (s, t) ->
         pr "Parameter %s : %s.\n" s (Type.to_string t))

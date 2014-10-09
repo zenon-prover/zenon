@@ -27,6 +27,7 @@ val is_num_string : string -> bool
 
 val is_int : Expr.expr -> bool
 val is_rat : Expr.expr -> bool
+val is_real : Expr.expr -> bool
 val is_num : Expr.expr -> bool
 
 (* Expression construction *)
@@ -68,7 +69,9 @@ val normalize :
 val of_cexpr : Expr.expr -> Q.t
 val of_nexpr : Expr.t -> (Q.t * Expr.t) list
 val of_bexpr : Expr.expr -> (Q.t * Expr.t) list * string * Q.t
+
 val is_bexpr : Expr.expr -> bool
+val is_rexpr : Expr.expr -> bool
 
 val to_nexpr : (Q.t * Expr.expr) list -> Expr.expr
 val to_bexpr : (Q.t * Expr.expr) list * string * Q.t -> Expr.expr

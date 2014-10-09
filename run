@@ -8,8 +8,8 @@ case $1 in
         ZINPUT=-itptp
         ;;
     tptp)
-        echo "Testing interesting tptp problems..."
-        FILES=`grep -L "^[^%]*real" /home/guigui/build/tptp/Problems/ARI/*.p | xargs grep -l "Theorem"`
+        echo "Testing tptp theorems..."
+        FILES=`grep -l "Theorem" /home/guigui/build/tptp/Problems/ARI/*.p`
         ZINPUT=-itptp
         ;;
     smt)
@@ -36,6 +36,7 @@ case $1 in
         ;;
     *)
         FILES=$1
+        ZINPUT=$2
         ;;
 esac
 
