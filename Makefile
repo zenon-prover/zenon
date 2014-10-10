@@ -8,7 +8,7 @@ include .config_var
 # Staging directory for package managers
 DESTDIR =
 
-CAMLFLAGS = -warn-error "$(WARN_ERROR)" -I `ocamlfind query zarith`
+CAMLFLAGS = -warn-error "$(WARN_ERROR)"
 
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
