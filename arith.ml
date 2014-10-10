@@ -347,13 +347,15 @@ and coqify_to_r e =
     r_scope (coqify_real e)
 
 and coqify_prop e = match e with
-    | Eapp (Evar("=",_), [a; b], _ ) when is_rat a && is_rat b ->
+    | Eapp (Evar("=",_), [a; b], _ ) when is_real a || is_real b ->
+            mk_bop "=" (coqify_to_r a) (coqify_to_r b)
+    | Eapp (Evar("=",_), [a; b], _ ) when is_rat a || is_rat b ->
             mk_bop "==" (coqify_to_q a) (coqify_to_q b)
     | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
             mk_bop "=" (coqify_term a) (coqify_term b)
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
-        when is_real a && is_real b ->
-            r_scope (mk_bop s (coqify_to_q a) (coqify_to_q b))
+        when is_real a || is_real b ->
+            r_scope (mk_bop s (coqify_to_r a) (coqify_to_r b))
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
         when is_num a && is_num b ->
             q_scope (mk_bop s (coqify_to_q a) (coqify_to_q b))
@@ -375,13 +377,8 @@ and coqify_prop e = match e with
 
 let coqify e = match get_type e with
     | None -> e
-    | _ ->
-            if is_int e then
-                z_scope (coqify_aux false e)
-            else if is_rat e then
-                q_scope (coqify_aux true e)
-            else
-                coqify_prop e
+    | Some t when Type.equal type_bool t -> coqify_prop e
+    | _ -> coqify_term e
 
 (* Analog to circular lists with a 'stop' element, imperative style *)
 exception EndReached

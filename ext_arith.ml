@@ -713,7 +713,13 @@ let mltoll f p hyps =
 
 (* LL -> Coq translation *)
 let get_bind = function
-    | Eapp(Evar("=", _), [Evar(s, _) as s'; e], _) -> s, is_int s', e
+    | Eapp(Evar("=", _), [Evar(s, _) as s'; e], _) ->
+            let f =
+                if is_int s' then "Z.eq_refl"
+                else if is_rat s' then "Qeq_refl"
+                else "Req_refl"
+            in
+            s, f, e
     | _ -> assert false
 
 let get_branch = function
@@ -762,7 +768,7 @@ let lltocoq oc r =
             Lltocoq.pp_expr (coqify_to_q a) Lltocoq.pp_expr (coqify_to_q b)
             (Coqterm.getname less) (Coqterm.getname greater)
             Lltocoq.pp_expr (coqify_to_q (norm_coef e)) (Coqterm.getname e)
-    (* Nequality rule *)
+    (* Non-equality rule *)
     | LL.Rextension("arith", "neq", [a; b], [e], [[less]; [greater]]) when is_rexpr a || is_rexpr b ->
             pr "apply (arith_refut _ _ (arith_real_neq %a %a)); [ intros [ %s | %s ] | z_eq_q %s ].\n"
             Lltocoq.pp_expr (coqify_to_r a) Lltocoq.pp_expr (coqify_to_r b)
@@ -791,23 +797,57 @@ let lltocoq oc r =
     | LL.Rextension("arith", "int_gt", [a; b], [e], [[f]]) ->
             pr "cut %a; [ zenon_intro %s | arith_omega %s ].\n" Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname e)
     (* Variable introduction by the simplex *)
+    | LL.Rextension("arith", "var", _, [e], [[e1; e2]]) when is_rexpr e1 ->
+            let v, b, expr = get_bind e2 in
+            pr "pose (%s := %a).\n" v Lltocoq.pp_expr (coqify_term expr);
+            pr "  pose proof (%s %s) as %s; change %s with %a in %s at 2.\n"
+                b v (Coqterm.getname e2) v Lltocoq.pp_expr (coqify_term expr) (Coqterm.getname e2);
+            pr "  cut %a; [zenon_intro %s | subst %s; real_const ].\n" Lltocoq.p_expr e1 (Coqterm.getname e1) v
     | LL.Rextension("arith", "var", _, [e], [[e1; e2]]) ->
             let v, b, expr = get_bind e2 in
             pr "pose (%s := %a).\n" v Lltocoq.pp_expr (coqify_term expr);
             pr "  pose proof (%s %s) as %s; change %s with %a in %s at 2.\n"
-                (if b then "Z.eq_refl" else "Qeq_refl")
-                v (Coqterm.getname e2) v Lltocoq.pp_expr (coqify_term expr) (Coqterm.getname e2);
+                b v (Coqterm.getname e2) v Lltocoq.pp_expr (coqify_term expr) (Coqterm.getname e2);
             pr "  cut %a; [zenon_intro %s | subst %s; arith_omega %s ].\n" Lltocoq.p_expr e1 (Coqterm.getname e1) v (Coqterm.getname e)
     (* Branching on integer variable value *)
     | LL.Rextension("arith", "simplex_branch", _, _, [[e]; [f]]) ->
             let expr, c = get_branch e in
             pr "destruct (arith_branch %a %s) as [ %s | %s ]; [ | ring_simplify in %s ].\n"
             Lltocoq.pp_expr (coqify_term expr) c (Coqterm.getname e) (Coqterm.getname f) (Coqterm.getname f)
-    (* Cimplex Linear combination *)
+    (* Simplex Linear combination *)
+    | LL.Rextension("arith", "simplex_lin", _, l, [[e]]) when List.exists is_rexpr (e :: l) ->
+            pr "cut %a; [ zenon_intro %s | %areal_norm; apply eq_refl ].\n" Lltocoq.p_expr e (Coqterm.getname e)
+            (fun oc -> List.iter (fun e -> let s, _, _ = get_bind e in Printf.fprintf oc "subst %s; " s)) l
     | LL.Rextension("arith", "simplex_lin", _, l, [[e]]) ->
             pr "cut %a; [ zenon_intro %s | %aarith_norm; apply eq_refl ].\n" Lltocoq.p_expr e (Coqterm.getname e)
             (fun oc -> List.iter (fun e -> let s, _, _ = get_bind e in Printf.fprintf oc "subst %s; " s)) l
     (* New bound rule *)
+    | LL.Rextension("arith", "simplex_bound", x :: _, e :: l, [[f]]) when List.exists is_rexpr (e :: l) ->
+            let (b, _, _) = of_bexpr e in
+            let k, b = fsep b x in
+            let ee = eapp (eeq, [x; to_nexpr b]) in
+            pr "cut (%a); [ zenon_intro %s | real_simpl %a %s ].\n" Lltocoq.p_expr ee (Coqterm.getname ee)
+            Lltocoq.pp_expr (coqify_to_r (const (Q.to_string (Q.inv k)))) (Coqterm.getname e);
+            let b = List.map (fun (c, y) -> (c, y,
+                List.find (fun e -> let b, _, _ = of_bexpr e in match b with
+                | [(_, z)] -> equal y z | _ -> false) l)) b
+            in
+            List.iter (fun (c, y, e') ->
+                pr "%s %a %s %s_%s.\n"
+                (if Q.sign c >= 0 then "Rle_mult" else "Rle_mult_opp")
+                Lltocoq.pp_expr (coqify_to_r @@ const @@ Q.to_string @@ Q.abs c)
+                (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e)) b;
+            (* TODO: extend the function to mix le/lt inequalities *)
+            let rec aux oc = function
+                | [_, _, e1] -> pr "%s_%s" (Coqterm.getname e1) (Coqterm.getname e)
+                | [_, _, e1; _, _, e2] -> Printf.fprintf oc "Rplus_le_compat _ _ _ _ %s_%s %s_%s"
+                    (Coqterm.getname e1) (Coqterm.getname e) (Coqterm.getname e2) (Coqterm.getname e)
+                | (_, _, e1) :: r -> pr "Rplus_le_compat _ _ _ _ (%a) %s_%s" aux r (Coqterm.getname e1) (Coqterm.getname e)
+                | _ -> assert false
+            in
+            pr "pose proof (%a) as %s_pre.\n" aux b (Coqterm.getname f);
+            pr "cut %a; [ zenon_intro %s | rewrite -> %s; real_simpl 1%%R %s_pre ].\n"
+            Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname ee) (Coqterm.getname f)
     | LL.Rextension("arith", "simplex_bound", x :: _, e :: l, [[f]]) ->
             let (b, _, _) = of_bexpr e in
             let k, b = fsep b x in
@@ -823,6 +863,7 @@ let lltocoq oc r =
                 (if Q.sign c >= 0 then "Qle_mult" else "Qle_mult_opp")
                 Lltocoq.pp_expr (coqify_to_q @@ const @@ Q.to_string @@ Q.abs c)
                 (Coqterm.getname e') (Coqterm.getname e') (Coqterm.getname e)) b;
+            (* TODO: extend the function to mix le/lt inequalities *)
             let rec aux oc = function
                 | [_, _, e1] -> pr "%s_%s" (Coqterm.getname e1) (Coqterm.getname e)
                 | [_, _, e1; _, _, e2] -> Printf.fprintf oc "Qplus_le_compat _ _ _ _ %s_%s %s_%s"
@@ -834,6 +875,8 @@ let lltocoq oc r =
             pr "cut %a; [ zenon_intro %s | rewrite -> %s; arith_simpl 1 %s_pre ].\n"
             Lltocoq.p_expr f (Coqterm.getname f) (Coqterm.getname ee) (Coqterm.getname f)
     (* Conflict rule *)
+    | LL.Rextension("arith", "conflict", [e; e'], _, _) when is_rexpr e || is_rexpr e' ->
+            pr "real_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
     | LL.Rextension("arith", "conflict", [e; e'], _, _) ->
             pr "arith_trans_simpl %s %s.\n" (Coqterm.getname e) (Coqterm.getname e')
     (* Unknown rules *)
@@ -851,9 +894,11 @@ let const_node e = (* comparison of constants *)
     | "$greater" when Q.leq Q.zero c -> [mk_node_const c e]
     | "$greatereq" when Q.lt Q.zero c -> [mk_node_const c e]
     | "=" when not (Q.equal Q.zero c) -> [mk_node_const c e]
+    (*
     | "$is_int" when not (is_z c) -> [mk_node_const c e]
     | "$not_is_int" when is_z c -> [mk_node_const c e]
     | "$not_is_rat" -> [mk_node_const c e]
+    *)
     | _ -> []
     end
 

@@ -108,6 +108,7 @@ let synthesize s =
   | "bool" -> "true"
   | "Z" -> "0%Z"
   | "Q" -> "(0 # 1)%Q"
+  | "R" -> "0%R"
   | t when is_mapped (evar t) ->
       let result = getname (evar t) in
       constants_used := result :: !constants_used;
