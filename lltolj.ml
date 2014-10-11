@@ -332,7 +332,7 @@ let rec use_defs e =
   | Elam (x, s, e, _) ->
     elam (x, s, use_defs e)
   | Emeta (x, _) ->
-    assert false;
+    assert false;               (* /!\ Raised by a lot of files in SYN (SYN048+1.p, SYN049+1.p, SYN315+1.p, SYN318+1.p, ...) *)
     (*let meta = emeta x in
     if List.mem_assoc meta !new_terms
     then
@@ -1233,7 +1233,7 @@ and newcut l aplus proof1 proof2 =
 		c, sclnot (c2, proof2)))))
     | _ ->
       p_debug "\nfail cut" [c1; aplus];
-      assert false
+      assert false              (* /!\ Raised by SYN919+1.p *)
 
 and weaken ex et =
   match ex, et with
@@ -1428,7 +1428,7 @@ and radapt proof (a, b) =
     | SClall _, _ | SClex _, _
       -> applytohyps (fun proof -> radapt proof (u, v)) proof
     | SCcnot _, _ -> assert false
-    | _, _ -> assert false in
+    | _, _ -> assert false in    (* /!\ raised by CSR057+1.p *)
   let rec headnots e1 e2 =
     match e1, e2 with
     | Enot (Enot (f1, _), _), Enot (Enot (f2, _), _) ->
