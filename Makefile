@@ -15,6 +15,11 @@ CAMLFLAGS = -warn-error "$(WARN_ERROR)"
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 
+ZENON_TIMEOUT = 0.1
+DK_TIMEOUT = 0.1
+STAT_FILE = statistics_$(ZENON_TIMEOUT)
+
+
 # SOURCES specifies both the list of source files and the set of
 # modules in linking order.
 
@@ -214,7 +219,7 @@ $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 
 .PHONY: $(wildcard $(DKTESTDIR)/*.dkt)
 %.dkt: %.p
-	@{ timeout 1 ./zenon -q -p0 -odedukti -itptp $<; } | { timeout 1 dkcheck -stdin || echo -e "\e[31mError $<\e[39m"; }
+	@{ timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $<; } | { timeout $(DK_TIMEOUT) dkcheck -stdin || echo -e "\e[31mError $<\e[39m"; }
 
 # Calls another make in order to take into account the generated files
 .PHONY: dktest
@@ -230,26 +235,31 @@ cleandk:
 
 .PHONY: dktestall
 dktestall: $(FOFDIR)/.dummy
-	rm -f statistics
+	rm -f $(STAT_FILE)
 	rm -rf dkresults
 	mkdir dkresults
 	make dodktestall
+
+# To test how changing zenon timeout impacts results, we can type (in bash)
+# $ for timeout in {1..9}; do make ZENON_TIMEOUT=0.$timeout testall; done
+# then proportion of zenon timeout can be computed by
+# $total=$(ls tptp/FOF/ | wc -l); for timeout in {1..9}; do zto=$(grep 'zenon_exit_status 124' statistics_0.$timeout | wc -l); ch=$(grep 'dkcheck_exit_status 0' statistics_0.$timeout | wc -l); other=$(($total - $zto - ch)); echo -e "Zenon timeout:\t$zto ($((100 * $zto / $total))%)\nChecked\t\t$ch ($((100 * $ch / $total))%)\nOther:\t\t$other ($((100 * $other / $total))%)\n"; done
 
 .PHONY: dodktestall
 dodktestall: $(FOFDIR)/.dummy $(ALLDKCS)
 
 .PHONY: $(wildcard dkresults/*.dkc)
 %.dkc: %.dk
-	@echo -n " ; dkcheck_timeout 1" >> statistics
+	@echo -n " ; dkcheck_timeout $(DK_TIMEOUT)" >> $(STAT_FILE)
 	@/usr/bin/time --quiet -f " ; dkcheck_real_time %e ; dkcheck_exit_status %x" \
-		-a -o statistics \
-		timeout 0.1 dkcheck -q $< || true
+		-a -o $(STAT_FILE) \
+		timeout $(DK_TIMEOUT) dkcheck -q $< || true
 
 .SECONDARY: $(wildcard dkresults/*.dk)
 dkresults/%.dk: $(FOFDIR)/%.p zenon
-	@echo -n -e "file $< ; zenon_timeout 1" >> statistics
+	@echo -n -e "file $< ; zenon_timeout $(ZENON_TIMEOUT)" >> $(STAT_FILE)
 	@{ /usr/bin/time --quiet -f " ; zenon_real_time %e ; zenon_exit_status %x" \
-		timeout 0.1 ./zenon -q -p0 -odedukti -itptp $< > $@; } \
-		|& { xargs echo -n >> statistics; } \
+		timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $< > $@; } \
+		|& { xargs echo -n >> $(STAT_FILE); } \
 
 include .depend
