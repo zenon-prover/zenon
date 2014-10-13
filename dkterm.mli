@@ -6,14 +6,29 @@ type dkterm = private
   | Dklam of dkterm * dkterm * dkterm
   | Dkapp of dkterm list
   | Dkarrow of dkterm * dkterm
+  | Dkprf
   | Dktermtype
   | Dkproptype
+  | Dkanyterm
   | Dknot
   | Dkand
+  | Dkor
   | Dkimply
+  | Dkforall
+  | Dkexists
+  | Dktrue
   | Dkfalse
   | Dkeq
-  | Dkprf
+  | Dknotc
+  | Dkandc
+  | Dkorc
+  | Dkimplyc
+  | Dkforallc
+  | Dkexistsc
+  | Dktruec
+  | Dkfalsec
+  | Dkeqc
+  | Dkequiv
 
 type dkline = private
   | Dkdecl of dkterm * dkterm
@@ -21,28 +36,44 @@ type dkline = private
   | Dkprelude of string
 
 (* constructor functions *)
-val mk_var : dkvar -> dkterm
-val mk_lam : dkterm -> dkterm -> dkterm -> dkterm
-val mk_lams : dkterm list -> dkterm list -> dkterm -> dkterm
-val mk_app : dkterm -> dkterm list -> dkterm
-val mk_app2 : dkterm -> dkterm -> dkterm
-val mk_app3 : dkterm -> dkterm -> dkterm -> dkterm
-val mk_arrow : dkterm -> dkterm -> dkterm
-val mk_termtype : dkterm
-val mk_proptype : dkterm
-val mk_not : dkterm -> dkterm
-val mk_and : dkterm -> dkterm -> dkterm
-val mk_imply : dkterm -> dkterm -> dkterm
-val mk_false : dkterm
-val mk_eq : dkterm -> dkterm -> dkterm
-val mk_prf : dkterm -> dkterm
+val dkvar : dkvar -> dkterm
+val dklam : dkterm -> dkterm -> dkterm -> dkterm
+val dklams : dkterm list -> dkterm list -> dkterm -> dkterm
+val dkapp : dkterm -> dkterm list -> dkterm
+val dkapp2 : dkterm -> dkterm -> dkterm
+val dkapp3 : dkterm -> dkterm -> dkterm -> dkterm
+val dkarrow : dkterm -> dkterm -> dkterm
+val dkprf : dkterm -> dkterm
+val dktermtype : dkterm
+val dkproptype : dkterm
+val dkanyterm : dkterm
+val dknot : dkterm -> dkterm
+val dkand : dkterm -> dkterm -> dkterm
+val dkor : dkterm -> dkterm -> dkterm
+val dkimply : dkterm -> dkterm -> dkterm
+val dkforall : dkterm -> dkterm -> dkterm
+val dkexists : dkterm -> dkterm -> dkterm
+val dktrue : dkterm
+val dkfalse : dkterm
+val dkeq : dkterm -> dkterm -> dkterm
+val dknotc : dkterm -> dkterm
+val dkandc : dkterm -> dkterm -> dkterm
+val dkorc : dkterm -> dkterm -> dkterm
+val dkimplyc : dkterm -> dkterm -> dkterm
+val dkforallc : dkterm -> dkterm -> dkterm
+val dkexistsc : dkterm -> dkterm -> dkterm
+val dktruec : dkterm
+val dkfalsec : dkterm
+val dkeqc : dkterm -> dkterm -> dkterm
+val dkequiv : dkterm -> dkterm -> dkterm
 
-val mk_decl : dkterm -> dkterm -> dkline
-val mk_deftype : dkterm -> dkterm -> dkterm -> dkline
-val mk_prelude : string -> dkline
+val dkdecl : dkterm -> dkterm -> dkline
+val dkdeftype : dkterm -> dkterm -> dkterm -> dkline
+val dkprelude : string -> dkline
 
 (* print functions *)
 val p_var : out_channel -> dkvar -> unit
 val p_term : out_channel -> dkterm -> unit
+val p_term_p : out_channel -> dkterm -> unit
 val p_terms : out_channel -> dkterm list -> unit
 val p_line : out_channel -> dkline -> unit
