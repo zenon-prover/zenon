@@ -16,6 +16,7 @@ type proof_level =
   | Proof_coqterm
   | Proof_isar
   | Proof_dedukti
+  | Proof_deduktiterm
 ;;
 let proof_level = ref Proof_none;;
 
@@ -133,7 +134,7 @@ let argspec = [
             ^ " (5m)";
   "-odedukti", Arg.Unit (fun () -> proof_level := Proof_dedukti),
             "          print the proof in Dedukti script format";
-  "-odeduktiterm", Arg.Unit (fun () -> proof_level := Proof_dedukti),
+  "-odeduktiterm", Arg.Unit (fun () -> proof_level := Proof_deduktiterm),
             "          print the proof in Dedukti term format";
   "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
         "              print the proof in Coq script format";
@@ -373,6 +374,10 @@ let main () =
       begin
 	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp) 
 	  (Filename.chop_extension (Filename.basename file));
+      end
+    | Proof_deduktiterm -> 
+      begin
+	Lltodedukti.outputterm stdout phrases ppphrases (Lazy.force llp);
       end
     end;
   with

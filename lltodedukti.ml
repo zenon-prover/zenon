@@ -528,9 +528,15 @@ let output oc phrases ppphrases llp filename =
       | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) filename;
     Buffer.add_string buf "todk";
     Buffer.contents buf in
-  Dkterm.p_line oc (Dkterm.mk_prelude name); (*declare_header oc;*)
+  Dkterm.p_line oc (Dkterm.mk_prelude name);
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
-  p_theorem oc phrases (List.rev llp);
+  p_theorem oc phrases (List.rev llp)
+  
+let outputterm oc phrases ppphrases llp =
+  Lltolj.hypothesis_env := [];
+  let sigs = get_signatures phrases in
+  add_distinct_terms_axioms !Lltolj.distinct_terms;
+  p_theorem oc phrases (List.rev llp)
