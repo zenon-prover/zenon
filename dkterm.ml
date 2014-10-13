@@ -105,7 +105,7 @@ let rec p_term out term =
   | Dkexistsc -> fprintf out "logic.existsc"
   | Dktruec -> fprintf out "logic.Truec"
   | Dkfalsec -> fprintf out "logic.Falsec"
-  | Dkeqc -> fprintf out "logic.eqc"
+  | Dkeqc -> fprintf out "logic.equalc"
   | Dkequiv -> fprintf out "logic.equiv"
 
 and p_term_p out term = 

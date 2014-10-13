@@ -56,9 +56,6 @@ match e with
 | Evar(s, _) -> fprintf oc "%s" s;
 | _ -> assert false
 
-let p_anyterm oc =
-  fprintf oc "logic.anyterm"
-
 let rec p_chars oc s =
   let n = Char.code (String.get s 0) in
   if not ((64 < n && n < 91)||(96 < n && n < 123))

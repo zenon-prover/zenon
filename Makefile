@@ -270,7 +270,7 @@ dodktestall: $(FOFDIR)/.dummy $(ALLDKCS)
 dkresults/%.dk: $(FOFDIR)/%.p all
 	@echo -n -e "file $< ; zenon_timeout $(ZENON_TIMEOUT)" >> $(STAT_FILE)
 	@{ /usr/bin/time --quiet -f " ; zenon_real_time %e ; zenon_exit_status %x" \
-		timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $< > $@; } \
+		timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $< > $@ 2>> $(STAT_FILE); } \
 		|& { xargs echo -n >> $(STAT_FILE); }
 
 include .depend
