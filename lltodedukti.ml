@@ -1,8 +1,8 @@
-open Printf;;
-open Expr;;
-open Llproof;;
-open Namespace;;
-open Lltolj;;
+open Printf
+open Expr
+open Llproof
+open Namespace
+open Lltolj
 
 let new_name =
   let r = ref 0 in
@@ -10,66 +10,12 @@ let new_name =
     let n = !r in
     incr r;
     n
-;;
 
 let new_hypo () = sprintf "H%d" (new_name ())
-;;
 
 let new_prop () = sprintf "P%d" (new_name ())
-;;
 
 let new_term () = sprintf "X%d" (new_name ())
-;;
-
-let declare_header oc =
-  fprintf oc "#NAME logic.
-Term : Type.
-Prop: Type.
-prf: Prop -> Type.
-anyterm: Term.
-
-not: Prop -> Prop.
-notc: Prop -> Prop :=
-  A:Prop => not (not (not (not (not A)))).
-True: Prop.
-Truec: Prop := not (not (True)).
-False: Prop.
-Falsec: Prop := not (not (False)).
-and: Prop -> Prop -> Prop.
-andc: Prop -> Prop -> Prop :=
-  A:Prop => B:Prop => not (not (and (not (not A)) (not (not B)))).
-or: Prop -> Prop -> Prop.
-orc: Prop -> Prop -> Prop :=
-  A:Prop => B:Prop => not (not (or (not (not A)) (not (not B)))).
-imply: Prop -> Prop -> Prop.
-implyc: Prop -> Prop -> Prop :=
-  A:Prop => B:Prop => not (not (imply (not (not A)) (not (not B)))).
-forall: (Term -> Prop) -> Prop.
-forallc: (Term -> Prop) -> Prop :=
-  P:(Term -> Prop) =>
-  not (not (forall (x:Term => not (not (P x))))).
-exists: (Term -> Prop) -> Prop.
-existsc: (Term -> Prop) -> Prop :=
-  P:(Term -> Prop) =>
-  not (not (exists (x:Term => not (not (P x))))).
-equal: Term -> Term -> Prop.
-equalc: Term -> Term -> Prop :=
-  a:Term => b:Term => not (not (equal a b)).
-equiv: Prop -> Prop -> Prop :=
-  A:Prop => B:Prop => and (imply A B) (imply B A).
-
-
-[] prf True --> P:Prop -> (prf P -> prf P)
-[] prf False --> P:Prop -> prf P
-[A: Prop, B: Prop] prf (and A B) --> P:Prop -> (prf A -> prf B -> prf P) -> prf P
-[A: Prop, B: Prop] prf (or A B) --> P:Prop -> (prf A -> prf P) -> (prf B -> prf P) -> prf P
-[A: Prop, B: Prop] prf (imply A B) --> prf A -> prf B
-[A: Prop] prf (not A) --> prf A -> prf False
-[A: Term -> Prop] prf (forall A) --> x:Term -> prf (A x)
-[A: Term -> Prop] prf (exists A) -->
-P:Prop -> (x:Term -> prf (A x) -> prf P) -> prf P
-[x: Term, y: Term] prf (equal x y) --> P:(Term -> Prop) -> prf (imply (P x) (P y)).\n\n"
-;;
 
 let rec p_list printer oc l =
   match l with
@@ -77,8 +23,7 @@ let rec p_list printer oc l =
   | [a] -> fprintf oc "%a" printer a
   | a :: args ->
     fprintf oc "%a %a"
-      printer a (p_list printer) args;
-;;
+      printer a (p_list printer) args
 
 let rec p_comma_list printer oc l =
   match l with
@@ -86,8 +31,7 @@ let rec p_comma_list printer oc l =
   | [a] -> fprintf oc "%a" printer a
   | a :: args ->
     fprintf oc "%a, %a"
-      printer a (p_comma_list printer) args;
-;;
+      printer a (p_comma_list printer) args
 
 let rec p_single_arrow_list printer oc l =
   match l with
@@ -95,8 +39,7 @@ let rec p_single_arrow_list printer oc l =
   | [a] -> fprintf oc "%a" printer a
   | a :: args ->
     fprintf oc "%a -> %a"
-      printer a (p_single_arrow_list printer) args;
-;;
+      printer a (p_single_arrow_list printer) args
 
 let rec p_double_arrow_list printer oc l =
   match l with
@@ -104,18 +47,15 @@ let rec p_double_arrow_list printer oc l =
   | [a] -> fprintf oc "%a" printer a
   | a :: args ->
     fprintf oc "%a => %a"
-      printer a (p_double_arrow_list printer) args;
-;;
+      printer a (p_double_arrow_list printer) args
 
 let p_var oc e =
 match e with
 | Evar(s, _) -> fprintf oc "%s" s;
 | _ -> assert false
-;;
 
 let p_anyterm oc =
-  fprintf oc "anyterm"
-;;
+  fprintf oc "logic.anyterm"
 
 let rec p_chars oc s =
   let n = Char.code (String.get s 0) in
@@ -129,34 +69,33 @@ and p_char oc c =
     ||(96 < n && n < 123) || (n = 95)
   then fprintf oc "%c" c
   else fprintf oc "%d" n
-;;
 
 let rec p_expr oc e =
   match e with
   | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
     when (equal e3 e2 && equal e4 e1) ->
-    fprintf oc "(equiv %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.equiv %a %a)" p_expr e1 p_expr e2
   | Enot (Enot (Enot (Enot (Enot (e, _), _), _), _), _) ->
-    fprintf oc "(notc %a)" p_expr e
+    fprintf oc "(logic.notc %a)" p_expr e
   | Enot (Enot ( Eand (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    fprintf oc "(andc %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.andc %a %a)" p_expr e1 p_expr e2
   | Enot (Enot ( Eor (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    fprintf oc "(orc %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.orc %a %a)" p_expr e1 p_expr e2
   | Enot (Enot ( Eimply (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    fprintf oc "(implyc %a %a)" p_expr e1 p_expr e2
-  | Enot (Enot (Etrue, _), _) -> fprintf oc "Truec"
-  | Enot (Enot (Efalse, _), _) -> fprintf oc "Falsec"
+    fprintf oc "(logic.implyc %a %a)" p_expr e1 p_expr e2
+  | Enot (Enot (Etrue, _), _) -> fprintf oc "logic.Truec"
+  | Enot (Enot (Efalse, _), _) -> fprintf oc "logic.Falsec"
   | Enot (Enot (
     Eall (Evar (x, _), s, Enot (Enot (e, _), _), _), _), _) ->
-    fprintf oc "(forallc (%s:Term => %a))" x p_expr e
+    fprintf oc "(logic.forallc (%s:logic.Term => %a))" x p_expr e
   | Enot (Enot (
     Eex (Evar (x, _), s, Enot (Enot (e, _), _), _), _), _) ->
-    fprintf oc "(existsc (%s:Term => %a))" x p_expr e
+    fprintf oc "(logic.existsc (%s:logic.Term => %a))" x p_expr e
   | Enot (Enot (Eapp ("=", [e1;e2], _), _), _) ->
-    fprintf oc "(equalc %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.equalc %a %a)" p_expr e1 p_expr e2
   | Evar (v, _) when Mltoll.is_meta v ->
     fprintf oc "%t" p_anyterm
   | Evar (v, _) ->
@@ -164,48 +103,43 @@ let rec p_expr oc e =
   | Eapp ("$string", [v], _) ->
     fprintf oc "S%a" p_expr v
   | Eapp ("=", [e1;e2], _) ->
-    fprintf oc "(equal %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.equal %a %a)" p_expr e1 p_expr e2
   | Eapp (s, [], _) ->
     fprintf oc "%a" p_chars s
   | Eapp (s, args, _) ->
     fprintf oc "(%a %a)" p_chars s (p_list p_expr) args
   | Enot (e, _) ->
-    fprintf oc "(not %a)" p_expr e
+    fprintf oc "(logic.not %a)" p_expr e
   | Eand (e1, e2, _) ->
-    fprintf oc "(and %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.and %a %a)" p_expr e1 p_expr e2
   | Eor (e1, e2, _) ->
-    fprintf oc "(or %a %a)" p_expr e1 p_expr e2
+    fprintf oc "(logic.or %a %a)" p_expr e1 p_expr e2
   | Eimply (e1, e2, _) ->
-    fprintf oc "(imply %a %a)" p_expr e1 p_expr e2
-  | Etrue -> fprintf oc "True"
-  | Efalse -> fprintf oc "False"
+    fprintf oc "(logic.imply %a %a)" p_expr e1 p_expr e2
+  | Etrue -> fprintf oc "logic.True"
+  | Efalse -> fprintf oc "logic.False"
   | Eall (Evar (x, _), s, e, _) ->
-    fprintf oc "(forall (%s:Term => %a))" x p_expr e
+    fprintf oc "(logic.forall (%s:logic.Term => %a))" x p_expr e
   | Eex (Evar (x, _), s, e, _) ->
-    fprintf oc "(exists (%s:Term => %a))" x p_expr e
+    fprintf oc "(logic.exists (%s:logic.Term => %a))" x p_expr e
   | Elam _ -> fprintf oc "errorlam"
   | Eequiv _ -> fprintf oc "errorequiv"
   | Emeta _ -> fprintf oc "errormeta"
   | Eall _ -> fprintf oc "errorall"
   | Eex _ -> fprintf oc "errorex"
   | Etau _ -> assert false
-;;
 
 let p_prf oc e =
-  fprintf oc "prf %a" p_expr e
-;;
+  fprintf oc "logic.prf %a" p_expr e
 
 let p_declare oc (e, printer) =
-  fprintf oc "%t : %a" printer p_expr e;
-;;
+  fprintf oc "%t : %a" printer p_expr e
 
 let p_declare_prf oc (e, printer) =
-  fprintf oc "%t : %a" printer p_prf e;
-;;
+  fprintf oc "%t : %a" printer p_prf e
 
 let p_str s oc =
-  fprintf oc "%s" s;
-;;
+  fprintf oc "%s" s
 
 (* the left part of sequents can only grow: the left part of the conclusion is always contained in the left part of the hypothesis
 weakening is implicit*)
@@ -224,11 +158,11 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SCtrue ->
     let prop = new_prop () in
     let var = new_hypo () in
-    poc "(%s : Prop => %s : prf %s => %s)"
+    poc "(%s : logic.Prop => %s : logic.prf %s => %s)"
       prop var prop var
   | SCeqref (a) ->
     let prop = new_prop () in
-    poc "(%s : (Term -> Prop) => %a)"
+    poc "(%s : (logic.Term -> logic.Prop) => %a)"
       prop p_proof (
 	scrimply (
 	  eapp (prop, [a]),
@@ -258,7 +192,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let var1 = new_hypo () in
     let var2 = new_hypo () in*)
     let term = new_term () in
-    poc "(%a (%s:Term => %a) %a)"
+    poc "(%a (%s:logic.Term => %a) %a)"
       p_hyp (eapp ("=", [a; b]))
       term p_expr (eapp ("=", [evar term; a]))
       p_proof (sceqref (a, []), eapp ("=", [a; a]), gamma)
@@ -325,7 +259,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SClex (Eex (x, ty, p, _) as ep, v, lkrule) ->
     let q = substitute [(x, v)] p in
     let var = new_hypo () in
-    poc "(%a %a (%a:Term => %s:prf %a => %a))"
+    poc "(%a %a (%a:logic.Term => %s:logic.prf %a => %a))"
       p_hyp ep p_expr goal
       p_expr v var p_expr q
       p_proof
@@ -333,7 +267,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SCrand (e1, e2, lkrule1, lkrule2) ->
     let prop = new_prop () in
     let var = new_hypo () in
-    poc "(%s : Prop => %s : (%a -> %a -> prf %s) => %s %a %a)"
+    poc "(%s : logic.Prop => %s : (%a -> %a -> logic.prf %s) => %s %a %a)"
       prop var
       p_prf e1 p_prf e2 prop
       var p_proof (lkrule1, e1, gamma) p_proof (lkrule2, e2, gamma)
@@ -341,14 +275,14 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
-    poc "(%s : Prop => %s : (%a -> prf %s) => %s : (%a -> prf %s) => %s %a)"
+    poc "(%s : logic.Prop => %s : (%a -> logic.prf %s) => %s : (%a -> logic.prf %s) => %s %a)"
       prop var1 p_prf e1 prop var2 p_prf e2 prop
       var1 p_proof (lkrule, e1, gamma)
   | SCrorr (e1, e2, lkrule) ->
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
-    poc "(%s : Prop => %s : (%a -> prf %s) => %s : (%a -> prf %s) => %s %a)"
+    poc "(%s : logic.Prop => %s : (%a -> logic.prf %s) => %s : (%a -> logic.prf %s) => %s %a)"
       prop var1 p_prf e1 prop var2 p_prf e2 prop
       var2 p_proof (lkrule, e2, gamma)
   | SCrimply (e1, e2, lkrule) ->
@@ -361,13 +295,13 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_proof (lkrule, efalse, (e, p_str var) :: gamma)
   | SCrall (Eall (x, ty, p, _), v, lkrule) ->
     let q = substitute [(x, v)] p in
-    poc "(%a:Term => %a)"
+    poc "(%a:logic.Term => %a)"
       p_expr v p_proof
       (lkrule, q, gamma)
   | SCrex (Eex (x, ty, p, _), t, lkrule) ->
     let prop = new_prop () in
     let var = new_hypo () in
-    poc "(%s:Prop => %s: (%a:Term -> prf %a -> prf %s) => %s %a %a)"
+    poc "(%s:logic.Prop => %s: (%a:logic.Term -> logic.prf %a -> logic.prf %s) => %s %a %a)"
       prop var
       p_expr x p_expr p prop
       var p_expr t
@@ -391,14 +325,14 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	(*let var1 = new_hypo () in
 	  let var2 = new_hypo () in*)
 	let term = new_term () in
-	poc "(%a (%s:Term => %a) %a)"
+	poc "(%a (%s:logic.Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
 	  term p_expr
 	  (eapp (pred, [eapp (p, xts @ ((evar term) :: us))]))
 	  itereq ((xts@[t]), ts, us)
       | _ -> assert false;
     in
-    poc "(%s:(Term -> Prop) => %s:prf %a => %a)"
+    poc "(%s:(logic.Term -> logic.Prop) => %s:logic.prf %a => %a)"
       pred var p_expr (eapp (pred, [eapp (p, ts)]))
       itereq ([], ts, us)
   | SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) ->
@@ -409,7 +343,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	(*let var1 = new_hypo () in
 	let var2 = new_hypo () in*)
 	let term = new_term () in
-	poc "(%a (%s:Term => %a) %a)"
+	poc "(%a (%s:logic.Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
 	  term p_expr (eapp (p, xts @ ((evar term) :: us)))
 	  itereq ((xts@[t]), ts, us)
@@ -441,8 +375,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
       | _ -> assert false;
     in
     poc "%a" itereq ([], ts, us)*)
-  | _ -> assert false;
-;;
+  | _ -> assert false
 
 let rec p_tree oc proof goal =
   let ljproof = lltolj proof goal in
@@ -453,14 +386,12 @@ let rec p_tree oc proof goal =
     p_prf conc;
   fprintf oc "%a."
     p_proof (ljproof, conc, [])
-;;
 
 let rec get_goal phrases =
   match phrases with
   | [] -> None
   | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
   | _ :: t -> get_goal t
-;;
 
 let p_theorem oc phrases l =
   match l with
@@ -471,20 +402,17 @@ let p_theorem oc phrases l =
 	Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
       lemmas;
     let goal = get_goal phrases in
-    p_tree oc thm.proof goal;
-;;
+    p_tree oc thm.proof goal
 
 type result =
   | Prop
   | Term
   | Indirect of string
-;;
+
 type signature =
   | Default of int * result
-;;
 
 let predefined = ["="; "$string"]
-;;
 
 let rec get_signatures ps =
   let symtbl = (Hashtbl.create 97 : (string, signature) Hashtbl.t) in
@@ -542,12 +470,11 @@ let rec get_signatures ps =
     end
   in
   Hashtbl.fold find_sig symtbl []
-;;
 
 let p_signature oc (sym, sign) =
   let rec p_arity n =
     if n = 0 then () else begin
-      fprintf oc "Term -> ";
+      fprintf oc "logic.Term -> ";
       p_arity (n-1);
     end;
   in
@@ -557,11 +484,10 @@ let p_signature oc (sym, sign) =
       begin
         p_arity arity;
         match kind with
-        | Prop -> fprintf oc "Prop.\n";
-        | Term -> fprintf oc "Term.\n";
+        | Prop -> fprintf oc "logic.Prop.\n";
+        | Term -> fprintf oc "logic.Term.\n";
         | _ -> assert false;
-      end;
-;;
+      end
 
 let declare_hyp oc h =
   match h with
@@ -576,7 +502,6 @@ let declare_hyp oc h =
     fprintf oc "%s %a " sym (p_list p_var) params;
     fprintf oc "--> %a.\n" p_expr body;
   | _ -> assert false
-;;
 
 let rec add_distinct_terms_axioms l =
   match l with
@@ -586,19 +511,26 @@ let rec add_distinct_terms_axioms l =
     add_distinct_terms_axioms ((x, n) :: l);
     add_distinct_terms_axioms ((y, m) :: l);
   | _ -> ()
-;;
 
-let timeout = ref 10;;
+let timeout = ref 10
 
-let output oc phrases ppphrases llp =
+let output oc phrases ppphrases llp filename =
 (*  eprintf "%a"
     (fun oc x -> Print.llproof (Print.Chan oc) x)
     llp;*)
   Lltolj.hypothesis_env := [];
-  declare_header oc;
+  let name = 
+    let buf = Buffer.create (2*String.length filename) in
+    String.iter 
+      (fun c -> match c with
+      | 'a'..'z' | 'A'..'Z' | '0'..'9' -> Buffer.add_char buf c
+      | '_' -> Buffer.add_string buf "__" 
+      | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) filename;
+    Buffer.add_string buf "todk";
+    Buffer.contents buf in
+  Dkterm.p_line oc (Dkterm.mk_prelude name); (*declare_header oc;*)
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp);
-;;

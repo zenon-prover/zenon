@@ -371,7 +371,8 @@ let main () =
         Watch.warn phrases_dep llp u;
     | Proof_dedukti ->
       begin
-	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp);
+	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp) 
+	  (Filename.chop_extension (Filename.basename file));
       end
     end;
   with

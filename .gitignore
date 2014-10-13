@@ -35,3 +35,6 @@ test_dedukti/
 Axioms/
 tptp/
 TPTP*.tgz
+*.dko
+dkresults/
+statistics*
