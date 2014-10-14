@@ -171,8 +171,12 @@ let rec type_tff_app env e = match e with
             let b', env'' = type_tff_term env' b in
             if is_bool a' && is_bool b' then
                 eequiv (a',b'), env''
-            else
+            else begin try
                 eapp (eeq, [a'; b']), env''
+            with Type.Mismatch(t, t') ->
+                Log.debug 1 "Bad match for equality with types : '%s' - '%s'" (Type.to_string t) (Type.to_string t');
+                raise (Type_error "Bad equality")
+            end
     | Eapp(Evar(s, _) as s', args, _) ->
             let args, env' = map_fold type_tff_term env args in
             let f, env'' = match get_type s' with

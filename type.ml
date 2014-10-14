@@ -32,7 +32,10 @@ let mk_constr constr args =
 
 let mk_arrow args ret =
     let aux = function | [], t -> t | _ -> raise Base_expected in
-    base (Arrow (List.map aux args, aux ret))
+    if List.length args = 0 then
+        base (aux ret)
+    else
+        base (Arrow (List.map aux args, aux ret))
 
 (* Usual types *)
 let type_bool = base Bool
