@@ -109,6 +109,7 @@ let synthesize s =
   | "bool" -> "true"
   | "Z" -> "0%Z"
   | "Q" -> "(0 # 1)%Q"
+  | "R" -> "0%R"
   | t when is_mapped (evar t) ->
       let result = getname (evar t) in
       constants_used := result :: !constants_used;
@@ -600,6 +601,26 @@ let tr_ty t =
   | s -> sprintf "%s" s
 ;;
 
+let is_infix = function
+    | "$less" | "$lesseq" | "$greater" | "$greatereq" | "="
+    | "$sum" | "$product" | "$difference" | "$uminus" 
+    | "$coq_div" -> true
+    | _ -> false
+
+let to_infix = function
+    | "$less" -> "<"
+    | "$lesseq" -> "<="
+    | "$greater" -> ">"
+    | "$greatereq" -> ">="
+    | "=" -> "="
+    | "$sum" -> "+"
+    | "$product" -> "*"
+    | "$difference" -> "-"
+    | "$uminus" -> "-"
+    | "$coq_div" -> "#"
+    | s -> s
+;;
+
 let pr_oc oc prefix t =
   let rec pr_list p b l =
     let f t = bprintf b " %a" p t; in
@@ -620,7 +641,7 @@ let pr_oc oc prefix t =
   let rec pr b t =
     match t with
     | Cvar "" -> assert false
-    | Cvar s -> bprintf b "%s" s; flush_buf oc;
+    | Cvar s -> bprintf b "%s" (to_infix s); flush_buf oc;
     | Cty s -> bprintf b "%a" pr_ty s;
     | Clam (_, _, Clam _) ->
         let (lams, body) = get_lams [] t in
@@ -629,7 +650,9 @@ let pr_oc oc prefix t =
     | Clam (s, t1, t2) -> bprintf b "(fun %s:%a=>%a)" s pr t1 pr t2;
     | Capp (Cvar "=", [e1; e2]) ->
        bprintf b "(%a = %a)" pr e1 pr e2;  (* NOTE: spaces are needed *)
-    | Capp (Cvar "%", [e1; e2]) ->
+    | Capp (Cvar s, [e1; e2]) when is_infix s ->
+       bprintf b "(%a %s %a)" pr e1 (to_infix s) pr e2;
+    | Capp (Cvar "%", [e1; e2]) | Capp (Cvar "$coq_scope", [e2; e1]) ->
        bprintf b "(%a)%%%a" pr e1 pr e2
     | Capp (Cvar "=", args) -> bprintf b "(@eq _%a)" (pr_list pr) args;
     | Capp (t1, []) -> pr b t1;
@@ -868,7 +891,7 @@ let declare_hyp oc h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
-      pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] stmt);
+      pr_oc oc (sprintf "Parameter %s : " name) (trexpr [] (Arith.coqify stmt));
       fprintf oc ".\n";
   | Phrase.Def (DefReal (name, sym, [], body, None)) ->
       let prefix = sprintf "Definition %s := " sym in

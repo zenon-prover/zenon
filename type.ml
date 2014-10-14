@@ -103,6 +103,7 @@ let is_type_num t = List.exists (equal t) _nums
 let to_string_atomic = function
     | "Int" -> "Z"
     | "Rat" -> "Q"
+    | "Real" -> "R"
     | s -> s
 
 let rec to_string_base = function
@@ -220,6 +221,19 @@ let rec _tff = function
 
 let tff (b, t) = (b, _tff t)
 
+(* Functions for SMTLIB typechecking *)
+let rec _smtlib = function
+    | Bool -> Bool
+    | App ("Bool", []) -> Bool
+    | App ("Int", []) -> App ("Int", [])
+    | App ("Real", []) -> App ("Real", [])
+    | App ("Type", []) -> Ttype
+    | App (s, l) -> App (s, List.map _tff l)
+    | Arrow (l, ret) -> Arrow (List.map _tff l, _tff ret)
+    | Ttype -> Ttype
+
+let smtlib (b, t) = (b, _smtlib t)
+
 
 (***********************************)
 
@@ -279,3 +293,4 @@ let extract_ttype t =
   | [], b ->  extract_ttype_aux b
   | _ -> assert false
 ;;
+

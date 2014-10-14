@@ -50,6 +50,7 @@ val eapp : expr * expr list -> expr;;
 val enot : expr -> expr;;
 val eand : expr * expr -> expr;;
 val eor : expr * expr -> expr;;
+val exor : expr * expr -> expr;;
 val eimply : expr * expr -> expr;;
 val eequiv : expr * expr -> expr;;
 val etrue : expr;;

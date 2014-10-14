@@ -6,7 +6,35 @@ open Mlproof
 
 let equal = Expr.equal
 
-let of_string s = if not (String.contains s 'a') then Q.of_string s else raise (Invalid_argument s)
+(* String to rational conversion *)
+let of_string s =
+    let rec aux s decimal pos acc =
+        if pos >= 0 && pos < String.length s then begin
+            match s.[pos] with
+            | '0' .. '9' as c ->
+                    let n = Q.of_string (String.make 1 c) in
+                    if decimal <= 0 then
+                        aux s decimal (pos + 1) Q.(acc * (of_int 10) + n)
+                    else
+                        aux s (decimal + 1) (pos + 1)
+                            Q.(acc + n / of_bigint Z.(pow (of_int 10) decimal))
+            | '/' ->
+                    if decimal <= 0 then
+                        Q.div acc (aux s 0 (pos + 1) Q.zero)
+                    else
+                        raise (Invalid_argument s)
+            | '.' -> aux s 1 (pos + 1) acc
+            | _ -> raise (Invalid_argument s)
+        end else
+            acc
+    in
+    match String.length s with
+    | 0 -> raise (Invalid_argument s)
+    | 1 -> aux s 0 0 Q.zero
+    | _ -> begin match s.[0] with
+        | '-' -> Q.neg (aux s 0 1 Q.zero)
+        | _ -> aux s 0 0 Q.zero
+    end
 
 (* Types manipulation *)
 let find_type e = match get_type e with
@@ -21,6 +49,7 @@ let is_num_string s = try ignore (of_string s); true with Invalid_argument _ -> 
 
 let is_int e = try Type.equal type_int (find_type e) with Exit -> false
 let is_rat e = try Type.equal type_rat (find_type e) with Exit -> false
+let is_real e = try Type.equal type_real (find_type e) with Exit -> false
 let is_num e = try is_type_num (find_type e) with Exit -> false
 
 (* We assume t a t' are numeric types *)
@@ -86,11 +115,25 @@ let lesseq a b = mk_bop "$lesseq" a b
 let greater a b = mk_bop "$greater" a b
 let greatereq a b = mk_bop "$greatereq" a b
 
-let coerce t v =
-    if Type.equal type_rat t && is_int v then
-        sum v (mk_rat "0")
-    else
-        v
+(* Possibly unsafe... *)
+let rec coerce t = function
+    | Evar(_, _) as v -> v
+    | Eapp(Evar(s, _), [], _) as c ->
+            let aux =
+                if Type.equal type_int t then mk_int
+                else if Type.equal type_rat t then mk_rat
+                else if Type.equal type_real t then mk_real
+                else (fun s -> assert false)
+            in
+            begin try
+                aux (Q.to_string (of_string s))
+            with Invalid_argument _ -> c
+            end
+    | Eapp (Evar("$uminus",_), [a], _) -> uminus (coerce t a)
+    | Eapp (Evar("$sum",_), [a; b], _) -> sum (coerce t a) (coerce t b)
+    | Eapp (Evar("$difference",_), [a; b], _) -> diff (coerce t a) (coerce t b)
+    | Eapp (Evar("$product",_), [a; b], _) -> mul (coerce t a) (coerce t b)
+    | e -> e
 
 let mk_ubop s a =
     let t = find_type a in
@@ -162,7 +205,7 @@ let normalize_aux a b =
 let normalize a b = snd (normalize_aux a b)
 
 let of_cexpr e = match e with
-    | Eapp(Evar(s, _), [], _) when is_int e || is_rat e ->
+    | Eapp(Evar(s, _), [], _) when is_num e ->
             begin try
                 of_string s
             with Invalid_argument _ ->
@@ -175,12 +218,11 @@ let rec of_nexpr e = match e with
     | Eapp (Evar("$uminus",_), [a], _) -> fdiff [Q.zero, etrue] (of_nexpr a)
     | Eapp (Evar("$sum",_), [a; b], _) -> fadd (of_nexpr a) (of_nexpr b)
     | Eapp (Evar("$difference",_), [a; b], _) -> fdiff (of_nexpr a) (of_nexpr b)
-    | Eapp (Evar("$product",_), [Eapp (Evar (_, _), [], _) as e; a], _)
-    | Eapp (Evar("$product",_), [a; Eapp (Evar (_, _), [], _) as e], _) ->
-            begin try
-                fmul (of_cexpr e) (of_nexpr a)
-            with Exit ->
-                raise NotaFormula
+    | Eapp (Evar("$product",_), [a; b], _) ->
+            begin match (of_nexpr a, of_nexpr b) with
+            | [k, Etrue], f | f, [k, Etrue] ->
+                    fmul k f
+            | _ -> raise NotaFormula
             end
     | _ -> [Q.one, e]
 
@@ -219,6 +261,11 @@ let to_bexpr (e, s, c) = mk_bop s (to_nexpr e) (const (Q.to_string c))
 
 let expr_norm e = try to_bexpr (of_bexpr e) with NotaFormula -> e
 
+let is_rexpr = function
+    | e when is_real e -> true
+    | Eapp (_, l, _) -> List.exists is_real l
+    | _ -> false
+
 (* Coq translation *)
 let mk_coq_q p q =
     let div = tvar "$coq_div" (mk_arrow [type_int; type_int] type_rat) in
@@ -232,13 +279,33 @@ let coq_var x =
     else
         x
 
-let z_scope e =
-    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_int] type_int) in
-    eapp (scope, [tvar "Z" type_scope; e])
+let coq_scope s e =
+    let t = find_type e in
+    let scope = tvar "$coq_scope" (mk_arrow [type_scope; t] t) in
+    eapp (scope, [tvar s type_scope; e])
 
-let q_scope e =
-    let scope = tvar "$coq_scope" (mk_arrow [type_scope; type_rat] type_rat) in
-    eapp (scope, [tvar "Q" type_scope; e])
+let z_scope = coq_scope "Z"
+let q_scope = coq_scope "Q"
+let r_scope = coq_scope "R"
+
+let rec coqify_real e = match e with
+    | Evar(s, _) ->
+            begin try
+                tvar (Q.to_string (of_string s)) (find_type e)
+            with Exit | Invalid_argument _ ->
+                e
+            end
+    | Eapp (f, l, _) ->
+            eapp (coqify_real f, List.map coqify_real l)
+    | Enot (e', _) -> enot (coqify_real e')
+    | Eand (e1, e2, _) -> eand (coqify_real e1, coqify_real e2)
+    | Eor (e1, e2, _) -> eor (coqify_real e1, coqify_real e2)
+    | Eimply (e1, e2, _) -> eimply (coqify_real e1, coqify_real e2)
+    | Eequiv (e1, e2, _) -> eequiv (coqify_real e1, coqify_real e2)
+    | Eall (v, t, e', _) -> eall (v, t, coqify_real e')
+    | Eex (v, t, e', _) -> eex (v, t, coqify_real e')
+    | Elam (v, t, e', _) -> elam (v, t, coqify_real e')
+    | _ -> e
 
 let rec coqify_aux b e =
     let aux = if b then coqify_to_q else coqify_term in
@@ -264,6 +331,8 @@ and coqify_term e =
         z_scope (coqify_aux false e)
     else if is_rat e then
         q_scope (coqify_aux true e)
+    else if is_real e then
+        r_scope (coqify_real e)
     else
         coqify_aux true e
 
@@ -273,15 +342,22 @@ and coqify_to_q e =
     else
         coqify_term e
 
+and coqify_to_r e =
+    r_scope (coqify_real e)
 
 and coqify_prop e = match e with
-    | Eapp (Evar("=",_), [a; b], _ ) when is_int a && is_int b ->
-            mk_bop "=" (coqify_term a) (coqify_term b)
-    | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
+    | Eapp (Evar("=",_), [a; b], _ ) when is_real a || is_real b ->
+            mk_bop "=" (coqify_to_r a) (coqify_to_r b)
+    | Eapp (Evar("=",_), [a; b], _ ) when is_rat a || is_rat b ->
             mk_bop "==" (coqify_to_q a) (coqify_to_q b)
+    | Eapp (Evar("=",_), [a; b], _ ) when is_num a && is_num b ->
+            mk_bop "=" (coqify_term a) (coqify_term b)
+    | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
+        when is_real a || is_real b ->
+            r_scope (mk_bop s (coqify_to_r a) (coqify_to_r b))
     | Eapp (Evar(("$less"|"$lesseq"|"$greater"|"$greatereq") as s,_), [a; b], _ )
         when is_num a && is_num b ->
-            mk_bop s (coqify_to_q a) (coqify_to_q b)
+            q_scope (mk_bop s (coqify_to_q a) (coqify_to_q b))
     | Eapp (Evar(("$is_int"|"$is_rat"|"$not_is_int"|"$not_is_rat") as s,_), [a], _) ->
             mk_ubop s (coqify_term a)
     | Eapp(f, l, _) -> eapp (f, List.map coqify_term l)
@@ -300,13 +376,8 @@ and coqify_prop e = match e with
 
 let coqify e = match get_type e with
     | None -> e
-    | _ ->
-            if is_int e then
-                z_scope (coqify_aux false e)
-            else if is_rat e then
-                q_scope (coqify_aux true e)
-            else
-                coqify_prop e
+    | Some t when Type.equal type_bool t -> coqify_prop e
+    | _ -> coqify_term e
 
 (* Analog to circular lists with a 'stop' element, imperative style *)
 exception EndReached
@@ -437,7 +508,7 @@ let ct_from_ml p =
             | (_, "=", _) -> false
             | (f, _, _) ->
                 (List.for_all (fun (_, e) ->
-                    (is_int e || is_rat e) && (match e with
+                    (is_num e) && (match e with
                     | Emeta(_) -> true
                     | Eapp(Evar(s, _), [], _) -> false
                     | _ -> false)) f) &&

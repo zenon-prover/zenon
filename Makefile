@@ -8,7 +8,7 @@ include .config_var
 # Staging directory for package managers
 DESTDIR =
 
-CAMLFLAGS = -warn-error "$(WARN_ERROR)" -I `ocamlfind query zarith`
+CAMLFLAGS = -warn-error "$(WARN_ERROR)"
 
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
@@ -23,7 +23,7 @@ SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           printBox.ml simplex.ml arith.ml \
           parsezen.mly lexzen.mll \
 	  smtlib_util.ml smtlib_syntax.ml \
-	  parsesmtlib.mly lexsmtlib.mll smtlib.ml \
+	  parsesmtlib.mly lexsmtlib.mll smtlib.ml typesmtlib.ml \
 	  parsetptp.mly lextptp.mll typetptp.ml \
           parsecoq.mly lexcoq.mll tptp.ml \
           coqterm.ml lltocoq.ml \
@@ -33,7 +33,7 @@ SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           ext_equiv.ml ext_induct.ml ext_arith.ml \
           prove.ml checksum.dummy versionnum.ml main.ml zenon.ml
 
-COQSRC = zenon.v zenon_arith.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
+COQSRC = zenon.v zenon_arith.v zenon_arith_reals.v zenon_coqbool.v zenon_equiv.v zenon_induct.v zenon_focal.v
 
 DOCSRC =
 

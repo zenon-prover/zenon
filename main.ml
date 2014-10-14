@@ -296,7 +296,8 @@ let parse_file f =
       | I_smtlib ->
           let commands = Parsesmtlib.main Lexsmtlib.token lexbuf in
           closer ();
-          let phrases = Smtlib.translate commands in
+          let forms = Smtlib.translate commands in
+          let phrases = Typesmtlib.typecheck forms in
           ("dummy", List.map (fun x -> (x, false)) phrases)
       | I_tptp ->
           let tpphrases = Parsetptp.file Lextptp.token lexbuf in
