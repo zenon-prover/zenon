@@ -170,8 +170,8 @@ let axiom_to_rwrt_prop = [
   "is_finite_subset";
   "is_finite_subset_def";
   "non_empty_finite_subsets";
-(*  "closure_def";
-  "closure1_def";*)
+  "closure_def";
+  "closure1_def";
   "generalized_union_def";
   "seq_def";
 ];;
@@ -182,9 +182,11 @@ let axiom_to_rwrt_term = [
   "tuple2_proj_2_def";
   "tuple2_inversion";
   "semicolon_back1";
-(*  "power_0";*)
   "power_1";
   "seq_length_def"; 
+  "div_1";
+  "mod_1";
+  
 ];;
 
 

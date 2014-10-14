@@ -4,19 +4,6 @@
 open Expr;;
 open Print;;
 
-
-val rename_aux : expr -> (expr * expr) list -> expr * (expr * expr) list;;
-(* [rename e l]
-   return [e l] with e the expr with new names of variables
-   and l the list of pair with old and new names.
-*)
-
-val rename : expr -> expr * (expr * expr) list;;
-(* [rename e]
-   return [e l] with e the expr with new names of variables
-   and l the list of pair with old and new names.
-*)
-
 val unif_aux : ( expr * expr ) list -> expr -> expr -> (expr * expr ) list;;
 (* [unif_aux l t1 t2]
    return [l] the list of pair whch symbolise the substitution 
@@ -37,8 +24,6 @@ val normalize_fm : expr -> expr;;
 
 val normalize_list : expr list -> expr list;;
 
-
-val print_list_expr : expr list -> unit;;
 val printer : expr -> unit;;
 
 exception Unif_failed;;

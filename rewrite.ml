@@ -11,50 +11,6 @@ open Mlproof;;
 
 let printer e = expr_soft (Chan stdout) e;;
 
-let rec print_list_pair_expr l = 
-  match l with 
-    | [] -> print_endline ")"
-    | (x1, x2)::tl 
-	-> print_string "(";
-	  printer x1;
-	  print_string ", ";
-	  printer x2;
-	  print_string ")";
-	  print_list_pair_expr tl
-;;
-
-let rec print_list_expr l =
-  match l with 
-    | [] -> (print_endline "";
-	     print_endline "FIN LIST EXPR";)
-    | h :: t -> 
-      (print_endline " >> ";
-       printer h;
-       print_list_expr t)
-;;
-
-let rec print_list_de_list l =
-  match l with 
-    | [] -> (print_endline "";
-	     print_endline "FIN LIST EXPR";)
-    | h :: t -> 
-      (print_string " >> ";
-       printer (List.hd h);
-       print_list_de_list t)
-;;
-
-let rec print_rules l = 
-  match l with 
-  | [] -> print_endline " -- -- end rules -- -- "
-  | (l, r) :: tl -> 
-     printer l; 
-     print_string "  -->  "; 
-     printer r; 
-     print_endline "";
-     print_rules tl
-;;
-
-
 let rec find_first_sym t = 
   match t with 
  (*   | Evar (sym, _) -> sym *)
@@ -62,71 +18,6 @@ let rec find_first_sym t =
     | Enot (t1, _) -> find_first_sym t1
     | _ -> ""
 ;;
-
-let find_sym_args t = 
-  match t with
-  | Evar _ -> "useless_variable"
-  | Eapp (Evar(sym, _), _, _) -> sym
-  | _ -> assert false
-;;
-
-let rec find_syms t =
-  match t with
-  | Eapp (Evar(sym, _), args, _) -> 
-     (sym, List.length args, List.map find_sym_args args)
-  | Enot (f, _) -> find_syms f
-  | _ -> assert false
-;;
-
-(* The rename function.
-   Used to rename variables of expr
-   \ do not use this one
-   \ try next one
-*)
-
-let rec rename_aux e l = 
-  match e with 
-    | Evar (v, _) -> 
-      (try (List.assq e l), l with 
-	| Not_found ->
-	  let nv = newvar () in nv, (e, nv)::l
-	| _ -> e, l)
-
-    | Eapp (Evar(f, _), args, _) -> 
-      let (new_args, new_l) = 
-	List.fold_left 
-	  (fun (new_args, n_l) t -> 
-	    let (new_t,n_l2) = rename_aux t n_l in
-	    new_args@[new_t],n_l2) ([],l) args in 
-      (eapp (evar(f), new_args)), new_l
-
-    | Enot (e1, _) -> 
-      let (ne, nl) = rename_aux e1 l in (enot ne), nl
-    | Eand (e1, e2, _) -> 
-      let (ne1, nl1) = rename_aux e1 l in 
-      let (ne2, nl2) = rename_aux e2 nl1 in
-      (eand (ne1, ne2)), nl2
-    | Eor (e1, e2, _) -> 
-      let (ne1, nl1) = rename_aux e1 l in 
-      let (ne2, nl2) = rename_aux e2 nl1 in 
-      (eor (ne1, ne2)), nl2 
-    | Eimply (e1, e2, _) -> 
-      let (ne1, nl1) = rename_aux e1 l in 
-      let (ne2, nl2) = rename_aux e2 nl1 in 
-      (eimply (ne1, ne2)), nl2
-    | Eequiv (e1, e2, _) -> 
-      let (ne1, nl1) = rename_aux e1 l in 
-      let (ne2, nl2) = rename_aux e2 nl1 in 
-      (eequiv (ne1, ne2)), nl2 
-    | _  -> e, l;;
-
-
-(* The rename function.
-   Used to rename variables of expr
-*)
-
-let rename e = rename_aux e [];;
-
 
 (* new assoc and mem_assoc functions
    with the Expr.equal equality
@@ -148,15 +39,7 @@ let rec mem_expr x = function
   | a :: l -> (Expr.equal a x) || mem_expr x l
 ;;
 
-
 exception Unif_failed;;
-
-
-(* The unif_aux function.
-   Used to unify two expr 
-   \ do not use this one.
-   \ try next one ...
-*)
 
 let rec unif_aux l e1 e2 =
   match e1, e2 with
@@ -187,18 +70,7 @@ let rec unif_aux l e1 e2 =
     | _, _ -> raise Unif_failed
 ;;
 
-
-(* The unif function.
-   Used to unify two expr
-*)
 let unif t1 t2 = unif_aux [] t1 t2;; 
-
-
- 
-
-(* normalisation des propositions
-
-*)
 
 let rec find_best_match incr left_rule fm = 
   match left_rule, fm with 
@@ -243,60 +115,6 @@ let ordering_two fm (l1, r1) (l2, r2) =
   else if List.length fv_l1 > List.length fv_l2 then 1
   else -1
 ;; 
-
-(* let equal_is_equal rules fm = 
-  match fm with 
-  | Eapp ("=", [a1; a2], _)
-  | Enot ( Eapp ("=", [a1; a2], _), _)
-    -> 
-     begin
-       match a1, a2 with 
-       | _, _ when Expr.equal a1 a2 
-	 -> [] (*[(eapp ("=", [evar("x"); evar("y")]),
-	      eapp ("=", [evar("x"); evar("y")]))] *)
-       
-       | Eapp _, _
-       | _, Eapp _ -> rules
-       | _, _ -> [] (* [(eapp ("=", [evar("x"); evar("y")]),
-		   eapp ("=", [evar("x"); evar("y")]))] *)
-     end
-  | _ -> rules
-;; *)
-
-(*let equal_is_equal rules fm = 
-  match fm with 
-  | Eapp ("=", [a1; a2], _)
-       when Expr.equal a1 a2
-    -> []
-  | Enot (Eapp ("=", [a1; a2], _), _)
-       when Expr.equal a1 a2
-    -> []
-  | Eapp ("=", [a1; a2], _)
-    ->
-     begin
-       match a1, a2 with 
-       | Emeta _, _
-       | _, Emeta _
-	 -> []
-       | Eapp _, _
-       | _, Eapp _
-	 -> rules
-       | _, _ -> []
-     end
-  | Enot (Eapp ("=", [a1; a2], _), _)
-    -> 
-     begin
-       match a1, a2 with
-       | Emeta _, _
-       | _, Emeta _
-	 -> []
-       | Eapp _, _
-       | _, Eapp _
-	 -> rules
-       | _, _ -> []
-     end
-  | _ -> rules
-;;*)
 
 let restore_equal fm = 
   match fm with 
@@ -444,15 +262,6 @@ let rec norm_term t =
 	eimply (norm_term t1, norm_term t2)
       | Eequiv (t1, t2, _) -> 
 	eequiv (norm_term t1, norm_term t2)
-
-   (*   | Eall (x, typex, t1, _) -> 
-	eall (x, typex, norm_term t1)
-      | Eex (x, typex, t1, _) -> 
-	eex (x, typex, norm_term t1)
-      | Etau (x, typex, t1, _) -> 
-	etau (x, typex, norm_term t1)
-      | Elam (x, typex, t1, _) -> 
-	elam (x, typex, norm_term t1) *)
 
       | _ -> t
     end
