@@ -271,6 +271,7 @@ and use_defs expr =
     elam (x, s, use_defs e)
   | Emeta (x, _) ->
     assert false;
+  | _ -> assert false;
 ;;
 
 let rec xcongruence_elim s x e a b =

@@ -192,6 +192,7 @@ let rec p_expr oc e =
   | Eall _ -> fprintf oc "errorall"
   | Eex _ -> fprintf oc "errorex"
   | Etau _ -> assert false
+  | _ -> assert false
 ;;
 
 let rec p_expr2 oc e = 
@@ -252,6 +253,7 @@ let rec p_expr2 oc e =
   | Eall _ -> fprintf oc "errorall"
   | Eex _ -> fprintf oc "errorex"
   | Etau _ -> assert false
+  | _ -> assert false
 ;;
 
 let p_prf oc e = 
@@ -577,6 +579,7 @@ let rec get_signatures ps =
     | Eall (Evar (v, _), _, e1, _) | Eex (Evar (v, _), _, e1, _)
       -> get_sig Prop (v::env) e1;
     | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
+    | _ -> assert false
   in
   let do_phrase p = 
     match p with
@@ -675,6 +678,7 @@ let get_rew_context sigs expr =
     | Eall (Evar (v, _), _, e1, _) | Eex (Evar (v, _), _, e1, _)
       -> get_sig (v::env) e1;
     | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
+    | _ -> assert false
   in
   get_sig terms expr;
   !l

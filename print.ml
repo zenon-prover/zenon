@@ -216,7 +216,7 @@ let phrase o ph =
 ;;
 
 let sequent o l =
-  List.iter (fun x -> expr o x; oprintf o " ") l;
+  List.iter (fun x -> expr_soft o x; oprintf o " ") l;
 ;;
 
 let get_rule_name = function
@@ -457,8 +457,9 @@ let rec llproof_expr o e =
       pro "Ex %a, " print_vartype (v, Type.to_string t); llproof_expr o p;
   | Elam (v, t, p, _) ->
       pro "(lambda %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
-  | Etau (v, t, p, _) ->
-      pro "(tau %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";
+  | Etau _ as e -> pro "T_%d" (Index.get_number e);
+(*  | Etau (v, t, p, _) ->
+      pro "(tau %a, " print_vartype (v, Type.to_string t); llproof_expr o p; pro ")";*)
   | Eapp (Evar(s,_), [e1; e2], _) when is_infix_op s ->
      pro "("; llproof_expr o e1; pro " %s " (to_infix s); llproof_expr o e2; pro ")";
   | Eapp (s, [], _) -> pro "%s" (get_name s);
@@ -731,6 +732,7 @@ let dot_rule_name = function
   | CongruenceRL (p, a, b) -> "CongruenceRL", [p; a; b]
   | Miniscope (e1, t, vs) -> "Miniscope", e1 :: t :: vs
   | Ext (th, ru, args) -> "Extension/"^th^"/"^ru, args
+  | Root (e) -> "Root", [e]
 ;;
 
 let default_color = "LIGHTBLUE"
