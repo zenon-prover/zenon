@@ -100,34 +100,37 @@ let tff_app f args env =
     with Not_found ->
         raise (Type_error (Printf.sprintf "Unknown variable : %s" f))
 
+let poly_num f l =
+    let rec aux acc l = function
+        | [] -> acc
+        | x :: r -> aux ((List.map (fun y -> x, y) l) @ acc) l r
+    in
+    let largs = aux [] l l in
+    List.map (fun (x, y) -> mk_arrow [x; y] (f x y)) largs
+
 let default_env =
     let unary t t' = mk_arrow [t] t' in
-    let binary t t' t'' = mk_arrow [t; t'] t'' in
     let pred t = unary t type_bool in
-    let pred2 t = binary t t type_bool in
 
     let int_id = unary type_int type_int in
     let rat_id = unary type_rat type_rat in
     let real_id = unary type_real type_real in
-    let int_id_2 = binary type_int type_int type_int in
-    let rat_id_2 = binary type_rat type_rat type_rat in
-    let real_id_2 = binary type_real type_real type_real in
     let int_pred = pred type_int in
     let rat_pred = pred type_rat in
     let real_pred = pred type_real in
-    let int_pred_2 = pred2 type_int in
-    let rat_pred_2 = pred2 type_rat in
-    let real_pred_2 = pred2 type_real in
+
+    let poly_op = poly_num mix_type [type_int; type_rat; type_real] in
+    let poly_bop = poly_num (fun _ _ -> type_bool) [type_int; type_rat; type_real] in
 
     let tff_builtin = [
-        "$less",        [int_pred_2; rat_pred_2; real_pred_2];
-        "$lesseq",      [int_pred_2; rat_pred_2; real_pred_2];
-        "$greater",     [int_pred_2; rat_pred_2; real_pred_2];
-        "$greatereq",   [int_pred_2; rat_pred_2; real_pred_2];
+        "$less",        poly_bop;
+        "$lesseq",      poly_bop;
+        "$greater",     poly_bop;
+        "$greatereq",   poly_bop;
         "$uminus",      [int_id; rat_id; real_id];
-        "$sum",         [int_id_2; rat_id_2; real_id_2];
-        "$difference",  [int_id_2; rat_id_2; real_id_2];
-        "$product",     [int_id_2; rat_id_2; real_id_2];
+        "$sum",         poly_op;
+        "$difference",  poly_op;
+        "$product",     poly_op;
         "$is_int",      [int_pred; rat_pred; real_pred];
         "$to_int",      [unary type_int type_int; unary type_rat type_int; unary type_real type_int];
         "$to_real",     [unary type_int type_real; unary type_rat type_real; unary type_real type_real];
@@ -183,7 +186,6 @@ let rec type_tff_app env e = match e with
             in
             begin try
                 let e' = eapp (f, args) in
-                Log.debug 10 "Got : %a" Print.pp_expr_type e';
                 e', env''
             with
             | Not_enough_args

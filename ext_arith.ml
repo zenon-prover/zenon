@@ -535,8 +535,12 @@ let empty_state =
 }
 
 let st_reset st =
-    assert (Stack.length st.stack = 0);
-    Stack.push (etrue, simplex_empty, []) st.stack
+    if Stack.length st.stack = 0 then
+        Stack.push (etrue, simplex_empty, []) st.stack
+    else begin
+        Log.debug 1 "%i states left in stack..." (Stack.length st.stack);
+        assert false
+    end
 
 let st_solved st = st.solved <- true
 
@@ -555,6 +559,11 @@ let st_push st (e, t, l) =
     let _, _, l' = Stack.pop st.stack in
     Stack.push (e, t, l @ l') st.stack;
     Log.debug 7 "arith -- state stack push (%i left)" (Stack.length st.stack)
+
+let st_update st e =
+    let _, t, l = Stack.pop st.stack in
+    Stack.push (e, t, l) st.stack;
+    Log.debug 11 "arith -- new stack head : %a" Print.pp_expr e
 
 let st_branch st =
     try
@@ -577,10 +586,12 @@ let is_coherent e = function
     | Stop -> true
     | Node n -> List.for_all (fun e' -> equal e e' || Index.member e') n.nconc
 
-let ignore_expr, add_expr, add_branch, remove_expr, todo, set_global, reset =
+let ignore_expr, add_expr, add_branch, remove_expr, todo, set_global, reset, update =
     let st = empty_state in
 
     let reset () = st_reset st in
+
+    let update e = st_update st e in
 
     let is_new e =
         try Stack.iter (fun (e', _, l) ->
@@ -656,7 +667,7 @@ let ignore_expr, add_expr, add_branch, remove_expr, todo, set_global, reset =
         List.iter f l;
         !res
     in
-    ignore_expr, add, add_branch, remove, todo, set_global, reset
+    ignore_expr, add, add_branch, remove, todo, set_global, reset, update
 
 (* ML -> LL translation *)
 let ssub s j = try String.sub s 0 j with Invalid_argument _ -> ""
@@ -980,6 +991,7 @@ let newnodes e g _ =
             | NotaFormula -> []
         end
     in
+    update e;
     List.map (gnode g) (res @ todo e) @ (
         if is_bexpr e then [Stop] else [])
 

@@ -19,7 +19,7 @@ case $1 in
         ;;
     smt)
         echo "Testing smtlib problems..."
-        FILES=`find /home/guigui/build/smtlib/LIA/tptp/*.smt2`
+        FILES=`find /home/guigui/build/smtlib/ -name *.smt2`
         ZINPUT=-ismt
         ;;
     cs)
