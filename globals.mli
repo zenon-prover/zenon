@@ -21,3 +21,11 @@ val proof_nodes : int ref;;
 val top_num_forms : int ref;;
 val stored_lemmas : int ref;;
 val num_expr : int ref;;
+
+type var_declaration =
+  | Type of string
+  | Var of string * string
+  | Hyp of string * Expr.expr
+
+val var_declarations : var_declaration list ref;;
+

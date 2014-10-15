@@ -61,6 +61,20 @@ let rec get_params e =
   | _ -> ([], e)
 ;;
 
+let add_global_ty id =
+  Globals.var_declarations :=
+    Globals.Type id :: !Globals.var_declarations
+;;
+
+let add_global_var id ty =
+  Globals.var_declarations :=
+    Globals.Var (id, ty) :: !Globals.var_declarations
+;;
+
+let add_global_hyp id hyp =
+  Globals.var_declarations :=
+    Globals.Hyp (id, hyp) :: !Globals.var_declarations
+;;
 
 
 %}
@@ -71,6 +85,11 @@ let rec get_params e =
 %token PARAMETER
 %token MUSTUSE
 %token BEGINPROOF
+%token BEGIN_TY
+%token BEGIN_VAR
+%token BEGIN_HYP
+%token END_VAR
+%token END_HYP
 %token <string> BEGINNAME
 %token BEGINHEADER
 %token ENDPROOF
@@ -105,7 +124,13 @@ proofheaders:
   | /* empty */
       { () }
   | BEGINHEADER proofheaders
-      { () }
+      { $2 }
+  | BEGIN_TY ID proofheaders
+      { $3; add_global_ty $2 }
+  | BEGIN_VAR ID COLON typ END_VAR proofheaders
+      { $6; add_global_var $2 $4 }
+  | BEGIN_HYP ID COLON term END_HYP proofheaders
+      { $6; add_global_hyp $2 $4 }
 
 qid:
 | QID { $1 }

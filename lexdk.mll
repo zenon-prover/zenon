@@ -30,6 +30,11 @@ rule token = parse
 | "Parameter"             { PARAMETER }
 
 | "%%begin-auto-proof"                      { BEGINPROOF }
+| "%%type:"                                 { BEGIN_TY }
+| "%%begin-variable:"                       { BEGIN_VAR }
+| "%%begin-hypothesis:"                     { BEGIN_HYP }
+| "%%end-variable"                         { END_VAR }
+| "%%end-hypothesis"                       { END_HYP }
 | "%%name:" space* (id as name) space*      { BEGINNAME name }
 | "%%" id ":"                               { BEGINHEADER }
 | "%%end-auto-proof"                        { ENDPROOF }
