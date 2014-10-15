@@ -15,8 +15,8 @@ CAMLFLAGS = -warn-error "$(WARN_ERROR)"
 CAMLBINFLAGS = $(CAMLFLAGS) $(BIN_DEBUG_FLAGS)
 CAMLBYTFLAGS = $(CAMLFLAGS) $(BYT_DEBUG_FLAGS)
 
-ZENON_TIMEOUT = 0.5
-DK_TIMEOUT = 0.5
+ZENON_TIMEOUT = 0.1
+DK_TIMEOUT = 0.1
 STAT_FILE = statistics_$(ZENON_TIMEOUT)
 
 
@@ -229,8 +229,8 @@ $(DKTESTDIR)/.dummy: $(FOFDIR)/.dummy
 
 .PHONY: $(wildcard $(DKTESTDIR)/*.dkt)
 %.dkt: %.p all
-	@timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $< > $*.dk
-	@timeout $(DK_TIMEOUT) dkcheck $*.dk || echo -e "\e[31mError $<\e[39m"
+	@timeout 0.5 ./zenon -q -p0 -odedukti -itptp $< > $*.dk
+	@timeout 0.5 dkcheck $*.dk || echo -e "\e[31mError $<\e[39m"
 
 # Calls another make in order to take into account the generated files
 .PHONY: dktest
@@ -270,7 +270,7 @@ dodktestall: $(FOFDIR)/.dummy $(ALLDKCS)
 dkresults/%.dk: $(FOFDIR)/%.p all
 	@echo -n -e "file $< ; zenon_timeout $(ZENON_TIMEOUT)" >> $(STAT_FILE)
 	@{ /usr/bin/time --quiet -f " ; zenon_real_time %e ; zenon_exit_status %x" \
-		timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $< > $@; } \
+		timeout $(ZENON_TIMEOUT) ./zenon -q -p0 -odedukti -itptp $< > $@ 2>> $(STAT_FILE); } \
 		|& { xargs echo -n >> $(STAT_FILE); }
 
 include .depend

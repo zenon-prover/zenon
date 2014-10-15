@@ -4,6 +4,8 @@ open Llproof
 open Namespace
 open Lltolj
 
+module Dk = Dkterm
+
 let new_name =
   let r = ref 0 in
   fun () ->
@@ -54,9 +56,6 @@ match e with
 | Evar(s, _) -> fprintf oc "%s" s;
 | _ -> assert false
 
-let p_anyterm oc =
-  fprintf oc "logic.anyterm"
-
 let rec p_chars oc s =
   let n = Char.code (String.get s 0) in
   if not ((64 < n && n < 91)||(96 < n && n < 123))
@@ -70,64 +69,59 @@ and p_char oc c =
   then fprintf oc "%c" c
   else fprintf oc "%d" n
 
-let rec p_expr oc e =
+let rec trexpr e =
   match e with
   | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
-    when (equal e3 e2 && equal e4 e1) ->
-    fprintf oc "(logic.equiv %a %a)" p_expr e1 p_expr e2
+    when (equal e3 e2 && equal e4 e1) -> Dk.dkequiv (trexpr e1) (trexpr e2)
   | Enot (Enot (Enot (Enot (Enot (e, _), _), _), _), _) ->
-    fprintf oc "(logic.notc %a)" p_expr e
+    Dk.dknotc (trexpr e)
   | Enot (Enot ( Eand (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    fprintf oc "(logic.andc %a %a)" p_expr e1 p_expr e2
+    Dk.dkandc (trexpr e1) (trexpr e2)
   | Enot (Enot ( Eor (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    fprintf oc "(logic.orc %a %a)" p_expr e1 p_expr e2
+    Dk.dkorc (trexpr e1) (trexpr e2)
   | Enot (Enot ( Eimply (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    fprintf oc "(logic.implyc %a %a)" p_expr e1 p_expr e2
-  | Enot (Enot (Etrue, _), _) -> fprintf oc "logic.Truec"
-  | Enot (Enot (Efalse, _), _) -> fprintf oc "logic.Falsec"
+    Dk.dkimplyc (trexpr e1) (trexpr e2)
+  | Enot (Enot (Etrue, _), _) -> Dk.dktruec
+  | Enot (Enot (Efalse, _), _) -> Dk.dkfalsec
   | Enot (Enot (
-    Eall (Evar (x, _), s, Enot (Enot (e, _), _), _), _), _) ->
-    fprintf oc "(logic.forallc (%s:logic.Term => %a))" x p_expr e
+    Eall (e1, s, Enot (Enot (e2, _), _), _), _), _) ->
+    Dk.dkforallc (trexpr e1) (trexpr e2)
   | Enot (Enot (
-    Eex (Evar (x, _), s, Enot (Enot (e, _), _), _), _), _) ->
-    fprintf oc "(logic.existsc (%s:logic.Term => %a))" x p_expr e
+    Eex (e1, s, Enot (Enot (e2, _), _), _), _), _) ->
+    Dk.dkexistsc (trexpr e1) (trexpr e2)
   | Enot (Enot (Eapp ("=", [e1;e2], _), _), _) ->
-    fprintf oc "(logic.equalc %a %a)" p_expr e1 p_expr e2
+    Dk.dkeqc (trexpr e1) (trexpr e2)
   | Evar (v, _) when Mltoll.is_meta v ->
-    fprintf oc "%t" p_anyterm
+    Dk.dkanyterm
   | Evar (v, _) ->
-    fprintf oc "%a" p_chars v
-  | Eapp ("$string", [v], _) ->
-    fprintf oc "S%a" p_expr v
+    Dk.dkvar v
+  | Eapp ("$string", [e], _) ->
+    begin match e with Evar (v, _) -> Dk.dkvar ("S"^v) | _ -> assert false end
   | Eapp ("=", [e1;e2], _) ->
-    fprintf oc "(logic.equal %a %a)" p_expr e1 p_expr e2
-  | Eapp (s, [], _) ->
-    fprintf oc "%a" p_chars s
+    Dk.dkeq (trexpr e1) (trexpr e2)
   | Eapp (s, args, _) ->
-    fprintf oc "(%a %a)" p_chars s (p_list p_expr) args
+    Dk.dkapp (Dk.dkvar s) (List.map trexpr args)
   | Enot (e, _) ->
-    fprintf oc "(logic.not %a)" p_expr e
+    Dk.dknot (trexpr e)
   | Eand (e1, e2, _) ->
-    fprintf oc "(logic.and %a %a)" p_expr e1 p_expr e2
+    Dk.dkand (trexpr e1) (trexpr e2)
   | Eor (e1, e2, _) ->
-    fprintf oc "(logic.or %a %a)" p_expr e1 p_expr e2
+    Dk.dkor (trexpr e1) (trexpr e2)
   | Eimply (e1, e2, _) ->
-    fprintf oc "(logic.imply %a %a)" p_expr e1 p_expr e2
-  | Etrue -> fprintf oc "logic.True"
-  | Efalse -> fprintf oc "logic.False"
-  | Eall (Evar (x, _), s, e, _) ->
-    fprintf oc "(logic.forall (%s:logic.Term => %a))" x p_expr e
-  | Eex (Evar (x, _), s, e, _) ->
-    fprintf oc "(logic.exists (%s:logic.Term => %a))" x p_expr e
-  | Elam _ -> fprintf oc "errorlam"
-  | Eequiv _ -> fprintf oc "errorequiv"
-  | Emeta _ -> fprintf oc "errormeta"
-  | Eall _ -> fprintf oc "errorall"
-  | Eex _ -> fprintf oc "errorex"
-  | Etau _ -> assert false
+    Dk.dkimply (trexpr e1) (trexpr e2)
+  | Etrue -> Dk.dktrue
+  | Efalse -> Dk.dkfalse
+  | Eall (e1, s, e2, _) ->
+    Dk.dkforall (trexpr e1) (trexpr e2)
+  | Eex (e1, s, e2, _) ->
+    Dk.dkexists (trexpr e1) (trexpr e2)
+  | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
+
+let rec p_expr oc e =
+  Dk.p_term_p oc (trexpr e)
 
 let p_prf oc e =
   fprintf oc "logic.prf %a" p_expr e
@@ -528,7 +522,7 @@ let output oc phrases ppphrases llp filename =
       | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) filename;
     Buffer.add_string buf "todk";
     Buffer.contents buf in
-  Dkterm.p_line oc (Dkterm.mk_prelude name);
+  Dk.p_line oc (Dk.dkprelude name);
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;
@@ -537,6 +531,5 @@ let output oc phrases ppphrases llp filename =
   
 let outputterm oc phrases ppphrases llp =
   Lltolj.hypothesis_env := [];
-  let sigs = get_signatures phrases in
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp)
