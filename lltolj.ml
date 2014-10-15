@@ -275,11 +275,11 @@ let rec use_defs e =
   match e with
   | Evar (v, _) when Hashtbl.mem definition_env v ->
     let (params, body) = Hashtbl.find definition_env v in
-    body
+    use_defs body
   | Eapp (s, args, _) when Hashtbl.mem definition_env s ->
     let exprs = List.map use_defs args in
     let (params, body) = Hashtbl.find definition_env s in
-    substitute (List.combine params exprs) body
+    use_defs (substitute (List.combine params exprs) body)
   | Evar _ | Etrue | Efalse -> e
   | Eapp (s, args, _) ->
     eapp (s, List.map use_defs args)
