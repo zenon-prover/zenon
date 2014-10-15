@@ -411,19 +411,30 @@ let p_signature oc (sym, sign) =
         | _ -> assert false;
       end
 
-let declare_hyp oc h =
+let declare_hyp h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
     Lltolj.hypothesis_env :=
-      stmt :: !Lltolj.hypothesis_env;
-  | Phrase.Def (DefReal ("", sym, params, body, None)) ->
+      stmt :: !Lltolj.hypothesis_env
+  | Phrase.Def (DefReal (_, sym, params, body, None)) ->
     Hashtbl.add Lltolj.definition_env
-      sym (params, body);
+      sym (params, body)
+  | Phrase.Def (DefReal (_, sym, params, body, Some _)) -> assert false
+  | Phrase.Def (DefPseudo (_, _, _, _)) -> assert false
+  | Phrase.Def (DefRec (_, _, _, _)) -> assert false
+  | Phrase.Sig _ -> assert false
+  | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
+
+let p_hyp oc h =
+  match h with
+  | Phrase.Hyp (name, _, _) when name = goal_name -> ()
+  | Phrase.Hyp (name, stmt, _) -> ()
+  | Phrase.Def (DefReal ("", sym, params, body, None)) ->
     fprintf oc "[%a] " (p_comma_list p_var) params;
     fprintf oc "%s %a " sym (p_list p_var) params;
     fprintf oc "--> %a.\n" p_expr body;
-  | _ -> assert false
+  | _ -> ()                      (* TODO: to implement *)
 
 let rec add_distinct_terms_axioms l =
   match l with
@@ -450,11 +461,13 @@ let output oc phrases ppphrases llp filename =
   Dk.p_line oc (Dk.dkprelude name);
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
-  List.iter (declare_hyp oc) phrases;
+  List.iter declare_hyp phrases;
+  List.iter (p_hyp oc) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp)
 
 let outputterm oc phrases ppphrases llp =
   Lltolj.hypothesis_env := [];
   add_distinct_terms_axioms !Lltolj.distinct_terms;
+  List.iter declare_hyp phrases;
   p_theorem oc phrases (List.rev llp)
