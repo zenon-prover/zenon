@@ -432,7 +432,7 @@ let output oc phrases ppphrases llp filename =
   List.iter (declare_hyp oc sigs) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp)
-  
+
 let outputterm oc phrases ppphrases llp =
   Lltolj.hypothesis_env := [];
   add_distinct_terms_axioms !Lltolj.distinct_terms;
