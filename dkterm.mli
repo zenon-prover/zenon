@@ -34,6 +34,7 @@ type dkline = private
   | Dkdecl of dkterm * dkterm
   | Dkdeftype of dkterm * dkterm * dkterm
   | Dkprelude of string
+  | Dkrewrite of (dkterm * dkterm) list * dkterm * dkterm
 
 (* constructor functions *)
 val dkvar : dkvar -> dkterm
@@ -70,6 +71,7 @@ val dkequiv : dkterm -> dkterm -> dkterm
 val dkdecl : dkterm -> dkterm -> dkline
 val dkdeftype : dkterm -> dkterm -> dkterm -> dkline
 val dkprelude : string -> dkline
+val dkrewrite : (dkterm * dkterm) list -> dkterm -> dkterm -> dkline
 
 (* print functions *)
 val p_var : out_channel -> dkvar -> unit

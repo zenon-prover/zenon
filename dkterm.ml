@@ -29,12 +29,13 @@ type dkterm =
   | Dktruec
   | Dkfalsec
   | Dkeqc
-  | Dkequiv
+  | Dkequiv 
 
 type dkline =
   | Dkdecl of dkterm * dkterm
   | Dkdeftype of dkterm * dkterm * dkterm
   | Dkprelude of string
+  | Dkrewrite of (dkterm * dkterm) list * dkterm * dkterm
 
 let dkvar var = Dkvar var
 let dklam var t term = Dklam (var, t, term)
@@ -71,6 +72,7 @@ let dkequiv p q = dkapp3 Dkequiv p q
 let dkdecl t term = Dkdecl (t, term)
 let dkdeftype t termtype term = Dkdeftype (t, termtype, term)
 let dkprelude name = Dkprelude (name)
+let dkrewrite env t1 t2 = Dkrewrite (env, t1, t2)
 
 let p_var out var = fprintf out "%s" var
 
@@ -122,6 +124,18 @@ and p_terms out terms =
     fprintf out "%a %a"
       p_term_p t p_terms q
 
+let p_env out env =
+  let p_type out (x, t) =
+    fprintf out "%a: %a"
+      p_term x
+      p_term t in
+  match env with 
+  | e1 :: e2 :: env ->
+    fprintf out "%a, %a"
+      p_type e1
+      p_type e2
+  | _ -> List.iter (p_type out) env
+
 let p_line out line =
   match line with
   | Dkdecl (t, term) -> 
@@ -133,4 +147,8 @@ let p_line out line =
       p_term t 
       p_term typeterm
       p_term term
-  | Dkprelude (name) -> fprintf out "#NAME %s.\n" name;
+  | Dkprelude (name) -> fprintf out "#NAME %s.\n" name
+  | Dkrewrite (env, t1, t2) ->
+    fprintf out "[%a] " p_env env;
+    fprintf out "%a " p_term t1;
+    fprintf out "--> %a.\n" p_term t2;
