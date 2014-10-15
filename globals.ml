@@ -21,3 +21,10 @@ let proof_nodes = ref 0;;
 let top_num_forms = ref 0;;
 let stored_lemmas = ref 0;;
 let num_expr = ref 0;;
+
+type var_declaration =
+  | Type of string
+  | Var of string * string
+  | Hyp of string * Expr.expr
+
+let var_declarations = ref [];;
