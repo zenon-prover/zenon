@@ -70,9 +70,6 @@ let rec trexpr e =
     Dk.dkexists (trexpr e1) (trexpr e2)
   | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
 
-let p_str s oc =
-  fprintf oc "%s" s
-
 (* the left part of sequents can only grow: the left part of the conclusion is always contained in the left part of the hypothesis
 weakening is implicit*)
 
@@ -119,7 +116,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
       Dk.p_term_p (trexpr goal)
       Dk.p_term_p (Dk.dkvar var1) Dk.p_term_p (Dk.dkprf (trexpr e1)) 
       Dk.p_term_p (Dk.dkvar var2) Dk.p_term_p (Dk.dkprf (trexpr e2)) 
-      p_proof (lkrule, goal, (e1, p_str var1) :: (e2, p_str var2) :: gamma)
+      p_proof (lkrule, goal, (e1, fun oc -> Dk.p_term_p oc (Dk.dkvar var1)) :: (e2, fun oc -> Dk.p_term_p oc (Dk.dkvar var2)) :: gamma)
   | SClor (e1, e2, lkrule1, lkrule2) ->
     let var1 = new_hypo () in
     let var2 = new_hypo () in
@@ -127,9 +124,9 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_hyp (eor (e1, e2))
       Dk.p_term_p (trexpr goal)
       Dk.p_term_p (Dk.dkvar var1) Dk.p_term_p (Dk.dkprf (trexpr e1))
-      p_proof (lkrule1, goal, (e1, p_str var1) :: gamma)
+      p_proof (lkrule1, goal, (e1, fun oc -> Dk.p_term_p oc (Dk.dkvar var1)) :: gamma)
       Dk.p_term_p (Dk.dkvar var2) Dk.p_term_p (Dk.dkprf (trexpr e2))
-      p_proof (lkrule2, goal, (e2, p_str var2) :: gamma)
+      p_proof (lkrule2, goal, (e2, fun oc -> Dk.p_term_p oc (Dk.dkvar var2)) :: gamma)
   | SClimply (e1, e2, lkrule1, lkrule2) ->
     let p_aux oc =
       fprintf oc "(%a %a)"
@@ -153,7 +150,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
       p_hyp ep Dk.p_term_p (trexpr goal)
       Dk.p_term_p (trexpr v) var Dk.p_term_p (trexpr q)
       p_proof
-      (lkrule, goal, (q, p_str var) :: gamma)
+      (lkrule, goal, (q, fun oc -> Dk.p_term_p oc (Dk.dkvar var)) :: gamma)
   | SCrand (e1, e2, lkrule1, lkrule2) ->
     let prop = new_prop () in
     let var = new_hypo () in
@@ -180,12 +177,12 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SCrimply (e1, e2, lkrule) ->
     let var = new_hypo () in
     poc "(%s : %a => %a)"
-      var Dk.p_term_p (Dk.dkprf (trexpr e1)) p_proof (lkrule, e2, (e1, p_str var) :: gamma)
+      var Dk.p_term_p (Dk.dkprf (trexpr e1)) p_proof (lkrule, e2, (e1, fun oc -> Dk.p_term_p oc (Dk.dkvar var)) :: gamma)
   | SCrnot (e, lkrule) ->
     let var = new_hypo () in
     poc "(%a : %a => %a)" 
       Dk.p_term_p (Dk.dkvar var) Dk.p_term_p (Dk.dkprf (trexpr e)) 
-      p_proof (lkrule, efalse, (e, p_str var) :: gamma)
+      p_proof (lkrule, efalse, (e, fun oc -> Dk.p_term_p oc (Dk.dkvar var)) :: gamma)
   | SCrall (Eall (x, ty, p, _), v, lkrule) ->
     let q = substitute [(x, v)] p in
     poc "(%a:logic.Term => %a)"
