@@ -19,43 +19,6 @@ let new_prop () = sprintf "P%d" (new_name ())
 
 let new_term () = sprintf "X%d" (new_name ())
 
-let rec p_list printer oc l =
-  match l with
-  | [] -> ()
-  | [a] -> fprintf oc "%a" printer a
-  | a :: args ->
-    fprintf oc "%a %a"
-      printer a (p_list printer) args
-
-let rec p_comma_list printer oc l =
-  match l with
-  | [] -> ()
-  | [a] -> fprintf oc "%a" printer a
-  | a :: args ->
-    fprintf oc "%a, %a"
-      printer a (p_comma_list printer) args
-
-let rec p_single_arrow_list printer oc l =
-  match l with
-  | [] -> ()
-  | [a] -> fprintf oc "%a" printer a
-  | a :: args ->
-    fprintf oc "%a -> %a"
-      printer a (p_single_arrow_list printer) args
-
-let rec p_double_arrow_list printer oc l =
-  match l with
-  | [] -> ()
-  | [a] -> fprintf oc "%a" printer a
-  | a :: args ->
-    fprintf oc "%a => %a"
-      printer a (p_double_arrow_list printer) args
-
-let p_var oc e =
-match e with
-| Evar(s, _) -> fprintf oc "%s" s;
-| _ -> assert false
-
 let rec p_chars oc s =
   let n = Char.code (String.get s 0) in
   if not ((64 < n && n < 91)||(96 < n && n < 123))
@@ -403,15 +366,26 @@ let p_signature oc (sym, sign) =
   fprintf oc "%a : " p_expr (evar sym);
   match sign with
   | Default (arity, kind) ->
-      begin
-        p_arity arity;
-        match kind with
-        | Prop -> fprintf oc "logic.Prop.\n";
-        | Term -> fprintf oc "logic.Term.\n";
-        | _ -> assert false;
-      end
+    p_arity arity;
+    match kind with
+    | Prop -> fprintf oc "logic.Prop.\n";
+    | Term -> fprintf oc "logic.Term.\n";
+    | _ -> assert false
 
-let declare_hyp oc h =
+let find_signature sign =
+    match sign with
+    | Default (arity, kind) ->
+      let endtype = 
+	match kind with
+	| Prop -> Dk.dkproptype
+	| Term -> Dk.dktermtype
+	| _ -> assert false in
+      let rec add_arrow n =
+	if n = 0 then endtype else
+	  Dk.dkarrow Dk.dktermtype (add_arrow (n-1)) in
+      add_arrow arity
+
+let declare_hyp oc sigs h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
@@ -420,9 +394,15 @@ let declare_hyp oc h =
   | Phrase.Def (DefReal ("", sym, params, body, None)) ->
     Hashtbl.add Lltolj.definition_env
       sym (params, body);
-    fprintf oc "[%a] " (p_comma_list p_var) params;
-    fprintf oc "%s %a " sym (p_list p_var) params;
-    fprintf oc "--> %a.\n" p_expr body;
+    let vars, types = 
+      List.split 
+	(List.map 
+	   (fun e -> match e with
+	   | Evar (v, _) -> let t = find_signature (List.assoc v sigs) in trexpr e, t
+	   | _ -> assert false) params) in
+    Dk.p_line oc 
+      (Dk.dkrewrite (List.combine vars types)
+	 (Dk.dkapp (Dk.dkvar sym) vars) (trexpr body))
   | _ -> assert false
 
 let rec add_distinct_terms_axioms l =
@@ -434,23 +414,22 @@ let rec add_distinct_terms_axioms l =
     add_distinct_terms_axioms ((y, m) :: l);
   | _ -> ()
 
-let timeout = ref 10
+let modname name =
+  let buf = Buffer.create (2*String.length name) in
+  String.iter 
+    (fun c -> match c with
+    | 'a'..'z' | 'A'..'Z' | '0'..'9' -> Buffer.add_char buf c
+    | '_' -> Buffer.add_string buf "__" 
+    | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) name;
+  Buffer.add_string buf "todk";
+  Buffer.contents buf
 
 let output oc phrases ppphrases llp filename =
   Lltolj.hypothesis_env := [];
-  let name = 
-    let buf = Buffer.create (2*String.length filename) in
-    String.iter 
-      (fun c -> match c with
-      | 'a'..'z' | 'A'..'Z' | '0'..'9' -> Buffer.add_char buf c
-      | '_' -> Buffer.add_string buf "__" 
-      | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) filename;
-    Buffer.add_string buf "todk";
-    Buffer.contents buf in
-  Dk.p_line oc (Dk.dkprelude name);
+  Dk.p_line oc (Dk.dkprelude (modname filename));
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
-  List.iter (declare_hyp oc) phrases;
+  List.iter (declare_hyp oc sigs) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp)
   
