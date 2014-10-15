@@ -507,8 +507,9 @@ let rec hypstoadd rule =
   | Rextension (ext, name, args, concs, hyps) ->
     hyps, concs
   | Rlemma (name, args) ->
-    assert false;
-  | _ -> assert false
+    assert false
+  | Rdefinition (name, sym, args, body, recarg, e1, e2) ->
+    [[e2]], [e1]
 
 and lltolk proof goal =
   let pregamma =
