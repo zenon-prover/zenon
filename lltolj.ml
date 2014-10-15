@@ -64,7 +64,11 @@ and lkproof =
 
 let ingamma e proof =
   let g, c, rule = proof in
-  List.exists (equal e) g
+  let b = List.exists (equal e) g in
+  if not b then
+    (p_debug "Error: expression" [e];
+     p_debug_proof "not found in proof context" proof);
+  b
 
 let rec rm a list =
   match list with
@@ -152,11 +156,11 @@ let scrorr (e1, e2, proof) =
   let (g, d, rule) = proof in
   g, eor (e1, e2), SCrorr (e1, e2, proof)
 let scrimply (e1, e2, proof) =
-  assert (ingamma e1 proof);
+  ignore (ingamma e1 proof);
   let (g, d, rule) = proof in
   rm e1 g, eimply (e1, e2), SCrimply (e1, e2, proof)
 let scrnot (e, proof) =
-  assert (ingamma e proof);
+  ignore (ingamma e proof);
   let (g, d, rule) = proof in
   rm e g, enot e, SCrnot (e, proof)
 let scrall (e1, v, proof) =
