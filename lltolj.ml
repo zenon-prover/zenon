@@ -625,7 +625,8 @@ let rec lefttoright e proof =
       | SCcut (a, prf1, prf2)
 	  when (not (useful ne prf1)) ->
 	sccut (a, clean ne prf1, lefttoright e prf2)
-      | SClnot _ | SCcut _ | SClimply _ ->
+      | SClnot _ | SCcut _ | SClimply _
+      | SCext _ ->
 	sccnot (e, proof)
       | SCaxiom _ | SCfalse ->
 	scfalse (rm efalse (rm ne g), e)
@@ -634,7 +635,6 @@ let rec lefttoright e proof =
       | SCrex _ | SCrall _ | SCrand _ | SCrorr _ | SCrorl _
       | SCrimply _ | SCrnot _ | SCeqfunc _ | SCeqprop _
       | SCeqsym _ | SCeqref _ | SCtrue | SCcnot _ | SCrweak _
-      | SCext _
 	-> assert false
 
 and righttoleft e proof =
