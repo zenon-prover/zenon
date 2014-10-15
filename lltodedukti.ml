@@ -70,18 +70,6 @@ let rec trexpr e =
     Dk.dkexists (trexpr e1) (trexpr e2)
   | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
 
-let rec p_expr oc e =
-  Dk.p_term_p oc (trexpr e)
-
-let p_prf oc e =
-  fprintf oc "logic.prf %a" p_expr e
-
-let p_declare oc (e, printer) =
-  fprintf oc "%t : %a" printer p_expr e
-
-let p_declare_prf oc (e, printer) =
-  fprintf oc "%t : %a" printer p_prf e
-
 let p_str s oc =
   fprintf oc "%s" s
 
@@ -93,12 +81,12 @@ let rec p_proof oc (lkproof, goal, gamma) =
   let g, d, lkrule = lkproof in
   let p_hyp oc e =
     try (List.assoc e gamma) oc
-    with Not_found -> fprintf oc "axiom error" in
+    with Not_found -> assert false in
   match lkrule with
   | SCaxiom (e) ->
     poc "%a" p_hyp e
   | SCfalse ->
-    poc "(%a %a)" p_hyp efalse p_expr goal
+    poc "(%a %a)" p_hyp efalse Dk.p_term_p (trexpr goal)
   | SCtrue ->
     let prop = new_prop () in
     let var = new_hypo () in
@@ -117,7 +105,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let term = new_term () in
     poc "(%a (%s:logic.Term => %a) %a)"
       p_hyp (eapp ("=", [a; b]))
-      term p_expr (eapp ("=", [evar term; a]))
+      term Dk.p_term_p (trexpr (eapp ("=", [evar term; a])))
       p_proof (sceqref (a, []), eapp ("=", [a; a]), gamma)
   | SCcut (e, lkrule1, lkrule2) ->
     poc "%a" p_proof
@@ -126,20 +114,21 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SCland (e1, e2, lkrule) ->
     let var1 = new_hypo () in
     let var2 = new_hypo () in
-    poc "(%a %a (%a => %a => %a))"
+    poc "(%a %a (%a : %a => %a : %a => %a))"
       p_hyp (eand (e1, e2))
-      p_expr goal
-      p_declare_prf (e1, p_str var1) p_declare_prf (e2, p_str var2)
+      Dk.p_term_p (trexpr goal)
+      Dk.p_term_p (Dk.dkvar var1) Dk.p_term_p (Dk.dkprf (trexpr e1)) 
+      Dk.p_term_p (Dk.dkvar var2) Dk.p_term_p (Dk.dkprf (trexpr e2)) 
       p_proof (lkrule, goal, (e1, p_str var1) :: (e2, p_str var2) :: gamma)
   | SClor (e1, e2, lkrule1, lkrule2) ->
     let var1 = new_hypo () in
     let var2 = new_hypo () in
-    poc "(%a %a (%a => %a) (%a => %a))"
+    poc "(%a %a (%a : %a => %a) (%a : %a => %a))"
       p_hyp (eor (e1, e2))
-      p_expr goal
-      p_declare_prf (e1, p_str var1)
+      Dk.p_term_p (trexpr goal)
+      Dk.p_term_p (Dk.dkvar var1) Dk.p_term_p (Dk.dkprf (trexpr e1))
       p_proof (lkrule1, goal, (e1, p_str var1) :: gamma)
-      p_declare_prf (e2, p_str var2)
+      Dk.p_term_p (Dk.dkvar var2) Dk.p_term_p (Dk.dkprf (trexpr e2))
       p_proof (lkrule2, goal, (e2, p_str var2) :: gamma)
   | SClimply (e1, e2, lkrule1, lkrule2) ->
     let p_aux oc =
@@ -153,7 +142,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SClall (Eall (x, ty, p, _) as ap, t, lkrule) ->
     let p_aux oc =
       fprintf oc "(%a %a)"
-	p_hyp ap p_expr t in
+	p_hyp ap Dk.p_term_p (trexpr t) in
     poc "%a"
       p_proof
       (lkrule, goal, (substitute [(x, t)] p, p_aux) :: gamma)
@@ -161,8 +150,8 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let q = substitute [(x, v)] p in
     let var = new_hypo () in
     poc "(%a %a (%a:logic.Term => %s:logic.prf %a => %a))"
-      p_hyp ep p_expr goal
-      p_expr v var p_expr q
+      p_hyp ep Dk.p_term_p (trexpr goal)
+      Dk.p_term_p (trexpr v) var Dk.p_term_p (trexpr q)
       p_proof
       (lkrule, goal, (q, p_str var) :: gamma)
   | SCrand (e1, e2, lkrule1, lkrule2) ->
@@ -170,42 +159,45 @@ let rec p_proof oc (lkproof, goal, gamma) =
     let var = new_hypo () in
     poc "(%s : logic.Prop => %s : (%a -> %a -> logic.prf %s) => %s %a %a)"
       prop var
-      p_prf e1 p_prf e2 prop
+      Dk.p_term_p (Dk.dkprf (trexpr e1)) Dk.p_term_p (Dk.dkprf (trexpr e2)) prop
       var p_proof (lkrule1, e1, gamma) p_proof (lkrule2, e2, gamma)
   | SCrorl (e1, e2, lkrule) ->
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
     poc "(%s : logic.Prop => %s : (%a -> logic.prf %s) => %s : (%a -> logic.prf %s) => %s %a)"
-      prop var1 p_prf e1 prop var2 p_prf e2 prop
+      prop var1 Dk.p_term_p (Dk.dkprf (trexpr e1)) prop var2 
+      Dk.p_term_p (Dk.dkprf (trexpr e2)) prop
       var1 p_proof (lkrule, e1, gamma)
   | SCrorr (e1, e2, lkrule) ->
     let prop = new_prop () in
     let var1 = new_hypo () in
     let var2 = new_hypo () in
     poc "(%s : logic.Prop => %s : (%a -> logic.prf %s) => %s : (%a -> logic.prf %s) => %s %a)"
-      prop var1 p_prf e1 prop var2 p_prf e2 prop
+      prop var1 Dk.p_term_p (Dk.dkprf (trexpr e1)) prop var2 
+      Dk.p_term_p (Dk.dkprf (trexpr e2)) prop
       var2 p_proof (lkrule, e2, gamma)
   | SCrimply (e1, e2, lkrule) ->
     let var = new_hypo () in
     poc "(%s : %a => %a)"
-      var p_prf e1 p_proof (lkrule, e2, (e1, p_str var) :: gamma)
+      var Dk.p_term_p (Dk.dkprf (trexpr e1)) p_proof (lkrule, e2, (e1, p_str var) :: gamma)
   | SCrnot (e, lkrule) ->
     let var = new_hypo () in
-    poc "(%a => %a)" p_declare_prf (e, p_str var)
+    poc "(%a : %a => %a)" 
+      Dk.p_term_p (Dk.dkvar var) Dk.p_term_p (Dk.dkprf (trexpr e)) 
       p_proof (lkrule, efalse, (e, p_str var) :: gamma)
   | SCrall (Eall (x, ty, p, _), v, lkrule) ->
     let q = substitute [(x, v)] p in
     poc "(%a:logic.Term => %a)"
-      p_expr v p_proof
+      Dk.p_term_p (trexpr v) p_proof
       (lkrule, q, gamma)
   | SCrex (Eex (x, ty, p, _), t, lkrule) ->
     let prop = new_prop () in
     let var = new_hypo () in
     poc "(%s:logic.Prop => %s: (%a:logic.Term -> logic.prf %a -> logic.prf %s) => %s %a %a)"
       prop var
-      p_expr x p_expr p prop
-      var p_expr t
+      Dk.p_term_p (trexpr x) Dk.p_term_p (trexpr p) prop
+      var Dk.p_term_p (trexpr t)
       p_proof (lkrule, substitute [(x, t)] p, gamma)
   | SCcnot (e, lkrule) ->
     poc "proof must be constructive"
@@ -215,7 +207,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
   | SCrweak (e, lkrule) ->
     poc "(%a %a)"
       p_proof (lkrule, efalse, gamma)
-      p_expr e
+      Dk.p_term_p (trexpr e)
   | SCeqfunc (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let pred = new_prop () in
     let var = new_hypo () in
@@ -228,13 +220,13 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	let term = new_term () in
 	poc "(%a (%s:logic.Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
-	  term p_expr
-	  (eapp (pred, [eapp (p, xts @ ((evar term) :: us))]))
+	  term Dk.p_term_p (trexpr
+	  (eapp (pred, [eapp (p, xts @ ((evar term) :: us))])))
 	  itereq ((xts@[t]), ts, us)
       | _ -> assert false;
     in
     poc "(%s:(logic.Term -> logic.Prop) => %s:logic.prf %a => %a)"
-      pred var p_expr (eapp (pred, [eapp (p, ts)]))
+      pred var Dk.p_term_p (trexpr (eapp (pred, [eapp (p, ts)])))
       itereq ([], ts, us)
   | SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let rec itereq oc (xts, ts, us) =
@@ -244,7 +236,7 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	let term = new_term () in
 	poc "(%a (%s:logic.Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
-	  term p_expr (eapp (p, xts @ ((evar term) :: us)))
+	  term Dk.p_term_p (trexpr (eapp (p, xts @ ((evar term) :: us))))
 	  itereq ((xts@[t]), ts, us)
       | _ -> assert false;
     in
@@ -255,7 +247,7 @@ let rec p_tree oc proof goal =
   let ljproof = lltolj proof goal in
   let conc = scconc ljproof in
   fprintf oc "conjecture_proof : %a :=\n"
-    p_prf conc;
+    Dk.p_term_p (Dk.dkprf (trexpr conc));
   fprintf oc "%a."
     p_proof (ljproof, conc, [])
 
@@ -350,7 +342,7 @@ let p_signature oc (sym, sign) =
       p_arity (n-1);
     end;
   in
-  fprintf oc "%a : " p_expr (evar sym);
+  fprintf oc "%a : " Dk.p_term_p (trexpr (evar sym));
   match sign with
   | Default (arity, kind) ->
     p_arity arity;
