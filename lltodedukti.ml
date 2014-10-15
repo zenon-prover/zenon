@@ -163,55 +163,12 @@ let rec p_proof oc (lkproof, goal, gamma) =
 	  eapp (prop, [a]),
 	  scaxiom (eapp (prop, [a]), [])),
 	eimply (eapp (prop, [a]), eapp (prop, [a])), gamma)
-      (*p_proof (
-	scrand (
-	  eimply (eapp (prop, [a]), eapp (prop, [a])),
-	  eimply (eapp (prop, [a]), eapp (prop, [a])),
-	  scrimply (
-	    eapp (prop, [a]),
-	    eapp (prop, [a]),
-	    scaxiom (eapp (prop, [a]), [])),
-	  scrimply (
-	    eapp (prop, [a]),
-	    eapp (prop, [a]),
-	    scaxiom (eapp (prop, [a]), []))),
-	eand (
-	  eimply (eapp (prop, [a]), eapp (prop, [a])),
-	  eimply (eapp (prop, [a]), eapp (prop, [a]))), gamma)*)
   | SCeqsym (a, b) ->
-(*    let prop = new_prop () in
-    let imp1 = eimply (eapp (prop, [a]), eapp (prop, [b])) in
-    let imp2 = eimply (eapp (prop, [b]), eapp (prop, [a])) in
-    let eq = eand (imp1, imp2) in
-    let var1 = new_hypo () in
-    let var2 = new_hypo () in*)
     let term = new_term () in
     poc "(%a (%s:logic.Term => %a) %a)"
       p_hyp (eapp ("=", [a; b]))
       term p_expr (eapp ("=", [evar term; a]))
       p_proof (sceqref (a, []), eapp ("=", [a; a]), gamma)
-  (*p_proof (
-	scland (imp1, imp2, scrand (
-	  imp2, imp1,
-	  scaxiom ( eimply (
-	    eapp (prop, [b]), eapp (prop, [a])), [imp1]),
-	  scaxiom ( eimply (
-	    eapp (prop, [a]), eapp (prop, [b])), [imp2]))),
-	eand (imp2, imp1),
-	(imp1, fun oc ->
-	  fprintf oc "(%a %s %a (%a => %a => %s))"
-	    p_hyp (eapp ("=", [a; b])) prop p_expr imp1
-	    p_declare_prf (imp1, p_str var1)
-	    p_declare_prf (imp2, p_str var2) var1) ::
-	  (imp2, fun oc ->
-	    fprintf oc "(%a %s %a (%a => %a => %s))"
-	      p_hyp (eapp ("=", [a; b])) prop p_expr imp2
-	      p_declare_prf (imp1, p_str var1)
-	      p_declare_prf (imp2, p_str var2) var2) ::
-	  (eq, fun oc ->
-	    fprintf oc "(%a %s)"
-	      p_hyp (eapp ("=",[a; b])) prop) ::
-	  gamma)*)
   | SCcut (e, lkrule1, lkrule2) ->
     poc "%a" p_proof
       (lkrule2, goal,
@@ -334,8 +291,6 @@ let rec p_proof oc (lkproof, goal, gamma) =
       match ts, us with
       | [], [] -> fprintf oc "%a" p_hyp (eapp (p, xts))
       | t :: ts, u :: us ->
-	(*let var1 = new_hypo () in
-	let var2 = new_hypo () in*)
 	let term = new_term () in
 	poc "(%a (%s:logic.Term => %a) %a)"
 	  p_hyp (eapp ("=", [t; u]))
@@ -344,37 +299,10 @@ let rec p_proof oc (lkproof, goal, gamma) =
       | _ -> assert false;
     in
     poc "%a" itereq ([], ts, us)
-  (*    let rec itereq oc (xts, ts, us) =
-      match ts, us with
-      | [], [] -> fprintf oc "%a" p_hyp (eapp (p, xts))
-      | t :: ts, u :: us ->
-	let var1 = new_hypo () in
-	let var2 = new_hypo () in
-	let term = new_term () in
-	poc "(%a (%s:Term => %a) %a (%a => %a => %s %a))"
-	  p_hyp (eapp ("=", [t; u]))
-	  term p_expr (eapp (p, xts @ ((evar term) :: us)))
-	  p_expr (eapp (p, xts @ (u :: us)))
-	  p_declare_prf (
-	    eimply (
-	      eapp (p, xts @ (t :: us)),
-	      eapp (p, xts @ (u :: us))),
-	    p_str var1)
-	  p_declare_prf (
-	    eimply (
-	      eapp (p, xts @ (u :: us)),
-	      eapp (p, xts @ (t :: us))),
-	    p_str var2)
-	  var1 itereq ((xts@[t]), ts, us)
-      | _ -> assert false;
-    in
-    poc "%a" itereq ([], ts, us)*)
   | _ -> assert false
 
 let rec p_tree oc proof goal =
   let ljproof = lltolj proof goal in
-  (*List.iter
-    (fprintf oc "%a : Term.\n" p_expr) new_terms;*)
   let conc = scconc ljproof in
   fprintf oc "conjecture_proof : %a :=\n"
     p_prf conc;
@@ -509,9 +437,6 @@ let rec add_distinct_terms_axioms l =
 let timeout = ref 10
 
 let output oc phrases ppphrases llp filename =
-(*  eprintf "%a"
-    (fun oc x -> Print.llproof (Print.Chan oc) x)
-    llp;*)
   Lltolj.hypothesis_env := [];
   let name = 
     let buf = Buffer.create (2*String.length filename) in
