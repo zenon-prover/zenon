@@ -362,7 +362,7 @@ let p_signature oc (sym, sign) =
 let find_signature sign =
     match sign with
     | Default (arity, kind) ->
-      let endtype = 
+      let endtype =
 	match kind with
 	| Prop -> Dk.dkproptype
 	| Term -> Dk.dktermtype
@@ -372,22 +372,33 @@ let find_signature sign =
 	  Dk.dkarrow Dk.dktermtype (add_arrow (n-1)) in
       add_arrow arity
 
-let declare_hyp oc sigs h =
+let declare_hyp h =
   match h with
   | Phrase.Hyp (name, _, _) when name = goal_name -> ()
   | Phrase.Hyp (name, stmt, _) ->
     Lltolj.hypothesis_env :=
-      stmt :: !Lltolj.hypothesis_env;
-  | Phrase.Def (DefReal ("", sym, params, body, None)) ->
+      stmt :: !Lltolj.hypothesis_env
+  | Phrase.Def (DefReal (_, sym, params, body, None)) ->
     Hashtbl.add Lltolj.definition_env
-      sym (params, body);
-    let vars, types = 
-      List.split 
-	(List.map 
+      sym (params, body)
+  | Phrase.Def (DefReal (_, sym, params, body, Some _)) -> assert false
+  | Phrase.Def (DefPseudo (_, _, _, _)) -> assert false
+  | Phrase.Def (DefRec (_, _, _, _)) -> assert false
+  | Phrase.Sig _ -> assert false
+  | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
+
+let p_hyp oc sigs h =
+  match h with
+  | Phrase.Hyp (name, _, _) when name = goal_name -> ()
+  | Phrase.Hyp (name, stmt, _) -> ()
+  | Phrase.Def (DefReal ("", sym, params, body, None)) ->
+    let vars, types =
+      List.split
+	(List.map
 	   (fun e -> match e with
 	   | Evar (v, _) -> let t = find_signature (List.assoc v sigs) in trexpr e, t
 	   | _ -> assert false) params) in
-    Dk.p_line oc 
+    Dk.p_line oc
       (Dk.dkrewrite (List.combine vars types)
 	 (Dk.dkapp (Dk.dkvar sym) vars) (trexpr body))
   | _ -> assert false
@@ -403,10 +414,10 @@ let rec add_distinct_terms_axioms l =
 
 let modname name =
   let buf = Buffer.create (2*String.length name) in
-  String.iter 
+  String.iter
     (fun c -> match c with
     | 'a'..'z' | 'A'..'Z' | '0'..'9' -> Buffer.add_char buf c
-    | '_' -> Buffer.add_string buf "__" 
+    | '_' -> Buffer.add_string buf "__"
     | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) name;
   Buffer.add_string buf "todk";
   Buffer.contents buf
@@ -416,11 +427,13 @@ let output oc phrases ppphrases llp filename =
   Dk.p_line oc (Dk.dkprelude (modname filename));
   let sigs = get_signatures phrases in
   List.iter (p_signature oc) sigs;
-  List.iter (declare_hyp oc sigs) phrases;
+  List.iter declare_hyp phrases;
+  List.iter (p_hyp oc sigs) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp)
 
 let outputterm oc phrases ppphrases llp =
   Lltolj.hypothesis_env := [];
   add_distinct_terms_axioms !Lltolj.distinct_terms;
+  List.iter declare_hyp phrases;
   p_theorem oc phrases (List.rev llp)

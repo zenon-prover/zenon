@@ -64,7 +64,11 @@ and lkproof =
 
 let ingamma e proof =
   let g, c, rule = proof in
-  List.exists (equal e) g
+  let b = List.exists (equal e) g in
+  if not b then
+    (p_debug "Error: expression" [e];
+     p_debug_proof "not found in proof context" proof);
+  b
 
 let rec rm a list =
   match list with
@@ -152,11 +156,11 @@ let scrorr (e1, e2, proof) =
   let (g, d, rule) = proof in
   g, eor (e1, e2), SCrorr (e1, e2, proof)
 let scrimply (e1, e2, proof) =
-  assert (ingamma e1 proof);
+  ignore (ingamma e1 proof);
   let (g, d, rule) = proof in
   rm e1 g, eimply (e1, e2), SCrimply (e1, e2, proof)
 let scrnot (e, proof) =
-  assert (ingamma e proof);
+  ignore (ingamma e proof);
   let (g, d, rule) = proof in
   rm e g, enot e, SCrnot (e, proof)
 let scrall (e1, v, proof) =
@@ -275,11 +279,11 @@ let rec use_defs e =
   match e with
   | Evar (v, _) when Hashtbl.mem definition_env v ->
     let (params, body) = Hashtbl.find definition_env v in
-    body
+    use_defs body
   | Eapp (s, args, _) when Hashtbl.mem definition_env s ->
     let exprs = List.map use_defs args in
     let (params, body) = Hashtbl.find definition_env s in
-    substitute (List.combine params exprs) body
+    use_defs (substitute (List.combine params exprs) body)
   | Evar _ | Etrue | Efalse -> e
   | Eapp (s, args, _) ->
     eapp (s, List.map use_defs args)
@@ -625,7 +629,8 @@ let rec lefttoright e proof =
       | SCcut (a, prf1, prf2)
 	  when (not (useful ne prf1)) ->
 	sccut (a, clean ne prf1, lefttoright e prf2)
-      | SClnot _ | SCcut _ | SClimply _ ->
+      | SClnot _ | SCcut _ | SClimply _
+      | SCext _ ->
 	sccnot (e, proof)
       | SCaxiom _ | SCfalse ->
 	scfalse (rm efalse (rm ne g), e)
@@ -634,7 +639,6 @@ let rec lefttoright e proof =
       | SCrex _ | SCrall _ | SCrand _ | SCrorr _ | SCrorl _
       | SCrimply _ | SCrnot _ | SCeqfunc _ | SCeqprop _
       | SCeqsym _ | SCeqref _ | SCtrue | SCcnot _ | SCrweak _
-      | SCext _
 	-> assert false
 
 and righttoleft e proof =
