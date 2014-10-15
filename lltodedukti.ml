@@ -438,12 +438,12 @@ let timeout = ref 10
 
 let output oc phrases ppphrases llp filename =
   Lltolj.hypothesis_env := [];
-  let name = 
+  let name =
     let buf = Buffer.create (2*String.length filename) in
-    String.iter 
+    String.iter
       (fun c -> match c with
       | 'a'..'z' | 'A'..'Z' | '0'..'9' -> Buffer.add_char buf c
-      | '_' -> Buffer.add_string buf "__" 
+      | '_' -> Buffer.add_string buf "__"
       | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) filename;
     Buffer.add_string buf "todk";
     Buffer.contents buf in
@@ -453,7 +453,7 @@ let output oc phrases ppphrases llp filename =
   List.iter (declare_hyp oc) phrases;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
   p_theorem oc phrases (List.rev llp)
-  
+
 let outputterm oc phrases ppphrases llp =
   Lltolj.hypothesis_env := [];
   add_distinct_terms_axioms !Lltolj.distinct_terms;
