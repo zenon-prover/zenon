@@ -19,19 +19,6 @@ let new_prop () = sprintf "P%d" (new_name ())
 
 let new_term () = sprintf "X%d" (new_name ())
 
-let rec p_chars oc s =
-  let n = Char.code (String.get s 0) in
-  if not ((64 < n && n < 91)||(96 < n && n < 123))
-  then fprintf oc "V";
-  String.iter (fprintf oc "%a" p_char) s
-
-and p_char oc c =
-  let n = Char.code c in
-  if (47 < n && n < 58) ||(64 < n && n < 91)
-    ||(96 < n && n < 123) || (n = 95)
-  then fprintf oc "%c" c
-  else fprintf oc "%d" n
-
 let rec trexpr e =
   match e with
   | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
