@@ -94,7 +94,7 @@ body:
          false]) }
 | dep_hyp_def body
               { let (n, l) = $2 in (n, $1 :: l) }
- 
+
 proof_head:
 | BEGINPROOF proofheaders BEGINNAME proofheaders
              { $3 }
@@ -131,7 +131,7 @@ typ:
 | applicative { mk_type_string $1 }
 
 hyp_def:
-| PARAMETER ID COLON term DOT { Phrase.Hyp ($2, $4, 1) }
+| ID COLON term DOT { Phrase.Hyp ($1, $3, 1) }
 | ID COLON term DEF term DOT
      {
        let compact_params = [] in
