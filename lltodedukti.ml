@@ -251,13 +251,6 @@ let rec trproof (lkproof, goal, gamma) =
     itereq ([], ts, us)
   | _ -> assert false
 
-let rec trtree proof goal =
-  let ljproof = Lltolj.lltolj proof goal in
-  let conc = Lltolj.scconc ljproof in
-  Dk.dkdeftype (Dk.dkvar "conjecture_proof")
-    (Dk.dkprf (trexpr conc))
-    (trproof (ljproof, conc, []))
-
 (* END OF TRANSLATING FUNCTIONS *)
 
 (* -------------------------------------------------------------------- *)
@@ -388,7 +381,8 @@ let rec get_goal phrases =
   | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
   | _ :: t -> get_goal t
 
-let output oc phrases ppphrases llp filename printcontext =
+let output oc phrases ppphrases llp filename contextoutput =
+  let goal = get_goal phrases in
   let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
   let distinctshyps = get_distinctshyps distincts in
   Lltolj.hypothesis_env := distinctshyps@hyps;
@@ -398,12 +392,8 @@ let output oc phrases ppphrases llp filename printcontext =
     match List.rev llp with
     | [] -> assert false
     | thm :: lemmas -> thm, lemmas in
-  List.iter
-    (fun lemma ->
-      Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
-    lemmas;
-  let goal = get_goal phrases in
-  if printcontext
+  List.iter (fun lemma -> Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof) lemmas;
+  if contextoutput
   then
     begin
       Dk.p_line oc (Dk.dkprelude (modname filename));
@@ -411,4 +401,9 @@ let output oc phrases ppphrases llp filename printcontext =
       List.iter (Dk.p_line oc) (get_declarations freevars);
       List.iter (Dk.p_line oc) (get_rewritings freevars phrases);
     end;
-  Dk.p_line oc (trtree thm.proof goal)
+  let ljproof, ljconc = Lltolj.lltolj thm.proof goal in
+  let rec dkline =
+    Dk.dkdeftype (Dk.dkvar "conjecture_proof")
+      (Dk.dkprf (trexpr ljconc))
+      (trproof (ljproof, ljconc, [])) in
+  Dk.p_line oc dkline

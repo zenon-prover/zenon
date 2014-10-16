@@ -67,5 +67,5 @@ val hypothesis_env : Expr.expr list ref;;
 val definition_env :
   (string, Expr.expr list * Expr.expr) Hashtbl.t;;
 
-val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof;;
+val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof * Expr.expr;;
 exception Found of Expr.expr;;

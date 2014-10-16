@@ -1365,7 +1365,7 @@ let rec lltoljrule lkproof =
   assert (List.length ljlist = List.length ljg);
   ljlist, ljprf
 
-let rec lltolj proof goal =
+let lltolj proof goal =
   let result = match goal with
     | Some (Enot (g, _)) ->
       let newgoal = use_defs g in
@@ -1384,4 +1384,4 @@ let rec lltolj proof goal =
     )
     result !hypothesis_env in
   let _, ljproof = lltoljrule (*optimize lkproof*) lkproof in
-  ljproof
+  ljproof, scconc ljproof
