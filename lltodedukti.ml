@@ -6,19 +6,6 @@ open Lltolj
 
 module Dk = Dkterm
 
-let new_name =
-  let r = ref 0 in
-  fun () ->
-    let n = !r in
-    incr r;
-    n
-
-let new_hypo () = sprintf "H%d" (new_name ())
-
-let new_prop () = sprintf "P%d" (new_name ())
-
-let new_term () = sprintf "X%d" (new_name ())
-
 let rec trexpr e =
   match e with
   | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
@@ -48,8 +35,9 @@ let rec trexpr e =
     Dk.dkanyterm
   | Evar (v, _) ->
     Dk.dkvar v
-  | Eapp ("$string", [e], _) ->
-    begin match e with Evar (v, _) -> Dk.dkvar ("S"^v) | _ -> assert false end
+  | Eapp ("$string", [Evar (v, _)], _) ->
+    Dk.dkvar ("S"^v)
+  | Eapp ("$string", _, _) -> assert false
   | Eapp ("=", [e1;e2], _) ->
     Dk.dkeq (trexpr e1) (trexpr e2)
   | Eapp (s, args, _) ->
@@ -69,6 +57,16 @@ let rec trexpr e =
   | Eex (e1, s, e2, _) ->
     Dk.dkexists (trexpr e1) (trexpr e2)
   | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
+
+let new_name =
+  let r = ref 0 in
+  fun () ->
+    let n = !r in
+    incr r; n
+
+let new_hypo () = sprintf "H%d" (new_name ())
+let new_prop () = sprintf "P%d" (new_name ())
+let new_term () = sprintf "X%d" (new_name ())
 
 (* the left part of sequents can only grow: the left part of the conclusion is always contained in the left part of the hypothesis
 weakening is implicit*)
@@ -254,20 +252,20 @@ let rec trproof (lkproof, goal, gamma) =
     itereq ([], ts, us)
   | _ -> assert false
 
-let rec p_tree oc proof goal =
+let rec trtree proof goal =
   let ljproof = lltolj proof goal in
   let conc = scconc ljproof in
-  fprintf oc "conjecture_proof : %a :=\n"
-    Dk.p_term_p (Dk.dkprf (trexpr conc));
-  fprintf oc "%a."
-    Dk.p_term (trproof (ljproof, conc, []))
+  Dk.dkdeftype (Dk.dkvar "conjecture_proof")
+    (Dk.dkprf (trexpr conc))
+    (trproof (ljproof, conc, []))
+
 let rec get_goal phrases =
   match phrases with
   | [] -> None
   | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
   | _ :: t -> get_goal t
 
-let p_theorem oc phrases l =
+let trtheorem phrases l =
   match l with
   | [] -> assert false
   | thm :: lemmas ->
@@ -276,134 +274,111 @@ let p_theorem oc phrases l =
 	Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
       lemmas;
     let goal = get_goal phrases in
-    p_tree oc thm.proof goal
+    trtree thm.proof goal
+
+(* --------------------------------------------------------------- *)
 
 type result =
-  | Prop
-  | Term
+  | Typ of Dk.dkterm
   | Indirect of string
-
-type signature =
-  | Default of int * result
 
 let predefined = ["="; "$string"]
 
 let rec get_signatures ps =
-  let symtbl = (Hashtbl.create 97 : (string, signature) Hashtbl.t) in
+  let symtbl = (Hashtbl.create 97 : (string, int * result) Hashtbl.t) in
   let add_sig sym arity kind =
     if not (Hashtbl.mem symtbl sym) then
-      Hashtbl.add symtbl sym (Default (arity, kind))
+      Hashtbl.add symtbl sym (arity, kind)
   in
-  let rec get_sig r env e =
+  let rec get_sig t env e =
     match e with
-    | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 r;
+    | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 t
     | Emeta  _ | Etrue | Efalse -> ()
     | Eapp ("$string", [Evar (s, _)], _) ->
-      (if not (List.mem_assoc e !Lltolj.distinct_terms)
-       then
-	  Lltolj.distinct_terms :=
-	    (e, (List.length !Lltolj.distinct_terms) + 1)
-	  :: !Lltolj.distinct_terms; add_sig ("S"^s) 0 Term)
+      add_sig ("S"^s) 0 (Typ Dk.dktermtype)
     | Eapp (s, args, _) ->
-        add_sig s (List.length args) r;
-	List.iter (get_sig Term env) args;
+      add_sig s (List.length args) t;
+      List.iter (get_sig (Typ Dk.dktermtype) env) args;
     | Eand (e1, e2, _) | Eor (e1, e2, _)
     | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
-      -> get_sig Prop env e1;
-	 get_sig Prop env e2;
-    | Enot (e1, _) -> get_sig Prop env e1;
+      -> get_sig (Typ Dk.dkproptype) env e1;
+	get_sig (Typ Dk.dkproptype) env e2
+    | Enot (e1, _) -> get_sig (Typ Dk.dkproptype) env e1;
     | Eall (Evar (v, _), _, e1, _) | Eex (Evar (v, _), _, e1, _)
-      -> get_sig Prop (v::env) e1;
+      -> get_sig (Typ Dk.dkproptype) (v::env) e1
     | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
   in
   let do_phrase p =
     match p with
       | Phrase.Hyp (name, e, _) ->
-	get_sig Prop [] e;
+	get_sig (Typ Dk.dkproptype) [] e;
       | Phrase.Def (DefReal ("", s, _, e, None)) ->
 	get_sig (Indirect s) [] e;
       | _ -> assert false
   in
   List.iter do_phrase ps;
   let rec follow_indirect path s =
-    if List.mem s path then Prop else
+    if List.mem s path then Dk.dkproptype else
       begin try
         match Hashtbl.find symtbl s with
-	| Default (_, ((Prop|Term) as kind)) -> kind
-	| Default (_, Indirect s1) -> follow_indirect (s::path) s1
-      with Not_found -> Prop
+	| (_, Typ t) -> t
+	| (_, Indirect s1) -> follow_indirect (s::path) s1
+      with Not_found -> Dk.dkproptype
       end
   in
-  let find_sig sym sign l =
+  let rec add_arrow n ty =
+    if n = 0 then ty else
+      Dk.dkarrow Dk.dktermtype (add_arrow (n-1) ty) in
+  let find_sig sym (arity, kind) l =
     if List.mem sym predefined then l
-    else begin
-      match sign with
-      | Default (arity, (Prop|Term)) -> (sym, sign) :: l
-      | Default (arity, Indirect s) ->
-          (sym, Default (arity, follow_indirect [] s)) :: l
-    end
+    else
+      let ty = 
+	match kind with
+	| Typ t -> t
+	| Indirect s -> follow_indirect [] s in
+      (sym, add_arrow arity ty) :: l
   in
   Hashtbl.fold find_sig symtbl []
+    
+let rec get_distincts distincts e =
+    match e with
+    | Eapp ("$string", [Evar (s, _)], _) ->
+      if not (List.mem_assoc e distincts)
+      then (e, (List.length !Lltolj.distinct_terms) + 1) :: distincts
+      else distincts
+    | _ -> distincts
 
-let p_signature oc (sym, sign) =
-  let rec p_arity n =
-    if n = 0 then () else begin
-      fprintf oc "logic.Term -> ";
-      p_arity (n-1);
-    end;
-  in
-  fprintf oc "%a : " Dk.p_term_p (trexpr (evar sym));
-  match sign with
-  | Default (arity, kind) ->
-    p_arity arity;
-    match kind with
-    | Prop -> fprintf oc "logic.Prop.\n";
-    | Term -> fprintf oc "logic.Term.\n";
-    | _ -> assert false
-
-let find_signature sign =
-    match sign with
-    | Default (arity, kind) ->
-      let endtype =
-	match kind with
-	| Prop -> Dk.dkproptype
-	| Term -> Dk.dktermtype
-	| _ -> assert false in
-      let rec add_arrow n =
-	if n = 0 then endtype else
-	  Dk.dkarrow Dk.dktermtype (add_arrow (n-1)) in
-      add_arrow arity
-
-let declare_hyp h =
-  match h with
-  | Phrase.Hyp (name, _, _) when name = goal_name -> ()
-  | Phrase.Hyp (name, stmt, _) ->
-    Lltolj.hypothesis_env :=
-      stmt :: !Lltolj.hypothesis_env
+let get_all (hyps, defs, distincts) p =
+  match p with
+  | Phrase.Hyp (name, e, _) when name = goal_name -> 
+    (hyps, defs, get_distincts distincts e)
+  | Phrase.Hyp (name, e, _) ->
+    (e :: hyps, defs, get_distincts distincts e)
   | Phrase.Def (DefReal (_, sym, params, body, None)) ->
-    Hashtbl.add Lltolj.definition_env
-      sym (params, body)
+    (hyps, (sym, (params, body)) :: defs, get_distincts distincts body)
   | Phrase.Def (DefReal (_, sym, params, body, Some _)) -> assert false
   | Phrase.Def (DefPseudo (_, _, _, _)) -> assert false
   | Phrase.Def (DefRec (_, _, _, _)) -> assert false
   | Phrase.Sig _ -> assert false
   | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
 
-let p_hyp oc sigs h =
-  match h with
-  | Phrase.Hyp (name, _, _) when name = goal_name -> ()
-  | Phrase.Hyp (name, stmt, _) -> ()
-  | Phrase.Def (DefReal ("", sym, params, body, None)) ->
+let declarations freevars = 
+  List.map (fun (sym, ty) -> (Dk.dkdecl (trexpr (evar sym)) ty)) freevars
+
+let rec rewritings freevars phrases =
+  match phrases with
+  | Phrase.Def (DefReal ("", sym, params, body, None)) :: ps ->
     let vars, types =
       List.split
 	(List.map
 	   (fun e -> match e with
-	   | Evar (v, _) -> let t = find_signature (List.assoc v sigs) in trexpr e, t
+	   | Evar (v, _) -> let t = List.assoc v freevars in trexpr e, t
 	   | _ -> assert false) params) in
-    Dk.p_line oc
-      (Dk.dkrewrite (List.combine vars types)
-	 (Dk.dkapp (Dk.dkvar sym) vars) (trexpr body))
-  | _ -> assert false
+    Dk.dkrewrite (List.combine vars types)
+      (Dk.dkapp (Dk.dkvar sym) vars) (trexpr body) 
+    :: (rewritings freevars ps)
+  | p :: ps -> rewritings freevars ps
+  | [] -> []
 
 let rec add_distinct_terms_axioms l =
   match l with
@@ -425,17 +400,21 @@ let modname name =
   Buffer.contents buf
 
 let output oc phrases ppphrases llp filename =
-  Lltolj.hypothesis_env := [];
   Dk.p_line oc (Dk.dkprelude (modname filename));
-  let sigs = get_signatures phrases in
-  List.iter (p_signature oc) sigs;
-  List.iter declare_hyp phrases;
-  List.iter (p_hyp oc sigs) phrases;
+  let freevars = get_signatures phrases in
+  List.iter (Dk.p_line oc) (declarations freevars);
+  List.iter (Dk.p_line oc) (rewritings freevars phrases);
+  let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
+  Lltolj.hypothesis_env := hyps;
+  List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
+  Lltolj.distinct_terms := distincts;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
-  p_theorem oc phrases (List.rev llp)
+  Dk.p_line oc (trtheorem phrases (List.rev llp))
 
 let outputterm oc phrases ppphrases llp =
-  Lltolj.hypothesis_env := [];
+  let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
+  Lltolj.hypothesis_env := hyps;
+  List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
+  Lltolj.distinct_terms := distincts;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
-  List.iter declare_hyp phrases;
-  p_theorem oc phrases (List.rev llp)
+  Dk.p_line oc (trtheorem phrases (List.rev llp))

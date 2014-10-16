@@ -38,5 +38,6 @@ tptp/
 TPTP*.tgz
 *.dko
 dkresults/
+dktest/*.dk
 statistics*
 .merlin
