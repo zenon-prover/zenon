@@ -4,6 +4,7 @@ type dkvar = string
 type dkterm = private
   | Dkvar of dkvar
   | Dklam of dkterm * dkterm * dkterm
+  | Dkpi of dkterm * dkterm * dkterm
   | Dkapp of dkterm list
   | Dkarrow of dkterm * dkterm
   | Dkprf
@@ -40,6 +41,7 @@ type dkline = private
 val dkvar : dkvar -> dkterm
 val dklam : dkterm -> dkterm -> dkterm -> dkterm
 val dklams : dkterm list -> dkterm list -> dkterm -> dkterm
+val dkpi : dkterm -> dkterm -> dkterm -> dkterm
 val dkapp : dkterm -> dkterm list -> dkterm
 val dkapp2 : dkterm -> dkterm -> dkterm
 val dkapp3 : dkterm -> dkterm -> dkterm -> dkterm

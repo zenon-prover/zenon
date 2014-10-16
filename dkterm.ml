@@ -5,6 +5,7 @@ type dkvar = string
 type dkterm = 
   | Dkvar of dkvar
   | Dklam of dkterm * dkterm * dkterm
+  | Dkpi of dkterm * dkterm * dkterm
   | Dkapp of dkterm list
   | Dkarrow of dkterm * dkterm
   | Dkprf
@@ -41,6 +42,7 @@ let dkvar var = Dkvar var
 let dklam var t term = Dklam (var, t, term)
 let dklams vars types e = 
   List.fold_left2 (fun term var t -> dklam var t term) e (List.rev vars) (List.rev types)
+let dkpi var t term = Dkpi (var, t, term)
 let dkapp t ts = Dkapp (t :: ts)
 let dkapp2 t1 t2 = dkapp t1 [t2]
 let dkapp3 t1 t2 t3 = dkapp t1 [t2; t3]
@@ -79,9 +81,12 @@ let p_var out var = fprintf out "%s" var
 let rec p_term out term =
   match term with
   | Dkvar (var) -> p_var out var
-  | Dklam (t, t1, t2) -> 
+  | Dklam (var, t, term) -> 
     fprintf out "%a: %a => %a"
-      p_term t p_term_p t1 p_term_p t2
+      p_term var p_term_p t p_term_p term
+  | Dkpi (var, t, term) ->     
+    fprintf out "%a: %a -> %a"
+      p_term var p_term_p t p_term_p term
   | Dkapp (ts) -> p_terms out ts
   | Dkarrow (t1, t2) -> 
     fprintf out "%a -> %a"
@@ -112,7 +117,7 @@ let rec p_term out term =
 
 and p_term_p out term = 
   match term with
-  | Dklam _ | Dkapp _ | Dkarrow _ ->
+  | Dklam _ | Dkpi _ | Dkapp _ | Dkarrow _ ->
     fprintf out "(%a)" p_term term
   | _ -> p_term out term
 
