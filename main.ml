@@ -371,14 +371,11 @@ let main () =
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
     | Proof_dedukti ->
-      begin
 	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp) 
-	  (Filename.chop_extension (Filename.basename file));
-      end
+	  (Filename.chop_extension (Filename.basename file)) true
     | Proof_deduktiterm -> 
-      begin
-	Lltodedukti.outputterm stdout phrases ppphrases (Lazy.force llp);
-      end
+	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp) 
+	  (Filename.chop_extension (Filename.basename file)) false
     end;
   with
   | Prove.NoProof ->

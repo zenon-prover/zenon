@@ -399,22 +399,18 @@ let modname name =
   Buffer.add_string buf "todk";
   Buffer.contents buf
 
-let output oc phrases ppphrases llp filename =
-  Dk.p_line oc (Dk.dkprelude (modname filename));
-  let freevars = get_signatures phrases in
-  List.iter (Dk.p_line oc) (declarations freevars);
-  List.iter (Dk.p_line oc) (rewritings freevars phrases);
+let output oc phrases ppphrases llp filename printcontext =
   let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
   Lltolj.hypothesis_env := hyps;
   List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
   Lltolj.distinct_terms := distincts;
   add_distinct_terms_axioms !Lltolj.distinct_terms;
-  Dk.p_line oc (trtheorem phrases (List.rev llp))
-
-let outputterm oc phrases ppphrases llp =
-  let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
-  Lltolj.hypothesis_env := hyps;
-  List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
-  Lltolj.distinct_terms := distincts;
-  add_distinct_terms_axioms !Lltolj.distinct_terms;
+  if printcontext
+  then 
+    begin
+      Dk.p_line oc (Dk.dkprelude (modname filename));
+      let freevars = get_signatures phrases in
+      List.iter (Dk.p_line oc) (declarations freevars);
+      List.iter (Dk.p_line oc) (rewritings freevars phrases); 
+    end;
   Dk.p_line oc (trtheorem phrases (List.rev llp))
