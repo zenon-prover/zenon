@@ -49,3 +49,6 @@ val smtlib : t -> t
 val ksplit : int -> 'a list -> 'a list * 'a list
 val find2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> 'a * 'b
 
+(* Defined types *)
+val add_defs : (string * t) list -> unit
+val get_defs : unit -> (string * t) list

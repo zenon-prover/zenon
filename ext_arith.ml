@@ -1003,9 +1003,6 @@ let declare_context_coq oc =
     let pr fmt = Printf.fprintf oc fmt in
     pr "Require Import zenon_arith.\n";
     pr "Require Import zenon_arith_reals.\n";
-    List.iter (fun (s, t) ->
-        pr "Parameter %s : %s.\n" s (Type.to_string t))
-        (Typetptp.get_defined ());
     ()
 
 let p_rule_coq = lltocoq
@@ -1014,7 +1011,7 @@ let predef () =
     [ "$less"; "$lesseq"; "$greater"; "$greatereq";
       "$sum"; "$difference"; "$product"; "$uminus";
       "$is_int"; "$not_is_int"; "$is_rat"; "$not_is_rat";
-    ] @ (List.map fst (Typetptp.get_defined ()))
+    ]
 ;;
 
 Extension.register {

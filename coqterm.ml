@@ -924,9 +924,11 @@ let declare_context oc phrases =
   fprintf oc "Require Import zenon.\n";
   Extension.declare_context_coq oc;
   let ext_decl = Extension.predef () in
+  let type_defs = Type.get_defs () in
   fprintf oc "Parameter %s : Set.\n" univ_name;
   fprintf oc "Parameter %s : %s.\n" any_name univ_name;
-  let sigs = get_signatures phrases ext_decl in
+  List.iter (fun (s, t) -> fprintf oc "Parameter %s : %s.\n" s (Type.to_string t)) type_defs;
+  let sigs = get_signatures phrases (ext_decl @ (List.map fst type_defs)) in
   List.iter (print_signature oc) sigs;
   List.iter (declare_hyp oc) phrases;
   if not !Globals.quiet_flag then fprintf oc "(* END-CONTEXT *)\n";

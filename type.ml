@@ -46,6 +46,7 @@ let type_tff_i = atomic "$i"
 let type_scope = atomic "Scope"
 
 let type_type = base Ttype
+
 (* Type comparison *)
 let _to_int = function
     | Bool -> 0
@@ -237,4 +238,11 @@ let rec _smtlib = function
 
 let smtlib (b, t) = (b, _smtlib t)
 
+(* Help for defined types in coq proofs *)
+let defs = ref ([] : (string * t) list)
+
+let add_defs l =
+    defs := l @ !defs
+
+let get_defs () = !defs
 

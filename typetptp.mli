@@ -9,4 +9,3 @@ val type_tff_expr : env -> Expr.t -> Expr.t * env
 
 val typecheck : Phrase.phrase list -> Phrase.phrase list
 
-val get_defined : unit -> (string * Expr.etype) list
