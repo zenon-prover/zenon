@@ -328,12 +328,10 @@ let type_phrase env p = match p with
     | _ ->
        Log.debug 1 "typechecking unknown formula";
        p, env
-		 
-let defined = ref []
 
-let get_defined () = !defined
 
 let typecheck l =
+    let defined = ref [] in
     let aux env =
         let f s l =
             if not (tff_mem s default_env) then begin
@@ -348,5 +346,6 @@ let typecheck l =
     aux env;
     Log.debug 3 "keeping in mind %i defined symbols" (List.length !defined);
     List.iter (fun (s, t) -> Log.debug 5 "  %s : %s" s (Type.to_string t)) !defined;
+    Type.add_defs !defined;
     List.filter relevant p
 

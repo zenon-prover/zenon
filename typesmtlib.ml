@@ -171,8 +171,12 @@ let rec type_tff_app env e = match e with
             let b', env'' = type_tff_term env' b in
             if is_bool a' && is_bool b' then
                 eequiv (a',b'), env''
-            else
+            else begin try
                 eapp (eeq, [a'; b']), env''
+            with Type.Mismatch(t, t') ->
+                Log.debug 1 "Bad match for equality with types : '%s' - '%s'" (Type.to_string t) (Type.to_string t');
+                raise (Type_error "Bad equality")
+            end
     | Eapp(Evar(s, _) as s', args, _) ->
             let args, env' = map_fold type_tff_term env args in
             let f, env'' = match get_type s' with
@@ -290,11 +294,8 @@ let type_phrase env p = match p with
             Log.debug 1 "Unknown formula, not doing anything...";
             p, env
 
-let defined = ref []
-
-let get_defined () = !defined
-
 let typecheck l =
+    let defined = ref [] in
     let aux env =
         let f s l =
             if not (tff_mem s default_env) then begin
@@ -309,5 +310,6 @@ let typecheck l =
     aux env;
     Log.debug 3 "keeping in mind %i defined symbols" (List.length !defined);
     List.iter (fun (s, t) -> Log.debug 5 "  %s : %s" s (Type.to_string t)) !defined;
+    Type.add_defs !defined;
     List.filter relevant p
 

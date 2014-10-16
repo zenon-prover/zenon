@@ -32,7 +32,10 @@ let mk_constr constr args =
 
 let mk_arrow args ret =
     let aux = function | [], t -> t | _ -> raise Base_expected in
-    base (Arrow (List.map aux args, aux ret))
+    if List.length args = 0 then
+        base (aux ret)
+    else
+        base (Arrow (List.map aux args, aux ret))
 
 (* Usual types *)
 let type_bool = base Bool
@@ -43,6 +46,7 @@ let type_tff_i = atomic "$i"
 let type_scope = atomic "Scope"
 
 let type_type = base Ttype
+
 (* Type comparison *)
 let _to_int = function
     | Bool -> 0
@@ -234,6 +238,13 @@ let rec _smtlib = function
 
 let smtlib (b, t) = (b, _smtlib t)
 
+(* Help for defined types in coq proofs *)
+let defs = ref ([] : (string * t) list)
+
+let add_defs l =
+    defs := l @ !defs
+
+let get_defs () = !defs
 
 (***********************************)
 

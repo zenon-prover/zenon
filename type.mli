@@ -49,10 +49,13 @@ val smtlib : t -> t
 val ksplit : int -> 'a list -> 'a list * 'a list
 val find2 : ('a -> 'b -> bool) -> 'a list -> 'b list -> 'a * 'b
 
-
 val unif_types : t -> t -> (t * t) list
 
 exception Unif_type_failed
 
 val extract_ttype_name : t -> string
 val extract_ttype : t -> t
+
+(* Defined types *)
+val add_defs : (string * t) list -> unit
+val get_defs : unit -> (string * t) list
