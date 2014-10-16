@@ -2,7 +2,6 @@ open Printf
 open Expr
 open Llproof
 open Namespace
-open Lltolj
 
 module Dk = Dkterm
 
@@ -77,37 +76,37 @@ let rec trproof (lkproof, goal, gamma) =
     try (List.assoc e gamma)
     with Not_found -> assert false in
   match lkrule with
-  | SCaxiom (e) ->
+  | Lltolj.SCaxiom (e) ->
     trhyp e
-  | SCfalse ->
+  | Lltolj.SCfalse ->
     Dk.dkapp2 (trhyp efalse) (trexpr goal)
-  | SCtrue ->
+  | Lltolj.SCtrue ->
     let prop = new_prop () in
     let dkprop = Dk.dkvar prop in
     let var = new_hypo () in
     let dkvar = Dk.dkvar var in
     Dk.dklam dkprop Dk.dkproptype (Dk.dklam dkvar (Dk.dkprf dkprop) dkvar)
-  | SCeqref (a) ->
+  | Lltolj.SCeqref (a) ->
     let prop = new_prop () in
     let dkprop = Dk.dkvar prop in
     Dk.dklam dkprop (Dk.dkarrow Dk.dktermtype Dk.dkproptype)
       (trproof (
-	scrimply (
+	Lltolj.scrimply (
 	  eapp (prop, [a]),
 	  eapp (prop, [a]),
-	  scaxiom (eapp (prop, [a]), [])),
+	  Lltolj.scaxiom (eapp (prop, [a]), [])),
 	eimply (eapp (prop, [a]), eapp (prop, [a])), gamma))
-  | SCeqsym (a, b) ->
+  | Lltolj.SCeqsym (a, b) ->
     let term = new_term () in
     let dkterm = Dk.dkvar term in
     Dk.dkapp3 (trhyp (eapp ("=", [a; b]))) 
       (Dk.dklam dkterm Dk.dktermtype (trexpr (eapp ("=", [evar term; a])))) 
-      (trproof (sceqref (a, []), eapp ("=", [a; a]), gamma))
-  | SCcut (e, lkrule1, lkrule2) ->
+      (trproof (Lltolj.sceqref (a, []), eapp ("=", [a; a]), gamma))
+  | Lltolj.SCcut (e, lkrule1, lkrule2) ->
     trproof
       (lkrule2, goal,
        (e, trproof (lkrule1, e, gamma)) :: gamma)
-  | SCland (e1, e2, lkrule) ->
+  | Lltolj.SCland (e1, e2, lkrule) ->
     let var1 = new_hypo () in
     let dkvar1 = Dk.dkvar var1 in
     let var2 = new_hypo () in
@@ -119,7 +118,7 @@ let rec trproof (lkproof, goal, gamma) =
 	 (Dk.dklam dkvar2 
 	    (Dk.dkprf (trexpr e2)) 
 	    (trproof (lkrule, goal, (e1, dkvar1) :: (e2, dkvar2) :: gamma))))
-  | SClor (e1, e2, lkrule1, lkrule2) ->
+  | Lltolj.SClor (e1, e2, lkrule1, lkrule2) ->
     let var1 = new_hypo () in
     let dkvar1 = Dk.dkvar var1 in
     let var2 = new_hypo () in
@@ -132,18 +131,18 @@ let rec trproof (lkproof, goal, gamma) =
        Dk.dklam dkvar2
 	 (Dk.dkprf (trexpr e2))
 	 (trproof (lkrule2, goal, (e2, (Dk.dkvar var2)) :: gamma))]
-  | SClimply (e1, e2, lkrule1, lkrule2) ->
+  | Lltolj.SClimply (e1, e2, lkrule1, lkrule2) ->
     let traux =
       Dk.dkapp2 (trhyp (eimply (e1, e2))) (trproof (lkrule1, e1, gamma)) in
       trproof (lkrule2, goal, (e2, traux) :: gamma)
-  | SClnot (e, lkrule) ->
+  | Lltolj.SClnot (e, lkrule) ->
     Dk.dkapp2 (trhyp (enot e)) (trproof (lkrule, e, gamma))
-  | SClall (Eall (x, ty, p, _) as ap, t, lkrule) ->
+  | Lltolj.SClall (Eall (x, ty, p, _) as ap, t, lkrule) ->
     let traux =
       Dk.dkapp2 (trhyp ap) (trexpr t) in
       trproof
       (lkrule, goal, (substitute [(x, t)] p, traux) :: gamma)
-  | SClex (Eex (x, ty, p, _) as ep, v, lkrule) ->
+  | Lltolj.SClex (Eex (x, ty, p, _) as ep, v, lkrule) ->
     let q = substitute [(x, v)] p in
     let var = new_hypo () in
     let dkvar = Dk.dkvar var in
@@ -153,7 +152,7 @@ let rec trproof (lkproof, goal, gamma) =
 	 (Dk.dklam dkvar 
 	    (Dk.dkprf (trexpr q))
 	    (trproof  (lkrule, goal, (q,dkvar) :: gamma))))
-  | SCrand (e1, e2, lkrule1, lkrule2) ->
+  | Lltolj.SCrand (e1, e2, lkrule1, lkrule2) ->
     let prop = new_prop () in
     let dkprop = Dk.dkvar prop in
     let var = new_hypo () in
@@ -163,7 +162,7 @@ let rec trproof (lkproof, goal, gamma) =
 	  (Dk.dkarrow (Dk.dkprf (trexpr e1)) 
 	     (Dk.dkarrow (Dk.dkprf (trexpr e2)) (Dk.dkprf dkprop)))
 	  (Dk.dkapp3 dkvar (trproof (lkrule1, e1, gamma)) (trproof (lkrule2, e2, gamma))))     
-  | SCrorl (e1, e2, lkrule) ->
+  | Lltolj.SCrorl (e1, e2, lkrule) ->
     let prop = new_prop () in
     let dkprop = Dk.dkvar prop in
     let var1 = new_hypo () in
@@ -176,7 +175,7 @@ let rec trproof (lkproof, goal, gamma) =
 	 (Dk.dklam dkvar2 
 	    (Dk.dkarrow (Dk.dkprf (trexpr e2)) (Dk.dkprf dkprop)) 
 	    (Dk.dkapp2 dkvar1 (trproof (lkrule, e1, gamma)))))
-  | SCrorr (e1, e2, lkrule) ->
+  | Lltolj.SCrorr (e1, e2, lkrule) ->
     let prop = new_prop () in
     let dkprop = Dk.dkvar prop in
     let var1 = new_hypo () in
@@ -189,21 +188,21 @@ let rec trproof (lkproof, goal, gamma) =
 	 (Dk.dklam dkvar2 
 	    (Dk.dkarrow (Dk.dkprf (trexpr e2)) (Dk.dkprf dkprop)) 
 	    (Dk.dkapp2 dkvar2 (trproof (lkrule, e2, gamma)))))
-  | SCrimply (e1, e2, lkrule) ->
+  | Lltolj.SCrimply (e1, e2, lkrule) ->
     let var = new_hypo () in
     let dkvar = Dk.dkvar var in
     Dk.dklam dkvar (Dk.dkprf (trexpr e1))
       (trproof (lkrule, e2, (e1, dkvar) :: gamma))
-  | SCrnot (e, lkrule) ->
+  | Lltolj.SCrnot (e, lkrule) ->
     let var = new_hypo () in
     let dkvar = Dk.dkvar var in
     Dk.dklam dkvar (Dk.dkprf (trexpr e))
       (trproof (lkrule, efalse, (e, dkvar) :: gamma))
-  | SCrall (Eall (x, ty, p, _), v, lkrule) ->
+  | Lltolj.SCrall (Eall (x, ty, p, _), v, lkrule) ->
     let q = substitute [(x, v)] p in
     Dk.dklam (trexpr v) Dk.dktermtype 
       (trproof (lkrule, q, gamma))
-  | SCrex (Eex (x, ty, p, _), t, lkrule) ->
+  | Lltolj.SCrex (Eex (x, ty, p, _), t, lkrule) ->
     let prop = new_prop () in
     let dkprop = Dk.dkvar prop in
     let var = new_hypo () in
@@ -213,12 +212,12 @@ let rec trproof (lkproof, goal, gamma) =
 	 (Dk.dkpi (trexpr x) (Dk.dktermtype) 
 	    (Dk.dkarrow (Dk.dkprf (trexpr p)) (Dk.dkprf dkprop))) 
 	 (Dk.dkapp3 dkvar (trexpr t) (trproof (lkrule, substitute [(x, t)] p, gamma))))
-  | SCcnot (e, lkrule) -> assert false
-  | SClcontr (e, lkrule) ->
+  | Lltolj.SCcnot (e, lkrule) -> assert false
+  | Lltolj.SClcontr (e, lkrule) ->
       trproof (lkrule, goal, gamma)
-  | SCrweak (e, lkrule) ->
+  | Lltolj.SCrweak (e, lkrule) ->
     Dk.dkapp2 (trproof (lkrule, efalse, gamma)) (trexpr e)
-  | SCeqfunc (Eapp (p, ts, _), Eapp (_, us, _)) ->
+  | Lltolj.SCeqfunc (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let pred = new_prop () in
     let dkpred = Dk.dkvar pred in
     let var = new_hypo () in
@@ -237,7 +236,7 @@ let rec trproof (lkproof, goal, gamma) =
     Dk.dklam dkpred (Dk.dkarrow Dk.dktermtype Dk.dkproptype) 
       (Dk.dklam dkvar (Dk.dkprf (trexpr (eapp (pred, [eapp (p, ts)])))) 
 	 (itereq ([], ts, us)))
-  | SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) ->
+  | Lltolj.SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let rec itereq (xts, ts, us) =
       match ts, us with
       | [], [] -> trhyp (eapp (p, xts))
@@ -253,8 +252,8 @@ let rec trproof (lkproof, goal, gamma) =
   | _ -> assert false
 
 let rec trtree proof goal =
-  let ljproof = lltolj proof goal in
-  let conc = scconc ljproof in
+  let ljproof = Lltolj.lltolj proof goal in
+  let conc = Lltolj.scconc ljproof in
   Dk.dkdeftype (Dk.dkvar "conjecture_proof")
     (Dk.dkprf (trexpr conc))
     (trproof (ljproof, conc, []))
@@ -276,7 +275,9 @@ let trtheorem phrases l =
     let goal = get_goal phrases in
     trtree thm.proof goal
 
-(* --------------------------------------------------------------- *)
+(* END OF TRANSLATING FUNCTIONS *)
+
+(* -------------------------------------------------------------------- *)
 
 type result =
   | Typ of Dk.dkterm
@@ -284,7 +285,8 @@ type result =
 
 let predefined = ["="; "$string"]
 
-let rec get_signatures ps =
+(* returns the list of free variables in phrases *)
+let rec get_freevars ps =
   let symtbl = (Hashtbl.create 97 : (string, int * result) Hashtbl.t) in
   let add_sig sym arity kind =
     if not (Hashtbl.mem symtbl sym) then
@@ -344,7 +346,7 @@ let rec get_distincts distincts e =
     match e with
     | Eapp ("$string", [Evar (s, _)], _) ->
       if not (List.mem_assoc e distincts)
-      then (e, (List.length !Lltolj.distinct_terms) + 1) :: distincts
+      then (e, (List.length distincts) + 1) :: distincts
       else distincts
     | _ -> distincts
 
@@ -362,10 +364,10 @@ let get_all (hyps, defs, distincts) p =
   | Phrase.Sig _ -> assert false
   | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
 
-let declarations freevars = 
+let get_declarations freevars = 
   List.map (fun (sym, ty) -> (Dk.dkdecl (trexpr (evar sym)) ty)) freevars
 
-let rec rewritings freevars phrases =
+let rec get_rewritings freevars phrases =
   match phrases with
   | Phrase.Def (DefReal ("", sym, params, body, None)) :: ps ->
     let vars, types =
@@ -376,18 +378,16 @@ let rec rewritings freevars phrases =
 	   | _ -> assert false) params) in
     Dk.dkrewrite (List.combine vars types)
       (Dk.dkapp (Dk.dkvar sym) vars) (trexpr body) 
-    :: (rewritings freevars ps)
-  | p :: ps -> rewritings freevars ps
+    :: (get_rewritings freevars ps)
+  | p :: ps -> get_rewritings freevars ps
   | [] -> []
 
-let rec add_distinct_terms_axioms l =
+let rec get_distinctshyps l =
   match l with
   | (x, n) :: (y, m) :: l ->
-    Lltolj.hypothesis_env :=
-      enot (eapp ("=", [y; x])) :: !Lltolj.hypothesis_env;
-    add_distinct_terms_axioms ((x, n) :: l);
-    add_distinct_terms_axioms ((y, m) :: l);
-  | _ -> ()
+    enot (eapp ("=", [y; x])) :: (get_distinctshyps ((x, n) :: l)) 
+    @ (get_distinctshyps ((y, m) :: l))
+  | _ -> []
 
 let modname name =
   let buf = Buffer.create (2*String.length name) in
@@ -401,16 +401,16 @@ let modname name =
 
 let output oc phrases ppphrases llp filename printcontext =
   let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
-  Lltolj.hypothesis_env := hyps;
+  let distinctshyps = get_distinctshyps distincts in
+  Lltolj.hypothesis_env := distinctshyps@hyps;
   List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
   Lltolj.distinct_terms := distincts;
-  add_distinct_terms_axioms !Lltolj.distinct_terms;
   if printcontext
-  then 
+  then
     begin
       Dk.p_line oc (Dk.dkprelude (modname filename));
-      let freevars = get_signatures phrases in
-      List.iter (Dk.p_line oc) (declarations freevars);
-      List.iter (Dk.p_line oc) (rewritings freevars phrases); 
+      let freevars = get_freevars phrases in
+      List.iter (Dk.p_line oc) (get_declarations freevars);
+      List.iter (Dk.p_line oc) (get_rewritings freevars phrases);
     end;
   Dk.p_line oc (trtheorem phrases (List.rev llp))
