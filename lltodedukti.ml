@@ -258,23 +258,6 @@ let rec trtree proof goal =
     (Dk.dkprf (trexpr conc))
     (trproof (ljproof, conc, []))
 
-let rec get_goal phrases =
-  match phrases with
-  | [] -> None
-  | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
-  | _ :: t -> get_goal t
-
-let trtheorem phrases l =
-  match l with
-  | [] -> assert false
-  | thm :: lemmas ->
-    List.iter
-      (fun lemma ->
-	Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
-      lemmas;
-    let goal = get_goal phrases in
-    trtree thm.proof goal
-
 (* END OF TRANSLATING FUNCTIONS *)
 
 (* -------------------------------------------------------------------- *)
@@ -399,12 +382,27 @@ let modname name =
   Buffer.add_string buf "todk";
   Buffer.contents buf
 
+let rec get_goal phrases =
+  match phrases with
+  | [] -> None
+  | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
+  | _ :: t -> get_goal t
+
 let output oc phrases ppphrases llp filename printcontext =
   let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
   let distinctshyps = get_distinctshyps distincts in
   Lltolj.hypothesis_env := distinctshyps@hyps;
   List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
   Lltolj.distinct_terms := distincts;
+  let thm, lemmas = 
+    match List.rev llp with
+    | [] -> assert false
+    | thm :: lemmas -> thm, lemmas in
+  List.iter
+    (fun lemma ->
+      Hashtbl.add Lltolj.lemma_env lemma.name lemma.proof)
+    lemmas;
+  let goal = get_goal phrases in
   if printcontext
   then
     begin
@@ -413,4 +411,4 @@ let output oc phrases ppphrases llp filename printcontext =
       List.iter (Dk.p_line oc) (get_declarations freevars);
       List.iter (Dk.p_line oc) (get_rewritings freevars phrases);
     end;
-  Dk.p_line oc (trtheorem phrases (List.rev llp))
+  Dk.p_line oc (trtree thm.proof goal)
