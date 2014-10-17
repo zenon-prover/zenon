@@ -564,3 +564,10 @@ let rec remove_scope e =
 ;;
 
 type goalness = int;;
+
+type var_declaration =
+  | Type of string
+  | Var of string * string
+  | Hyp of string * expr
+
+let var_declarations = ref [];;

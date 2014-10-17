@@ -62,18 +62,18 @@ let rec get_params e =
 ;;
 
 let add_global_ty id =
-  Globals.var_declarations :=
-    Globals.Type id :: !Globals.var_declarations
+  Expr.var_declarations :=
+    Expr.Type id :: !Expr.var_declarations
 ;;
 
 let add_global_var id ty =
-  Globals.var_declarations :=
-    Globals.Var (id, ty) :: !Globals.var_declarations
+  Expr.var_declarations :=
+    Expr.Var (id, ty) :: !Expr.var_declarations
 ;;
 
 let add_global_hyp id hyp =
-  Globals.var_declarations :=
-    Globals.Hyp (id, hyp) :: !Globals.var_declarations
+  Expr.var_declarations :=
+    Expr.Hyp (id, hyp) :: !Expr.var_declarations
 ;;
 
 

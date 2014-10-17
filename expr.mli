@@ -107,3 +107,12 @@ val get_fv : expr -> string list;;
 type goalness = int;;
 
 val print_stats : out_channel -> unit;;
+
+(* Global variable declarations *)
+
+type var_declaration =
+  | Type of string
+  | Var of string * string
+  | Hyp of string * expr
+
+val var_declarations : var_declaration list ref;;
