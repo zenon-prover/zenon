@@ -1,3 +1,3 @@
-val trexpr : Expr.expr -> Dkterm.dkterm
+val trexpr : Expr.expr -> Dkterm.term
 
-val trproof : Lltolj.lkproof * Expr.expr * (Expr.expr * Dkterm.dkterm) list -> Dkterm.dkterm
+val trproof : Lltolj.lkproof * Expr.expr * (Expr.expr * Dkterm.term) list -> Dkterm.term

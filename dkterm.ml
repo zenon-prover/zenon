@@ -1,13 +1,13 @@
 open Printf
 
-type dkvar = string
+type var = string
 
-type dkterm =
-  | Dkvar of dkvar
-  | Dklam of dkterm * dkterm * dkterm
-  | Dkpi of dkterm * dkterm * dkterm
-  | Dkapp of dkterm list
-  | Dkarrow of dkterm * dkterm
+type term =
+  | Dkvar of var
+  | Dklam of term * term * term
+  | Dkpi of term * term * term
+  | Dkapp of term list
+  | Dkarrow of term * term
   | Dkprf
   | Dktermtype
   | Dkproptype
@@ -32,65 +32,65 @@ type dkterm =
   | Dkeqc
   | Dkequiv
 
-type dkline =
-  | Dkdecl of dkterm * dkterm
-  | Dkdeftype of dkterm * dkterm * dkterm
+type line =
+  | Dkdecl of term * term
+  | Dkdeftype of term * term * term
   | Dkprelude of string
-  | Dkrewrite of (dkterm * dkterm) list * dkterm * dkterm
+  | Dkrewrite of (term * term) list * term * term
 
-let dkvar var = Dkvar var
-let dklam var t term = Dklam (var, t, term)
-let dklams vars types e =
-  List.fold_left2 (fun term var t -> dklam var t term) e (List.rev vars) (List.rev types)
-let dkpi var t term = Dkpi (var, t, term)
-let dkapp t ts = Dkapp (t :: ts)
-let dkapp2 t1 t2 = dkapp t1 [t2]
-let dkapp3 t1 t2 t3 = dkapp t1 [t2; t3]
-let dkarrow t1 t2 = Dkarrow (t1, t2)
-let dkprf t = dkapp2 Dkprf t
-let dktermtype = Dktermtype
-let dkproptype = Dkproptype
-let dkanyterm = Dkanyterm
-let dknot term = dkapp2 Dknot term
-let dkand p q = dkapp3 Dkand p q
-let dkor p q = dkapp3 Dkor p q
-let dkimply p q = dkapp3 Dkimply p q
-let dkforall x p = dkapp2 Dkforall (dklam x dktermtype p)
-let dkexists x p = dkapp2 Dkexists (dklam x dktermtype p)
-let dktrue = Dktrue
-let dkfalse = Dkfalse
-let dkeq t1 t2 = dkapp3 Dkeq t1 t2
-let dknotc term = dkapp2 Dknotc term
-let dkandc p q = dkapp3 Dkandc p q
-let dkorc p q = dkapp3 Dkorc p q
-let dkimplyc p q = dkapp3 Dkimplyc p q
-let dkforallc x p = dkapp2 Dkforallc (dklam x dktermtype p)
-let dkexistsc x p = dkapp2 Dkexistsc (dklam x dktermtype p)
-let dktruec = Dktruec
-let dkfalsec = Dkfalsec
-let dkeqc t1 t2 = dkapp3 Dkeqc t1 t2
-let dkequiv p q = dkapp3 Dkequiv p q
+let mk_var var = Dkvar var
+let mk_lam var t term = Dklam (var, t, term)
+let mk_lams vars types e =
+  List.fold_left2 (fun term var t -> mk_lam var t term) e (List.rev vars) (List.rev types)
+let mk_pi var t term = Dkpi (var, t, term)
+let mk_app t ts = Dkapp (t :: ts)
+let mk_app2 t1 t2 = mk_app t1 [t2]
+let mk_app3 t1 t2 t3 = mk_app t1 [t2; t3]
+let mk_arrow t1 t2 = Dkarrow (t1, t2)
+let mk_prf t = mk_app2 Dkprf t
+let mk_termtype = Dktermtype
+let mk_proptype = Dkproptype
+let mk_anyterm = Dkanyterm
+let mk_not term = mk_app2 Dknot term
+let mk_and p q = mk_app3 Dkand p q
+let mk_or p q = mk_app3 Dkor p q
+let mk_imply p q = mk_app3 Dkimply p q
+let mk_forall x p = mk_app2 Dkforall (mk_lam x Dktermtype p)
+let mk_exists x p = mk_app2 Dkexists (mk_lam x Dktermtype p)
+let mk_true = Dktrue
+let mk_false = Dkfalse
+let mk_eq t1 t2 = mk_app3 Dkeq t1 t2
+let mk_notc term = mk_app2 Dknotc term
+let mk_andc p q = mk_app3 Dkandc p q
+let mk_orc p q = mk_app3 Dkorc p q
+let mk_implyc p q = mk_app3 Dkimplyc p q
+let mk_forallc x p = mk_app2 Dkforallc (mk_lam x Dktermtype p)
+let mk_existsc x p = mk_app2 Dkexistsc (mk_lam x Dktermtype p)
+let mk_truec = Dktruec
+let mk_falsec = Dkfalsec
+let mk_eqc t1 t2 = mk_app3 Dkeqc t1 t2
+let mk_equiv p q = mk_app3 Dkequiv p q
 
-let dkdecl t term = Dkdecl (t, term)
-let dkdeftype t termtype term = Dkdeftype (t, termtype, term)
-let dkprelude name = Dkprelude (name)
-let dkrewrite env t1 t2 = Dkrewrite (env, t1, t2)
+let mk_decl t term = Dkdecl (t, term)
+let mk_deftype t termtype term = Dkdeftype (t, termtype, term)
+let mk_prelude name = Dkprelude (name)
+let mk_rewrite env t1 t2 = Dkrewrite (env, t1, t2)
 
-let p_var out var = fprintf out "%s" var
+let print_var out var = fprintf out "%s" var
 
-let rec p_term out term =
+let rec print_term out term =
   match term with
-  | Dkvar (var) -> p_var out var
+  | Dkvar (var) -> print_var out var
   | Dklam (var, t, term) ->
     fprintf out "%a: %a => %a"
-      p_term var p_term_p t p_term_p term
+      print_term var print_term_p t print_term_p term
   | Dkpi (var, t, term) ->
     fprintf out "%a: %a -> %a"
-      p_term var p_term_p t p_term_p term
-  | Dkapp (ts) -> p_terms out ts
+      print_term var print_term_p t print_term_p term
+  | Dkapp (ts) -> print_terms out ts
   | Dkarrow (t1, t2) ->
     fprintf out "%a -> %a"
-      p_term_p t1 p_term_p t2
+      print_term_p t1 print_term_p t2
   | Dkprf -> fprintf out "logic.prf"
   | Dktermtype -> fprintf out "logic.Term"
   | Dkproptype -> fprintf out "logic.Prop"
@@ -115,45 +115,45 @@ let rec p_term out term =
   | Dkeqc -> fprintf out "logic.equalc"
   | Dkequiv -> fprintf out "logic.equiv"
 
-and p_term_p out term =
+and print_term_p out term =
   match term with
   | Dklam _ | Dkpi _ | Dkapp _ | Dkarrow _ ->
-    fprintf out "(%a)" p_term term
-  | _ -> p_term out term
+    fprintf out "(%a)" print_term term
+  | _ -> print_term out term
 
-and p_terms out terms =
+and print_terms out terms =
   match terms with
   | [] -> ()
-  | [t] -> p_term_p out t
+  | [t] -> print_term_p out t
   | t :: q ->
     fprintf out "%a %a"
-      p_term_p t p_terms q
+      print_term_p t print_terms q
 
-let p_env out env =
-  let p_type out (x, t) =
+let print_env out env =
+  let print_type out (x, t) =
     fprintf out "%a: %a"
-      p_term x
-      p_term t in
+      print_term x
+      print_term t in
   match env with
   | e1 :: e2 :: env ->
     fprintf out "%a, %a"
-      p_type e1
-      p_type e2
-  | _ -> List.iter (p_type out) env
+      print_type e1
+      print_type e2
+  | _ -> List.iter (print_type out) env
 
-let p_line out line =
+let print_line out line =
   match line with
   | Dkdecl (t, term) ->
     fprintf out "%a: %a.\n"
-      p_term t
-      p_term term
+      print_term t
+      print_term term
   | Dkdeftype (t, typeterm, term) ->
     fprintf out "%a: %a:= %a.\n"
-      p_term t
-      p_term typeterm
-      p_term term
+      print_term t
+      print_term typeterm
+      print_term term
   | Dkprelude (name) -> fprintf out "#NAME %s.\n" name
   | Dkrewrite (env, t1, t2) ->
-    fprintf out "[%a] " p_env env;
-    fprintf out "%a " p_term t1;
-    fprintf out "--> %a.\n" p_term t2;
+    fprintf out "[%a] " print_env env;
+    fprintf out "%a " print_term t1;
+    fprintf out "--> %a.\n" print_term t2;

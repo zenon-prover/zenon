@@ -1,59 +1,73 @@
+(* This module defines operations for translating expressions and
+   ljproofs to the Dedukti ASTs defined in Dkterm *)
+
+
 open Printf
 open Expr
 
 module Dk = Dkterm
 
+
+(* Translation function from expressions *)
 let rec trexpr e =
   match e with
+  (* Formulae *)
+  (* We first fold the definitions of logical equivalence
+     and classical connectors: *)
   | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
-    when (equal e3 e2 && equal e4 e1) -> Dk.dkequiv (trexpr e1) (trexpr e2)
+    when (equal e3 e2 && equal e4 e1) -> Dk.mk_equiv (trexpr e1) (trexpr e2)
   | Enot (Enot (Enot (Enot (Enot (e, _), _), _), _), _) ->
-    Dk.dknotc (trexpr e)
-  | Enot (Enot ( Eand (
+    Dk.mk_notc (trexpr e)
+  | Enot (Enot (Eand (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkandc (trexpr e1) (trexpr e2)
-  | Enot (Enot ( Eor (
+    Dk.mk_andc (trexpr e1) (trexpr e2)
+  | Enot (Enot (Eor (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkorc (trexpr e1) (trexpr e2)
+    Dk.mk_orc (trexpr e1) (trexpr e2)
   | Enot (Enot ( Eimply (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkimplyc (trexpr e1) (trexpr e2)
-  | Enot (Enot (Etrue, _), _) -> Dk.dktruec
-  | Enot (Enot (Efalse, _), _) -> Dk.dkfalsec
+    Dk.mk_implyc (trexpr e1) (trexpr e2)
+  | Enot (Enot (Etrue, _), _) -> Dk.mk_truec
+  | Enot (Enot (Efalse, _), _) -> Dk.mk_falsec
   | Enot (Enot (
     Eall (e1, s, Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkforallc (trexpr e1) (trexpr e2)
+    Dk.mk_forallc (trexpr e1) (trexpr e2)
   | Enot (Enot (
     Eex (e1, s, Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkexistsc (trexpr e1) (trexpr e2)
+    Dk.mk_existsc (trexpr e1) (trexpr e2)
   | Enot (Enot (Eapp ("=", [e1;e2], _), _), _) ->
-    Dk.dkeqc (trexpr e1) (trexpr e2)
+    Dk.mk_eqc (trexpr e1) (trexpr e2)
+  (* Terms *)
   | Evar (v, _) when Mltoll.is_meta v ->
-    Dk.dkanyterm
+    Dk.mk_anyterm
   | Evar (v, _) ->
-    Dk.dkvar v
+    Dk.mk_var v
   | Eapp ("$string", [Evar (v, _)], _) ->
-    Dk.dkvar ("S"^v)
+    Dk.mk_var ("S"^v)
   | Eapp ("$string", _, _) -> assert false
   | Eapp ("=", [e1;e2], _) ->
-    Dk.dkeq (trexpr e1) (trexpr e2)
+    Dk.mk_eq (trexpr e1) (trexpr e2)
   | Eapp (s, args, _) ->
-    Dk.dkapp (Dk.dkvar s) (List.map trexpr args)
+    Dk.mk_app (Dk.mk_var s) (List.map trexpr args)
+  (* Intuitionistic connectors *)
   | Enot (e, _) ->
-    Dk.dknot (trexpr e)
+    Dk.mk_not (trexpr e)
   | Eand (e1, e2, _) ->
-    Dk.dkand (trexpr e1) (trexpr e2)
+    Dk.mk_and (trexpr e1) (trexpr e2)
   | Eor (e1, e2, _) ->
-    Dk.dkor (trexpr e1) (trexpr e2)
+    Dk.mk_or (trexpr e1) (trexpr e2)
   | Eimply (e1, e2, _) ->
-    Dk.dkimply (trexpr e1) (trexpr e2)
-  | Etrue -> Dk.dktrue
-  | Efalse -> Dk.dkfalse
+    Dk.mk_imply (trexpr e1) (trexpr e2)
+  | Etrue -> Dk.mk_true
+  | Efalse -> Dk.mk_false
   | Eall (e1, s, e2, _) ->
-    Dk.dkforall (trexpr e1) (trexpr e2)
+    Dk.mk_forall (trexpr e1) (trexpr e2)
   | Eex (e1, s, e2, _) ->
-    Dk.dkexists (trexpr e1) (trexpr e2)
-  | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
+    Dk.mk_exists (trexpr e1) (trexpr e2)
+  | Eequiv _ -> assert false                  (* Should have been unfolded earlier *)
+  | Etau _ -> assert false                    (* Should have been unfolded *)
+  | Elam _ -> assert false                    (* Not first order *)
+  | Emeta _ -> assert false                   (* Meta are forbidden earlier *)
 
 let new_name =
   let r = ref 0 in
@@ -77,17 +91,17 @@ let rec trproof (lkproof, goal, gamma) =
   | Lltolj.SCaxiom (e) ->
     trhyp e
   | Lltolj.SCfalse ->
-    Dk.dkapp2 (trhyp efalse) (trexpr goal)
+    Dk.mk_app2 (trhyp efalse) (trexpr goal)
   | Lltolj.SCtrue ->
     let prop = new_prop () in
-    let dkprop = Dk.dkvar prop in
+    let dkprop = Dk.mk_var prop in
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
-    Dk.dklam dkprop Dk.dkproptype (Dk.dklam dkvar (Dk.dkprf dkprop) dkvar)
+    let dkvar = Dk.mk_var var in
+    Dk.mk_lam dkprop Dk.mk_proptype (Dk.mk_lam dkvar (Dk.mk_prf dkprop) dkvar)
   | Lltolj.SCeqref (a) ->
     let prop = new_prop () in
-    let dkprop = Dk.dkvar prop in
-    Dk.dklam dkprop (Dk.dkarrow Dk.dktermtype Dk.dkproptype)
+    let dkprop = Dk.mk_var prop in
+    Dk.mk_lam dkprop (Dk.mk_arrow Dk.mk_termtype Dk.mk_proptype)
       (trproof (
 	Lltolj.scrimply (
 	  eapp (prop, [a]),
@@ -96,9 +110,9 @@ let rec trproof (lkproof, goal, gamma) =
 	eimply (eapp (prop, [a]), eapp (prop, [a])), gamma))
   | Lltolj.SCeqsym (a, b) ->
     let term = new_term () in
-    let dkterm = Dk.dkvar term in
-    Dk.dkapp3 (trhyp (eapp ("=", [a; b])))
-      (Dk.dklam dkterm Dk.dktermtype (trexpr (eapp ("=", [evar term; a]))))
+    let dkterm = Dk.mk_var term in
+    Dk.mk_app3 (trhyp (eapp ("=", [a; b])))
+      (Dk.mk_lam dkterm Dk.mk_termtype (trexpr (eapp ("=", [evar term; a]))))
       (trproof (Lltolj.sceqref (a, []), eapp ("=", [a; a]), gamma))
   | Lltolj.SCcut (e, lkrule1, lkrule2) ->
     trproof
@@ -106,133 +120,133 @@ let rec trproof (lkproof, goal, gamma) =
        (e, trproof (lkrule1, e, gamma)) :: gamma)
   | Lltolj.SCland (e1, e2, lkrule) ->
     let var1 = new_hypo () in
-    let dkvar1 = Dk.dkvar var1 in
+    let dkvar1 = Dk.mk_var var1 in
     let var2 = new_hypo () in
-    let dkvar2 = Dk.dkvar var2 in
-    Dk.dkapp3 (trhyp (eand (e1, e2)))
+    let dkvar2 = Dk.mk_var var2 in
+    Dk.mk_app3 (trhyp (eand (e1, e2)))
       (trexpr goal)
-      (Dk.dklam dkvar1
-	 (Dk.dkprf (trexpr e1))
-	 (Dk.dklam dkvar2
-	    (Dk.dkprf (trexpr e2))
+      (Dk.mk_lam dkvar1
+	 (Dk.mk_prf (trexpr e1))
+	 (Dk.mk_lam dkvar2
+	    (Dk.mk_prf (trexpr e2))
 	    (trproof (lkrule, goal, (e1, dkvar1) :: (e2, dkvar2) :: gamma))))
   | Lltolj.SClor (e1, e2, lkrule1, lkrule2) ->
     let var1 = new_hypo () in
-    let dkvar1 = Dk.dkvar var1 in
+    let dkvar1 = Dk.mk_var var1 in
     let var2 = new_hypo () in
-    let dkvar2 = Dk.dkvar var2 in
-      Dk.dkapp (trhyp (eor (e1, e2)))
+    let dkvar2 = Dk.mk_var var2 in
+      Dk.mk_app (trhyp (eor (e1, e2)))
       [trexpr goal;
-       Dk.dklam dkvar1
-	 (Dk.dkprf (trexpr e1))
-	 (trproof (lkrule1, goal, (e1, (Dk.dkvar var1)) :: gamma));
-       Dk.dklam dkvar2
-	 (Dk.dkprf (trexpr e2))
-	 (trproof (lkrule2, goal, (e2, (Dk.dkvar var2)) :: gamma))]
+       Dk.mk_lam dkvar1
+	 (Dk.mk_prf (trexpr e1))
+	 (trproof (lkrule1, goal, (e1, (Dk.mk_var var1)) :: gamma));
+       Dk.mk_lam dkvar2
+	 (Dk.mk_prf (trexpr e2))
+	 (trproof (lkrule2, goal, (e2, (Dk.mk_var var2)) :: gamma))]
   | Lltolj.SClimply (e1, e2, lkrule1, lkrule2) ->
     let traux =
-      Dk.dkapp2 (trhyp (eimply (e1, e2))) (trproof (lkrule1, e1, gamma)) in
+      Dk.mk_app2 (trhyp (eimply (e1, e2))) (trproof (lkrule1, e1, gamma)) in
       trproof (lkrule2, goal, (e2, traux) :: gamma)
   | Lltolj.SClnot (e, lkrule) ->
-    Dk.dkapp2 (trhyp (enot e)) (trproof (lkrule, e, gamma))
+    Dk.mk_app2 (trhyp (enot e)) (trproof (lkrule, e, gamma))
   | Lltolj.SClall (Eall (x, ty, p, _) as ap, t, lkrule) ->
     let traux =
-      Dk.dkapp2 (trhyp ap) (trexpr t) in
+      Dk.mk_app2 (trhyp ap) (trexpr t) in
       trproof
       (lkrule, goal, (substitute [(x, t)] p, traux) :: gamma)
   | Lltolj.SClex (Eex (x, ty, p, _) as ep, v, lkrule) ->
     let q = substitute [(x, v)] p in
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
-    Dk.dkapp3 (trhyp ep)
+    let dkvar = Dk.mk_var var in
+    Dk.mk_app3 (trhyp ep)
       (trexpr goal)
-      (Dk.dklam (trexpr v) Dk.dktermtype
-	 (Dk.dklam dkvar
-	    (Dk.dkprf (trexpr q))
+      (Dk.mk_lam (trexpr v) Dk.mk_termtype
+	 (Dk.mk_lam dkvar
+	    (Dk.mk_prf (trexpr q))
 	    (trproof  (lkrule, goal, (q,dkvar) :: gamma))))
   | Lltolj.SCrand (e1, e2, lkrule1, lkrule2) ->
     let prop = new_prop () in
-    let dkprop = Dk.dkvar prop in
+    let dkprop = Dk.mk_var prop in
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
-    Dk.dklam dkprop Dk.dkproptype
-       (Dk.dklam dkvar
-	  (Dk.dkarrow (Dk.dkprf (trexpr e1))
-	     (Dk.dkarrow (Dk.dkprf (trexpr e2)) (Dk.dkprf dkprop)))
-	  (Dk.dkapp3 dkvar (trproof (lkrule1, e1, gamma)) (trproof (lkrule2, e2, gamma))))
+    let dkvar = Dk.mk_var var in
+    Dk.mk_lam dkprop Dk.mk_proptype
+       (Dk.mk_lam dkvar
+	  (Dk.mk_arrow (Dk.mk_prf (trexpr e1))
+	     (Dk.mk_arrow (Dk.mk_prf (trexpr e2)) (Dk.mk_prf dkprop)))
+	  (Dk.mk_app3 dkvar (trproof (lkrule1, e1, gamma)) (trproof (lkrule2, e2, gamma))))
   | Lltolj.SCrorl (e1, e2, lkrule) ->
     let prop = new_prop () in
-    let dkprop = Dk.dkvar prop in
+    let dkprop = Dk.mk_var prop in
     let var1 = new_hypo () in
-    let dkvar1 = Dk.dkvar var1 in
+    let dkvar1 = Dk.mk_var var1 in
     let var2 = new_hypo () in
-    let dkvar2 = Dk.dkvar var2 in
-    Dk.dklam dkprop Dk.dkproptype
-      (Dk.dklam dkvar1
-	 (Dk.dkarrow (Dk.dkprf (trexpr e1)) (Dk.dkprf dkprop))
-	 (Dk.dklam dkvar2
-	    (Dk.dkarrow (Dk.dkprf (trexpr e2)) (Dk.dkprf dkprop))
-	    (Dk.dkapp2 dkvar1 (trproof (lkrule, e1, gamma)))))
+    let dkvar2 = Dk.mk_var var2 in
+    Dk.mk_lam dkprop Dk.mk_proptype
+      (Dk.mk_lam dkvar1
+	 (Dk.mk_arrow (Dk.mk_prf (trexpr e1)) (Dk.mk_prf dkprop))
+	 (Dk.mk_lam dkvar2
+	    (Dk.mk_arrow (Dk.mk_prf (trexpr e2)) (Dk.mk_prf dkprop))
+	    (Dk.mk_app2 dkvar1 (trproof (lkrule, e1, gamma)))))
   | Lltolj.SCrorr (e1, e2, lkrule) ->
     let prop = new_prop () in
-    let dkprop = Dk.dkvar prop in
+    let dkprop = Dk.mk_var prop in
     let var1 = new_hypo () in
-    let dkvar1 = Dk.dkvar var1 in
+    let dkvar1 = Dk.mk_var var1 in
     let var2 = new_hypo () in
-    let dkvar2 = Dk.dkvar var2 in
-    Dk.dklam dkprop Dk.dkproptype
-      (Dk.dklam dkvar1
-	 (Dk.dkarrow (Dk.dkprf (trexpr e1)) (Dk.dkprf dkprop))
-	 (Dk.dklam dkvar2
-	    (Dk.dkarrow (Dk.dkprf (trexpr e2)) (Dk.dkprf dkprop))
-	    (Dk.dkapp2 dkvar2 (trproof (lkrule, e2, gamma)))))
+    let dkvar2 = Dk.mk_var var2 in
+    Dk.mk_lam dkprop Dk.mk_proptype
+      (Dk.mk_lam dkvar1
+	 (Dk.mk_arrow (Dk.mk_prf (trexpr e1)) (Dk.mk_prf dkprop))
+	 (Dk.mk_lam dkvar2
+	    (Dk.mk_arrow (Dk.mk_prf (trexpr e2)) (Dk.mk_prf dkprop))
+	    (Dk.mk_app2 dkvar2 (trproof (lkrule, e2, gamma)))))
   | Lltolj.SCrimply (e1, e2, lkrule) ->
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
-    Dk.dklam dkvar (Dk.dkprf (trexpr e1))
+    let dkvar = Dk.mk_var var in
+    Dk.mk_lam dkvar (Dk.mk_prf (trexpr e1))
       (trproof (lkrule, e2, (e1, dkvar) :: gamma))
   | Lltolj.SCrnot (e, lkrule) ->
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
-    Dk.dklam dkvar (Dk.dkprf (trexpr e))
+    let dkvar = Dk.mk_var var in
+    Dk.mk_lam dkvar (Dk.mk_prf (trexpr e))
       (trproof (lkrule, efalse, (e, dkvar) :: gamma))
   | Lltolj.SCrall (Eall (x, ty, p, _), v, lkrule) ->
     let q = substitute [(x, v)] p in
-    Dk.dklam (trexpr v) Dk.dktermtype
+    Dk.mk_lam (trexpr v) Dk.mk_termtype
       (trproof (lkrule, q, gamma))
   | Lltolj.SCrex (Eex (x, ty, p, _), t, lkrule) ->
     let prop = new_prop () in
-    let dkprop = Dk.dkvar prop in
+    let dkprop = Dk.mk_var prop in
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
-    Dk.dklam dkprop Dk.dkproptype
-      (Dk.dklam dkvar
-	 (Dk.dkpi (trexpr x) (Dk.dktermtype)
-	    (Dk.dkarrow (Dk.dkprf (trexpr p)) (Dk.dkprf dkprop)))
-	 (Dk.dkapp3 dkvar (trexpr t) (trproof (lkrule, substitute [(x, t)] p, gamma))))
+    let dkvar = Dk.mk_var var in
+    Dk.mk_lam dkprop Dk.mk_proptype
+      (Dk.mk_lam dkvar
+	 (Dk.mk_pi (trexpr x) (Dk.mk_termtype)
+	    (Dk.mk_arrow (Dk.mk_prf (trexpr p)) (Dk.mk_prf dkprop)))
+	 (Dk.mk_app3 dkvar (trexpr t) (trproof (lkrule, substitute [(x, t)] p, gamma))))
   | Lltolj.SCcnot (e, lkrule) -> assert false
   | Lltolj.SClcontr (e, lkrule) ->
       trproof (lkrule, goal, gamma)
   | Lltolj.SCrweak (e, lkrule) ->
-    Dk.dkapp2 (trproof (lkrule, efalse, gamma)) (trexpr e)
+    Dk.mk_app2 (trproof (lkrule, efalse, gamma)) (trexpr e)
   | Lltolj.SCeqfunc (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let pred = new_prop () in
-    let dkpred = Dk.dkvar pred in
+    let dkpred = Dk.mk_var pred in
     let var = new_hypo () in
-    let dkvar = Dk.dkvar var in
+    let dkvar = Dk.mk_var var in
     let rec itereq (xts, ts, us) =
       match ts, us with
-      | [], [] -> Dk.dkvar var
+      | [], [] -> Dk.mk_var var
       | t :: ts, u :: us ->
 	let term = new_term () in
-	let dkterm = Dk.dkvar term in
-	Dk.dkapp3 (trhyp (eapp ("=", [t; u])))
-	  (Dk.dklam dkterm Dk.dktermtype
+	let dkterm = Dk.mk_var term in
+	Dk.mk_app3 (trhyp (eapp ("=", [t; u])))
+	  (Dk.mk_lam dkterm Dk.mk_termtype
 	     (trexpr (eapp (pred, [eapp (p, xts @ ((evar term) :: us))]))))
 	  (itereq ((xts@[t]), ts, us))
       | _ -> assert false in
-    Dk.dklam dkpred (Dk.dkarrow Dk.dktermtype Dk.dkproptype)
-      (Dk.dklam dkvar (Dk.dkprf (trexpr (eapp (pred, [eapp (p, ts)]))))
+    Dk.mk_lam dkpred (Dk.mk_arrow Dk.mk_termtype Dk.mk_proptype)
+      (Dk.mk_lam dkvar (Dk.mk_prf (trexpr (eapp (pred, [eapp (p, ts)]))))
 	 (itereq ([], ts, us)))
   | Lltolj.SCeqprop (Eapp (p, ts, _), Eapp (_, us, _)) ->
     let rec itereq (xts, ts, us) =
@@ -240,9 +254,9 @@ let rec trproof (lkproof, goal, gamma) =
       | [], [] -> trhyp (eapp (p, xts))
       | t :: ts, u :: us ->
 	let term = new_term () in
-	let dkterm = Dk.dkvar term in
-	Dk.dkapp3 (trhyp (eapp ("=", [t; u])))
-	  (Dk.dklam dkterm Dk.dktermtype ((trexpr (eapp (p, xts @ ((evar term) :: us))))))
+	let dkterm = Dk.mk_var term in
+	Dk.mk_app3 (trhyp (eapp ("=", [t; u])))
+	  (Dk.mk_lam dkterm Dk.mk_termtype ((trexpr (eapp (p, xts @ ((evar term) :: us))))))
 	  (itereq ((xts@[t]), ts, us))
       | _ -> assert false;
     in

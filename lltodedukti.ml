@@ -8,57 +8,57 @@ module Dk = Dkterm
 let rec trexpr e =
   match e with
   | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
-    when (equal e3 e2 && equal e4 e1) -> Dk.dkequiv (trexpr e1) (trexpr e2)
+    when (equal e3 e2 && equal e4 e1) -> Dk.mk_equiv (trexpr e1) (trexpr e2)
   | Enot (Enot (Enot (Enot (Enot (e, _), _), _), _), _) ->
-    Dk.dknotc (trexpr e)
+    Dk.mk_notc (trexpr e)
   | Enot (Enot ( Eand (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkandc (trexpr e1) (trexpr e2)
+    Dk.mk_andc (trexpr e1) (trexpr e2)
   | Enot (Enot ( Eor (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkorc (trexpr e1) (trexpr e2)
+    Dk.mk_orc (trexpr e1) (trexpr e2)
   | Enot (Enot ( Eimply (
     Enot (Enot (e1, _), _), Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkimplyc (trexpr e1) (trexpr e2)
-  | Enot (Enot (Etrue, _), _) -> Dk.dktruec
-  | Enot (Enot (Efalse, _), _) -> Dk.dkfalsec
+    Dk.mk_implyc (trexpr e1) (trexpr e2)
+  | Enot (Enot (Etrue, _), _) -> Dk.mk_truec
+  | Enot (Enot (Efalse, _), _) -> Dk.mk_falsec
   | Enot (Enot (
     Eall (e1, s, Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkforallc (trexpr e1) (trexpr e2)
+    Dk.mk_forallc (trexpr e1) (trexpr e2)
   | Enot (Enot (
     Eex (e1, s, Enot (Enot (e2, _), _), _), _), _) ->
-    Dk.dkexistsc (trexpr e1) (trexpr e2)
+    Dk.mk_existsc (trexpr e1) (trexpr e2)
   | Enot (Enot (Eapp ("=", [e1;e2], _), _), _) ->
-    Dk.dkeqc (trexpr e1) (trexpr e2)
+    Dk.mk_eqc (trexpr e1) (trexpr e2)
   | Evar (v, _) when Mltoll.is_meta v ->
-    Dk.dkanyterm
+    Dk.mk_anyterm
   | Evar (v, _) ->
-    Dk.dkvar v
+    Dk.mk_var v
   | Eapp ("$string", [Evar (v, _)], _) ->
-    Dk.dkvar ("S"^v)
+    Dk.mk_var ("S"^v)
   | Eapp ("$string", _, _) -> assert false
   | Eapp ("=", [e1;e2], _) ->
-    Dk.dkeq (trexpr e1) (trexpr e2)
+    Dk.mk_eq (trexpr e1) (trexpr e2)
   | Eapp (s, args, _) ->
-    Dk.dkapp (Dk.dkvar s) (List.map trexpr args)
+    Dk.mk_app (Dk.mk_var s) (List.map trexpr args)
   | Enot (e, _) ->
-    Dk.dknot (trexpr e)
+    Dk.mk_not (trexpr e)
   | Eand (e1, e2, _) ->
-    Dk.dkand (trexpr e1) (trexpr e2)
+    Dk.mk_and (trexpr e1) (trexpr e2)
   | Eor (e1, e2, _) ->
-    Dk.dkor (trexpr e1) (trexpr e2)
+    Dk.mk_or (trexpr e1) (trexpr e2)
   | Eimply (e1, e2, _) ->
-    Dk.dkimply (trexpr e1) (trexpr e2)
-  | Etrue -> Dk.dktrue
-  | Efalse -> Dk.dkfalse
+    Dk.mk_imply (trexpr e1) (trexpr e2)
+  | Etrue -> Dk.mk_true
+  | Efalse -> Dk.mk_false
   | Eall (e1, s, e2, _) ->
-    Dk.dkforall (trexpr e1) (trexpr e2)
+    Dk.mk_forall (trexpr e1) (trexpr e2)
   | Eex (e1, s, e2, _) ->
-    Dk.dkexists (trexpr e1) (trexpr e2)
+    Dk.mk_exists (trexpr e1) (trexpr e2)
   | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
 
 type result =
-  | Typ of Dk.dkterm
+  | Typ of Dk.term
   | Indirect of string
 
 let predefined = ["="; "$string"]
@@ -75,40 +75,40 @@ let rec get_freevars ps =
     | Evar (s, _) -> if not (List.mem s env) then add_sig s 0 t
     | Emeta  _ | Etrue | Efalse -> ()
     | Eapp ("$string", [Evar (s, _)], _) ->
-      add_sig ("S"^s) 0 (Typ Dk.dktermtype)
+      add_sig ("S"^s) 0 (Typ Dk.mk_termtype)
     | Eapp (s, args, _) ->
       add_sig s (List.length args) t;
-      List.iter (get_sig (Typ Dk.dktermtype) env) args;
+      List.iter (get_sig (Typ Dk.mk_termtype) env) args;
     | Eand (e1, e2, _) | Eor (e1, e2, _)
     | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
-      -> get_sig (Typ Dk.dkproptype) env e1;
-	get_sig (Typ Dk.dkproptype) env e2
-    | Enot (e1, _) -> get_sig (Typ Dk.dkproptype) env e1;
+      -> get_sig (Typ Dk.mk_proptype) env e1;
+	get_sig (Typ Dk.mk_proptype) env e2
+    | Enot (e1, _) -> get_sig (Typ Dk.mk_proptype) env e1;
     | Eall (Evar (v, _), _, e1, _) | Eex (Evar (v, _), _, e1, _)
-      -> get_sig (Typ Dk.dkproptype) (v::env) e1
+      -> get_sig (Typ Dk.mk_proptype) (v::env) e1
     | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
   in
   let do_phrase p =
     match p with
       | Phrase.Hyp (name, e, _) ->
-	get_sig (Typ Dk.dkproptype) [] e;
+	get_sig (Typ Dk.mk_proptype) [] e;
       | Phrase.Def (DefReal ("", s, _, e, None)) ->
 	get_sig (Indirect s) [] e;
       | _ -> assert false
   in
   List.iter do_phrase ps;
   let rec follow_indirect path s =
-    if List.mem s path then Dk.dkproptype else
+    if List.mem s path then Dk.mk_proptype else
       begin try
         match Hashtbl.find symtbl s with
 	| (_, Typ t) -> t
 	| (_, Indirect s1) -> follow_indirect (s::path) s1
-      with Not_found -> Dk.dkproptype
+      with Not_found -> Dk.mk_proptype
       end
   in
   let rec add_arrow n ty =
     if n = 0 then ty else
-      Dk.dkarrow Dk.dktermtype (add_arrow (n-1) ty) in
+      Dk.mk_arrow Dk.mk_termtype (add_arrow (n-1) ty) in
   let find_sig sym (arity, kind) l =
     if List.mem sym predefined then l
     else
@@ -143,7 +143,7 @@ let get_all (hyps, defs, distincts) p =
   | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
 
 let get_declarations freevars =
-  List.map (fun (sym, ty) -> (Dk.dkdecl (Ljtodk.trexpr (evar sym)) ty)) freevars
+  List.map (fun (sym, ty) -> (Dk.mk_decl (Ljtodk.trexpr (evar sym)) ty)) freevars
 
 let rec get_rewritings freevars phrases =
   match phrases with
@@ -154,8 +154,8 @@ let rec get_rewritings freevars phrases =
 	   (fun e -> match e with
 	   | Evar (v, _) -> let t = List.assoc v freevars in Ljtodk.trexpr e, t
 	   | _ -> assert false) params) in
-    Dk.dkrewrite (List.combine vars types)
-      (Dk.dkapp (Dk.dkvar sym) vars) (Ljtodk.trexpr body)
+    Dk.mk_rewrite (List.combine vars types)
+      (Dk.mk_app (Dk.mk_var sym) vars) (Ljtodk.trexpr body)
     :: (get_rewritings freevars ps)
   | p :: ps -> get_rewritings freevars ps
   | [] -> []
@@ -198,14 +198,14 @@ let output oc phrases ppphrases llp filename contextoutput =
   if contextoutput
   then
     begin
-      Dk.p_line oc (Dk.dkprelude (modname filename));
+      Dk.print_line oc (Dk.mk_prelude (modname filename));
       let freevars = get_freevars phrases in
-      List.iter (Dk.p_line oc) (get_declarations freevars);
-      List.iter (Dk.p_line oc) (get_rewritings freevars phrases);
+      List.iter (Dk.print_line oc) (get_declarations freevars);
+      List.iter (Dk.print_line oc) (get_rewritings freevars phrases);
     end;
   let ljproof, ljconc = Lltolj.lltolj thm.proof goal in
   let rec dkline =
-    Dk.dkdeftype (Dk.dkvar "conjecture_proof")
-      (Dk.dkprf (Ljtodk.trexpr ljconc))
+    Dk.mk_deftype (Dk.mk_var "conjecture_proof")
+      (Dk.mk_prf (Ljtodk.trexpr ljconc))
       (Ljtodk.trproof (ljproof, ljconc, [])) in
-  Dk.p_line oc dkline
+  Dk.print_line oc dkline

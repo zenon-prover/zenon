@@ -1,48 +1,48 @@
 (* AST corresponding to a Dedukti output *)
-type dkvar = string
+type var = string
 
-type dkterm
-type dkline
+type term
+type line
 
 (* constructor functions *)
-val dkvar : dkvar -> dkterm
-val dklam : dkterm -> dkterm -> dkterm -> dkterm
-val dklams : dkterm list -> dkterm list -> dkterm -> dkterm
-val dkpi : dkterm -> dkterm -> dkterm -> dkterm
-val dkapp : dkterm -> dkterm list -> dkterm
-val dkapp2 : dkterm -> dkterm -> dkterm
-val dkapp3 : dkterm -> dkterm -> dkterm -> dkterm
-val dkarrow : dkterm -> dkterm -> dkterm
-val dkprf : dkterm -> dkterm
-val dktermtype : dkterm
-val dkproptype : dkterm
-val dkanyterm : dkterm
-val dknot : dkterm -> dkterm
-val dkand : dkterm -> dkterm -> dkterm
-val dkor : dkterm -> dkterm -> dkterm
-val dkimply : dkterm -> dkterm -> dkterm
-val dkforall : dkterm -> dkterm -> dkterm
-val dkexists : dkterm -> dkterm -> dkterm
-val dktrue : dkterm
-val dkfalse : dkterm
-val dkeq : dkterm -> dkterm -> dkterm
-val dknotc : dkterm -> dkterm
-val dkandc : dkterm -> dkterm -> dkterm
-val dkorc : dkterm -> dkterm -> dkterm
-val dkimplyc : dkterm -> dkterm -> dkterm
-val dkforallc : dkterm -> dkterm -> dkterm
-val dkexistsc : dkterm -> dkterm -> dkterm
-val dktruec : dkterm
-val dkfalsec : dkterm
-val dkeqc : dkterm -> dkterm -> dkterm
-val dkequiv : dkterm -> dkterm -> dkterm
+val mk_var : var -> term
+val mk_lam : term -> term -> term -> term
+val mk_lams : term list -> term list -> term -> term
+val mk_pi : term -> term -> term -> term
+val mk_app : term -> term list -> term
+val mk_app2 : term -> term -> term
+val mk_app3 : term -> term -> term -> term
+val mk_arrow : term -> term -> term
+val mk_prf : term -> term
+val mk_termtype : term
+val mk_proptype : term
+val mk_anyterm : term
+val mk_not : term -> term
+val mk_and : term -> term -> term
+val mk_or : term -> term -> term
+val mk_imply : term -> term -> term
+val mk_forall : term -> term -> term
+val mk_exists : term -> term -> term
+val mk_true : term
+val mk_false : term
+val mk_eq : term -> term -> term
+val mk_notc : term -> term
+val mk_andc : term -> term -> term
+val mk_orc : term -> term -> term
+val mk_implyc : term -> term -> term
+val mk_forallc : term -> term -> term
+val mk_existsc : term -> term -> term
+val mk_truec : term
+val mk_falsec : term
+val mk_eqc : term -> term -> term
+val mk_equiv : term -> term -> term
 
-val dkdecl : dkterm -> dkterm -> dkline
-val dkdeftype : dkterm -> dkterm -> dkterm -> dkline
-val dkprelude : string -> dkline
-val dkrewrite : (dkterm * dkterm) list -> dkterm -> dkterm -> dkline
+val mk_decl : term -> term -> line
+val mk_deftype : term -> term -> term -> line
+val mk_prelude : string -> line
+val mk_rewrite : (term * term) list -> term -> term -> line
 
 (* print functions *)
-val p_term : out_channel -> dkterm -> unit
-val p_terms : out_channel -> dkterm list -> unit
-val p_line : out_channel -> dkline -> unit
+val print_term : out_channel -> term -> unit
+val print_terms : out_channel -> term list -> unit
+val print_line : out_channel -> line -> unit
