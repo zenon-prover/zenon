@@ -3,6 +3,11 @@ open Expr
 open Llproof
 open Namespace
 
+type env = {hypotheses : Expr.expr list; 
+	    definitions : (string, Expr.expr list * Expr.expr) Hashtbl.t;
+	    lemmas : (string, Llproof.prooftree) Hashtbl.t;
+	    distincts : (Expr.expr * int) list;}
+
 let new_var =
   let r = ref 0 in
   fun () ->
@@ -184,16 +189,6 @@ let scconc (g, c, rule) = c
 let scext (name, args, cons, proofs) =
   cons, efalse, SCext (name, args, cons, proofs)
 
-let lemma_env =
-  (Hashtbl.create 97 : (string, prooftree) Hashtbl.t)
-
-let distinct_terms = ref []
-
-let hypothesis_env = ref []
-
-let definition_env =
-  (Hashtbl.create 97 : (string, expr list * expr) Hashtbl.t)
-
 let new_terms = ref []
 
 let gamma_length (g, c, rule) = List.length g
@@ -275,36 +270,36 @@ let rec xaddhyp h lkproof =
 and addhyp hyps lkproof =
   List.fold_left (fun pf h -> xaddhyp h pf) lkproof hyps
 
-let rec use_defs e =
+let rec use_defs defs e =
   match e with
-  | Evar (v, _) when Hashtbl.mem definition_env v ->
-    let (params, body) = Hashtbl.find definition_env v in
-    use_defs body
-  | Eapp (s, args, _) when Hashtbl.mem definition_env s ->
-    let exprs = List.map use_defs args in
-    let (params, body) = Hashtbl.find definition_env s in
-    use_defs (substitute (List.combine params exprs) body)
+  | Evar (v, _) when Hashtbl.mem defs v ->
+    let (params, body) = Hashtbl.find defs v in
+    use_defs defs body
+  | Eapp (s, args, _) when Hashtbl.mem defs s ->
+    let exprs = List.map (use_defs defs) args in
+    let (params, body) = Hashtbl.find defs s in
+    use_defs defs (substitute (List.combine params exprs) body)
   | Evar _ | Etrue | Efalse -> e
   | Eapp (s, args, _) ->
-    eapp (s, List.map use_defs args)
+    eapp (s, List.map (use_defs defs) args)
   | Enot (e, _) ->
-    enot (use_defs e)
+    enot (use_defs defs e)
   | Eand (e1, e2, _) ->
-    eand (use_defs e1, use_defs e2)
+    eand (use_defs defs e1, use_defs defs e2)
   | Eor (e1, e2, _) ->
-    eor (use_defs e1, use_defs e2)
+    eor (use_defs defs e1, use_defs defs e2)
   | Eimply (e1, e2, _) ->
-    eimply (use_defs e1, use_defs e2)
+    eimply (use_defs defs e1, use_defs defs e2)
   | Eequiv (e1, e2, _) ->
-    let expr1 = use_defs e1 in
-    let expr2 = use_defs e2 in
+    let expr1 = use_defs defs e1 in
+    let expr2 = use_defs defs e2 in
     eand (eimply (expr1, expr2), eimply (expr2, expr1))
   | Eall (x, s, e, _) ->
-    eall (x, s, use_defs e)
+    eall (x, s, use_defs defs e)
   | Eex (x, s, e, _) ->
-    eex (x, s, use_defs e)
+    eex (x, s, use_defs defs e)
   | Etau (x, s, e, _) ->
-    let tau = etau (x, s, use_defs e) in
+    let tau = etau (x, s, use_defs defs e) in
     if List.mem_assoc tau !new_terms
     then
       List.assoc tau !new_terms
@@ -313,53 +308,53 @@ let rec use_defs e =
       new_terms := (tau, z) :: !new_terms;
       z
   | Elam (x, s, e, _) ->
-    elam (x, s, use_defs e)
+    elam (x, s, use_defs defs e)
   | Emeta (x, _) -> assert false
 (* /!\ Raised by a lot of files in SYN (SYN048+1.p, SYN049+1.p, SYN315+1.p, SYN318+1.p, ...) *)
 
-let use_defs_rule rule =
+let use_defs_rule defs rule =
   match rule with
   | Rfalse -> Rfalse
   | Rnottrue -> Rnottrue
-  | Raxiom (p) -> Raxiom (use_defs p)
-  | Rcut (p) -> Rcut (use_defs p)
-  | Rnoteq (a) -> Rnoteq (use_defs a)
-  | Reqsym (a, b) -> Reqsym (use_defs a, use_defs b)
-  | Rnotnot (p) -> Rnotnot (use_defs p)
-  | Rconnect (b, p, q) -> Rconnect (b, use_defs p, use_defs q)
+  | Raxiom (p) -> Raxiom (use_defs defs p)
+  | Rcut (p) -> Rcut (use_defs defs p)
+  | Rnoteq (a) -> Rnoteq (use_defs defs a)
+  | Reqsym (a, b) -> Reqsym (use_defs defs a, use_defs defs b)
+  | Rnotnot (p) -> Rnotnot (use_defs defs p)
+  | Rconnect (b, p, q) -> Rconnect (b, use_defs defs p, use_defs defs q)
   | Rnotconnect (b, p, q) ->
-    Rnotconnect (b, use_defs p, use_defs q)
-  | Rex (ep, v) -> Rex (use_defs ep, use_defs v)
-  | Rall (ap, t) -> Rall (use_defs ap, use_defs t)
-  | Rnotex (ep, t) -> Rnotex (use_defs ep, use_defs t)
-  | Rnotall (ap, v) -> Rnotall (use_defs ap, use_defs v)
-  | Rpnotp (e1, e2) -> Rpnotp (use_defs e1, use_defs e2)
-  | Rnotequal (e1, e2) -> Rnotequal (use_defs e1, use_defs e2)
+    Rnotconnect (b, use_defs defs p, use_defs defs q)
+  | Rex (ep, v) -> Rex (use_defs defs ep, use_defs defs v)
+  | Rall (ap, t) -> Rall (use_defs defs ap, use_defs defs t)
+  | Rnotex (ep, t) -> Rnotex (use_defs defs ep, use_defs defs t)
+  | Rnotall (ap, v) -> Rnotall (use_defs defs ap, use_defs defs v)
+  | Rpnotp (e1, e2) -> Rpnotp (use_defs defs e1, use_defs defs e2)
+  | Rnotequal (e1, e2) -> Rnotequal (use_defs defs e1, use_defs defs e2)
   | Rdefinition (name, sym, args, body, recarg, c, h) ->
     assert false
   | Rextension (ext, name, args, cons, hyps) ->
     Rextension (
-      ext, name, List.map use_defs args,
-      List.map use_defs cons, List.map (List.map use_defs) hyps)
+      ext, name, List.map (use_defs defs) args,
+      List.map (use_defs defs) cons, List.map (List.map (use_defs defs)) hyps)
   | Rlemma (name, args) ->
     assert false
   | RcongruenceLR (p, a, b) ->
-    RcongruenceLR (use_defs p, use_defs a, use_defs b)
+    RcongruenceLR (use_defs defs p, use_defs defs a, use_defs defs b)
   | RcongruenceRL (p, a, b) ->
-    RcongruenceRL (use_defs p, use_defs a, use_defs b)
+    RcongruenceRL (use_defs defs p, use_defs defs a, use_defs defs b)
 
-let rec use_defs_proof proof =
+let rec use_defs_proof env proof =
   match proof.rule with
   | Rlemma (name, args) ->
-    use_defs_proof (Hashtbl.find lemma_env name)
+    use_defs_proof env (Hashtbl.find env.lemmas name)
   | Rdefinition (name, sym, args, body, recarg, c, h) ->
     begin match proof.hyps with
-    | [hyp] -> use_defs_proof hyp
+    | [hyp] -> use_defs_proof env hyp
     | _ -> assert false end
   | _ ->
-    {conc = List.map use_defs proof.conc;
-     hyps = List.map use_defs_proof proof.hyps;
-     rule = use_defs_rule proof.rule}
+    {conc = List.map (use_defs env.definitions) proof.conc;
+     hyps = List.map (use_defs_proof env) proof.hyps;
+     rule = use_defs_rule env.definitions proof.rule}
 
 let rec union lists =
   match lists with
@@ -486,9 +481,9 @@ let rec hypstoadd rule =
 
 (* ---------------------------------------------------------------*)
 
-let rec deduce_inequality e1 e2 v1 v2 c1 c2 b1 b2 gamma proof =
-  let n1 = List.assoc v1 !distinct_terms in
-  let n2 = List.assoc v2 !distinct_terms in
+let rec deduce_inequality e1 e2 v1 v2 c1 c2 b1 b2 gamma proof distincts =
+  let n1 = List.assoc v1 distincts in
+  let n2 = List.assoc v2 distincts in
   let eq = eapp ("=", [e1; e2]) in
   let b3 = n1 < n2 in
   let ax =
@@ -750,7 +745,7 @@ let rec rmcongruence s x e a b =
     | Etau _ | Elam _ | Emeta _ | Eequiv _ ->
     assert false
 
-let rec xlltolkrule rule hyps gamma =
+let rec xlltolkrule env rule hyps gamma =
   match rule, hyps with
   | Rfalse, [] ->
     scfalse (gamma, efalse)
@@ -950,8 +945,8 @@ let rec xlltolkrule rule hyps gamma =
   | Rextension ("", "zenon_stringequal", [s1; s2], [c], []), [] ->
     let v1 = eapp ("$string", [s1]) in
     let v2 = eapp ("$string", [s2]) in
-    let n1 = List.assoc v1 !distinct_terms in
-    let n2 = List.assoc v2 !distinct_terms in
+    let n1 = List.assoc v1 env.distincts in
+    let n2 = List.assoc v2 env.distincts in
     let c = eapp ("=", [v1; v2]) in
     if n1 < n2
     then righttoleft c (scaxiom (c, rm (enot c) gamma))
@@ -959,26 +954,26 @@ let rec xlltolkrule rule hyps gamma =
   | Rextension (
     "", "zenon_stringdiffll", [e1; v1; e2; v2],
     [c1; c2], [[h]]), [proof] ->
-    deduce_inequality e1 e2 v1 v2 c1 c2 true true gamma proof
+    deduce_inequality e1 e2 v1 v2 c1 c2 true true gamma proof env.distincts
   | Rextension (
     "", "zenon_stringdifflr", [e1; v1; e2; v2],
     [c1; c2], [[h]]), [proof] ->
-    deduce_inequality e1 e2 v1 v2 c1 c2 true false gamma proof
+    deduce_inequality e1 e2 v1 v2 c1 c2 true false gamma proof env.distincts
   | Rextension (
     "", "zenon_stringdiffrl", [e1; v1; e2; v2],
     [c1; c2], [[h]]), [proof] ->
-    deduce_inequality e1 e2 v1 v2 c1 c2 false true gamma proof
+    deduce_inequality e1 e2 v1 v2 c1 c2 false true gamma proof env.distincts
   | Rextension (
     "", "zenon_stringdiffrr", [e1; v1; e2; v2],
     [c1; c2], [[h]]), [proof] ->
-    deduce_inequality e1 e2 v1 v2 c1 c2 false false gamma proof
+    deduce_inequality e1 e2 v1 v2 c1 c2 false false gamma proof env.distincts
   | Rextension (ext, name, args, cons, hyps), proofs ->
     scext(name, args, cons, proofs)
   | Rlemma _, _ -> assert false (* no lemma after use_defs *)
   | Rdefinition _, _ -> assert false (* no definition after use_defs *)
   | _ -> assert false
 
-let rec lltolkrule proof gamma =
+let rec lltolkrule env proof gamma =
   let hypslist, conclist = hypstoadd proof.rule in
   let newcontr, list =
     List.fold_left (fun (cs, es) e ->
@@ -989,12 +984,12 @@ let rec lltolkrule proof gamma =
 	e :: cs, es)
       ([], gamma) conclist in
   let contrshyps =
-    List.map2 lltolkrule proof.hyps
+    List.map2 (lltolkrule env) proof.hyps
       (List.map (List.rev_append list) hypslist) in
   let contrs, prehyps = List.split contrshyps in
   let maincontr, remainders = union contrs in
   let hyps = List.map2 addhyp remainders prehyps in
-  let preproof = xlltolkrule proof.rule hyps (maincontr@list) in
+  let preproof = xlltolkrule env proof.rule hyps (maincontr@list) in
   List.fold_left
     (fun (cs, prf) c ->
       if List.mem c conclist
@@ -1009,14 +1004,14 @@ let rec constructive proof =
   | _ -> List.fold_left
     (fun b prf -> b && constructive prf) true (hypsofrule rule)
 
-let rec lltolk proof goal =
+let rec lltolk env proof goal =
   let pregamma =
     match goal with
-    | Some (Enot (g, _)) -> enot g :: !hypothesis_env
-    | None -> !hypothesis_env
+    | Some (Enot (g, _)) -> enot g :: env.hypotheses
+    | None -> env.hypotheses
     | _ -> assert false in
-  let gamma = List.map use_defs pregamma in
-  let l, lkproof = lltolkrule proof gamma in
+  let gamma = List.map (use_defs env.definitions) pregamma in
+  let l, lkproof = lltolkrule env proof gamma in
   assert (l = []);
   lkproof
 
@@ -1365,23 +1360,23 @@ let rec lltoljrule lkproof =
   assert (List.length ljlist = List.length ljg);
   ljlist, ljprf
 
-let lltolj proof goal =
+let lltolj env proof goal =
   let result = match goal with
     | Some (Enot (g, _)) ->
-      let newgoal = use_defs g in
-      let newproof = use_defs_proof proof in
+      let newgoal = use_defs env.definitions g in
+      let newproof = use_defs_proof env proof in
       newgoal, lefttoright newgoal (
-	lltolk newproof (Some (enot newgoal)))
+	lltolk env newproof (Some (enot newgoal)))
     | None ->
-      let newproof = use_defs_proof proof in
-      efalse, lltolk newproof None;
+      let newproof = use_defs_proof env proof in
+      efalse, lltolk env newproof None;
     | _ -> assert false in
   let conc, lkproof = List.fold_left
     (fun (conc, rule) stmt ->
-      let newstmt = use_defs stmt in
+      let newstmt = use_defs env.definitions stmt in
       eimply (newstmt, conc),
       scrimply (newstmt, conc, rule)
     )
-    result !hypothesis_env in
+    result env.hypotheses in
   let _, ljproof = lltoljrule (*optimize lkproof*) lkproof in
   ljproof, scconc ljproof

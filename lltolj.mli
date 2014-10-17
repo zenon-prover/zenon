@@ -1,3 +1,8 @@
+type env = {hypotheses : Expr.expr list; 
+	    definitions : (string, Expr.expr list * Expr.expr) Hashtbl.t;
+	    lemmas : (string, Llproof.prooftree) Hashtbl.t;
+	    distincts : (Expr.expr * int) list;}
+
 type sequent;;
 type lkrule =
 | SCaxiom of Expr.expr
@@ -61,11 +66,6 @@ val scext : string * Expr.expr list * Expr.expr list * lkproof list -> lkproof;;
 
 val scconc : lkproof -> Expr.expr;;
 
-val distinct_terms : (Expr.expr * int) list ref;;
-val lemma_env : (string, Llproof.prooftree) Hashtbl.t;;
-val hypothesis_env : Expr.expr list ref;;
-val definition_env :
-  (string, Expr.expr list * Expr.expr) Hashtbl.t;;
-
-val lltolj : Llproof.prooftree -> Expr.expr option -> lkproof * Expr.expr;;
+val lltolj : env -> Llproof.prooftree -> Expr.expr option 
+  -> lkproof * Expr.expr;;
 exception Found of Expr.expr;;
