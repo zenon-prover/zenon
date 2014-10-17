@@ -1,41 +1,8 @@
 (* AST corresponding to a Dedukti output *)
 type dkvar = string
 
-type dkterm = private
-  | Dkvar of dkvar
-  | Dklam of dkterm * dkterm * dkterm
-  | Dkpi of dkterm * dkterm * dkterm
-  | Dkapp of dkterm list
-  | Dkarrow of dkterm * dkterm
-  | Dkprf
-  | Dktermtype
-  | Dkproptype
-  | Dkanyterm
-  | Dknot
-  | Dkand
-  | Dkor
-  | Dkimply
-  | Dkforall
-  | Dkexists
-  | Dktrue
-  | Dkfalse
-  | Dkeq
-  | Dknotc
-  | Dkandc
-  | Dkorc
-  | Dkimplyc
-  | Dkforallc
-  | Dkexistsc
-  | Dktruec
-  | Dkfalsec
-  | Dkeqc
-  | Dkequiv
-
-type dkline = private
-  | Dkdecl of dkterm * dkterm
-  | Dkdeftype of dkterm * dkterm * dkterm
-  | Dkprelude of string
-  | Dkrewrite of (dkterm * dkterm) list * dkterm * dkterm
+type dkterm
+type dkline
 
 (* constructor functions *)
 val dkvar : dkvar -> dkterm
@@ -78,6 +45,5 @@ val dkrewrite : (dkterm * dkterm) list -> dkterm -> dkterm -> dkline
 (* print functions *)
 val p_var : out_channel -> dkvar -> unit
 val p_term : out_channel -> dkterm -> unit
-val p_term_p : out_channel -> dkterm -> unit
 val p_terms : out_channel -> dkterm list -> unit
 val p_line : out_channel -> dkline -> unit
