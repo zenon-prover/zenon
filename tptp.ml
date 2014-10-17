@@ -616,11 +616,11 @@ and translate_one dirs accu p =
       Hyp (name, body, 1) :: accu
 
 and xtranslate dirs ps accu =
-  if !Globals.build_rwrt_sys_B
+(*  if !Globals.build_rwrt_sys_B
   then List.fold_left (translate_one_rwrt_B dirs) accu ps
   else if !Globals.build_rwrt_sys 
   then List.fold_left (translate_one_rwrt dirs) accu ps
-  else List.fold_left (translate_one dirs) accu ps
+  else*) List.fold_left (translate_one dirs) accu ps
 
 and try_incl dirs f accu =
   let rec loop = function

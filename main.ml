@@ -363,9 +363,10 @@ let main () =
   let retcode = ref 0 in
   begin try
     let phrases = List.map fst phrases_dep in
+    let phrases = Rewrite.select_rwrt_rules phrases in
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
-    Phrase.parse_rwrt ppphrases;
+  (*  Phrase.parse_rwrt ppphrases;*)
     if !Globals.debug_rwrt
     then 
       begin 
