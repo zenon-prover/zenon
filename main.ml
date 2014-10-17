@@ -132,6 +132,8 @@ let argspec = [
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (5m)";
+  "-intuitionnistic", Arg.Unit (fun () -> intuitionnistic := true),
+            "          minimize the use of classical connectives";
   "-odedukti", Arg.Unit (fun () -> proof_level := Proof_dedukti),
             "          print the proof in Dedukti script format";
   "-odeduktiterm", Arg.Unit (fun () -> proof_level := Proof_deduktiterm),
@@ -360,21 +362,27 @@ let main () =
         let lxp = Mltoll.translate th_name ppphrases proof in
         Print.llproof (Print.Chan stdout) lxp;
     | Proof_l -> Print.llproof (Print.Chan stdout) (Lazy.force llp);
-    | Proof_coq ->
+    | Proof_coq when !intuitionnistic = false ->
         let u = Lltocoq.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
-    | Proof_coqterm ->
+    | Proof_coqterm when !intuitionnistic = false ->
         let (p, u) = Coqterm.trproof phrases ppphrases (Lazy.force llp) in
         Coqterm.print stdout p;
         Watch.warn phrases_dep llp u;
     | Proof_isar ->
         let u = Lltoisar.output stdout phrases ppphrases (Lazy.force llp) in
         Watch.warn phrases_dep llp u;
-    | Proof_dedukti ->
-	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp) 
+    | Proof_coq ->
+       	Lltodedukti.coq_output stdout phrases ppphrases (Lazy.force llp)
 	  (Filename.chop_extension (Filename.basename file)) true
-    | Proof_deduktiterm -> 
-	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp) 
+    | Proof_coqterm ->
+       	Lltodedukti.coq_output stdout phrases ppphrases (Lazy.force llp)
+	  (Filename.chop_extension (Filename.basename file)) false
+    | Proof_dedukti ->
+	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp)
+	  (Filename.chop_extension (Filename.basename file)) true
+    | Proof_deduktiterm ->
+	Lltodedukti.output stdout phrases ppphrases (Lazy.force llp)
 	  (Filename.chop_extension (Filename.basename file)) false
     end;
   with
