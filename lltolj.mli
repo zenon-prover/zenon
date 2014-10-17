@@ -66,6 +66,9 @@ val scext : string * Expr.expr list * Expr.expr list * lkproof list -> lkproof;;
 
 val scconc : lkproof -> Expr.expr;;
 
+val use_defs : (string, Expr.expr list * Expr.t) Hashtbl.t -> Expr.expr -> Expr.expr
+val use_defs_proof : env -> Llproof.prooftree -> Llproof.prooftree;;
+
 val lltolj : env -> Llproof.prooftree -> Expr.expr option 
   -> lkproof * Expr.expr;;
 exception Found of Expr.expr;;

@@ -1010,7 +1010,7 @@ let rec lltolk env proof goal =
     | Some (Enot (g, _)) -> enot g :: env.hypotheses
     | None -> env.hypotheses
     | _ -> assert false in
-  let gamma = List.map (use_defs env.definitions) pregamma in
+  let gamma = pregamma in
   let l, lkproof = lltolkrule env proof gamma in
   assert (l = []);
   lkproof
@@ -1373,7 +1373,7 @@ let lltolj env proof goal =
     | _ -> assert false in
   let conc, lkproof = List.fold_left
     (fun (conc, rule) stmt ->
-      let newstmt = use_defs env.definitions stmt in
+      let newstmt = stmt in
       eimply (newstmt, conc),
       scrimply (newstmt, conc, rule)
     )

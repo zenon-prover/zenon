@@ -193,10 +193,12 @@ struct
     let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
     List.iter (fun (var, body) -> Hashtbl.add definitions var body) defs;
     let distinctshyps = get_distinctshyps distincts in
-    {Lltolj.hypotheses = distinctshyps@hyps; 
+    {Lltolj.hypotheses = List.map (Lltolj.use_defs definitions) (distinctshyps@hyps); 
      Lltolj.definitions = definitions;
      Lltolj.lemmas = lemmas;
-     Lltolj.distincts = distincts}
+     Lltolj.distincts = List.map 
+	(fun (e, n) -> Lltolj.use_defs definitions e, n) distincts}
+
 
   let output oc phrases ppphrases llp filename contextoutput =
     let goal = get_goal phrases in
