@@ -112,14 +112,14 @@ let rec get_freevars ps =
   let find_sig sym (arity, kind) l =
     if List.mem sym predefined then l
     else
-      let ty = 
+      let ty =
 	match kind with
 	| Typ t -> t
 	| Indirect s -> follow_indirect [] s in
       (sym, add_arrow arity ty) :: l
   in
   Hashtbl.fold find_sig symtbl []
-    
+
 let rec get_distincts distincts e =
     match e with
     | Eapp ("$string", [Evar (s, _)], _) ->
@@ -130,7 +130,7 @@ let rec get_distincts distincts e =
 
 let get_all (hyps, defs, distincts) p =
   match p with
-  | Phrase.Hyp (name, e, _) when name = goal_name -> 
+  | Phrase.Hyp (name, e, _) when name = goal_name ->
     (hyps, defs, get_distincts distincts e)
   | Phrase.Hyp (name, e, _) ->
     (e :: hyps, defs, get_distincts distincts e)
@@ -142,7 +142,7 @@ let get_all (hyps, defs, distincts) p =
   | Phrase.Sig _ -> assert false
   | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
 
-let get_declarations freevars = 
+let get_declarations freevars =
   List.map (fun (sym, ty) -> (Dk.dkdecl (Ljtodk.trexpr (evar sym)) ty)) freevars
 
 let rec get_rewritings freevars phrases =
@@ -155,7 +155,7 @@ let rec get_rewritings freevars phrases =
 	   | Evar (v, _) -> let t = List.assoc v freevars in Ljtodk.trexpr e, t
 	   | _ -> assert false) params) in
     Dk.dkrewrite (List.combine vars types)
-      (Dk.dkapp (Dk.dkvar sym) vars) (Ljtodk.trexpr body) 
+      (Dk.dkapp (Dk.dkvar sym) vars) (Ljtodk.trexpr body)
     :: (get_rewritings freevars ps)
   | p :: ps -> get_rewritings freevars ps
   | [] -> []
@@ -163,7 +163,7 @@ let rec get_rewritings freevars phrases =
 let rec get_distinctshyps l =
   match l with
   | (x, n) :: (y, m) :: l ->
-    enot (eapp ("=", [y; x])) :: (get_distinctshyps ((x, n) :: l)) 
+    enot (eapp ("=", [y; x])) :: (get_distinctshyps ((x, n) :: l))
     @ (get_distinctshyps ((y, m) :: l))
   | _ -> []
 
@@ -190,7 +190,7 @@ let output oc phrases ppphrases llp filename contextoutput =
   Lltolj.hypothesis_env := distinctshyps@hyps;
   List.iter (fun (var, body) -> Hashtbl.add Lltolj.definition_env var body) defs;
   Lltolj.distinct_terms := distincts;
-  let thm, lemmas = 
+  let thm, lemmas =
     match List.rev llp with
     | [] -> assert false
     | thm :: lemmas -> thm, lemmas in

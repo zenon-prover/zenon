@@ -181,7 +181,7 @@ let sccnot (e, proof) =
   assert (List.mem (enot e) g);
   rm (enot e) g, e, SCcnot (e, proof)
 let scconc (g, c, rule) = c
-let scext (name, args, cons, proofs) = 
+let scext (name, args, cons, proofs) =
   cons, efalse, SCext (name, args, cons, proofs)
 
 let lemma_env =
@@ -353,9 +353,9 @@ let rec use_defs_proof proof =
   | Rlemma (name, args) ->
     use_defs_proof (Hashtbl.find lemma_env name)
   | Rdefinition (name, sym, args, body, recarg, c, h) ->
-    begin match proof.hyps with 
-    | [hyp] -> use_defs_proof hyp 
-    | _ -> assert false end 
+    begin match proof.hyps with
+    | [hyp] -> use_defs_proof hyp
+    | _ -> assert false end
   | _ ->
     {conc = List.map use_defs proof.conc;
      hyps = List.map use_defs_proof proof.hyps;
