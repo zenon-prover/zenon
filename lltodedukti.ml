@@ -222,5 +222,8 @@ struct
 end
 
 module TranslateDk = Translate(Dkterm)
+module TranslateCoq = Translate(ClassicalCoqTerm)
 
 let output = TranslateDk.output
+let coq_output = TranslateCoq.output
+

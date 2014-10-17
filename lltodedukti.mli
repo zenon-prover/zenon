@@ -5,3 +5,5 @@ and contextoutput a boolean indicating whether the context should be printed *)
 
 val output : out_channel -> Phrase.phrase list -> Phrase.phrase list
   -> Llproof.proof-> string -> bool -> unit
+val coq_output : out_channel -> Phrase.phrase list -> Phrase.phrase list
+  -> Llproof.proof-> string -> bool -> unit
