@@ -43,7 +43,6 @@ val dkprelude : string -> dkline
 val dkrewrite : (dkterm * dkterm) list -> dkterm -> dkterm -> dkline
 
 (* print functions *)
-val p_var : out_channel -> dkvar -> unit
 val p_term : out_channel -> dkterm -> unit
 val p_terms : out_channel -> dkterm list -> unit
 val p_line : out_channel -> dkline -> unit
