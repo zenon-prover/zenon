@@ -79,6 +79,11 @@ let b_axiom_to_rwrt_prop = [
   "closure1_def";
   "generalized_union_def";
   "seq_def";
+
+  "mem_integer";
+  "empty2";
+  "finite_subsets_def";
+  "non_empty_finite_subsets_def";
 ];;
 
 let b_axiom_to_rwrt_term = [
@@ -583,9 +588,9 @@ let rec select_rwrt_rules_aux accu phrase =
        else if !Globals.build_rwrt_sys 
 	       && is_heuri_rwrt_prop body 
        then (add_rwrt_prop name body; accu) 
-       else if !Globals.build_rwrt_sys 
+  (*     else if !Globals.build_rwrt_sys 
 	       && is_heuri_rwrt_term body 
-       then (add_rwrt_term name body; accu)
+       then (print_string (" |> term "^name^" <| "); add_rwrt_term name body; accu) *)
        else phrase :: accu;
      end
   | _ -> phrase :: accu
