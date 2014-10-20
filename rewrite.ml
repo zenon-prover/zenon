@@ -496,9 +496,9 @@ let rec is_equiv_prop body =
 	 begin 
 	   (is_literal_noteq e1 
 	    && test_fv (get_fv e1) (get_fv e2))
-	   || 
+(*	   || 
 	     (is_literal_noteq e2 
-	      && test_fv (get_fv e2) (get_fv e1))
+	      && test_fv (get_fv e2) (get_fv e1)) *)
 	 end
       | _ -> false
     end
