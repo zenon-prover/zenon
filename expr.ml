@@ -536,7 +536,7 @@ let rec substitute map e =
           if conflict v map1 then
             tvar (newname ()) t
           else
-              tvar (get_name v) t
+            tvar (get_name v) t
       in
       if v <> nv then
         eall (nv, t, substitute ((v, nv) :: map1) f)
@@ -549,7 +549,7 @@ let rec substitute map e =
           if conflict v map1 then
             tvar (newname ()) t
           else
-              tvar (get_name v) t
+            tvar (get_name v) t
       in
       if v <> nv then
         eex (nv, t, substitute ((v, nv) :: map1) f)
@@ -560,9 +560,9 @@ let rec substitute map e =
       let map1 = rm_binding v map in
       let nv =
           if conflict v map1 then
-              tvar (newname ()) t
+            tvar (newname ()) t
           else
-              tvar (get_name v) t
+            tvar (get_name v) t
       in
       if v <> nv then
         etau (nv, t, substitute ((v, nv) :: map1) f)
@@ -573,9 +573,9 @@ let rec substitute map e =
       let map1 = rm_binding v map in
       let nv =
           if conflict v map1 then
-              tvar (newname ()) t
+            tvar (newname ()) t
           else
-              tvar (get_name v) t
+            tvar (get_name v) t
       in
       if v <> nv then
         elam (nv, t, substitute ((v, nv) :: map1) f)

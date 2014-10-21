@@ -9,6 +9,7 @@ exception Type_found of etype
 
 module M = Map.Make(String)
 
+(* Misc functions *)
 let map_fold f s l =
     let e, env = List.fold_left (fun (acc, env) e -> let x, env' = f env e in (x :: acc, env')) ([], s) l in
     List.rev e, env
@@ -17,13 +18,32 @@ let rec const_list n x = if n > 0 then x :: (const_list (n - 1) x) else []
 
 let opt_out = function Some x -> x | None -> assert false
 
+(* Copied from expr.ml for substituting *)
+let conflict v map =
+  match v with
+  | Evar (vv, _) ->
+      List.exists (fun (w, e) -> List.mem vv (get_fv e)) map
+  | _ -> assert false
+;;
+
+let rec rm_binding v map =
+  match map with
+  | [] -> []
+  | (w, _) :: t when w == v -> t
+  | h :: t -> h :: (rm_binding v t)
+;;
+
+
 (* Environment for typing *)
 type env = {
     tff : Type.t list M.t;
+    map : (Expr.t * Expr.t) list;
+    (* We also do substituting during typechecking to save a *lot* of time *)
 }
 
 let empty_env = {
     tff = M.empty;
+    map = [];
 }
 
 let tff_mem v env = M.mem v env.tff
@@ -50,7 +70,7 @@ let tff_add_type name t env =
             end
         | _ -> raise (Type_error (Printf.sprintf "trying to redefine built_in '%s'" name))
     else
-        { (* env with *) tff = M.add name [t] env.tff }
+        { env with tff = M.add name [t] env.tff }
 
 let tff_app_aux s args t =
     try
@@ -142,7 +162,7 @@ let default_env =
         "$to_real",     [unary type_int type_real; unary type_rat type_real; unary type_real type_real];
     ] in
     let tff_base = List.fold_left (fun acc (s, t) -> M.add s t acc) M.empty tff_builtin in
-    { (* empty_env with *) tff = tff_base }
+    { empty_env with tff = tff_base }
 
 let var_name s =
     if s = to_string type_int || s = to_string type_rat then
@@ -152,17 +172,21 @@ let var_name s =
 
 (* Typing *)
 let type_tff_var t env = function
-    | Evar(v, _) as e -> begin match get_type e with
-        | Some t -> e, env
-        | None when tff_mem v env ->
-                let t = tff_app v [] env in
-                (tvar v t, env)
-        | None ->
-                Log.debug 5 "Inferring type of of var '%s' : '%s'" v (Type.to_string t);
-                (tvar v t, env)
-        end
+    | Evar(v, _) as e ->
+            begin try
+                (List.assq e env.map, env)
+            with Not_found ->
+                begin match get_type e with
+                | Some t -> e, env
+                | None when tff_mem v env ->
+                        let t = tff_app v [] env in
+                        (tvar v t, env)
+                | None ->
+                        Log.debug 5 "Inferring type of var '%s' : '%s'" v (Type.to_string t);
+                        (tvar v t, tff_add_type v t env)
+                end
+            end
     | _ -> assert false
-
 
 let rec type_tff_app env is_pred e = match e with
     (* Type typechecking *)
@@ -184,15 +208,13 @@ let rec type_tff_app env is_pred e = match e with
     | Eapp(Evar(s, _) as s', args, _) ->
             let args, env' = map_fold type_tff_term env args in
             let f, env'' = match get_type s' with
-                | Some t -> s', env'
                 | None when tff_mem s env ->
                         let t = tff_app s args env in
                         tvar s t, env'
-                | None ->
+                | _ ->
                         let ret = if is_pred then type_bool else type_tff_i in
                         let t = mk_arrow (const_list (List.length args) type_tff_i) ret in
-                        Log.debug 5 "Inferring type of fun '%s' : '%s'" s (Type.to_string t);
-                        tvar s t, (tff_add_type s t env')
+                        type_tff_var t env' s'
             in
             begin try
                 eapp (f, args), env''
@@ -203,8 +225,7 @@ let rec type_tff_app env is_pred e = match e with
                     raise (Type_error (Printf.sprintf "Inferred type for %s '%s' not valid."
                         (if is_pred then "predicate" else "function") s))
             end
-    | Eapp(_) ->
-            raise (Type_error (Printf.sprintf "Expected a symbol function, not an expression."))
+    | Eapp(_) -> raise (Type_error (Printf.sprintf "Expected a symbol as function, not an expression."))
     | _ -> assert false
 
 and type_tff_prop env e = match e with
@@ -234,34 +255,34 @@ and type_tff_prop env e = match e with
     | Etrue
     | Efalse ->
             e, env
-    | Eall(Evar(s, _) as v, t, body, _) ->
-            let t = Type.tff t in
-            let s = var_name s in
-            let v' = tvar s t in
-            Log.debug 2 "Introducting '%s' of type '%s'" s (Type.to_string t);
-            let body = substitute [v, v'] body in
-            let body, env = type_tff_prop env body in
-            eall (v', t, body), env
-    | Eex(Evar(s, _) as v, t, body, _) ->
-            let t = Type.tff t in
-            let s = var_name s in
-            let v' = tvar s t in
-            Log.debug 2 "Introducting '%s' of type '%s'" s (Type.to_string t);
-            let body = substitute [v, v'] body in
-            let body, env = type_tff_prop env body in
-            eex (v', t, body), env
+    | Eall(_) -> type_tff_quant eall env e
+    | Eex(_) -> type_tff_quant eex env e
     | Etau(Evar(s, _), t, body, _) -> assert false
+    | _ -> raise (Type_error ("Ill-formed expression"))
+
+and type_tff_quant mk_quant env = function
+    | Eex(Evar(s, _) as v, t, body, _)
+    | Eall(Evar(s, _) as v, t, body, _)
+    | Elam(Evar(s, _) as v, t, body, _) ->
+            let t = substitute_type env.map (Type.tff t) in
+            let v' = tvar (var_name s) t in
+            let map' = rm_binding v env.map in
+            let nv =
+                if conflict v' map' then
+                    tvar (newname ()) t
+                else
+                    v'
+            in
+            let map'' = (v, nv) :: map' in
+            Log.debug 2 "Introducting '%s' of type '%s' as '%a'" s (Type.to_string t) Print.pp_expr nv;
+            let body, env' = type_tff_prop { env with map = map'' } body in
+            mk_quant (v', t, body), env'
     | _ -> raise (Type_error ("Ill-formed expression"))
 
 and type_tff_term env e = match e with
     | Evar(v, _) -> type_tff_var type_tff_i env e
     | Eapp(_) -> type_tff_app env false e
-    | Elam(Evar(s, _) as v, t, body, _) ->
-            let t = Type.tff t in
-            let v' = tvar s t in
-            let body' = substitute [v, v'] body in
-            let body'', env' = type_tff_term env body' in
-            elam (v', t, body''), env'
+    | Elam(_) -> type_tff_quant elam env e
     | _ -> raise (Type_error ("Ill-formed expression"))
 
 let type_tff_expr env e =
