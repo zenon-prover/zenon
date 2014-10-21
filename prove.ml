@@ -910,7 +910,7 @@ let newnodes_match_trans st fm g _ =
   try
     let fmg = (fm, g) in
     match fm with
-    | Eapp (Evar("=",_), [Emeta (b1, _) as m1; Emeta (b2, _) as m2], _) ->
+    | Eapp (Evar("=",_), [Emeta (b1, _) as m1; Emeta (b2, _)], _) ->
        let nfmg = Index.find_neg "=" in 
        let select a (b, c) = same_types a b in
        let nfmg_s = List.filter (select fm) nfmg in

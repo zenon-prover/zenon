@@ -602,7 +602,7 @@ let disj vars map =
 
 let substitute_type map t =
     let map = List.filter (function (Evar(_), e) -> get_type e =%= Some type_type | _ -> false) map in
-    let map = List.map (function (v, e) -> (get_texpr_str v, type_of_expr e) | _ -> assert false) map in
+    let map = List.map (function (v, e) -> (get_texpr_str v, type_of_expr e)) map in
     Type.substitute map t
 
 let rec substitute map e =
