@@ -28,9 +28,14 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 (** Modular and incremental implementation of the simplex. *)
 
-(** The types of the variables used by the equations to solve *)
-module type OrderedType = sig
+(** The types of the variables used by the equations to solve. While it is
+    important that functions 'equal' and 'hash' are compatible, no relation
+    with 'compare' is required. 'hash' and 'equal' are only used to make the
+    Hashtbl module. *)
+module type VarType = sig
     type t
+    val hash : t -> int
+    val equal : t -> t -> bool
     val compare : t -> t -> int
 end
 
@@ -77,20 +82,20 @@ module type S = sig
     (** {3 Simplex construction} *)
 
     (** The empty system *)
-    val empty       : t
+    val create      : unit -> t
 
     (** Returns a copy of the given system *)
     val copy        : t -> t
 
-    (** [add_eq s (x, eq)] returns a system containing the same constraints as [s], plus the equation (x = eq). *)
-    val add_eq      : t -> var * (Q.t * var) list -> t
+    (** [add_eq s (x, eq)] adds the equation (x = eq) to the system (in place). *)
+    val add_eq      : t -> var * (Q.t * var) list -> unit
 
-    (** [add_bounds (x, lower, upper)] returns a system containing the same contraints as [s], plus
-        the bounds [lower] and [upper] for the given variable [x]. If the bound is loose on one side (no upper bounds for instance),
+    (** [add_bounds s (x, lower, upper)] adds the bounds [lower] and [upper] for the given variable [x] to the system [s] (in place).
+        If the bound is loose on one side (no upper bounds for instance),
         the values [Zarith.Q.inf] and [Zarith.Q.minus_inf] can be used. By default, in a system, all variables have no bounds,
         i.e have lower bound [Zarith.Q.minus_inf] and upper bound [Zarith.Q.inf].
         Optional parameters allow to make the the bounds strict. Defaults to false, so that bounds are large by default. *)
-    val add_bounds  : t -> ?strict_lower:bool -> ?strict_upper:bool -> var * Q.t * Q.t -> t
+    val add_bounds  : t -> ?strict_lower:bool -> ?strict_upper:bool -> var * Q.t * Q.t -> unit
 
     (** {3 Simplex solving} *)
 
@@ -143,7 +148,6 @@ module type S = sig
     val apply_optims : (t -> optim list) list -> t -> optim list
 
     (** {3 Access functions} *)
-    (* TODO: add new access functions ? *)
 
     (** [get_tab s] returns the current tableaux of [s] as a triple [(l, l', tab)] where [l] is the list of the
         non-basic variables, [l'] the list of basic variables and [tab] the list of the rows of the tableaux in
@@ -152,8 +156,10 @@ module type S = sig
 
     (** [get_assign s] returns the current (partial) assignment of the variables in [s] as a list of bindings.
         Only non-basic variables (as given by [get_tab]) should appear in this assignent. As such, and according to
-        simplex invariants, all variables in the assignment returned should satisfy their bounds. *)
-    val get_assign  : t -> (var * Q.t) list
+        simplex invariants, all variables in the assignment returned should satisfy their bounds.
+        Valuations are returned as a pair (x, (v, e)) such that x = v + e * \delta, with \delta an
+        infinitely small quantity. *)
+    val get_assign  : t -> (var * (Q.t * Q.t)) list
 
     (* [get_full_assign s] returns the current values of all the variables present in the system.
         Notice that it doesn't mean the assignment returned satisfies all bounds.*)
@@ -178,7 +184,7 @@ end
 
 (** Functor building an implementation of the simplex solver given a totally ordered
     type for the variables *)
-module Make : functor (Var : OrderedType) -> S with type var = Var.t
+module Make : functor (Var : VarType) -> S with type var = Var.t
 
 
 (** {2 Higher-Level Interface} *)
@@ -206,7 +212,7 @@ module type HELPER = sig
 
   type constraint_ = op * monome * Q.t
 
-  val add_constraints : t -> constraint_ list -> t
+  val add_constraints : t -> constraint_ list -> unit
 end
 
-module MakeHelp(Var : OrderedType) : HELPER with type external_var = Var.t
+module MakeHelp(Var : VarType) : HELPER with type external_var = Var.t
