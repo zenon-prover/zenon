@@ -660,11 +660,17 @@ let rec lltolkrule env proof gamma =
     (newcontr, preproof) maincontr
 
 let rec lltolk env proof goal righthandside =
-  match righthandside with
+  let lkproof2 = match righthandside with
   | true -> 
     let l, lkproof = lltolkrule env proof (enot goal :: env.hypotheses) in
     assert (l = []); lefttoright goal lkproof
   | false -> 
     let l, lkproof = lltolkrule env proof env.hypotheses in
-    assert (l = []); lkproof
-    
+    assert (l = []); lkproof in
+  let _, lkproof3 = 
+    List.fold_left
+      (fun (conc, rule) stmt ->
+	eimply (stmt, conc),
+	scrimply (stmt, conc, rule))  
+      (goal, lkproof2) env.hypotheses in
+  lkproof3

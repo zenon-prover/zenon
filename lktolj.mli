@@ -1,2 +1,1 @@
-val lltolj : Llmtolk.env -> Llproof.prooftree -> Expr.expr -> bool 
-  -> Lkproof.lkproof * Expr.expr;;
+val lltolj : Lkproof.lkproof -> Lkproof.lkproof;;

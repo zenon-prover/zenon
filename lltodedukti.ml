@@ -261,7 +261,9 @@ struct
       Lltollm.lltollm_expr definitions goal, 
       Lltollm.lltollm_proof definitions lemmas thm.proof,
       Lltollm.lltollm_env definitions env in
-    let ljproof, ljconc = Lktolj.lltolj newenv newproof newgoal righthandside in
+    let lkproof = Llmtolk.lltolk newenv newproof newgoal righthandside in
+    let ljproof = Lktolj.lltolj lkproof in
+    let ljconc = Lkproof.scconc ljproof in
     let term = LjToDk.trproof (ljproof, ljconc, []) in
     let rec line =
       Out.mk_deftype (Out.mk_var "conjecture_proof")

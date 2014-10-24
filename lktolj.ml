@@ -347,14 +347,6 @@ let rec lltoljrule lkproof =
   assert (List.length ljlist = List.length ljg);
   ljlist, ljprf
 
-let lltolj env proof goal righthandside =
-  let result = Llmtolk.lltolk env proof goal righthandside in
-  let conc, lkproof = List.fold_left
-    (fun (conc, rule) stmt ->
-      let newstmt = stmt in
-      eimply (newstmt, conc),
-      scrimply (newstmt, conc, rule)
-    )
-    (goal, result) env.Llmtolk.hypotheses in
-  let _, ljproof = lltoljrule (*optimize lkproof*) lkproof in
-  ljproof, scconc ljproof
+let lltolj lkproof =
+  let _, ljproof = lltoljrule lkproof in
+  ljproof
