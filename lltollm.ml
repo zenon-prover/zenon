@@ -98,6 +98,6 @@ let rec lltollm_proof definitions lemmas proof =
      rule = lltollm_rule definitions proof.rule}
 
 let lltollm_env definitions env =
-  {Lltolj.hypotheses = List.map (lltollm_expr definitions) env.Lltolj.hypotheses; 
-   Lltolj.distincts = List.map (fun (e, n) -> lltollm_expr definitions e, n) 
-      env.Lltolj.distincts}
+  {Llmtolk.hypotheses = List.map (lltollm_expr definitions) env.Llmtolk.hypotheses; 
+   Llmtolk.distincts = List.map (fun (e, n) -> lltollm_expr definitions e, n) 
+      env.Llmtolk.distincts}

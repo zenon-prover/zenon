@@ -63,3 +63,7 @@ val scconc : lkproof -> Expr.expr;;
 val p_debug : string -> Expr.expr list -> unit;;
 val p_debug_proof : string -> Expr.expr list * Expr.expr * 'a -> unit;;
 val ingamma : Expr.expr -> lkproof -> bool;;
+val rm : Expr.expr -> Expr.expr list -> Expr.expr list;;
+val applytohyps : (lkproof -> lkproof) -> lkproof -> lkproof;;
+val hypsofrule : lkrule -> lkproof list;;
+val new_var : unit -> Expr.expr;;

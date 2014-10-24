@@ -170,3 +170,75 @@ let sccnot (e, proof) =
 let scconc (g, c, rule) = c
 let scext (name, args, cons, proofs) =
   cons, efalse, SCext (name, args, cons, proofs)
+
+let hypsofrule lkrule =
+  match lkrule with
+  | SCaxiom (e) -> []
+  | SCfalse -> []
+  | SCtrue -> []
+  | SCeqref (e) -> []
+  | SCeqsym (e1, e2) -> []
+  | SCeqprop (e1, e2) -> []
+  | SCeqfunc (e1, e2) -> []
+  | SCrweak (e, proof) -> [proof]
+  | SClcontr (e, proof) -> [proof]
+  | SCcut (e, proof1, proof2) -> [proof1; proof2]
+  | SCland (e1, e2, proof) -> [proof]
+  | SClor (e1, e2, proof1, proof2) -> [proof1; proof2]
+  | SClimply (e1, e2, proof1, proof2) -> [proof1; proof2]
+  | SClnot (e, proof) -> [proof]
+  | SClall (e1, e2, proof) -> [proof]
+  | SClex (e1, e2, proof) -> [proof]
+  | SCrand (e1, e2, proof1, proof2) -> [proof1; proof2]
+  | SCrorl (e1, e2, proof) -> [proof]
+  | SCrorr (e1, e2, proof) -> [proof]
+  | SCrimply (e1, e2, proof) -> [proof]
+  | SCrnot (e, proof) -> [proof]
+  | SCrall (e1, e2, proof) -> [proof]
+  | SCrex (e1, e2, proof) -> [proof]
+  | SCcnot (e, proof) -> [proof]
+  | SCext (_, _, _, proofs) -> proofs
+
+let applytohyps f lkproof =
+  let g, c, lkrule = lkproof in
+  match lkrule with
+  | SCaxiom (e) -> g, c, SCaxiom (e)
+  | SCfalse -> g, c, SCfalse
+  | SCtrue -> g, c, SCtrue
+  | SCeqref (e) -> g, c, SCeqref (e)
+  | SCeqsym (e1, e2) -> g, c, SCeqsym (e1, e2)
+  | SCeqprop (e1, e2) -> g, c, SCeqprop (e1, e2)
+  | SCeqfunc (e1, e2) -> g, c, SCeqfunc (e1, e2)
+  | SCrweak (e, proof) -> scrweak (e, f proof)
+  | SClcontr (e, proof) -> sclcontr (e, f proof)
+  | SCcut (e, proof1, proof2) ->
+    sccut (e, f proof1, f proof2)
+  | SCland (e1, e2, proof) ->
+    scland (e1, e2, f proof)
+  | SClor (e1, e2, proof1, proof2) ->
+    sclor (e1, e2, f proof1, f proof2)
+  | SClimply (e1, e2, proof1, proof2) ->
+    sclimply (e1, e2, f proof1, f proof2)
+  | SClnot (e, proof) -> sclnot (e, f proof)
+  | SClall (e1, e2, proof) -> sclall (e1, e2, f proof)
+  | SClex (e1, e2, proof) -> sclex (e1, e2, f proof)
+  | SCrand (e1, e2, proof1, proof2) ->
+    scrand (e1, e2, f proof1, f proof2)
+  | SCrorl (e1, e2, proof) ->
+    scrorl (e1, e2, f proof)
+  | SCrorr (e1, e2, proof) ->
+    scrorr (e1, e2, f proof)
+  | SCrimply (e1, e2, proof) ->
+    scrimply (e1, e2, f proof)
+  | SCrnot (e, proof) -> scrnot (e, f proof)
+  | SCrall (e1, e2, proof) -> scrall (e1, e2, f proof)
+  | SCrex (e1, e2, proof) -> screx (e1, e2, f proof)
+  | SCcnot (e, proof) -> sccnot (e, f proof)
+  | SCext (name, args, cons, proofs) -> scext (name, args, cons, List.map f proofs)
+
+let new_var =
+  let r = ref 0 in
+  fun () ->
+    let n = !r in
+    incr r;
+    evar (sprintf "v%d" n)

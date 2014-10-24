@@ -197,8 +197,8 @@ struct
 	enot (eapp ("=", [y; x])) :: (get_distinctshyps ((x, n) :: l))
 	@ (get_distinctshyps ((y, m) :: l))
       | _ -> [] in
-    {Lltolj.hypotheses = ((get_distinctshyps distincts)@hyps); 
-     Lltolj.distincts = distincts}
+    {Llmtolk.hypotheses = ((get_distinctshyps distincts)@hyps); 
+     Llmtolk.distincts = distincts}
 
   let rec get_goal phrases =
     match phrases with
