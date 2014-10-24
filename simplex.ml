@@ -323,9 +323,7 @@ module Make(Var: VarType) = struct
             else if Q.(e - e2 < zero) then
                 emin := Q.max !emin Q.((upp - v) / (e - e2));
         ) t.bounds;
-        if Q.equal Q.minus_inf !emin && Q.equal Q.inf !emax then
-            Q.zero
-        else if Q.gt !emin Q.zero then
+        if Q.gt !emin Q.zero then
             !emin
         else if Q.geq !emax Q.one then
             Q.one
@@ -565,7 +563,7 @@ module Make(Var: VarType) = struct
         bound_all t int_vars g;
         g, nsolve t int_vars
 
-    let base_depth t = 20 + 2 * (CCVector.length t.nbasic)
+    let base_depth t = 51 + 2 * (CCVector.length t.nbasic)
 
     let nsolve_incr t int_vars =
         if CCVector.length t.nbasic = 0 then
