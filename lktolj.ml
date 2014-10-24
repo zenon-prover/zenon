@@ -347,6 +347,6 @@ let rec lltoljrule lkproof =
   assert (List.length ljlist = List.length ljg);
   ljlist, ljprf
 
-let lltolj lkproof =
+let lktolj lkproof =
   let _, ljproof = lltoljrule lkproof in
   ljproof

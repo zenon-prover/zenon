@@ -269,7 +269,8 @@ let rec lefttoright e proof =
   if not (useful ne proof)
   then scrweak (e, clean ne proof)
   else
-    match e with
+    if !Globals.keepclassical = false
+    then match e with
     | Enot (f, _) ->
       optimize (scrnot (f, rmdblnot f proof))
     | _ ->
@@ -297,6 +298,9 @@ let rec lefttoright e proof =
       | SCrimply _ | SCrnot _ | SCeqfunc _ | SCeqprop _
       | SCeqsym _ | SCeqref _ | SCtrue | SCcnot _ | SCrweak _
 	-> assert false
+    else match e with
+    | Enot (f, _) -> scrnot (f, rmdblnot f proof)
+    | _ -> sccnot (e, proof)
 
 and righttoleft e proof =
   let g, c, rule = proof in

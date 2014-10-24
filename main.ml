@@ -134,6 +134,8 @@ let argspec = [
             ^ " (5m)";
   "-intuitionnistic", Arg.Unit (fun () -> intuitionnistic := true),
             "          minimize the use of classical connectives";
+  "-keepclassical", Arg.Unit (fun () -> keepclassical := true),
+            "          don't make the proof constructive";
   "-odedukti", Arg.Unit (fun () -> proof_level := Proof_dedukti),
             "          print the proof in Dedukti script format";
   "-odeduktiterm", Arg.Unit (fun () -> proof_level := Proof_deduktiterm),

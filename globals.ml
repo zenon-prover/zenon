@@ -22,3 +22,4 @@ let top_num_forms = ref 0;;
 let stored_lemmas = ref 0;;
 let num_expr = ref 0;;
 let intuitionnistic = ref false;;
+let keepclassical = ref false;

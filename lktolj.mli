@@ -1,1 +1,1 @@
-val lltolj : Lkproof.lkproof -> Lkproof.lkproof;;
+val lktolj : Lkproof.lkproof -> Lkproof.lkproof;;

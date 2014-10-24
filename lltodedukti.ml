@@ -262,7 +262,7 @@ struct
       Lltollm.lltollm_proof definitions lemmas thm.proof,
       Lltollm.lltollm_env definitions env in
     let lkproof = Llmtolk.lltolk newenv newproof newgoal righthandside in
-    let ljproof = Lktolj.lltolj lkproof in
+    let ljproof = Lktolj.lktolj lkproof in
     let ljconc = Lkproof.scconc ljproof in
     let term = LjToDk.trproof (ljproof, ljconc, []) in
     let rec line =
