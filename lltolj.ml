@@ -2,10 +2,9 @@ open Printf
 open Expr
 open Llproof
 open Namespace
+open Lkproof
 
 type env = {hypotheses : Expr.expr list; 
-	    definitions : (string, Expr.expr list * Expr.expr) Hashtbl.t;
-	    lemmas : (string, Llproof.prooftree) Hashtbl.t;
 	    distincts : (Expr.expr * int) list;}
 
 let new_var =
@@ -15,181 +14,11 @@ let new_var =
     incr r;
     evar (sprintf "v%d" n)
 
-exception Found of expr
-
-let p_debug s es =
-  eprintf "%s |" s;
-  List.iter
-    (eprintf " %a |"
-       (fun oc x -> Print.expr (Print.Chan oc) x)
-    ) es;
-  eprintf "\n"
-
-let p_debug_proof s (g, c, rule) =
-  eprintf "%s : gamma = |" s;
-  List.iter
-    (eprintf " %a |"
-       (fun oc x -> Print.expr (Print.Chan oc) x)) g;
-  eprintf "\n and conc = |";
-  eprintf " %a |"
-    (fun oc x -> Print.expr (Print.Chan oc) x) c;
-  eprintf "\n"
-
-type sequent = expr list * expr list
-
-type lkrule =
-| SCaxiom of expr
-| SCfalse
-| SCtrue
-| SCeqref of expr
-| SCeqsym of expr * expr
-| SCeqprop of expr * expr
-| SCeqfunc of expr * expr
-| SCrweak of expr * lkproof
-| SClcontr of expr * lkproof
-| SCcut of expr * lkproof * lkproof
-| SCland of expr * expr * lkproof
-| SClor of expr * expr * lkproof * lkproof
-| SClimply of expr * expr * lkproof * lkproof
-| SClnot of expr * lkproof
-| SClall of expr * expr * lkproof
-| SClex of expr * expr * lkproof
-| SCrand of expr * expr * lkproof * lkproof
-| SCrorl of expr * expr * lkproof
-| SCrorr of expr * expr * lkproof
-| SCrimply of expr * expr * lkproof
-| SCrnot of expr * lkproof
-| SCrall of expr * expr * lkproof
-| SCrex of expr * expr * lkproof
-| SCcnot of expr * lkproof
-| SCext of string * expr list * expr list * lkproof list
-
-and lkproof =
-  expr list * expr * lkrule
-
-let ingamma e proof =
-  let g, c, rule = proof in
-  let b = List.exists (equal e) g in
-  if not b then
-    (p_debug "Error: expression" [e];
-     p_debug_proof "not found in proof context" proof);
-  b
-
 let rec rm a list =
   match list with
   | x :: list when equal x a -> list
   | x :: list -> x :: (rm a list)
   | [] -> assert false
-
-let scaxiom (e, g) = e :: g, e, SCaxiom e
-let scfalse (g, e) = efalse :: g, e, SCfalse
-let sctrue (g) = g, etrue, SCtrue
-let sceqref (a, g) = g, eapp ("=", [a; a]), SCeqref (a)
-let sceqsym (a, b, g) =
-  eapp ("=", [a; b]) :: g, eapp ("=", [b; a]), SCeqsym (a, b)
-let sceqprop (e1, e2, g) =
-  match e1, e2 with
-  | Eapp (p, ts, _), Eapp (q, us, _) when p = q ->
-    e1 :: g @ List.map2 (fun t u -> eapp ("=", [t; u])) ts us, e2,
-    SCeqprop (e1, e2)
-  | _, _ -> assert false
-let sceqfunc (e1, e2, g) =
-  match e1, e2 with
-  | Eapp (p, ts, _), Eapp (q, us, _) when p = q ->
-    g @ List.map2 (fun t u -> eapp ("=", [t; u])) ts us,
-    eapp ("=", [e1; e2]), SCeqfunc (e1, e2)
-  | _, _ -> assert false
-let scrweak (e, proof) =
-  let g, c, rule = proof in
-  assert (equal c efalse);
-  g, e, SCrweak (e, proof)
-let sclcontr (e, proof) =
-  let g, c, rule = proof in
-  assert (List.mem e g);
-  assert (List.mem e (rm e g));
-  rm e g, c, SClcontr (e, proof)
-let sccut (e, proof1, proof2) =
-  let (g1, c1, rule1) = proof1 in
-  let (g2, c2, rule2) = proof2 in
-  assert (List.length g2 = List.length g1 + 1);
-  assert (equal c1 e);
-  g1, c2, SCcut(e, proof1, proof2)
-let scland (e1, e2, proof) =
-  assert (ingamma e2 proof);
-  let (g, c, rule) = proof in
-  assert (List.mem e1 (rm e2 g));
-  (eand (e1, e2)) :: rm e1 (rm e2 g), c, SCland (e1, e2, proof)
-let sclor (e1, e2, proof1, proof2) =
-  assert (ingamma e1 proof1);
-  let (g1, c, rule1) = proof1 in
-  let (g2, _, _) = proof2 in
-  assert (List.length g2 = List.length g1);
-  (eor (e1, e2)) :: rm e1 g1, c, SClor (e1, e2, proof1, proof2)
-let sclimply (e1, e2, proof1, proof2) =
-  let (g1, c1, rule1) = proof1 in
-  let (g2, c2, rule2) = proof2 in
-  assert (List.length g2 = List.length g1 + 1);
-  (eimply (e1, e2)) :: g1, c2,
-  SClimply (e1, e2, proof1, proof2)
-let sclnot (e, proof) =
-  let (g, d, rule) = proof in
-  assert (equal e d);
-  (enot e) :: g, efalse, SClnot (e, proof)
-let sclall (e1, t, proof) =
-  match e1 with
-  | Eall (x, ty, p, _) ->
-    let (g, c, rule) = proof in
-    assert (ingamma (substitute [(x, t)] p) proof);
-    e1 :: rm (substitute [(x, t)] p) g, c, SClall (e1, t, proof)
-  | _ -> assert false
-let sclex (e1, v, proof) =
-  match e1 with
-  | Eex (x, ty, p, _) ->
-    let (g, c, rule) = proof in
-    assert (ingamma (substitute [(x, v)] p) proof);
-    e1 :: rm (substitute [(x, v)] p) g, c, SClex (e1, v, proof)
-  | _ -> assert false
-let scrand (e1, e2, proof1, proof2) =
-  let (g1, d1, rule1) = proof1 in
-  let (g2, _, _) = proof2 in
-  assert (List.length g2 = List.length g1);
-  g1, eand (e1, e2), SCrand (e1, e2, proof1, proof2)
-let scrorl (e1, e2, proof) =
-  let (g, d, rule) = proof in
-  g, eor (e1, e2), SCrorl (e1, e2, proof)
-let scrorr (e1, e2, proof) =
-  let (g, d, rule) = proof in
-  g, eor (e1, e2), SCrorr (e1, e2, proof)
-let scrimply (e1, e2, proof) =
-  ignore (ingamma e1 proof);
-  let (g, d, rule) = proof in
-  rm e1 g, eimply (e1, e2), SCrimply (e1, e2, proof)
-let scrnot (e, proof) =
-  ignore (ingamma e proof);
-  let (g, d, rule) = proof in
-  rm e g, enot e, SCrnot (e, proof)
-let scrall (e1, v, proof) =
-  match e1 with
-  | Eall (x, ty, p, _) ->
-    let (g, c, rule) = proof in
-    g, e1, SCrall (e1, v, proof)
-  | _ -> assert false
-let screx (e1, t, proof) =
-  match e1 with
-  | Eex (x, ty, p, _) ->
-    let (g, c, rule) = proof in
-    g, e1, SCrex (e1, t, proof)
-  | _ -> assert false
-let sccnot (e, proof) =
-  let (g, c, rule) = proof in
-  assert (equal c efalse);
-  assert (List.mem (enot e) g);
-  rm (enot e) g, e, SCcnot (e, proof)
-let scconc (g, c, rule) = c
-let scext (name, args, cons, proofs) =
-  cons, efalse, SCext (name, args, cons, proofs)
-
-let new_terms = ref []
 
 let gamma_length (g, c, rule) = List.length g
 
@@ -269,92 +98,6 @@ let rec xaddhyp h lkproof =
 
 and addhyp hyps lkproof =
   List.fold_left (fun pf h -> xaddhyp h pf) lkproof hyps
-
-let rec use_defs defs e =
-  match e with
-  | Evar (v, _) when Hashtbl.mem defs v ->
-    let (params, body) = Hashtbl.find defs v in
-    use_defs defs body
-  | Eapp (s, args, _) when Hashtbl.mem defs s ->
-    let exprs = List.map (use_defs defs) args in
-    let (params, body) = Hashtbl.find defs s in
-    use_defs defs (substitute (List.combine params exprs) body)
-  | Evar _ | Etrue | Efalse -> e
-  | Eapp (s, args, _) ->
-    eapp (s, List.map (use_defs defs) args)
-  | Enot (e, _) ->
-    enot (use_defs defs e)
-  | Eand (e1, e2, _) ->
-    eand (use_defs defs e1, use_defs defs e2)
-  | Eor (e1, e2, _) ->
-    eor (use_defs defs e1, use_defs defs e2)
-  | Eimply (e1, e2, _) ->
-    eimply (use_defs defs e1, use_defs defs e2)
-  | Eequiv (e1, e2, _) ->
-    let expr1 = use_defs defs e1 in
-    let expr2 = use_defs defs e2 in
-    eand (eimply (expr1, expr2), eimply (expr2, expr1))
-  | Eall (x, s, e, _) ->
-    eall (x, s, use_defs defs e)
-  | Eex (x, s, e, _) ->
-    eex (x, s, use_defs defs e)
-  | Etau (x, s, e, _) ->
-    let tau = etau (x, s, use_defs defs e) in
-    if List.mem_assoc tau !new_terms
-    then
-      List.assoc tau !new_terms
-    else
-      let z = new_var () in
-      new_terms := (tau, z) :: !new_terms;
-      z
-  | Elam (x, s, e, _) ->
-    elam (x, s, use_defs defs e)
-  | Emeta (x, _) -> assert false
-(* /!\ Raised by a lot of files in SYN (SYN048+1.p, SYN049+1.p, SYN315+1.p, SYN318+1.p, ...) *)
-
-let use_defs_rule defs rule =
-  match rule with
-  | Rfalse -> Rfalse
-  | Rnottrue -> Rnottrue
-  | Raxiom (p) -> Raxiom (use_defs defs p)
-  | Rcut (p) -> Rcut (use_defs defs p)
-  | Rnoteq (a) -> Rnoteq (use_defs defs a)
-  | Reqsym (a, b) -> Reqsym (use_defs defs a, use_defs defs b)
-  | Rnotnot (p) -> Rnotnot (use_defs defs p)
-  | Rconnect (b, p, q) -> Rconnect (b, use_defs defs p, use_defs defs q)
-  | Rnotconnect (b, p, q) ->
-    Rnotconnect (b, use_defs defs p, use_defs defs q)
-  | Rex (ep, v) -> Rex (use_defs defs ep, use_defs defs v)
-  | Rall (ap, t) -> Rall (use_defs defs ap, use_defs defs t)
-  | Rnotex (ep, t) -> Rnotex (use_defs defs ep, use_defs defs t)
-  | Rnotall (ap, v) -> Rnotall (use_defs defs ap, use_defs defs v)
-  | Rpnotp (e1, e2) -> Rpnotp (use_defs defs e1, use_defs defs e2)
-  | Rnotequal (e1, e2) -> Rnotequal (use_defs defs e1, use_defs defs e2)
-  | Rdefinition (name, sym, args, body, recarg, c, h) ->
-    assert false
-  | Rextension (ext, name, args, cons, hyps) ->
-    Rextension (
-      ext, name, List.map (use_defs defs) args,
-      List.map (use_defs defs) cons, List.map (List.map (use_defs defs)) hyps)
-  | Rlemma (name, args) ->
-    assert false
-  | RcongruenceLR (p, a, b) ->
-    RcongruenceLR (use_defs defs p, use_defs defs a, use_defs defs b)
-  | RcongruenceRL (p, a, b) ->
-    RcongruenceRL (use_defs defs p, use_defs defs a, use_defs defs b)
-
-let rec use_defs_proof env proof =
-  match proof.rule with
-  | Rlemma (name, args) ->
-    use_defs_proof env (Hashtbl.find env.lemmas name)
-  | Rdefinition (name, sym, args, body, recarg, c, h) ->
-    begin match proof.hyps with
-    | [hyp] -> use_defs_proof env hyp
-    | _ -> assert false end
-  | _ ->
-    {conc = List.map (use_defs env.definitions) proof.conc;
-     hyps = List.map (use_defs_proof env) proof.hyps;
-     rule = use_defs_rule env.definitions proof.rule}
 
 let rec union lists =
   match lists with
@@ -1004,16 +747,17 @@ let rec constructive proof =
   | _ -> List.fold_left
     (fun b prf -> b && constructive prf) true (hypsofrule rule)
 
-let rec lltolk env proof goal =
+let rec lltolk env proof goal righthandside =
   let pregamma =
-    match goal with
-    | Some (Enot (g, _)) -> enot g :: env.hypotheses
-    | None -> env.hypotheses
-    | _ -> assert false in
+    match righthandside with
+    | true -> enot goal :: env.hypotheses
+    | false -> env.hypotheses in
   let gamma = pregamma in
   let l, lkproof = lltolkrule env proof gamma in
   assert (l = []);
-  lkproof
+  match righthandside with
+  | true -> lefttoright goal lkproof
+  | false -> lkproof
 
 (* ----------------------------------------------------------- *)
 
@@ -1360,23 +1104,14 @@ let rec lltoljrule lkproof =
   assert (List.length ljlist = List.length ljg);
   ljlist, ljprf
 
-let lltolj env proof goal =
-  let result = match goal with
-    | Some (Enot (g, _)) ->
-      let newgoal = use_defs env.definitions g in
-      let newproof = use_defs_proof env proof in
-      newgoal, lefttoright newgoal (
-	lltolk env newproof (Some (enot newgoal)))
-    | None ->
-      let newproof = use_defs_proof env proof in
-      efalse, lltolk env newproof None;
-    | _ -> assert false in
+let lltolj env proof goal righthandside =
+  let result = lltolk env proof goal righthandside in
   let conc, lkproof = List.fold_left
     (fun (conc, rule) stmt ->
       let newstmt = stmt in
       eimply (newstmt, conc),
       scrimply (newstmt, conc, rule)
     )
-    result env.hypotheses in
+    (goal, result) env.hypotheses in
   let _, ljproof = lltoljrule (*optimize lkproof*) lkproof in
   ljproof, scconc ljproof

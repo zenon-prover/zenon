@@ -5,9 +5,9 @@ open Namespace
 
 module Translate (Out : Ljtodk.TermSig) =
 struct
-
+  
   module LjToDk = Ljtodk.Translate(Out)
-
+    
   let rec trexpr e =
     match e with
     | Eand (Eimply (e1, e2, _), Eimply (e3, e4, _), _)
@@ -60,13 +60,14 @@ struct
        Out.mk_exists (trexpr e1) (trexpr e2)
     | Elam _ | Eequiv _ | Emeta _ | Etau _ -> assert false
 
+  (* *** COLLECT FREE VARIABLES *** *)
+
   type result =
     | Typ of Out.term
     | Indirect of string
 
   let predefined = ["="; "$string"]
 
-(* returns the list of free variables in phrases *)
   let rec get_freevars ps =
     let symtbl = (Hashtbl.create 97 : (string, int * result) Hashtbl.t) in
     let add_sig sym arity kind =
@@ -87,9 +88,13 @@ struct
         -> get_sig (Typ Out.mk_proptype) env e1;
 	  get_sig (Typ Out.mk_proptype) env e2
       | Enot (e1, _) -> get_sig (Typ Out.mk_proptype) env e1;
-      | Eall (Evar (v, _), _, e1, _) | Eex (Evar (v, _), _, e1, _)
+      | Eall (Evar (v, _), _, e1, _)
         -> get_sig (Typ Out.mk_proptype) (v::env) e1
-      | Eex _ | Eall _ | Etau _ | Elam _ -> assert false
+      | Eall _ -> assert false
+      | Eex (Evar (v, _), _, e1, _)
+        -> get_sig (Typ Out.mk_proptype) (v::env) e1
+      | Eex _ -> assert false
+      | Etau _ | Elam _ -> assert false (* no tau nor lambda accepted in phrases *)
     in
     let do_phrase p =
       match p with
@@ -123,54 +128,88 @@ struct
     in
     Hashtbl.fold find_sig symtbl []
 
-  let rec get_distincts distincts e =
-    match e with
-    | Eapp ("$string", [Evar (s, _)], _) ->
-       if not (List.mem_assoc e distincts)
-       then (e, (List.length distincts) + 1) :: distincts
-       else distincts
-    | _ -> distincts
+  (* *** COLLECT TERMS THAT ARE SUPPOSED TO BE PAIRWISE DISTINCTS *** *)
 
-  let get_all (hyps, defs, distincts) p =
-    match p with
-    | Phrase.Hyp (name, e, _) when name = goal_name ->
-       (hyps, defs, get_distincts distincts e)
-    | Phrase.Hyp (name, e, _) ->
-       (e :: hyps, defs, get_distincts distincts e)
+  let get_distincts phrases =
+    let rec xget_distincts distincts e =
+      match e with
+      | Evar _ | Emeta  _ | Etrue | Efalse -> distincts
+      | Eapp ("$string", [Evar (s, _)], _) ->
+	if not (List.mem_assoc e distincts)
+	then (e, (List.length distincts) + 1) :: distincts
+	else distincts
+      | Eapp (s, args, _) ->
+	List.fold_left xget_distincts distincts args;
+      | Eand (e1, e2, _) | Eor (e1, e2, _)
+      | Eimply (e1, e2, _) | Eequiv (e1, e2, _)
+	-> xget_distincts (xget_distincts distincts e1) e2
+      | Enot (e1, _) | Eall (_, _, e1, _) | Eex (_, _, e1, _)
+	-> xget_distincts distincts e1
+      | Etau _ | Elam _ -> assert false (* no tau nor lambda accepted in phrases *) in
+    let get_distincts_phrase distincts p =
+      match p with
+      | Phrase.Hyp (name, e, _) -> xget_distincts distincts e
+      | Phrase.Def (DefReal (_, sym, params, body, None)) -> xget_distincts distincts body
+      | Phrase.Def (DefReal (_, sym, params, body, Some _)) -> assert false
+      | Phrase.Def (DefPseudo (_, _, _, _)) -> assert false
+      | Phrase.Def (DefRec (_, _, _, _)) -> assert false
+      | Phrase.Sig _ -> assert false
+      | Phrase.Inductive _ -> assert false      (* TODO: to implement *) in
+    List.fold_left get_distincts_phrase [] phrases
+      
+(* *** GET THE CONTEXT OF THE LLPROOF *** *)
+
+  let get_definitions phrases =
+    let xget_definitions definitions p = match p with
+    | Phrase.Hyp (name, e, _) -> ()
     | Phrase.Def (DefReal (_, sym, params, body, None)) ->
-       (hyps, (sym, (params, body)) :: defs, get_distincts distincts body)
+      Hashtbl.add definitions sym (params, body)
     | Phrase.Def (DefReal (_, sym, params, body, Some _)) -> assert false
     | Phrase.Def (DefPseudo (_, _, _, _)) -> assert false
     | Phrase.Def (DefRec (_, _, _, _)) -> assert false
     | Phrase.Sig _ -> assert false
-    | Phrase.Inductive _ -> assert false      (* TODO: to implement *)
+    | Phrase.Inductive _ -> assert false      (* TODO: to implement *) in
+    let definitions = (Hashtbl.create 97 : (string, Expr.expr list * Expr.expr) Hashtbl.t) in
+    List.iter (xget_definitions definitions) phrases; 
+    definitions
 
-  let get_declarations freevars =
-    List.map (fun (sym, ty) -> (Out.mk_decl (LjToDk.trexpr (evar sym)) ty)) freevars
+  let get_lemmas lems = 
+    let lemmas = (Hashtbl.create 97 : (string, prooftree) Hashtbl.t) in
+    List.iter (fun lem -> Hashtbl.add lemmas lem.name lem.proof) lems;
+    lemmas
 
-  let rec get_rewritings freevars phrases =
+  let get_env phrases = 
+    let xget_env hyps p =
+      match p with
+      | Phrase.Hyp (name, e, _) when name = goal_name -> hyps
+      | Phrase.Hyp (name, e, _) -> e :: hyps
+      | Phrase.Def (DefReal (_, sym, params, body, None)) -> hyps
+      | Phrase.Def (DefReal (_, sym, params, body, Some _)) -> assert false
+      | Phrase.Def (DefPseudo (_, _, _, _)) -> assert false
+      | Phrase.Def (DefRec (_, _, _, _)) -> assert false
+      | Phrase.Sig _ -> assert false
+      | Phrase.Inductive _ -> assert false      (* TODO: to implement *) in
+    let hyps = List.fold_left xget_env [] phrases in
+    let distincts = get_distincts phrases in 
+    let rec get_distinctshyps distincts = 
+      match distincts with
+      | (x, n) :: (y, m) :: l ->
+	enot (eapp ("=", [y; x])) :: (get_distinctshyps ((x, n) :: l))
+	@ (get_distinctshyps ((y, m) :: l))
+      | _ -> [] in
+    {Lltolj.hypotheses = ((get_distinctshyps distincts)@hyps); 
+     Lltolj.distincts = distincts}
+
+  let rec get_goal phrases =
     match phrases with
-    | Phrase.Def (DefReal ("", sym, params, body, None)) :: ps ->
-       let vars, types =
-         List.split
-	   (List.map
-	      (fun e -> match e with
-	      | Evar (v, _) -> let t = List.assoc v freevars in LjToDk.trexpr e, t
-	      | _ -> assert false) params) in
-       Out.mk_rewrite (List.combine vars types)
-         (Out.mk_app (Out.mk_var sym) vars) (LjToDk.trexpr body)
-       :: (get_rewritings freevars ps)
-    | p :: ps -> get_rewritings freevars ps
-    | [] -> []
+    | Phrase.Hyp (name, Enot (e, _), _) :: _ when name = goal_name -> e, true
+    | Phrase.Hyp (name, _, _) :: _ when name = goal_name -> assert false
+    | _ :: t -> get_goal t
+    | [] -> efalse, false
 
-  let rec get_distinctshyps l =
-    match l with
-    | (x, n) :: (y, m) :: l ->
-       enot (eapp ("=", [y; x])) :: (get_distinctshyps ((x, n) :: l))
-       @ (get_distinctshyps ((y, m) :: l))
-    | _ -> []
+  (* *** CONTEXT PRINTING FUNCTIONS *** *)
 
-  let modname name =
+  let print_prelude oc name =
     let buf = Buffer.create (2*String.length name) in
     String.iter
       (fun c -> match c with
@@ -178,49 +217,57 @@ struct
       | '_' -> Buffer.add_string buf "__"
       | _ -> Buffer.add_string buf ("_"^(string_of_int (int_of_char c)))) name;
     Buffer.add_string buf "todk";
-    Buffer.contents buf
+    let prelude = Out.mk_prelude (Buffer.contents buf) in
+    Out.print_line oc prelude
 
-  let rec get_goal phrases =
-    match phrases with
-    | [] -> None
-    | Phrase.Hyp (name, e, _) :: _ when name = goal_name -> Some e
-    | _ :: t -> get_goal t
+  let print_declarations oc freevars =
+    let xprint_declarations (sym, ty) = 
+      let line = Out.mk_decl (LjToDk.trexpr (evar sym)) ty in
+      Out.print_line oc line in
+    List.iter xprint_declarations freevars
 
-  let get_env phrases lems = 
-    let definitions = (Hashtbl.create 97 : (string, Expr.expr list * Expr.expr) Hashtbl.t) in
-    let lemmas = (Hashtbl.create 97 : (string, prooftree) Hashtbl.t) in
-    List.iter (fun lem -> Hashtbl.add lemmas lem.name lem.proof) lems;
-    let hyps, defs, distincts = List.fold_left get_all ([], [], []) phrases in
-    List.iter (fun (var, body) -> Hashtbl.add definitions var body) defs;
-    let distinctshyps = get_distinctshyps distincts in
-    {Lltolj.hypotheses = List.map (Lltolj.use_defs definitions) (distinctshyps@hyps); 
-     Lltolj.definitions = definitions;
-     Lltolj.lemmas = lemmas;
-     Lltolj.distincts = List.map 
-	(fun (e, n) -> Lltolj.use_defs definitions e, n) distincts}
+  let print_definitions oc freevars definitions =
+    let xprint_definitions sym (params, body) =
+      let varstypes =
+	List.map (
+	  fun e -> match e with
+	  | Evar (v, _) -> let t = List.assoc v freevars in LjToDk.trexpr e, t
+	  | _ -> assert false) params in
+      let vars, types = List.split varstypes in
+      let line = Out.mk_rewrite varstypes 
+	(Out.mk_app (Out.mk_var sym) vars) (LjToDk.trexpr body) in
+      Out.print_line oc line in
+    Hashtbl.iter xprint_definitions definitions
 
+  (* *** MAIN OUTPUT FUNCTION *** *)
 
   let output oc phrases ppphrases llp filename contextoutput =
-    let goal = get_goal phrases in
     let thm, lemmas =
       match List.rev llp with
       | [] -> assert false
-      | thm :: lemmas -> thm, lemmas in
+      | thm :: lems -> thm, get_lemmas lems in
+    let definitions = get_definitions phrases in
     if contextoutput
     then
       begin
-        Out.print_line oc (Out.mk_prelude (modname filename));
+        print_prelude oc filename;
         let freevars = get_freevars phrases in
-        List.iter (Out.print_line oc) (get_declarations freevars);
-        List.iter (Out.print_line oc) (get_rewritings freevars phrases);
+	print_declarations oc freevars;
+        print_definitions oc freevars definitions
       end;
-    let env = get_env phrases lemmas in
-    let ljproof, ljconc = Lltolj.lltolj env thm.proof goal in
+    let env = get_env phrases in
+    let goal, righthandside = get_goal phrases in
+    let newgoal, newproof, newenv = 
+      Lltollm.lltollm_expr definitions goal, 
+      Lltollm.lltollm_proof definitions lemmas thm.proof,
+      Lltollm.lltollm_env definitions env in
+    let ljproof, ljconc = Lltolj.lltolj newenv newproof newgoal righthandside in
     let term = LjToDk.trproof (ljproof, ljconc, []) in
     let rec line =
       Out.mk_deftype (Out.mk_var "conjecture_proof")
         (Out.mk_prf (LjToDk.trexpr ljconc)) term in
     Out.print_line oc line
+
 end
 
 module TranslateDk = Translate(Dkterm)
