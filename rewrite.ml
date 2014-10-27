@@ -7,6 +7,7 @@ open Expr;;
 open Print;;
 open Node;;
 open Mlproof;;
+open Phrase;;
 
 
 let printer e = expr_soft (Chan stdout) e;;
@@ -363,4 +364,204 @@ let rec normalize_list_aux accu list =
 
 let normalize_list list = 
   normalize_list_aux [] list
+;;
+
+(*************************)
+
+
+let is_commut_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) -> 
+     begin 
+      match t1, t2 with 
+      | Eapp (sym1, [e11; e12], _), Eapp (sym2, [e21; e22], _) 
+	  when 
+	    (sym1 = sym2) 
+	    && (Expr.equal e11 e22) 
+	    && (Expr.equal e12 e21)
+	    -> true
+      | _ -> false
+    end 
+  
+  | _ -> false
+;;
+
+let is_assoc_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) -> 
+    begin 
+      match t1, t2 with 
+      | Eapp (sym11, [e11; Eapp (sym12, [e12; e13], _)], _),
+        Eapp (sym21, [Eapp (sym22, [e21; e22], _); e23], _)
+	  when 
+	    (sym11 = sym12)
+	    && (sym12 = sym21)
+	    && (sym21 = sym22)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e23)
+	    -> true
+      | Eapp (sym11, [Eapp (sym12, [e11; e12], _); e13], _),
+	Eapp (sym21, [e21; Eapp (sym22, [e22; e23], _)], _)
+	  when 
+	    (sym11 = sym12)
+	    && (sym12 = sym21)
+	    && (sym21 = sym22)
+	    && (Expr.equal e11 e21)
+	    && (Expr.equal e12 e22)
+	    && (Expr.equal e13 e23)
+	    -> true
+      | _ -> false
+    end
+  | _ -> false
+;;
+
+let rec test_fv l1 l2 = 
+  match l2 with 
+  | [] -> true
+  | h :: tl when List.mem h l1 -> test_fv l1 tl
+  | _ -> false
+;;
+
+let is_literal_noteq body = 
+  match body with 
+  | Eapp(sym, _, _) when (sym <> "=") -> true
+  | Enot(Eapp(sym, _, _), _) when (sym <> "=")-> true
+  | _ -> false
+;;
+
+let is_literal_eq body = 
+  match body with 
+  | Eapp _ -> true
+  | Enot(Eapp _, _)  -> true
+  | _ -> false
+;;
+
+let rec is_equal_term body = 
+  match body with 
+  | Eapp ("=", [t1; t2], _) 
+      when not (is_commut_term body) -> 
+     begin 
+       match t1, t2 with
+       | Eapp _, _ -> test_fv (get_fv t1) (get_fv t2)
+       | _, Eapp _ -> test_fv (get_fv t2) (get_fv t1)
+       | _, _ -> false
+     end 
+  | _ -> false
+;;
+
+let rec is_conj_term body = 
+  match body with 
+  | Eand (e1, e2, _) -> is_conj_term e1 && is_conj_term e2
+  | _ -> is_equal_term body
+;;
+
+let rec is_heuri_rwrt_term body = 
+  match body with 
+  | Eall (_, _, pred, _) -> is_heuri_rwrt_term pred
+  | _ -> is_conj_term body
+;;
+
+let rec is_equiv_prop body = 
+  if is_literal_noteq body 
+  then true
+  else
+    begin
+      match body with
+      | Eequiv (e1, e2, _) -> 
+	   (is_literal_noteq e1 
+	    && test_fv (get_fv e1) (get_fv e2))
+(*	   || 
+	     (is_literal_noteq e2 
+	      && test_fv (get_fv e2) (get_fv e1)) *)
+      | _ -> false
+    end
+;;
+
+let rec is_conj_prop body = 
+  match body with 
+  | Eand (e1, e2, _) -> is_conj_prop e1 && is_conj_prop e2
+  | _ -> is_equiv_prop body
+;;
+
+let rec is_heuri_rwrt_prop body = 
+  match body with 
+  | Eall (_, _, pred, _) -> is_heuri_rwrt_prop pred
+  | _ -> is_conj_prop body
+;;
+
+let split_to_prop_rule body = 
+  let parse_equiv body = 
+    match body with 
+    | Eequiv (expr1, expr2, _) 
+	 when is_literal_noteq expr1 
+	      && test_fv (get_fv expr1) (get_fv expr2)
+      -> (expr1, expr2)
+    | Eapp (sym, _, _) as expr
+	 when sym <> "="
+      -> (expr, etrue)
+    | Enot (Eapp (sym, _, _) as expr, _) 
+	 when sym <> "="
+      -> (expr, efalse)
+    | _ -> assert false
+  in
+  let rec parse body = 
+    match body with 
+    | Eall (_, _, expr, _) -> parse expr
+    | _ -> parse_equiv body
+  in
+  parse body
+;;
+
+let split_to_term_rule body = 
+  let parse_equal body = 
+    match body with 
+    | Eapp ("=", [expr1; expr2], _) -> 
+       begin
+	 match expr1, expr2 with 
+	 | Eapp _, _ when test_fv (get_fv expr1) (get_fv expr2)
+	   -> (expr1, expr2)
+	 | _, Eapp _ when test_fv (get_fv expr2) (get_fv expr1)
+	   -> (expr2, expr1)
+	 | _, _ -> assert false
+       end
+    | _ -> assert false
+  in
+  let rec parse body = 
+    match body with 
+    | Eall (_, _, expr, _) -> parse expr
+    | _ -> parse_equal body
+  in
+  parse body 
+;;
+
+let add_rwrt_term name body  = 
+  let (x, y) = split_to_term_rule body in 
+  Hashtbl.add !Expr.tbl_term (find_first_sym x) (x, y)
+;;
+
+let add_rwrt_prop name body = 
+  let (x, y) = split_to_prop_rule body in 
+  Hashtbl.add !Expr.tbl_prop (find_first_sym x) (x, y)
+;;
+
+let rec select_rwrt_rules_aux accu phrase = 
+  match phrase with 
+  | Hyp (name, body, flag) 
+       when (flag = 2) || (flag = 1)
+    -> 
+     begin
+       if !Globals.build_rwrt_sys_prop
+	       && is_heuri_rwrt_prop body 
+       then (add_rwrt_prop name body; (Rew (name, body, 1) :: accu)) 
+       else if !Globals.build_rwrt_sys_term
+	       && is_heuri_rwrt_term body 
+       then (add_rwrt_term name body; (Rew (name, body, 0) :: accu)) 
+       else phrase :: accu;
+     end
+  | _ -> phrase :: accu
+;;
+
+let select_rwrt_rules phrases = 
+  List.rev (List.fold_left select_rwrt_rules_aux [] phrases)
 ;;

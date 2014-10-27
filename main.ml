@@ -184,8 +184,10 @@ let argspec = [
         "<file>        output errors and warnings to <file> instead of stderr";
   "-x", Arg.String Extension.activate,
      "<ext>            activate extension <ext>";
-  "-rwrt", Arg.Set build_rwrt_sys,
-     "             build automatically the rewrite system";
+  "-rwrt-prop", Arg.Set build_rwrt_sys_prop,
+  "             build automatically the rewrite system (propositional axioms)";
+  "-rwrt-term", Arg.Set build_rwrt_sys_term,
+  "             build automatically the rewrite system (equational axioms)";
   "-dbg-rwrt", Arg.Set debug_rwrt,
      "             debug mode for rewriting"
 ];;
@@ -324,9 +326,9 @@ let main () =
   let retcode = ref 0 in
   begin try
     let phrases = List.map fst phrases_dep in
+    let phrases = Rewrite.select_rwrt_rules phrases in 
     let ppphrases = Extension.preprocess phrases in
     List.iter Extension.add_phrase ppphrases;
-    Phrase.parse_rwrt ppphrases;
     if !Globals.debug_rwrt
     then 
       begin 

@@ -22,7 +22,8 @@ val top_num_forms : int ref;;
 val stored_lemmas : int ref;;
 val num_expr : int ref;;
 
-val build_rwrt_sys : bool ref;;
+val build_rwrt_sys_prop : bool ref;;
+val build_rwrt_sys_term : bool ref;;
 
 
 val debug_rwrt : bool ref;;

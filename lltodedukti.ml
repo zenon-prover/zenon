@@ -25,7 +25,7 @@ let new_term () = sprintf "X%d" (new_name ())
 
 let declare_header oc =
   fprintf oc "
-#NAME test
+#NAME test.
 Term : Type.
 Prop: Type.
 prf: Prop -> Type.

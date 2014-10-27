@@ -37,8 +37,9 @@ val normalize_fm : expr -> expr;;
 
 val normalize_list : expr list -> expr list;;
 
-
 val print_list_expr : expr list -> unit;;
 val printer : expr -> unit;;
 
 exception Unif_failed;;
+
+val select_rwrt_rules: Phrase.phrase list -> Phrase.phrase list;; 
