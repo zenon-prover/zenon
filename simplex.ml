@@ -104,7 +104,7 @@ module Make(Var: VarType) = struct
         tab : Q.t CCVector.vector CCVector.vector;
         basic : Var.t CCVector.vector;
         nbasic : Var.t CCVector.vector;
-        assign : erat H.t;
+        assign : erat CCVector.vector;
         mutable bounds : (erat * erat) H.t; (* (lower, upper) *)
     }
 
@@ -122,6 +122,16 @@ module Make(Var: VarType) = struct
     type n_res = n_cert res
 
     type debug_printer = Format.formatter -> t -> unit
+
+    (* Misc *)
+    let list_min f l =
+        let rec aux acc = function
+            | [] -> acc
+            | x :: r -> aux (if f acc x < 0 then acc else x) r
+        in match l with
+        | [] -> raise Not_found
+        | a :: r -> aux a r
+
 
     (* epsilon-rationals *)
     let ezero = Q.zero, Q.zero
@@ -169,7 +179,7 @@ module Make(Var: VarType) = struct
         tab = CCVector.create ();
         basic = CCVector.create ();
         nbasic = CCVector.create ();
-        assign = H.create 100;
+        assign = CCVector.create ();
         bounds = H.create 100;
     }
 
@@ -177,20 +187,19 @@ module Make(Var: VarType) = struct
         tab = copy_matrix t.tab;
         basic = copy_vect t.basic;
         nbasic = copy_vect t.nbasic;
-        assign = H.copy t.assign;
+        assign = copy_vect t.assign;
         bounds = H.copy t.bounds;
     }
 
     (* Expr manipulation *)
+    exception Found of int
     let index x a =
-        let i = ref (-1) in
-        let j = ref 0 in
-        let l = CCVector.length a in
-        while !i < 0 && !j < l do
-            if equal_var x (vget a !j) then i := !j;
-            incr j
-        done;
-        !i
+        try
+            for i = 0 to CCVector.length a - 1 do
+                if equal_var x (vget a i) then raise (Found i)
+            done;
+            (-1)
+        with Found i -> i
 
     let mem x a = index x a >= 0
 
@@ -223,24 +232,24 @@ module Make(Var: VarType) = struct
         | -1, _ | _, -1 -> assert false
         | i, j -> mget t.tab i j
 
+    let basic_value t i =
+        let expr = vget t.tab i in
+        let res = ref ezero in
+        for i = 0 to CCVector.length expr - 1 do
+            res := sum !res (mul (vget expr i) (vget t.assign i))
+        done;
+        !res
+
     let value t x =
-        try
-            H.find t.assign x
-        with Not_found ->
-            try
-                let res = ref ezero in
-                let expr = find_expr_basic t x in
-                for i = 0 to CCVector.length expr - 1 do
-                    res := sum !res (mul (vget expr i) (H.find t.assign (vget t.nbasic i)))
-                done;
-                !res
-            with Not_found ->
-                raise (UnExpected "Basic variable in expression of a basic variable.")
+        match index x t.nbasic with
+        | -1 ->
+                basic_value t (index x t.basic)
+        | i ->
+                vget t.assign i
 
     let get_bounds t x = try H.find t.bounds x with Not_found -> Q.((minus_inf, zero), (inf, zero))
 
-    let is_within_aux t x v =
-        let low, upp = get_bounds t x in
+    let is_within_aux v (low, upp) =
         if compare v low <= -1 then
             (false, low)
         else if compare v upp >= 1 then
@@ -250,7 +259,8 @@ module Make(Var: VarType) = struct
 
     let is_within t x =
         let v = value t x in
-        is_within_aux t x v
+        let low, upp = get_bounds t x in
+        is_within_aux v (low, upp)
 
     (* Add functions *)
     let add_vars t l =
@@ -259,9 +269,10 @@ module Make(Var: VarType) = struct
         if l <> [] then begin
             let a = Array.of_list l in
             let z = Array.make (Array.length a) Q.zero in
+            let ez = Array.make (Array.length a) ezero in
             CCVector.append_array t.nbasic a;
+            CCVector.append_array t.assign ez;
             CCVector.iter (fun v -> CCVector.append_array v z) t.tab;
-            List.iter (fun y -> H.replace t.assign y ezero) l;
         end
 
     let add_eq t (s, eq) =
@@ -288,19 +299,21 @@ module Make(Var: VarType) = struct
         else
             let low', upp' = get_bounds t x in
             H.replace t.bounds x (max low low', min upp upp');
-            if mem x t.nbasic then
-                let (b, v) = is_within t x in
-                if not b then
-                    H.replace t.assign x v
+            match index x t.nbasic with
+            | -1 -> ()
+            | i ->
+                    let (b, v) = is_within t x in
+                    if not b then
+                        vset t.assign i v
 
     let add_bounds = add_bounds_aux ~force:false
     let change_bounds = add_bounds_aux ~force:true
 
     let enforce_bounds t =
-        H.iter (fun x v ->
-            let (b, v') = is_within_aux t x v in
+        CCVector.iteri (fun i v ->
+            let (b, v') = is_within_aux v (get_bounds t (vget t.nbasic i)) in
             if not b then
-                H.replace t.assign x v') t.assign
+                vset t.assign i v') t.assign
 
     let restore_bounds t bounds =
         t.bounds <- bounds;
@@ -335,12 +348,10 @@ module Make(Var: VarType) = struct
         let f = evaluate e in
         List.map (fun (x, v) -> (x, f v)) (full_assign t)
 
-    let find_suitable t x =
-        let _, v = is_within t x in
-        let b = compare (value t x) v < 0 in
-        let test y a =
-            let v = value t y in
-            let low, upp = get_bounds t y in
+    let find_suitable t i b =
+        let test j a =
+            let v = vget t.assign j in
+            let low, upp = get_bounds t (vget t.nbasic j) in
             if b then
                 (lt v upp && Q.gt a Q.zero) || (gt v low && Q.lt a Q.zero)
             else
@@ -354,32 +365,30 @@ module Make(Var: VarType) = struct
                 for i = 0 to CCVector.length v1 - 1 do
                     let y = vget v1 i in
                     let a = vget v2 i in
-                    if test y a then begin
-                        res := (y, a) :: !res
+                    if test i a then begin
+                        res := (y, (i, a)) :: !res
                     end
                 done;
                 !res
             end
         in
-        match List.sort (fun x y -> Var.compare (fst x) (fst y))
-                        (aux t.nbasic (find_expr_basic t x)) with
-        | [] -> raise NoneSuitable
-        | a :: _ -> a
+        try
+            list_min
+                (fun x y -> Var.compare (fst x) (fst y))
+                (aux t.nbasic (vget t.tab i))
+        with Not_found -> raise NoneSuitable
 
     let subst x y a =
         let k = index x a in
         vset a k y
 
-    let pivot t x y a =
+    let pivot t kx ky a =
         (* Assignment change *)
-        let v = value t x in
-        H.remove t.assign y;
-        H.add t.assign x v;
+        let v = basic_value t kx in
+        vset t.assign ky v;
         (* Matrix Pivot operation *)
-        let kx = index x t.basic in
-        let ky = index y t.nbasic in
         for j = 0 to CCVector.length t.nbasic - 1 do
-            if equal_var y (vget t.nbasic j) then
+            if ky = j then
                 mset t.tab kx j (Q.inv a)
             else
                 mset t.tab kx j (Q.neg (Q.div (mget t.tab kx j) a))
@@ -393,21 +402,38 @@ module Make(Var: VarType) = struct
                 done
             end
         done;
-        (* Switch x and y in basic and nbasiv vars *)
-        subst x y t.basic;
-        subst y x t.nbasic
+        (* Switch x and y in basic and nbasic vars *)
+        let x = vget t.basic kx in
+        let y = vget t.nbasic ky in
+        vset t.basic kx y;
+        vset t.nbasic ky x
+
+    let find_outside t =
+        let res = ref None in
+        let aux x = match !res with
+            | None -> true
+            | Some (_, y, _, _) -> Var.compare x y < 0
+        in
+        CCVector.iteri (fun i x ->
+            let v = basic_value t i in
+            let b = get_bounds t x in
+            if not (fst (is_within_aux v b)) && aux x then res := Some (i, x, v, b)
+            ) t.basic;
+        match !res with
+        | None -> raise Not_found
+        | Some x -> x
 
     let rec solve_aux debug t =
         debug t;
         H.iter (fun x (l, u) -> if gt l u then raise (AbsurdBounds x)) t.bounds;
         try
             while true do
-                let x = List.find (fun y -> not (fst (is_within t y))) (List.sort Var.compare (CCVector.to_list t.basic)) in
-                let _, v = is_within t x in
+                let (i, x, v, b) = find_outside t in
+                let _, v' = is_within_aux v b in
                 try
-                    let y, a = find_suitable t x in
-                    pivot t x y a;
-                    H.replace t.assign x v;
+                    let y, (j, a) = find_suitable t i (compare v v' < 0) in
+                    pivot t i j a;
+                    vset t.assign j v';
                     debug t
                 with NoneSuitable ->
                     raise (Unsat x)
@@ -563,7 +589,7 @@ module Make(Var: VarType) = struct
         bound_all t int_vars g;
         g, nsolve t int_vars
 
-    let base_depth t = 51 + 2 * (CCVector.length t.nbasic)
+    let base_depth t = 100 + 2 * (CCVector.length t.nbasic)
 
     let nsolve_incr t int_vars =
         if CCVector.length t.nbasic = 0 then
@@ -592,8 +618,7 @@ module Make(Var: VarType) = struct
         CCVector.to_list t.basic,
         List.map CCVector.to_list (CCVector.to_list t.tab)
 
-    let get_assign t = H.fold (fun x (v,e) acc -> (x,(v,e)) :: acc) t.assign []
-    let get_assign t = H.fold (fun x (v,e) acc -> (x,(v,e)) :: acc) t.assign []
+    let get_assign t = List.combine (CCVector.to_list t.nbasic) (CCVector.to_list t.assign)
     let get_bounds t x = let ((l,_), (u,_)) = get_bounds t x in (l,u)
     let get_all_bounds t = H.fold (fun x ((l,_),(u,_)) acc -> (x, (l, u)) :: acc) t.bounds []
 
