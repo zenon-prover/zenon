@@ -456,21 +456,10 @@ let rec is_equal_term body =
       when not (is_commut_term body) -> 
      begin 
        match t1, t2 with 
-       | Evar (_, _), Evar(_, _) -> false
-       | _, Evar (_, _) -> test_fv (get_fv t1) (get_fv t2)
-       | Evar (_, _) , _ -> test_fv (get_fv t2) (get_fv t1)
-       | _, _ -> true
+       | Eapp _, _ -> test_fv (get_fv t1) (get_fv t2)
+       | _, Eapp _ -> test_fv (get_fv t2) (get_fv t1)
+       | _, _ -> false
      end
-  | Eapp (Evar("=", _), [t1; t2], _) 
-       when not (is_commut_term body) -> 
-     begin 
-       match t1, t2 with 
-       | Evar (_, _), Evar(_, _) -> false
-       | _, Evar (_, _) -> test_fv (get_fv t1) (get_fv t2)
-       | Evar (_, _) , _ -> test_fv (get_fv t2) (get_fv t1)
-       | _, _ -> true
-     end
-  
   | _ -> false
 ;;
 
@@ -581,16 +570,16 @@ let rec select_rwrt_rules_aux accu phrase =
      begin
        if !Globals.build_rwrt_sys_B 
 	  && List.mem name b_axiom_to_rwrt_term 
-       then (add_rwrt_term name body; accu)
+       then (add_rwrt_term name body; (Rew (name, body, 0) :: accu))
        else if !Globals.build_rwrt_sys_B 
 	       && List.mem name b_axiom_to_rwrt_prop 
-       then (add_rwrt_prop name body; accu) 
+       then (add_rwrt_prop name body; (Rew (name, body, 1) :: accu)) 
        else if !Globals.build_rwrt_sys 
 	       && is_heuri_rwrt_prop body 
-       then (add_rwrt_prop name body; accu) 
+       then (add_rwrt_prop name body; (Rew (name, body, 1) :: accu)) 
   (*     else if !Globals.build_rwrt_sys 
 	       && is_heuri_rwrt_term body 
-       then (print_string (" |> term "^name^" <| "); add_rwrt_term name body; accu) *)
+       then (add_rwrt_term name body; (Rew (name, body, 0) :: accu)) *)
        else phrase :: accu;
      end
   | _ -> phrase :: accu
