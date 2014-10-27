@@ -20,7 +20,7 @@ SOURCES = log.ml version.ml config.dummy misc.ml heap.ml globals.ml error.ml \
           progress.ml namespace.ml type.ml expr.ml \
           phrase.ml llproof.ml mlproof.ml watch.ml eqrel.ml index.ml \
 	  print.ml step.ml node.ml extension.ml rewrite.ml mltoll.ml \
-          printBox.ml simplex.ml arith.ml \
+          CCVector.ml printBox.ml simplex.ml arith.ml \
           parsezen.mly lexzen.mll \
 	  smtlib_util.ml smtlib_syntax.ml \
 	  parsesmtlib.mly lexsmtlib.mll smtlib.ml typesmtlib.ml \

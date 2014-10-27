@@ -4,8 +4,8 @@ open Expr
 open Node
 open Mlproof
 module LL = Llproof
-module M = Map.Make(struct type t= Expr.t let compare = Expr.compare end)
-module S = Simplex.Make(struct type t = Expr.t let compare = Expr.compare end)
+module M = Map.Make(Expr)
+module S = Simplex.Make(Expr)
 
 open Arith
 
@@ -223,8 +223,8 @@ type simplex_state = {
     bindings : (expr * expr * expr option * expr option) list;
 }
 
-let simplex_empty = {
-    core = S.empty;
+let simplex_empty () = {
+    core = S.create ();
     ignore = [];
     bindings = [];
 }
@@ -240,10 +240,11 @@ let simplex_print b s =
     let print_var fmt e = Format.fprintf fmt "%s" (Print.sexpr e) in
     Format.fprintf fmt "%a@." (S.print_debug print_var) s.core;
     Log.pp_list ~sep:"\n" (fun b (e, def, inf, upp) ->
-        Printf.bprintf b "%a \t\t %a \t\t%a"
+        Printf.bprintf b "%a \tin\t %a \t<<\t%a"
+        Print.pp_expr def
         (Log.pp_opt Print.pp_expr) inf
         (Log.pp_opt Print.pp_expr) upp
-        Print.pp_expr def) b s.bindings
+    ) b s.bindings
 
 let bounds_of_comp s c = match s with
     | "$less" -> ((Q.minus_inf,false),(c,true))
@@ -428,15 +429,16 @@ let simplex_add t f (e, s, c) =
             (Q.to_string inf) (if strict_low then "<" else "<=")
             Print.pp_expr x
             (if strict_upp then "<" else "<=") (Q.to_string upp);
-            (add_binding {t with core =
-                S.add_bounds t.core ~strict_lower:strict_low ~strict_upper:strict_upp (x, inf, upp)} x f (e, s, c)), []
+            S.add_bounds t.core ~strict_lower:strict_low ~strict_upper:strict_upp (x, inf, upp);
+            (add_binding t x f (e, s, c)), []
     | _ ->
             let expr = to_nexpr e in
             let v = tvar (newname ()) (find_type expr) in
             let e1 = eapp (eeq, [v; expr]) in
             let e2 = mk_bop s v (const (Q.to_string c)) in
             Log.debug 7 "arith -- new variable : %a == %a" Print.pp_expr v Print.pp_expr expr;
-            { core = S.add_eq t.core (v, e);
+            S.add_eq t.core (v, e);
+            { core = t.core;
               ignore = e1 :: t.ignore;
               bindings = (v, e1, None, None) :: t.bindings;
             }, [f, mk_node_var e2 e1 f] (* The order (e2 before e1) is actually VERY important here !! *)
@@ -527,7 +529,7 @@ type state = {
 
 let empty_state =
     let st = Stack.create () in
-    Stack.push (etrue, simplex_empty, []) st;
+    Stack.push (etrue, simplex_empty (), []) st;
     {
     global = M.empty;
     solved = false;
@@ -536,7 +538,7 @@ let empty_state =
 
 let st_reset st =
     if Stack.length st.stack = 0 then
-        Stack.push (etrue, simplex_empty, []) st.stack
+        Stack.push (etrue, simplex_empty (), []) st.stack
     else begin
         Log.debug 1 "%i states left in stack..." (Stack.length st.stack);
         assert false
@@ -568,8 +570,8 @@ let st_update st e =
 let st_branch st =
     try
         let e, t, _ = Stack.top st.stack in
-        Stack.push (e, t, []) st.stack;
-        Log.debug 7 "arith -- toping top stack state (%i left)" (Stack.length st.stack)
+        Stack.push (e, simplex_copy t, []) st.stack;
+        Log.debug 7 "arith -- copying top stack state (%i left)" (Stack.length st.stack)
     with Stack.Empty ->
         assert false
 

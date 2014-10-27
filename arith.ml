@@ -581,7 +581,7 @@ let sctree t = PrintBox.Simple.to_string (treebox t)
 let lhash l = List.fold_left (+) 0 (List.map Expr.hash l)
 let lequal l l' = try List.for_all2 equal l l' with Invalid_argument _ -> false
 
-module Simplex = Simplex.MakeHelp(struct type t = Expr.t let compare = Expr.compare end)
+module Simplex = Simplex.MakeHelp(Expr)
 module ElH = Hashtbl.Make(struct type t = Expr.t list let hash = lhash let equal = lequal end)
 
 let pp_simplex b s =
@@ -596,13 +596,17 @@ let simplex_is_int = function
     | Simplex.Intern _ -> false
 
 let add_expr e st =
-    try match fneg (of_bexpr e) with
-    | (b, "$less", c) -> Simplex.add_constraints st [Simplex.Less, b, c]
-    | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
-    | (b, "$greater", c) -> Simplex.add_constraints st [Simplex.Greater, b, c]
-    | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
-    | (b, "=", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
-    | _ -> st
+    let st = Simplex.copy st in
+    try
+        begin match fneg (of_bexpr e) with
+        | (b, "$less", c) -> Simplex.add_constraints st [Simplex.Less, b, c]
+        | (b, "$lesseq", c) -> Simplex.add_constraints st [Simplex.LessEq, b, c]
+        | (b, "$greater", c) -> Simplex.add_constraints st [Simplex.Greater, b, c]
+        | (b, "$greatereq", c) -> Simplex.add_constraints st [Simplex.GreaterEq, b, c]
+        | (b, "=", c) -> Simplex.add_constraints st [Simplex.Eq, b, c]
+        | _ -> ()
+        end;
+        st
     with
     | NotaFormula -> assert false
 
@@ -611,7 +615,7 @@ let rec get_state l =
         ElH.find cache l
     with Not_found ->
         begin match l with
-        | [] -> Some(Simplex.empty, fun () -> None)
+        | [] -> Some(Simplex.create (), fun () -> None)
         | e :: r ->
                 let res = match get_state r with
                 | None -> None

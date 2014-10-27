@@ -9,9 +9,10 @@ open Expr;;
 open Phrase;;
 
 let ns pre s = (if !Globals.namespace_flag then pre else "") ^ s;;
-let ns_hyp s = ns "H_" s;;
-let ns_var s = ns "v_" s;;
-let ns_fun s = ns "f_" s;;
+(* Renaming is now done during typechecking *)
+let ns_hyp s = ns "" s;; (* "H_" *)
+let ns_var s = ns "" s;; (* "v_" *)
+let ns_fun s = ns "" s;; (* "f_" *)
 
 let rec mk_quant q vs body =
   match vs with
@@ -184,8 +185,8 @@ tff_type_sig:
      { eapp (evar "!>", $8 :: $4) }
 ;
 tff_quant:
-  | UIDENT COLON TTYPE COMMA tff_quant  { (evar $1) :: $5 }
-  | UIDENT COLON TTYPE                  { [evar $1] }
+  | UIDENT COLON TTYPE COMMA tff_quant  { (evar (ns_var $1)) :: $5 }
+  | UIDENT COLON TTYPE                  { [evar (ns_var $1)] }
 ;
 name_list:
   | LIDENT COMMA name_list         { $1 :: $3 }
