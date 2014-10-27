@@ -148,8 +148,8 @@ let argspec = [
   "-max-time", Arg.String (int_arg time_limit),
             "<t>[smhd] limit CPU time to <t> second/minute/hour/day"
             ^ " (5m)";
-  "-ocoq", Arg.Unit (fun () -> proof_level := Proof_coq),
-        "              print the proof in Coq script format";
+  "-ocoq", Arg.Unit (fun () -> namespace_flag := true; proof_level := Proof_coq),
+        "              print the proof in Coq script format (force -rename)";
   "-ocoqterm", Arg.Unit (fun () -> proof_level := Proof_coqterm),
             "          print the proof in Coq term format";
   "-oh", Arg.Int (fun n -> proof_level := Proof_h n),

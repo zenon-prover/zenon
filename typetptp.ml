@@ -165,8 +165,8 @@ let default_env =
     { empty_env with tff = tff_base }
 
 let var_name s =
-    if s = to_string type_int || s = to_string type_rat then
-        s ^ "'"
+    if !Globals.namespace_flag then
+        "v_" ^ s
     else
         s
 
