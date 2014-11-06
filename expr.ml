@@ -1,5 +1,5 @@
 (*  Copyright 2002 INRIA  *)
-Version.add "$Id: d0534a6a0c9a349b8289a70cb8f84297d3678ef6 $";;
+Version.add "$Id$";;
 
 open Misc;;
 open Namespace;;

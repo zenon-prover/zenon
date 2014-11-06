@@ -1,5 +1,5 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id: 123bd672b267fe3d464ae13f9c8b98e7475c12b6 $";;
+Version.add "$Id$";;
 
 type lexeme =
   | String of string

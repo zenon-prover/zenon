@@ -1,5 +1,5 @@
 (*  Copyright 2008 INRIA  *)
-Version.add "$Id: 239c76ade6485f65b50499d4af616ed6394f9892 $";;
+Version.add "$Id$";;
 
 (* Extension for TLA+ : set theory. *)
 

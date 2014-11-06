@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-let myvers = "$Id: 34c58a3afac083cc607b116f4d95546502fbd4b7 $";;
+let myvers = "$Id$";;
 
 open Printf;;
 

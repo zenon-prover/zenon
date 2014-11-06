@@ -1,5 +1,5 @@
 (*  Copyright 2001 INRIA  *)
-Version.add "$Id: cd90a6b20441b688fbac060141ef245237cb7320 $";;
+Version.add "$Id$";;
 
 type 'a tree =
   | Node of 'a * 'a tree * 'a tree

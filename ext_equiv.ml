@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: c483db8583b833b9d90ee5c1b90af4da4befefcf $";;
+Version.add "$Id$";;
 
 (* Extension for trees of equivalences and negations. *)
 

@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: f64f126ba41a6797d6643ecfd2290bdc3bcd7c08 $";;
+Version.add "$Id$";;
 
 let prefix = "zenon_";;
 

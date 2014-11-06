@@ -1,5 +1,5 @@
 (*  Copyright 2005 INRIA  *)
-Version.add "$Id: 8cdb504db763cd885675be46e2a542d5ec676e25 $";;
+Version.add "$Id$";;
 
 open Printf;;
 

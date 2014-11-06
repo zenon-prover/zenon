@@ -1,5 +1,5 @@
 (*  Copyright 2006 INRIA  *)
-Version.add "$Id: 3543f411fd78f652dbf8224d7fe56e5a2c83df42 $";;
+Version.add "$Id$";;
 
 (* Extension for Coq's inductive types:
    - pattern-matching

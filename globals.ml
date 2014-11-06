@@ -1,5 +1,5 @@
 (*  Copyright 1997 INRIA  *)
-Version.add "$Id: 81e748142c40d6382b9ceac00a08d35207607f19 $";;
+Version.add "$Id$";;
 
 let debug_flag = ref false;;
 

@@ -1,5 +1,5 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id: caed5ca44e929aef76195d58649e867d28c61885 $";;
+Version.add "$Id$";;
 
 open Expr;;
 open Mlproof;;
