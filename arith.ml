@@ -506,7 +506,7 @@ let ct_from_ml p =
     let filter l = List.filter (fun e ->
         try begin match of_bexpr e with
             | (_, "=", _) -> false
-            | (f, _, _) ->
+            | (f, ("$less"|"$lesseq"|"$greater"|"$greatereq"), _) ->
                 (List.for_all (fun (_, e) ->
                     (is_num e) && (match e with
                     | Emeta(_) -> true
@@ -515,6 +515,7 @@ let ct_from_ml p =
                 (List.exists (fun (_, e) -> match e with
                     | Emeta(_) -> true
                     | _ -> false) f)
+            | _ -> false
         end with NotaFormula -> false
         ) l in
     let rec aux l p =
