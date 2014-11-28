@@ -250,7 +250,7 @@ let priv_tau v t e =
 let priv_lam v t e =
   mkpriv (combine k_lam (combine (Hashtbl.hash t) (get_skel e)))
          (remove v (get_fv e)) 1 (get_taus e) (get_metas e)
-         (get_type e)
+         (match get_type e with None -> None | Some t' -> Some (Type.mk_arrow [t] t'))
 ;;
 
 module HashedExpr = struct

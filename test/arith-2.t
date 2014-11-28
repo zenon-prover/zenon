@@ -1,4 +1,4 @@
-% Comments : Branch&Bound cannot solve this system.
+% Comments : Branch&Bound does not terminate on this system
 %------------------------------------------------------------------------------
 tff(test,conjecture,(
     ! [X1 : $int, X2: $int, X3: $int, Y1: $int, Y2: $int, Y3: $int] : (

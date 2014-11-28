@@ -339,8 +339,6 @@ let type_phrase env p = match p with
             Log.debug 1 "typechecking unknown formula";
             p, env
 
-
-
 let typecheck l =
     let defined = ref [] in
     let aux env =
