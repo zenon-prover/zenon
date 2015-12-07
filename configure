@@ -75,7 +75,7 @@ while : ; do
        echo "    set install directory for executables (default ${BIN_DIR})"
        echo "  [-]-convert <executable-file>"
        echo "    set absolute path for the \"convert\" command."
-       echo "  [-]-coq <executable-file>"
+       echo "  [-]-coqc <executable-file>"
        echo "    set absolute path for the \"coqc\" command."
        echo "  [-]-debug | [-]-enable-debug"
        echo "    enable debugging"
