@@ -347,7 +347,7 @@ let p_rule oc r =
      poc "cut (%a = %a).\n" p_expr ff p_expr gg;
      poc "intro %s_pnotp.\n" Namespace.dummy_prefix;
      poc "apply %s.\n" (getname (enot gg));
-     poc "rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
+     poc "try rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
      poc "exact %s.\n" (getname ff);
      let f a1 a2 =
        let eq = eapp ("=", [a1; a2]) in
