@@ -67,7 +67,11 @@ let newnodes_istrue e g =
   let mk_unfold ctx p args =
     try
       let (d, params, body) = Index.get_def p in
-      let prio = match d with DefRec _ -> Inst e | _ -> Prop in
+      let prio =
+        match d with
+        | DefRec _ | DefReal (_, _, _, _, Some _) -> Inst e
+        | _ -> Prop
+      in
       match params, args, body with
       | [], Some aa, Evar (b, _) ->
          let unfolded = ctx (eapp (b, aa)) in
