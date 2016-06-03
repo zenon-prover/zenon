@@ -326,7 +326,7 @@ let p_rule oc r =
         poc "simpl; auto.\n"
       end else (* Fix bug 59. *)
         poc "exact %s.\n" (getname c)
-  | Rnotequal (Eapp (f, args1, _), Eapp (g, args2, _)) ->
+  | Rnotequal (Eapp (f, args1, _) as e1, (Eapp (g, args2, _) as e2)) ->
      assert (f = g);
      let f a1 a2 =
        let eq =
@@ -340,6 +340,8 @@ let p_rule oc r =
            p_expr eq (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);
+     let goal = enot (eapp ("=", [e1; e2])) in
+     poc "generalize %s; simpl.\n" (getname goal); (* hack *)
      poc "congruence.\n";
   | Rnotequal _ -> assert false
   | Rpnotp ((Eapp (f, args1, _) as ff), Enot ((Eapp (g, args2, _) as gg), _)) ->
