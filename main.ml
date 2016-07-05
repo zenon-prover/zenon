@@ -186,7 +186,7 @@ let print_usage () =
   exit 0;
 ;;
 
-let do_exit code = exit (code + if !Error.got_warning then 100 else 0);;
+let do_exit code = exit code;;
 
 let report_error lexbuf msg =
   let p = Lexing.lexeme_start_p lexbuf in
