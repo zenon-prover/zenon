@@ -135,7 +135,7 @@ let make_inequals l1 l2 = Array.of_list (make_inequals_aux l1 l2);;
 let arity_warning s =
   match s with
   | "TLA.set" | "TLA.tuple" | "TLA.record" | "TLA.recordset" -> ()
-  | "@" -> ()
+  | "@" | "$match" -> ()
   | _ ->
      Error.warn (sprintf "symbol %s is used with inconsistent arities" s);
 ;;

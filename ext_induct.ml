@@ -477,6 +477,23 @@ let newnodes_constr_eq e g =
   l1 @ l2
 ;;
 
+
+(** Match wildcard with any expression (hopefully Coq types). *)
+let newnodes_wildcard e g =
+  match e with
+  | Enot (Eapp ("=", [Evar ("_", _); e2], _), _)
+  | Enot (Eapp ("=", [e2; Evar ("_", _) ], _), _) ->
+       [ Node {
+         nconc = [e];
+         nrule = Close_refl ("=", e2);
+         nprio = Prop;
+         ngoal = g;
+         nbranches = [||];
+       } ]
+  | _ -> []
+;;
+
+
 let newnodes_fix e g =
   let mknode unfolded ctx fix =
     [Node {
@@ -558,7 +575,8 @@ let newnodes_fix e g =
 ;;
 
 let newnodes e g _ =
-    newnodes_fix e g
+    newnodes_wildcard e g
+  @ newnodes_fix e g
   @ newnodes_constr_eq e g
   @ (try newnodes_match_cases e g with Empty -> [])
   @ (try newnodes_match_cases_eq e g with Empty -> [])
