@@ -329,22 +329,13 @@ let p_rule oc r =
   | Rnotequal (Eapp (f, args1, _) as e1, (Eapp (g, args2, _) as e2)) ->
      assert (f = g);
      let f a1 a2 =
-       let eq =
-         match a1, a2 with
-         | Evar ("_", _), _ | _, Evar ("_", _) ->
-             eapp ("=", [evar "true"; evar "true"])
-         | e1, e2 when Expr.equal e1 e2 ->
-             eapp ("=", [evar "true"; evar "true"])
-         | _ -> eapp ("=", [a1; a2])
-       in
        let neq = enot (eapp ("=", [a1; a2])) in
-       poc "cut (%a); [idtac | apply NNPP; zenon_intro %s].\n"
-           p_expr eq (getname neq);
+       poc "refine (zenon_equal_step_s _ _); \
+            [idtac | apply NNPP; zenon_intro %s].\n"
+           (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);
-     let goal = enot (eapp ("=", [e1; e2])) in
-     poc "generalize %s; simpl.\n" (getname goal); (* hack *)
-     poc "congruence.\n";
+     poc "refine eq_refl.\n";
   | Rnotequal _ -> assert false
   | Rpnotp ((Eapp (f, args1, _) as ff), Enot ((Eapp (g, args2, _) as gg), _)) ->
      assert (f = g);
@@ -353,14 +344,13 @@ let p_rule oc r =
      poc "apply %s.\n" (getname (enot gg));
      poc "try rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
      poc "exact %s.\n" (getname ff);
-     let f a1 a2 =
-       let eq = eapp ("=", [a1; a2]) in
-       let neq = enot eq in
-       poc "cut (%a); [idtac | apply NNPP; zenon_intro %s].\n"
-           p_expr eq (getname neq);
+       let neq = enot (eapp ("=", [a1; a2])) in
+       poc "refine (zenon_equal_step_s _ _); \
+            [idtac | apply NNPP; zenon_intro %s].\n"
+           (getname neq);
      in
      List.iter2 f (List.rev args1) (List.rev args2);
-     poc "congruence.\n";
+     poc "refine eq_refl.\n";
   | Rpnotp _ -> assert false
   | Rnoteq e ->
       poc "apply %s. apply refl_equal.\n" (getname (enot (eapp ("=", [e; e]))));

@@ -149,3 +149,8 @@ Definition zenon_recfun_unfold_s :=
   fun A P a b eqn c h => @zenon_recfun_unfold A P a b eqn h c
 .
 Implicit Arguments zenon_recfun_unfold_s [A].
+
+Definition zenon_equal_step_s :
+  forall (S T : Type) (f g : S -> T) (a b : S),
+  (f = g) -> (a = b) -> ((f a) = (g b)).
+Implicit Arguments zenon_equal_step_s [S T f g a b].
