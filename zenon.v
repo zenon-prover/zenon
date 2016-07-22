@@ -150,7 +150,10 @@ Definition zenon_recfun_unfold_s :=
 .
 Implicit Arguments zenon_recfun_unfold_s [A].
 
-Definition zenon_equal_step_s :
+Theorem zenon_equal_step_s :
   forall (S T : Type) (f g : S -> T) (a b : S),
   (f = g) -> (a = b) -> ((f a) = (g b)).
+Proof.
+  intros. congruence.
+Qed.
 Implicit Arguments zenon_equal_step_s [S T f g a b].
