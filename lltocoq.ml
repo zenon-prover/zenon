@@ -344,6 +344,7 @@ let p_rule oc r =
      poc "apply %s.\n" (getname (enot gg));
      poc "try rewrite <- %s_pnotp.\n" Namespace.dummy_prefix;
      poc "exact %s.\n" (getname ff);
+     let f a1 a2 =
        let neq = enot (eapp ("=", [a1; a2])) in
        poc "refine (zenon_equal_step_s _ _); \
             [idtac | apply NNPP; zenon_intro %s].\n"
