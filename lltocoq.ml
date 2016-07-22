@@ -328,6 +328,7 @@ let p_rule oc r =
         poc "exact %s.\n" (getname c)
   | Rnotequal (Eapp (f, args1, _) as e1, (Eapp (g, args2, _) as e2)) ->
      assert (f = g);
+     poc "refine (%s _).\n" (getname (enot (eapp ("=", [e1; e2]))));
      let f a1 a2 =
        let neq = enot (eapp ("=", [a1; a2])) in
        poc "refine (zenon_equal_step_s _ _); \
