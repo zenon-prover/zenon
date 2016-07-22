@@ -333,6 +333,8 @@ let p_rule oc r =
          match a1, a2 with
          | Evar ("_", _), _ | _, Evar ("_", _) ->
              eapp ("=", [evar "true"; evar "true"])
+         | e1, e2 when Expr.equal e1 e2 ->
+             eapp ("=", [evar "true"; evar "true"])
          | _ -> eapp ("=", [a1; a2])
        in
        let neq = enot (eapp ("=", [a1; a2])) in
