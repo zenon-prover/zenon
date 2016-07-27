@@ -481,11 +481,11 @@ let newnodes_constr_eq e g =
 (** Match wildcard with any expression (hopefully Coq types). *)
 let newnodes_wildcard e g =
   match e with
-  | Enot (Eapp ("=", [Evar ("_", _); e2], _), _)
-  | Enot (Eapp ("=", [e2; Evar ("_", _) ], _), _) ->
+  | Enot (Eapp ("=", [Evar ("_", _) as e1; e2], _), _)
+  | Enot (Eapp ("=", [e1; Evar ("_", _) as e2], _), _) ->
        [ Node {
          nconc = [e];
-         nrule = Close_refl ("=", e2);
+         nrule = Close_refl ("=", e1, e2);
          nprio = Prop;
          ngoal = g;
          nbranches = [||];

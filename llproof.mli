@@ -76,10 +76,11 @@ type rule =
 
      ********************)
 
-  | Rnoteq of expr
+  | Rnoteq of expr * expr
     (*
-       ------------ Rnoteq (t)
-       Enot (t = t)
+       ------------ Rnoteq (t1, t2) where t1 and t2 are equal according to
+                                    the back-end's logic
+       Enot (t1 = t2)
 
      ********************)
 

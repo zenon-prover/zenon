@@ -15,7 +15,7 @@ type rule =
   | Rnottrue
   | Raxiom of expr
   | Rcut of expr
-  | Rnoteq of expr
+  | Rnoteq of expr * expr
   | Reqsym of expr * expr
   | Rnotnot of expr
   | Rconnect of binop * expr * expr
@@ -58,7 +58,7 @@ let rec direct_close l =
       | Efalse -> { conc = [h]; rule = Rfalse; hyps = [] }
       | Enot (Etrue, _) -> { conc = [h]; rule = Rnottrue; hyps = [] }
       | Enot (Eapp ("=", [a; b], _), _) when Expr.equal a b ->
-        { conc = [h]; rule = Rnoteq (a); hyps = [] }
+        { conc = [h]; rule = Rnoteq (a, b); hyps = [] }
       | Enot (nh, _) ->
           if List.exists (Expr.equal nh) t then
             { conc = [h; nh]; rule = Raxiom (nh); hyps = [] }
@@ -91,7 +91,7 @@ let reduce conc rule hyps =
     | Rnottrue -> [enot (etrue)]
     | Raxiom (p) -> [p; enot p]
     | Rcut (p) -> []
-    | Rnoteq (a) -> [enot (eapp ("=", [a; a]))]
+    | Rnoteq (a, b) -> [enot (eapp ("=", [a; b]))]
     | Reqsym (a, b) -> [eapp ("=", [a; b]); enot (eapp ("=", [b; a]))]
     | Rnotnot (p) -> [enot (enot (p))]
     | Rconnect (And, p, q) -> [eand (p, q)]

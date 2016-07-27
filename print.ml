@@ -195,7 +195,7 @@ let sequent o l =
 
 let get_rule_name = function
   | Close e -> "Axiom", [e]
-  | Close_refl (s, e) -> "Refl("^s^")", [e]
+  | Close_refl (s, e1, e2) -> "Refl("^s^")", [e1; e2]
   | Close_sym (s, e1, e2) -> "Sym("^s^")", [e1; e2]
   | False -> "False", []
   | NotTrue -> "NotTrue", []
@@ -286,7 +286,7 @@ let mlproof o p =
 
 let hlrule_name = function
   | Close (e) -> "Axiom", [e; enot (e)]
-  | Close_refl (s, e) -> "Refl("^s^")", [enot (eapp (s, [e; e]))]
+  | Close_refl (s, e1, e2) -> "Refl("^s^")", [enot (eapp (s, [e1; e2]))]
   | Close_sym (s, e1, e2) ->
       "Sym("^s^")", [eapp (s, [e1; e2]); enot (eapp (s, [e2; e1]))]
   | False -> "False", []
@@ -460,7 +460,12 @@ let llproof_rule o r =
   | Rnottrue -> pr "---nottrue";
   | Raxiom (p) -> pr "---axiom "; llproof_expr o p;
   | Rcut (p) -> pr "---cut "; llproof_expr o p;
-  | Rnoteq (t) -> pr "---noteq "; llproof_expr o t;
+  | Rnoteq (t, u) ->
+     pr "---noteq (";
+     llproof_expr o t;
+     pr ", ";
+     llproof_expr o u;
+     pr ")";
   | Reqsym (t, u) ->
      pr "---eqsym (";
      llproof_expr o t;

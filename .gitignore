@@ -3,6 +3,7 @@
 *.annot
 *.vo
 *.glob
+.*.aux
 .config_var
 .depend
 zenon.bin

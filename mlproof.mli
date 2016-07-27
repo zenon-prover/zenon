@@ -5,7 +5,8 @@ open Expr;;
 
 type rule =
   | Close of expr               (* p, -p  /  (.)                [p]*)
-  | Close_refl of string * expr (* -r(a,a)  /  (.)              [r a]*)
+  | Close_refl of string * expr * expr
+                                (* -r(a1,a2)  /  (where a1 = a2 [r a1 a2]*)
   | Close_sym of string * expr * expr
                                 (* r(a,b), -r(b,a)  /  (.)      [r a b]*)
   | False                       (* false  /  (.)                []*)

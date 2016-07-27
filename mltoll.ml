@@ -122,7 +122,7 @@ and tr_expr a = memo expr_tbl xtr_expr a
 let tr_rule r =
   match r with
   | Close (p) -> LL.Raxiom (tr_expr p)
-  | Close_refl ("=", e) -> LL.Rnoteq (tr_expr e)
+  | Close_refl ("=", e1, e2) -> LL.Rnoteq (tr_expr e1, tr_expr e2)
   | Close_sym ("=", e, f) -> LL.Reqsym (tr_expr e, tr_expr f)
   | False -> LL.Rfalse
   | NotTrue -> LL.Rnottrue
@@ -204,7 +204,7 @@ let tr_rule r =
   | NotAllEx _
     -> assert false
 
-  | Close_refl (s, _) (* when s <> "=" *) -> assert false
+  | Close_refl (s, _, _) (* when s <> "=" *) -> assert false
 ;;
 
 let rec merge l1 l2 =
@@ -268,8 +268,8 @@ let make_lemma llprf extras mlprf =
 let is_derived = function
   | Close _ -> false
 
-  | Close_refl ("=", _) -> false
-  | Close_refl (_, _) -> true
+  | Close_refl ("=", _, _) -> false
+  | Close_refl (_, _, _) -> true
 
   | Close_sym ("=", _, _) -> false
   | Close_sym _ -> true
@@ -925,11 +925,11 @@ and translate_derived p =
       let n4 = make_alls sym_hyp [a; b] n3 in
       let (n, ext) = to_llproof n4 in
       (n, union [sym_hyp] ext)
-  | Close_refl ("=", _) -> assert false
-  | Close_refl (s, a) ->
+  | Close_refl ("=", _, _) -> assert false
+  | Close_refl (s, a, b) ->
       let refl_hyp = Eqrel.get_refl_hyp s in
-      let paa = eapp (s, [a; a]) in
-      let n1 = make_cl paa in
+      let pab = eapp (s, [a; b]) in
+      let n1 = make_cl pab in
       let n2 = make_all refl_hyp a n1 in
       let (n, ext) = to_llproof n2 in
       (n, union [refl_hyp] ext)

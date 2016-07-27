@@ -157,3 +157,11 @@ Proof.
   intros. congruence.
 Qed.
 Implicit Arguments zenon_equal_step_s [S T f g a b].
+
+Theorem zenon_equal_step2_s :
+  forall (S T : Type) (f g : S -> T) (a : S),
+  (f = g) -> ((f a) = (g a)).
+Proof.
+  intros. congruence.
+Qed.
+Implicit Arguments zenon_equal_step2_s [S T f g a].

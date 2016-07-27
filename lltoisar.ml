@@ -755,8 +755,8 @@ let rec p_tree hyps i dict oc proof =
      let mk l = eapp (p, l) in
      p_subst hyps i dict2 oc mk args1 args2 [] pp;
   | Rpnotp _ -> assert false
-  | Rnoteq e1 ->
-     let neq = enot (eapp ("=", [e1; e1])) in
+  | Rnoteq (e1, e2) ->
+     let neq = enot (eapp ("=", [e1; e2])) in
      let n_neq = hname hyps neq in
      iprintf i oc "show FALSE\n";
      iprintf i oc "by (rule zenon_noteq [OF %s])\n" n_neq;

@@ -209,8 +209,8 @@ let rec trtree env node =
       let (subp, subnp) = tr_subtree_2 hyps in
       let lamp = mklam p subp in
       Clet (getname (enot p), lamp, subnp)
-  | Rnoteq (e) ->
-      let e_neq_e = getv env (enot (eapp ("=", [e; e]))) in
+  | Rnoteq (e, f) ->
+      let e_neq_e = getv env (enot (eapp ("=", [e; f]))) in
       Capp (Cvar "zenon_noteq", [Cwild; trexpr e; e_neq_e])
   | Reqsym (e, f) ->
       let e_eq_f = getv env (eapp ("=", [e; f])) in

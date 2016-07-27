@@ -1570,7 +1570,7 @@ let pp_rule r =
   | LL.Rfalse | LL.Rnottrue -> r
   | LL.Raxiom (e) -> LL.Raxiom (pp_expr e)
   | LL.Rcut (e) -> LL.Rcut (pp_expr e)
-  | LL.Rnoteq (e) -> LL.Rnoteq (pp_expr e)
+  | LL.Rnoteq (e1, e2) -> LL.Rnoteq (pp_expr e1, pp_expr e2)
   | LL.Reqsym (e1, e2) -> LL.Reqsym (pp_expr e1, pp_expr e2)
   | LL.Rnotnot (e) -> LL.Rnotnot (pp_expr e)
   | LL.Rconnect (op, e1, e2) -> LL.Rconnect (op, pp_expr e1, pp_expr e2)

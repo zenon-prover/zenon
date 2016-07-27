@@ -33,6 +33,9 @@ Lemma zenon_induct_allnotex : forall (T : Type) (P : T -> Prop),
   ((~forall x, ~(P x)) -> False) -> (exists x, (P x)) -> False.
   Proof. firstorder. Qed.
 
+Lemma zenon_induct_neq_wildcard : forall (T : Type) (a : T), a <> a -> False.
+  Proof. congruence. Qed.
+
 
 Definition zenon_induct_allexnot_s :=
   fun T P c h => zenon_induct_allexnot T P h c
@@ -40,3 +43,5 @@ Definition zenon_induct_allexnot_s :=
 Definition zenon_induct_allnotex_s :=
   fun T P c h => zenon_induct_allnotex T P h c
 .
+
+Definition zenon_induct_neq_wildcard_s := zenon_induct_neq_wildcard.

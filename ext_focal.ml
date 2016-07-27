@@ -759,7 +759,7 @@ and process_rule r =
   | Rnottrue -> Rnottrue
   | Raxiom (e1) -> Raxiom (process_expr e1)
   | Rcut (e1) -> Rcut (process_expr e1)
-  | Rnoteq (e1) -> Rnoteq (process_expr e1)
+  | Rnoteq (e1, e2) -> Rnoteq (process_expr e1, process_expr e2)
   | Reqsym (e1, e2) -> Reqsym (process_expr e1, process_expr e2)
   | Rnotnot (e1) -> Rnotnot (process_expr e1)
   | Rconnect (op, e1, e2) -> Rconnect (op, process_expr e1, process_expr e2)

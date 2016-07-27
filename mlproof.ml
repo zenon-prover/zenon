@@ -6,7 +6,7 @@ open Printf;;
 
 type rule =
   | Close of expr
-  | Close_refl of string * expr
+  | Close_refl of string * expr * expr
   | Close_sym of string * expr * expr
   | False                       (* false  /             *)
   | NotTrue                     (* -true  /             *)
@@ -86,7 +86,7 @@ let make_cl p =
 ;;
 
 let make_clr r a =
-  make_node [enot (eapp (r, [a; a]))] (Close_refl (r, a)) [] []
+  make_node [enot (eapp (r, [a; a]))] (Close_refl (r, a, a)) [] []
 ;;
 
 let make_cls r a b =

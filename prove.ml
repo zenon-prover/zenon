@@ -290,7 +290,7 @@ let newnodes_closure st fm g _ =
   | Enot (Eapp (s, [a; b], _), _) when Eqrel.refl s && Expr.equal a b ->
     add_node st {
       nconc = [fm];
-      nrule = Close_refl (s, a);
+      nrule = Close_refl (s, a, b);
       nprio = Prop;
       ngoal = g;
       nbranches = [| |];
