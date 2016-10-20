@@ -111,3 +111,16 @@ let p_rule_coq ext oc r =
 let predef () =
   List.flatten (["="] :: List.map (fun ext -> ext.predef ()) !active)
 ;;
+
+module HE = Hashtbl.Make (Expr);;
+
+let memorec f =
+  let tbl = HE.create 997 in
+  let rec ff e =
+    try HE.find tbl e with
+    | Not_found ->
+        let res = f ff e in
+        HE.add tbl e res ;
+        res in
+  ff
+;;

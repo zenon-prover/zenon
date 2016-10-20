@@ -695,7 +695,7 @@ let preprocess l =
 
 let add_phrase p = ();;
 
-let rec process_expr e =
+let pe process_expr e =
   match e with
   | Evar _ -> e
   | Emeta _ -> e
@@ -715,6 +715,10 @@ let rec process_expr e =
   | Etau (e1, t, e2, _) -> etau (process_expr e1, t, process_expr e2)
   | Elam (e1, t, e2, _) -> elam (process_expr e1, t, process_expr e2)
 ;;
+
+(** Memoized version of pe. *)
+let process_expr = Extension.memorec pe ;;
+
 
 let rec process_expr_set accu l =
   match l with

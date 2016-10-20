@@ -50,3 +50,5 @@ val to_llproof : translator;;
 val declare_context_coq : out_channel -> unit;;
 val p_rule_coq : string -> out_channel -> Llproof.rule -> unit;;
 val predef : unit -> string list;;
+
+val memorec : ((Expr.expr -> 'a) -> Expr.expr -> 'a) -> Expr.expr -> 'a
