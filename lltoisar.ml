@@ -472,7 +472,7 @@ let rec p_tree hyps i dict oc proof =
      let dict2 = p_let dict1 i oc e2 in
      let p_simple_hyp h =
        if List.memq h t.conc then
-         iprintf i oc "have %s: \"%a\" using %s by clarsimp\n"
+         iprintf i oc "have %s: \"%a\" using %s by auto\n"
                  (hname hyps h) (p_expr dict2) h (hname hyps c)
      in
      p_simple_hyp h0;
@@ -521,13 +521,14 @@ let rec p_tree hyps i dict oc proof =
        iprintf i oc "qed\n";
        dict2
      in
-     let _ = List.fold_left2 print_hyp dict1 hs proof.hyps in
+     let dict2 = List.fold_left2 print_hyp dict1 hs proof.hyps in
      iprintf i oc "show FALSE using %s " (hname hyps c);
      let print_hyp_name oc nhl =
        let h = match nhl with [Enot (h, _)] -> h | _ -> assert false in
        fprintf oc "%s " (hname hyps h);
      in
      List.iter (print_hyp_name oc) hs;
+     fprintf oc "inProductI[where s=\"%a\"] " (p_expr dict2) e2;
      fprintf oc "by auto\n";
   | Rextension (_, "zenon_notin_product", _, _, _) -> assert false
   | Rextension (_, "zenon_tuple_notisaseq", [], [c], []) ->
@@ -565,7 +566,7 @@ let rec p_tree hyps i dict oc proof =
      let dict2 = p_let dict i oc e1 in
      let p_simple_hyp h =
        if List.memq h t.conc then
-         iprintf i oc "have %s: \"%a\" using %s by clarsimp\n"
+         iprintf i oc "have %s: \"%a\" using %s by auto\n"
                  (hname hyps h) (p_expr dict2) h (hname hyps c)
      in
      p_simple_hyp h0;
