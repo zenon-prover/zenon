@@ -367,6 +367,22 @@ let make_case_expr constr args e =
 ;;
 
 let newnodes_injective e g =
+  let any_induct e1 e2 ty =
+     let constr = get_constr e2 in
+     let args = List.map (fun _ -> evar "_") (get_args e2) in
+     let cas1 = make_case_expr constr args etrue in
+     let cas2 = make_case_expr "_" [] efalse in
+     let x = newvar () in
+     let caract = elam (x, "", eapp ("$match", [x; cas1; cas2])) in
+     let h = enot (eapp ("=", [e2; e1])) in
+     [ Node {
+      nconc = [];
+       nrule = Ext ("induct", "discriminate_diff", [e2; e1; caract]);
+       nprio = Arity;
+       ngoal = g;
+       nbranches = [| [h] |];
+     } ]
+  in
   match e with
   | Eapp ("=", [e1; e2], _)
     when constr_head e1 && constr_head e2 && get_constr e1 = get_constr e2 ->
@@ -384,7 +400,7 @@ let newnodes_injective e g =
          nbranches = [| branch |];
        } ]
      with
-     | Invalid_argument "List.map2" -> raise Empty
+     | Invalid_argument _ -> raise Empty
      | Not_found -> assert false
      end
   | Eapp ("=", [e1; e2], _) when constr_head e1 && constr_head e2 ->
@@ -403,22 +419,11 @@ let newnodes_injective e g =
         nbranches = [| |];
       }; Stop ]
   | Enot (Eapp ("=", [e1; Eapp ("$any-induct", [Evar (ty, _); e2], _)], _), _)
+    when constr_head e1 && get_constr e1 <> get_constr e2 ->
+     any_induct e1 e2 ty
   | Enot (Eapp ("=", [Eapp ("$any-induct", [Evar (ty, _); e2], _); e1], _), _)
     when constr_head e1 && get_constr e1 <> get_constr e2 ->
-     let constr = get_constr e2 in
-     let args = List.map (fun _ -> evar "_") (get_args e2) in
-     let cas1 = make_case_expr constr args etrue in
-     let cas2 = make_case_expr "_" [] efalse in
-     let x = newvar () in
-     let caract = elam (x, "", eapp ("$match", [x; cas1; cas2])) in
-     let h = enot (eapp ("=", [e2; e1])) in
-     [ Node {
-      nconc = [];
-       nrule = Ext ("induct", "discriminate_diff", [e2; e1; caract]);
-       nprio = Arity;
-       ngoal = g;
-       nbranches = [| [h] |];
-     } ]
+     any_induct e1 e2 ty
   | Eapp ("=", [el; er], _) when constr_head el || constr_head er ->
      let (e1, e2) = if constr_head el then (el, er) else (er, el) in
      assert (not (constr_head e2));

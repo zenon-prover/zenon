@@ -90,8 +90,8 @@ let get_induct name =
 
 let is_constr e =
   match e with
-  | Eapp ("@", Evar (f, _) :: _, _) | Eapp (f, _, _)
-    when Hashtbl.mem constructor_table f -> true
+  | Eapp ("@", Evar (f, _) :: _, _) -> Hashtbl.mem constructor_table f
+  | Eapp (f, _, _) -> Hashtbl.mem constructor_table f
   | _ -> false
 ;;
 
@@ -551,17 +551,17 @@ let flush_buf oc =
       raise (Cut_before (len - !i))
     with
     | Cut_before j ->
-        output oc s !i j;
+        output_substring oc s !i j;
         i := !i + j;
         output_char oc '\n';
         rem_len := line_len;
     | Cut_at j ->
-        output oc s !i j;
+        output_substring oc s !i j;
         i := !i + j + 1;
         output_char oc '\n';
         rem_len := line_len;
   done;
-  output oc s !i (len - !i);
+  output_substring oc s !i (len - !i);
   rem_len := !rem_len - (len - !i);
   Buffer.clear buf;
 ;;

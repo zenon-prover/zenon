@@ -400,19 +400,19 @@ let size = get_size;;
 let has_metas e = get_metas e <> [];;
 let count_metas e = List.length (get_metas e);;
 
-let cursym = ref var_prefix;;
+let cursym = ref (Bytes.of_string var_prefix);;
 
 let rec incr_sym n =
-  if n >= String.length !cursym
-  then cursym := !cursym ^ "a"
-  else match !cursym.[n] with
-  | 'z' -> !cursym.[n] <- 'a'; incr_sym (n+1)
-  | c -> !cursym.[n] <- Char.chr (1 + Char.code c)
+  if n >= Bytes.length !cursym
+  then cursym := Bytes.cat !cursym (Bytes.of_string "a")
+  else match Bytes.get !cursym n with
+  | 'z' -> Bytes.set !cursym n 'a'; incr_sym (n+1)
+  | c -> Bytes.set !cursym n (Char.chr (1 + Char.code c))
 ;;
 
 let newname () =
   incr_sym (String.length var_prefix);
-  String.copy !cursym
+  Bytes.to_string !cursym
 ;;
 
 let newvar () = evar (newname ());;

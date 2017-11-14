@@ -587,7 +587,7 @@ let newnodes_unfold st fm g _ =
          }, true
     with
     | Higher_order -> higher_order_warning p; (st, false)
-    | Invalid_argument "List.map2" -> arity_warning p; (st, false)
+    | Invalid_argument _ -> arity_warning p; (st, false)
     | Not_found -> assert false
   in
   match fm with
