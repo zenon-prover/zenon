@@ -1,6 +1,5 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lextptp.mll,v 1.7 2012-04-24 17:32:04 doligez Exp $";;
 
 open Lexing;;
 open Parsetptp;;

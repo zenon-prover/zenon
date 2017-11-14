@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id$";;
 
 (* Extension for trees of equivalences and negations. *)
 

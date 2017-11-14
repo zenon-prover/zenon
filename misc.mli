@@ -1,5 +1,4 @@
 (*  Copyright 1997 INRIA  *)
-(*  $Id: misc.mli,v 1.22 2012-04-24 17:32:04 doligez Exp $  *)
 
 val index : int -> 'a -> 'a list -> int;;
 val ( @@ ) : 'a list -> 'a list -> 'a list;;

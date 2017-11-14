@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_focal.v,v 1.6 2009-01-13 16:20:53 doligez Exp $  *)
 
 Require Export Bool.
 Require Import ClassicalEpsilon.

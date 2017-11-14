@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: extension.mli,v 1.13 2012-02-24 14:31:28 doligez Exp $  *)
 
 type translator =
     (Expr.expr -> Expr.expr) ->

@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: print.mli,v 1.4 2005-11-05 11:13:17 doligez Exp $  *)
 
 type output = Buff of Buffer.t | Chan of out_channel;;
 

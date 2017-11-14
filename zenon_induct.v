@@ -1,5 +1,4 @@
 (*  Copyright 2008 INRIA  *)
-(*  $Id: zenon_induct.v,v 1.5 2009-07-31 14:18:08 doligez Exp $  *)
 
 Lemma zenon_induct_match_redex : forall A : Prop,
   (A -> False) -> (A -> False).

@@ -1,7 +1,6 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsecoq.mly,v 1.34 2012-04-11 18:27:26 doligez Exp $";;
 
 open Printf;;
 

@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: mltoll.mli,v 1.6 2008-11-03 14:17:25 doligez Exp $  *)
 
 val translate : string -> Phrase.phrase list -> Mlproof.proof -> Llproof.proof;;
 

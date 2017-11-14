@@ -1,6 +1,5 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexcoq.mll,v 1.16 2012-04-11 18:27:26 doligez Exp $";;
 
 open Lexing;;
 open Parsecoq;;

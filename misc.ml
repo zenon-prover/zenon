@@ -1,5 +1,4 @@
 (*  Copyright 2003 INRIA  *)
-Version.add "$Id$";;
 
 
 (* functions missing from the standard library *)

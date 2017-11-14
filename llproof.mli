@@ -1,5 +1,4 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: llproof.mli,v 1.18 2012-04-11 18:27:26 doligez Exp $  *)
 
 open Expr;;
 

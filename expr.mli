@@ -1,5 +1,4 @@
 (*  Copyright 2003 INRIA  *)
-(*  $Id: expr.mli,v 1.22 2012-04-11 18:27:26 doligez Exp $  *)
 
 type private_info;;
 

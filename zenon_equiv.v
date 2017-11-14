@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_equiv.v,v 1.3 2006-02-28 14:33:28 doligez Exp $  *)
 
 Require Import zenon.
 

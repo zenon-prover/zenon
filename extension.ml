@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-Version.add "$Id$";;
 
 open Mlproof;;
 open Printf;;

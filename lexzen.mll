@@ -1,6 +1,5 @@
 (*  Copyright 2005 INRIA  *)
 {
-Version.add "$Id: lexzen.mll,v 1.13 2012-04-11 18:27:26 doligez Exp $";;
 
 open Lexing;;
 open Parsezen;;

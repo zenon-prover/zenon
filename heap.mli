@@ -1,5 +1,4 @@
 (*  Copyright 2001 INRIA  *)
-(*  $Id: heap.mli,v 1.3 2005-11-15 15:02:26 doligez Exp $  *)
 
 type 'a t;;
 

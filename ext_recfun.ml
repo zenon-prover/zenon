@@ -1,5 +1,4 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id$";;
 
 (* Extension for recursive function definitions. *)
 

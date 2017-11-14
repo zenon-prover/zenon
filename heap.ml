@@ -1,5 +1,4 @@
 (*  Copyright 2001 INRIA  *)
-Version.add "$Id$";;
 
 type 'a tree =
   | Node of 'a * 'a tree * 'a tree

@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: node.mli,v 1.9 2008-12-18 17:00:41 doligez Exp $  *)
 
 open Expr;;
 

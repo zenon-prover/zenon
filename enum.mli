@@ -1,5 +1,4 @@
 (*  Copyright 2009 INRIA  *)
-(*  $Id: enum.mli,v 1.2 2009-10-07 12:20:59 doligez Exp $  *)
 
 (** Expansion of repeating text with counters. *)
 

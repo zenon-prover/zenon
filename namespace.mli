@@ -1,5 +1,4 @@
 (*  Copyright 2006 INRIA  *)
-(*  $Id: namespace.mli,v 1.5 2012-02-24 14:31:28 doligez Exp $  *)
 
 val prefix : string;;         (* prefix of all the following *)
 

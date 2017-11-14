@@ -1,5 +1,4 @@
 (*  Copyright 2004 INRIA  *)
-(*  $Id: zenon_coqbool.v,v 1.9 2006-06-22 17:09:40 doligez Exp $  *)
 
 Require Export Bool.
 

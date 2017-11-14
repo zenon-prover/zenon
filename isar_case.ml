@@ -1,5 +1,4 @@
 (*  Copyright 2009 INRIA  *)
-Version.add "$Id$";;
 
 open Printf;;
 

@@ -1,7 +1,6 @@
 /*  Copyright 2005 INRIA  */
 
 %{
-Version.add "$Id: parsetptp.mly,v 1.9 2012-04-24 17:32:04 doligez Exp $";;
 
 open Printf;;
 
