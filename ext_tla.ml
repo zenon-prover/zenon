@@ -133,16 +133,18 @@ let rec mk_pairs l =
   | _ -> Error.warn "record or record set with odd number of fields"; []
 ;;
 
+exception Invalid_record
+
 let rec check_record_labels l =
   match l with
   | (Eapp ("$string", [Evar (l1, _)], _), _)
     :: (Eapp ("$string", [Evar (l2, _)], _), _) :: _
     when l1 = l2 ->
      Error.warn (sprintf "duplicate record field %s" l1);
-     raise (Invalid_argument "check_record_labels")
+     raise Invalid_record;
   | (l1, _) :: (l2, _) :: t when Expr.equal l1 l2 ->
      Error.warn "duplicate record field (non-string)";
-     raise (Invalid_argument "check_record_labels")
+     raise Invalid_record;
   | _ :: t -> check_record_labels t
   | [] -> ()
 ;;
@@ -575,7 +577,7 @@ let newnodes_prop e g =
        let hs = mk_hyps args1 args2 in
        mknode Prop "record_eq_match" (e :: hs) [| hs |]
      with
-     | Invalid_argument "check_record_labels" -> []
+     | Invalid_record -> []
      | Exit -> mknode Prop "record_eq_mismatch" [e; e] [| |]
      end
   | Enot (Eapp ("=", [Eapp ("TLA.record", args1, _);
@@ -597,7 +599,7 @@ let newnodes_prop e g =
        let branches = Array.of_list (List.map (fun x -> [x]) hs) in
        mknode Prop "record_neq_match" (e :: hs) branches
      with
-     | Invalid_argument "check_record_labels" -> []
+     | Invalid_record -> []
      | Exit -> []
      end
   | Enot (Eapp ("=", [e1; Eapp ("TLA.record", args, _) as e2], _), _) ->
