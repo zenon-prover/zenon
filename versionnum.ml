@@ -2,8 +2,8 @@
 
 open Printf;;
 
-let number = 268;;      (* strictly increasing *)
-let date = "2017-11-14";;
+let number = 269;;      (* strictly increasing *)
+let date = "2018-09-18";;
 
 let major = 0;;
 let minor = 8;;
