@@ -3,6 +3,8 @@
 *.annot
 .*.aux
 *.vo
+*.vos
+*.vok
 *.glob
 .config_var
 .depend
