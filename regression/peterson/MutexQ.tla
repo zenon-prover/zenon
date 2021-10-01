@@ -1,8 +1,8 @@
--------------------------------- MODULE MutexQ ------------------------------ 
+-------------------------------- MODULE MutexQ ------------------------------
 
 CONSTANTS x, y, pcx, pcy, xp, yp, pcxp, pcyp, q0, q1, q2
 
-ASSUME Arith == /\ q1 # q0 
+ASSUME Arith == /\ q1 # q0
                 /\ q2 # q1
                 /\ q2 # q0
 
@@ -37,7 +37,7 @@ Next == \/ /\ pcx = q0
            /\ yp = y
            /\ pcxp = pcx
            /\ pcyp = pcy
-    
+
 
 Inv == /\ x \in BOOLEAN
        /\ y \in BOOLEAN
@@ -51,7 +51,7 @@ Inv == /\ x \in BOOLEAN
           => y = TRUE
        /\ ~ (pcx = q2 /\ pcy = q2)
 
-Invp == 
+Invp ==
        /\ xp \in BOOLEAN
        /\ yp \in BOOLEAN
        /\ pcxp \in {q0, q1, q2}
@@ -66,7 +66,7 @@ Invp ==
 
 
 THEOREM Inv /\ Next => Invp
-PROOF 
+PROOF
 <1>1. USE Arith
 <1>2. QED
       BY Arith DEFS Inv, Next, Invp

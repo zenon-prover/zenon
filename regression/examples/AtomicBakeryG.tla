@@ -281,7 +281,7 @@ THEOREM TypeOKInvariant ==
                                 ELSE /\ TRUE
                                      /\ max' = max
                       /\ pc' = [pc EXCEPT ![self] = "p2"]
-                      /\ num' = num /\ flag' = flag /\ nxt' = nxt 
+                      /\ num' = num /\ flag' = flag /\ nxt' = nxt
         BY <1>4, <3>2
       <4>2 CASE j = self
         BY <2>1, <4>1, <4>2, SimplifyAndSolve
@@ -331,7 +331,7 @@ THEOREM TypeOKInvariant ==
         /\ pc' = [pc EXCEPT ![self] = "p5"]
         /\ UNCHANGED << num, flag, max, nxt >>
     BY <1>8 DEF p6
-  <2>2. QED 
+  <2>2. QED
     BY <2>1, SimplifyAndSolve
 
 <1>9. CASE p7(self)
@@ -373,7 +373,7 @@ THEOREM Inv => MutualExclusion
 (* The following lemma asserts that the predicate After(i,j) is preserved  *)
 (* if none of the state components change in terms of which it is defined. *)
 (***************************************************************************)
-THEOREM AfterPrime == 
+THEOREM AfterPrime ==
   ASSUME NEW i, NEW j,
          After(i,j),
          UNCHANGED <<num[i], num[j], pc[i], unread[i], max[i]>>

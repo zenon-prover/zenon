@@ -1,4 +1,4 @@
--------------------------- MODULE Bug08_11_20a --------------------------- 
+-------------------------- MODULE Bug08_11_20a ---------------------------
 
 (***************************************************************************)
 (* Something weird is going on here.  Go down to the proof at the end of   *)
@@ -20,7 +20,7 @@
 
 Not(i) == IF i = 0 THEN 1 ELSE 0
 
-Strings == 
+Strings ==
 /\ "a0" # "a1"
 /\ "a0" # "a2"
 /\ "a0" # "a3"
@@ -99,7 +99,7 @@ TypeOK == /\ pc \in [{0,1} -> {"a0", "a1", "a2", "a3", "cs", "a4"}]
 
 II(i) ==
        /\ (pc[i] \in {"a2", "a3", "cs", "a4"} ) => flag[i]
-            
+
        /\ (pc[i] \in {"cs", "a4"}) => /\ pc[Not(i)] \notin {"cs", "a4"}
                                       /\ (pc[Not(i)] = "a3") => (turn = i)
 
@@ -113,8 +113,8 @@ TypeOK_p == /\ pc_p \in [{0,1} -> {"a0", "a1", "a2", "a3", "cs", "a4"}]
 
 
 II_p(i) ==  /\ (pc_p[i] \in {"a2", "a3", "cs", "a4"} ) => flag_p[i]
-            
-            /\ (pc_p[i] \in {"cs", "a4"}) => 
+
+            /\ (pc_p[i] \in {"cs", "a4"}) =>
                   /\ pc_p[Not(i)] \notin {"cs", "a4"}
                   /\ (pc_p[Not(i)] = "a3") => (turn_p = i)
 
