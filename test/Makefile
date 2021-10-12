@@ -56,7 +56,7 @@ coqscript: basics.vo
                       >tmp_test.v \
 	     && (echo $$i '-> coqc' | tr -d '\n'; \
 	         coqc -I .. tmp_test.v); then \
-	    echo '' | tr -d '\n'; \
+	    printf '\r'; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \
 	    exit 3 ; \
@@ -75,7 +75,7 @@ coqterm: basics.vo
                       >tmp_test.v \
 	     && (echo $$i '-> coqc' | tr -d '\n'; \
 	         coqc -I .. tmp_test.v); then \
-	    echo '' | tr -d '\n'; \
+	    printf '\r'; \
 	  else \
 	    echo $$i '>>> TEST FAILED <<<' ; \
 	    exit 3 ; \

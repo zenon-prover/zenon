@@ -297,7 +297,7 @@ THEOREM RemoveSeq ==
                       NEW seq \in Seq(S),
                       NEW i \in 1..Len(seq)
                PROVE   Remove(i, seq) \in Seq(S)
-  BY <1>1 
+  BY <1>1
 <1>2. /\ Len(seq) \in Nat
       /\ seq \in [1..Len(seq) -> S]
   BY LenAxiom
