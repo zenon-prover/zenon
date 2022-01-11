@@ -1,3 +1,0 @@
-## after changing this file, do ". .svnignore"
-svn propset svn:ignore -F .svnignore . <<EOF   # hack!
-temp
