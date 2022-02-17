@@ -163,7 +163,7 @@ clean:
 	cd doc; make clean
 	[ ! -d test ] || (cd test; make clean)
 	rm -f .#*
-	rm -f *.cm* *.o *.vo *.annot *.output *.glob
+	rm -f *.cm* *.o *.vo *.vo[ks] *.annot *.output *.glob
 	rm -f parsezen.ml parsezen.mli lexzen.ml
 	rm -f parsetptp.ml parsetptp.mli lextptp.ml
 	rm -f parsecoq.ml parsecoq.mli lexcoq.ml
